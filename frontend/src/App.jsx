@@ -1,17 +1,18 @@
-import { useState } from 'react'
-import Interface from './Interface.jsx'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Dashboard from './dashboard.jsx';
-import './App.css';
+import { useState } from "react";
+import Interface from "./pages/Onboarding/Interface.jsx";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import Dashboard from "./pages/Dashboard/dashboard.jsx";
+import LandingPage from "./pages/LandingPage/LandingPage.jsx";
 function App() {
   return (
     <Router>
       <Routes>
-        <Route exact path="/"  element={<Interface/>} />
-        <Route path="/dashboard" element={<Dashboard/>} />
+        <Route path="/" element={<LandingPage />} />
+        <Route exact path="/login" element={<Interface />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import './App.css';
-import SignupForm from './SignupForm';
+import SignupForm from './SignupForm.jsx';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from './components/firebase.js';
+import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom'; 
 
 

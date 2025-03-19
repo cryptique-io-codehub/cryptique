@@ -1,6 +1,6 @@
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import React, { useState, useEffect } from 'react';
-import { auth } from './components/firebase.js';
+import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom';
 
 function SignupForm({ onBackToLogin }) {
