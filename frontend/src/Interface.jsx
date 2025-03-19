@@ -4,6 +4,8 @@ import SignupForm from './SignupForm';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from './components/firebase.js';
 import { useNavigate } from 'react-router-dom'; 
+import axiosInstance from './axiosInstance.js';
+import axios from 'axios';
 
 
 function Interface() {
@@ -56,19 +58,14 @@ function LoginForm({ onSignupClick }) {
   
     try {
       // Send login request to the server
-      const response = await fetch('http://localhost:3002/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await axiosInstance.post('/auth/login', {
+        email, password 
       });
   
-      const data = await response.json();
+     
   
-      if (response.ok) {
-
-        localStorage.setItem('token', data.token);
+      if (response.data.user) {
+        localStorage.setItem('token', response.data.token);
         // Redirect to dashboard on successful login
         navigate('/dashboard');
       } else {
@@ -90,21 +87,16 @@ function LoginForm({ onSignupClick }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      const response = await fetch('http://localhost:3002/api/auth/google-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await axiosInstance.post('/auth/google-login', {
           name: user.displayName,
           email: user.email,
           avatar: user.photoURL,
-        }),
+       
       });
 
-      const data = await response.json();
-      if (data.user) {
-        localStorage.setItem('token', data.token);
+      
+      if (response.data.user) {
+        localStorage.setItem('token', response.data.token);
         // Redirect to dashboard
         navigate('/dashboard');
       }

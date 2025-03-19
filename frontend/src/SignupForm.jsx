@@ -2,6 +2,7 @@ import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import React, { useState, useEffect } from 'react';
 import { auth } from './components/firebase.js';
 import { useNavigate } from 'react-router-dom';
+import axiosInstance from './axiosInstance.js';
 
 function SignupForm({ onBackToLogin }) {
   const [fullName, setFullName] = useState('');
@@ -22,30 +23,23 @@ function SignupForm({ onBackToLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+  
     try {
-      const response = await fetch('http://localhost:3002/api/auth/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await axiosInstance.post('/auth/create', {
+        formData: {
+          name: fullName,
+          email,
+          password,
         },
-        body: JSON.stringify({
-          formData: {
-            name: fullName,
-            email,
-            password,
-          },
-        }),
       });
-      
-      const data = await response.json();
-      if (data.user) {
-        localStorage.setItem('token', data.token);
+  
+      if (response.data.user) {
+        localStorage.setItem('token', response.data.token);
         // Redirect to dashboard
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Error during signup:', error);
+      console.error('Error during signup:', error.response?.data || error.message);
     }
   };
 
@@ -59,21 +53,15 @@ function SignupForm({ onBackToLogin }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      const response = await fetch('http://localhost:3002/api/auth/google-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await axiosInstance.post('/auth/google-login', {
           name: user.displayName,
           email: user.email,
           avatar: user.photoURL,
-        }),
       });
 
-      const data = await response.json();
-      if (data.user) {
-        localStorage.setItem('token', data.token);
+      
+      if (response.data.user) {
+        localStorage.setItem('token', response.data.token);
         // Redirect to dashboard
         navigate('/dashboard');
       }
