@@ -1,8 +1,8 @@
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import React, { useState, useEffect } from 'react';
-import { auth } from '../../components/firebase.js';
+import { auth } from '../../../../client/src/components/firebase.js';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../../axiosInstance.js';
+import axiosInstance from '../../../../client/src/axiosInstance.js';
 
 function SignupForm({ onBackToLogin }) {
   const [fullName, setFullName] = useState('');
