@@ -4,17 +4,17 @@ const cors = require("cors");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const app = express();
-const PORT = process.env.PORT || 3002;  
+const PORT = process.env.PORT || 3002;
 connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(
-  cors()
-);
+app.use(cors({ origin: [process.env.CORS_ORIGIN, "http://localhost:3000"] }));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
-  res.send('<h1 style="text-align:center;">Welcome to the Cryptique Server</h1>');
+  res.send(
+    '<h1 style="text-align:center;">Welcome to the Cryptique Server</h1>'
+  );
 });
 app.use("/api/auth", require("./routes/userRouter"));
 app.listen(PORT, () => {
