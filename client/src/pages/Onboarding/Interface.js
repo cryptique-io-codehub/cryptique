@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import SignupForm from './SignupForm.jsx';
+import SignupForm from './SignupForm.js';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom'; 
@@ -69,7 +69,7 @@ function LoginForm({ onSignupClick }) {
         navigate('/dashboard');
       } else {
         // Show error message from the server
-        alert(data.message || 'Invalid credentials');
+        alert(response.data.message || 'Invalid credentials');
       }
     } catch (error) {
       console.error('Error during login:', error);

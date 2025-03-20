@@ -1,8 +1,8 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Interface from './pages/Onboarding/Interface.jsx'
-import Dashboard from './pages/Dashboard/dashboard.jsx'
-import LandingPage from './pages/LandingPage/LandingPage.jsx'
+import Interface from './pages/Onboarding/Interface.js'
+import Dashboard from './pages/Dashboard/dashboard.js'
+import LandingPage from './pages/LandingPage/LandingPage.js'
 
 
 function App() {

@@ -1,5 +1,6 @@
-/* App.css */
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
   body {
     margin: 0;
@@ -22,7 +23,7 @@
     justify-content: center;
     position: relative;
     /* Background image styling */
-    background-image: url('Phone screen (1).png');
+    background-image: url('../public/login-phone.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
