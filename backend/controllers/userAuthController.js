@@ -55,7 +55,6 @@ exports.getUser = async (req, res) => {
 exports.googleLogin = async (req, res) => {
   try {
     const { name, email, avatar } = req.body;
-
     // Check if user already exists
     let user = await User.findOne({ email });
 

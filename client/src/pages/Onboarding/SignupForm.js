@@ -59,6 +59,7 @@ function SignupForm({ onBackToLogin }) {
           avatar: user.photoURL,
       });
 
+      // console.log(response.data);
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);

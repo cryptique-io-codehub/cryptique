@@ -4,7 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3001;
 connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });

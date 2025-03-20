@@ -93,6 +93,7 @@ function LoginForm({ onSignupClick }) {
        
       });
 
+      // console.log(response.data);
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);

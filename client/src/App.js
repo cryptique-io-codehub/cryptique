@@ -1,6 +1,6 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Interface from './pages/Onboarding/Interface.js'
+import Interface from './pages/Onboarding/LoginForm.js'
 import Dashboard from './pages/Dashboard/dashboard.js'
 import LandingPage from './pages/LandingPage/LandingPage.js'
 
