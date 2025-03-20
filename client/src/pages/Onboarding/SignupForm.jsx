@@ -1,81 +1,48 @@
-import React, { useState } from 'react';
-import SignupForm from './SignupForm.jsx';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../../../client/src/components/firebase.js';
-import { useNavigate } from 'react-router-dom'; 
-import axiosInstance from '../../../../client/src/axiosInstance.js';
+import React, { useState, useEffect } from 'react';
+import { auth } from '../../components/firebase.js';
+import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../../axiosInstance.js';
 
-
-
-function Interface() {
-  const [showLogin, setShowLogin] = useState(true);
-
-  const toggleForm = () => {
-    setShowLogin(!showLogin);
-  };
-
-  return (
-    <div className="app">
-      <LeftPanel />
-      <RightPanel showLogin={showLogin} toggleForm={toggleForm} />
-    </div>
-  );
-}
-
-function LeftPanel() {
-  return (
-    <div className="left-panel">
-    </div>
-  );
-}
-
-function RightPanel({ showLogin, toggleForm }) {
-  return (
-    <div className="right-panel">
-      {showLogin ? (
-        <LoginForm onSignupClick={toggleForm} />
-      ) : (
-        <SignupForm onBackToLogin={toggleForm} />
-      )}
-    </div>
-  );
-}
-
-function LoginForm({ onSignupClick }) {
+function SignupForm({ onBackToLogin }) {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  React.useEffect(() => {
-    setIsFormValid(email.trim() !== '' && password.trim() !== '');
-  }, [email, password]);
+  useEffect(() => {
+    setIsFormValid(
+      fullName.trim() !== '' && 
+      email.trim() !== '' && 
+      password.trim() !== '' && 
+      password === confirmPassword
+    );
+  }, [fullName, email, password, confirmPassword]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
   
     try {
-      // Send login request to the server
-      const response = await axiosInstance.post('/auth/login', {
-        email, password 
+      const response = await axiosInstance.post('/auth/create', {
+        formData: {
+          name: fullName,
+          email,
+          password,
+        },
       });
-  
-     
   
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
-        // Redirect to dashboard on successful login
+        // Redirect to dashboard
         navigate('/dashboard');
-      } else {
-        // Show error message from the server
-        alert(data.message || 'Invalid credentials');
       }
     } catch (error) {
-      console.error('Error during login:', error);
-      alert('An error occurred. Please try again.');
+      console.error('Error during signup:', error.response?.data || error.message);
     }
   };
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -90,7 +57,6 @@ function LoginForm({ onSignupClick }) {
           name: user.displayName,
           email: user.email,
           avatar: user.photoURL,
-       
       });
 
       
@@ -106,12 +72,12 @@ function LoginForm({ onSignupClick }) {
   return (
     <div className="form-container">
       <div className="header">
-        <h1>Sign in</h1>
+        <h1>Sign up</h1>
       </div>
 
       <div className="signup-option">
-        <p>Don't have an account?</p>
-        <a href="#" onClick={onSignupClick}>Sign up</a>
+        <p>Already have an account?</p>
+        <a href="#" onClick={onBackToLogin}>Sign in</a>
       </div>
 
       <div className="social-login">
@@ -136,10 +102,21 @@ function LoginForm({ onSignupClick }) {
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="email">Email address</label>
+          <label htmlFor="fullName">Full Name</label>
           <input 
             type="text" 
-            id="email" 
+            id="fullName" 
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="signupEmail">Email address</label>
+          <input 
+            type="email" 
+            id="signupEmail" 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -147,11 +124,11 @@ function LoginForm({ onSignupClick }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="password">Your password</label>
+          <label htmlFor="signupPassword">Password</label>
           <div className="password-input-container">
             <input 
               type={showPassword ? "text" : "password"} 
-              id="password" 
+              id="signupPassword" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -166,23 +143,32 @@ function LoginForm({ onSignupClick }) {
           </div>
         </div>
 
-        <div className="forgot-password">
-          <a href="#">Forgot your password?</a>
+        <div className="form-group">
+          <label htmlFor="confirmPassword">Confirm Password</label>
+          <div className="password-input-container">
+            <input 
+              type={showPassword ? "text" : "password"} 
+              id="confirmPassword" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
         <button 
           type="submit" 
           className={`submit-btn ${isFormValid ? 'active' : ''}`}
         >
-          Sign in
+          Create Account
         </button>
       </form>
 
-      <div className="bottom-signup">
-        <p>Don't have an account?<a href="#" onClick={onSignupClick}>Sign up</a></p>
+      <div className="terms-privacy">
+        <p>By signing up, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></p>
       </div>
     </div>
   );
 }
 
-export default Interface;
+export default SignupForm;

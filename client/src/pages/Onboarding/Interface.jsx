@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import SignupForm from './SignupForm.jsx';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../../../client/src/components/firebase.js';
+import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom'; 
-import axiosInstance from '../../../../client/src/axiosInstance.js';
+import axiosInstance from '../../axiosInstance.js';
 
 
 
