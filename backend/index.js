@@ -9,20 +9,7 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-const allowedOrigins = ["https://cryptique.vercel.app", "http://localhost:3000"];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
-
-// Handle preflight requests
-app.options("*", cors()); 
+app.use(cors({origin:"https://cryptique.vercel.app"}));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
