@@ -85,6 +85,7 @@ function LoginForm({ onSignupClick }) {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      console.log(user);
 
       const response = await axiosInstance.post('/auth/google-login', {
           name: user.displayName,
@@ -93,7 +94,7 @@ function LoginForm({ onSignupClick }) {
        
       });
 
-      // console.log(response.data);
+      console.log(response.data);
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
