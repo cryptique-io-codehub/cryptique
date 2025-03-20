@@ -1,19 +1,6 @@
 /* App.css */
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-:root {
-    --primary-color: #5d4b8c;
-    --secondary-color: #f0deac;
-    --dark-bg: purple;
-    --text-color: #333;
-    --light-color: #fff;
-    --border-radius: 12px;
-    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  
   body {
     margin: 0;
     padding: 0;
