@@ -4,7 +4,6 @@ import Interface from './pages/Onboarding/LoginForm.js'
 import Dashboard from './pages/Dashboard/Dashboard.js'
 import LandingPage from './pages/LandingPage/LandingPage.js'
 
-
 function App() {
   return (
     <BrowserRouter>
