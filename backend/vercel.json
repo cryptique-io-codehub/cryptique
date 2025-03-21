@@ -10,15 +10,7 @@
     {
       "src": "/(.*)",
       "dest": "index.js",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://cryptique.vercel.app"
-        }
     }
-  ],
+  ]
   
-  "functions": {
-    "api/*": {
-      "maxDuration": 30
-    }
-  }
 }
