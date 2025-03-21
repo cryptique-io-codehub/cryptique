@@ -1,6 +1,7 @@
 
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
+const Team=require('../models/team');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -27,6 +28,22 @@ exports.createUser = async (req, res) => {
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: '1h', // Token expires in 1 hour
     });
+
+    //create a team
+    const teamName=email.split('@')[0];
+
+    const newTeam = new Team({
+      name:teamName,
+      createdBy:newUser._id,
+      user:[{userId:newUser._id,role:'admin'}]
+    })
+
+    //save the team to the database
+    await newTeam.save();
+
+    newUser.team=[newTeam._id];
+
+    await newUser.save();
 
     res.status(201).json({ message: 'User created successfully', user: newUser, token });
   } catch (error) {

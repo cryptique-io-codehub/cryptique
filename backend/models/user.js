@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Team=require("./team")
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -26,6 +27,10 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    team:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Team"
+    }]
 });
 
 
