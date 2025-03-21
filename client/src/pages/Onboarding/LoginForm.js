@@ -110,13 +110,13 @@ function LoginForm({ onSignupClick }) {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      console.log(user);
 
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
       });
-      
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
         navigate('/dashboard');
