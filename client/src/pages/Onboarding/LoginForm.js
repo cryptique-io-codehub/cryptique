@@ -1,42 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SignupForm from './SignupForm.js';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom'; 
+import phone from './login-phone.png'
 import axiosInstance from '../../axiosInstance.js';
-
-
 
 function Interface() {
   const [showLogin, setShowLogin] = useState(true);
-
+  const [a, seta] = useState(0);
+  
   const toggleForm = () => {
+    if(showLogin) {
+      seta(1);
+    } else {
+      seta(0);
+    }
     setShowLogin(!showLogin);
   };
 
   return (
-    <div className="app">
-      <LeftPanel />
-      <RightPanel showLogin={showLogin} toggleForm={toggleForm} />
+    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
+      {/* Left panel - Full height on desktop, partial on mobile */}
+      <div className="w-full h-60 sm:h-72 md:h-80 lg:w-1/2 lg:h-screen bg-indigo-900 fixed lg:relative z-10">
+        <LeftPanel />
+      </div>
+      
+      {/* Right panel - Properly positioned on all devices */}
+      <div className="w-full lg:w-1/2 mt-60 sm:mt-72 md:mt-80 lg:mt-0 overflow-y-auto h-full pb-16">
+        <RightPanel showLogin={showLogin} toggleForm={toggleForm} a={a} />
+      </div>
     </div>
   );
 }
 
 function LeftPanel() {
   return (
-    <div className="left-panel">
+    <div className="w-full h-full flex items-end justify-center relative overflow-hidden">
+      <img
+        src={phone}
+        alt="Marketing Graphic"
+        className="w-auto h-auto max-w-full object-contain pb-0 mb-0"
+        style={{ 
+          maxHeight: '115%',
+          transform: 'translateY(5%)' 
+        }}
+      />
     </div>
   );
 }
 
-function RightPanel({ showLogin, toggleForm }) {
+function RightPanel({ showLogin, toggleForm, a }) {
   return (
-    <div className="right-panel">
-      {showLogin ? (
-        <LoginForm onSignupClick={toggleForm} />
-      ) : (
-        <SignupForm onBackToLogin={toggleForm} />
-      )}
+    <div className="bg-white w-full p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col min-h-full">
+      <div className="self-end mb-4 sm:mb-6 lg:mb-8">
+        <p className="text-sm text-gray-700">
+          {a ? <div>Already have an Account?&nbsp;&nbsp;<button onClick={toggleForm} className="text-indigo-600 font-medium">Sign in</button></div> : <div></div>}
+        </p>
+      </div>
+      
+      <div className="flex-grow flex flex-col items-center justify-center max-w-md mx-auto w-full px-2 sm:px-4">
+        {showLogin ? (
+          <LoginForm onSignupClick={toggleForm} />
+        ) : (
+          <SignupForm onBackToLogin={toggleForm} />
+        )}
+      </div>
     </div>
   );
 }
@@ -47,8 +76,8 @@ function LoginForm({ onSignupClick }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  React.useEffect(() => {
+  
+  useEffect(() => {
     setIsFormValid(email.trim() !== '' && password.trim() !== '');
   }, [email, password]);
 
@@ -56,19 +85,14 @@ function LoginForm({ onSignupClick }) {
     e.preventDefault();
   
     try {
-      // Send login request to the server
       const response = await axiosInstance.post('/auth/login', {
         email, password 
       });
   
-     
-  
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
-        // Redirect to dashboard on successful login
         navigate('/dashboard');
       } else {
-        // Show error message from the server
         alert(response.data.message || 'Invalid credentials');
       }
     } catch (error) {
@@ -76,6 +100,7 @@ function LoginForm({ onSignupClick }) {
       alert('An error occurred. Please try again.');
     }
   };
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -87,100 +112,118 @@ function LoginForm({ onSignupClick }) {
       const user = result.user;
 
       const response = await axiosInstance.post('/auth/google-login', {
-          name: user.displayName,
-          email: user.email,
-          avatar: user.photoURL,
-       
+        name: user.displayName,
+        email: user.email,
+        avatar: user.photoURL,
       });
-
-      // console.log(response.data);
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
-        // Redirect to dashboard
         navigate('/dashboard');
       }
     } catch (error) {
       console.error('Error during Google login:', error);
     }
   };
+
   return (
-    <div className="form-container">
-      <div className="header">
-        <h1>Sign in</h1>
+    <div className="w-full">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-800">Sign in</h1>
       </div>
 
-      <div className="signup-option">
-        <p>Don't have an account?</p>
-        <a href="#" onClick={onSignupClick}>Sign up</a>
-      </div>
-
-      <div className="social-login">
-        <button onClick={googleLogin} className="google-btn">
-          <div className="google-icon">
-            <svg width="20" height="20" viewBox="0 0 20 20">
-              <path d="M19.8 10.2c0-.7-.1-1.4-.2-2h-9.6v3.8h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3-4.5 3-7.3z" fill="#4285F4"/>
-              <path d="M10 20c2.9 0 5.3-1 7-2.6l-3.4-2.6c-.9.6-2.1 1-3.6 1-2.8 0-5.1-1.9-6-4.4H.5v2.7c1.8 3.5 5.4 5.9 9.5 5.9z" fill="#34A853"/>
-              <path d="M4 10.2c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V3.5H.5c-.8 1.6-1.3 3.4-1.3 5.2 0 1.8.5 3.6 1.3 5.2l3.5-2.7z" fill="#FBBC05"/>
-              <path d="M10 3.9c1.6 0 3 .5 4.1 1.6l3-3C15.3.9 12.9 0 10 0 5.9 0 2.3 2.4.5 5.9l3.5 2.7c.8-2.5 3.2-4.7 6-4.7z" fill="#EA4335"/>
-            </svg>
-          </div>
-          Continue with Google
+      <div className="w-full space-y-4 sm:space-y-6">
+        <button 
+          onClick={googleLogin} 
+          className="w-full py-2.5 sm:py-3 px-4 border border-gray-300 rounded-full flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors text-gray-700 text-sm sm:text-base"
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20">
+            <path d="M19.8 10.2c0-.7-.1-1.4-.2-2h-9.6v3.8h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3-4.5 3-7.3z" fill="#4285F4"/>
+            <path d="M10 20c2.9 0 5.3-1 7-2.6l-3.4-2.6c-.9.6-2.1 1-3.6 1-2.8 0-5.1-1.9-6-4.4H.5v2.7c1.8 3.5 5.4 5.9 9.5 5.9z" fill="#34A853"/>
+            <path d="M4 10.2c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V3.5H.5c-.8 1.6-1.3 3.4-1.3 5.2 0 1.8.5 3.6 1.3 5.2l3.5-2.7z" fill="#FBBC05"/>
+            <path d="M10 3.9c1.6 0 3 .5 4.1 1.6l3-3C15.3.9 12.9 0 10 0 5.9 0 2.3 2.4.5 5.9l3.5 2.7c.8-2.5 3.2-4.7 6-4.7z" fill="#EA4335"/>
+          </svg>
+          <span>Continue with Google</span>
         </button>
-      </div>
 
-      <div className="or-divider">
-        <div className="line"></div>
-        <div className="or-text">OR</div>
-        <div className="line"></div>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="email">Email address</label>
-          <input 
-            type="text" 
-            id="email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+        <div className="flex items-center">
+          <div className="flex-grow h-px bg-gray-200"></div>
+          <div className="px-4 text-sm text-gray-400">OR</div>
+          <div className="flex-grow h-px bg-gray-200"></div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="password">Your password</label>
-          <div className="password-input-container">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <div>
+            <label htmlFor="email" className="block mb-1 text-sm text-gray-600">
+              User name or email address
+            </label>
             <input 
-              type={showPassword ? "text" : "password"} 
-              id="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email" 
+              id="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
               required
             />
-            <button 
-              type="button" 
-              className="password-toggle"
-              onClick={togglePasswordVisibility}
-            >
-              {showPassword ? "Hide" : "Show"}
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label htmlFor="password" className="text-sm text-gray-600">
+                Your password
+              </label>
+            </div>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                id="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 pr-12"
+                required
+              />
+              <button 
+                type="button" 
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400 flex items-center"
+                onClick={togglePasswordVisibility}
+              >
+                {showPassword ? (
+                  <span className="flex items-center">Hide</span>
+                ) : (
+                  <span className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Hide
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <button type="button" className="text-sm text-gray-500 hover:text-indigo-600">
+              Forgot your password?
             </button>
           </div>
+
+          <button 
+            type="submit" 
+            className={`w-full py-2.5 sm:py-3 rounded-md font-medium transition-colors text-sm sm:text-base ${
+              isFormValid ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+            }`}
+            disabled={!isFormValid}
+          >
+            Sign in
+          </button>
+        </form>
+
+        <div className="text-center text-sm text-gray-600 mt-4">
+          <p>
+            Don't have an account? <button onClick={onSignupClick} className="text-indigo-600 font-medium">Sign up</button>
+          </p>
         </div>
-
-        <div className="forgot-password">
-          <a href="#">Forgot your password?</a>
-        </div>
-
-        <button 
-          type="submit" 
-          className={`submit-btn ${isFormValid ? 'active' : ''}`}
-        >
-          Sign in
-        </button>
-      </form>
-
-      <div className="bottom-signup">
-        <p>Don't have an account?<a href="#" onClick={onSignupClick}>Sign up</a></p>
       </div>
     </div>
   );
