@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 
-const Tabs = () => {
+const Tabs = ({ isSidebarOpen }) => {
   const [activeTab, setActiveTab] = useState("Overview");
   const tabs = ["Overview", "Analytics", "Campaigns"];
+
+  if (isSidebarOpen) return null; // Hide tabs when sidebar is open
 
   return (
     <div className="w-full overflow-x-auto">

@@ -1,11 +1,10 @@
-import React from "react";
-import { useState } from "react";
-import Sidebar from "./components/Sidebar.js";
-import Header from "./components/Header.js";
-import Tabs from "./components/Tabs.js";
-import {FeatureCards} from "./components/FeatureCards.js";
-import MarketingSection from "./components/MarketingSection.js";
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, FileText, Bell, User, Menu } from "lucide-react";
+import React, { useState } from "react";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import Tabs from "./components/Tabs";
+import { FeatureCards } from "./components/FeatureCards";
+import MarketingSection from "./components/MarketingSection";
+import { Menu } from "lucide-react";
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -19,7 +18,7 @@ const Dashboard = () => {
           onClick={() => setIsSidebarOpen(false)} 
         />
       )}
-      
+
       {/* Sidebar toggle button */}
       <button 
         className="md:hidden p-2 fixed top-2 left-2 bg-white shadow-md rounded-full z-50"
@@ -28,17 +27,29 @@ const Dashboard = () => {
         <Menu size={18} />
       </button>
       
-      {/* Fixed Sidebar */}
+      {/* Sidebar */}
       <div className="h-screen sticky top-0 flex-shrink-0">
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       </div>
 
-      {/* Scrollable Main Content */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <Header />
+        {/* Hide Header on small screens when sidebar is open */}
+        <div className={`${isSidebarOpen ? "hidden md:block" : ""}`}>
+          <Header />
+        </div>
+
         <main className="p-4 flex flex-col gap-6">
-          <MarketingSection />
-          <Tabs/>
+          {/* Hide MarketingSection on small screens when sidebar is open */}
+          <div className={`${isSidebarOpen ? "hidden md:block" : ""}`}>
+            <MarketingSection />
+          </div>
+
+          {/* Hide Tabs on small screens when sidebar is open */}
+          <div className={`${isSidebarOpen ? "hidden md:block" : ""}`}>
+            <Tabs />
+          </div>
+
           <FeatureCards />
         </main>
       </div>
