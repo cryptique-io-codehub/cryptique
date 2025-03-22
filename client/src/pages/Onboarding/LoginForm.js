@@ -7,9 +7,12 @@ import phone from './login-phone.png'
 import axiosInstance from '../../axiosInstance.js';
 
 function Interface() {
+  const [loading,setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [a, seta] = useState(0);
-  
+  const toggleLoading = () => {
+    setLoading(!loading);
+  };
   const toggleForm = () => {
     if(showLogin) {
       seta(1);
@@ -21,14 +24,21 @@ function Interface() {
 
   return (
     <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50 flex items-center justify-center">
+          <div className="bg-white p-3 px-6 rounded-md">
+            <p className="text-md text-gray-800 font-semibold">Loading...</p>
+            </div>
+            </div>
+            )}
       {/* Left panel - Full height on desktop, partial on mobile */}
       <div className="w-full h-60 sm:h-72 md:h-80 lg:w-1/2 lg:h-screen bg-indigo-900 fixed lg:relative z-10">
-        <LeftPanel />
+        <LeftPanel/>
       </div>
       
       {/* Right panel - Properly positioned on all devices */}
       <div className="w-full lg:w-1/2 mt-60 sm:mt-72 md:mt-80 lg:mt-0 overflow-y-auto h-full pb-16">
-        <RightPanel showLogin={showLogin} toggleForm={toggleForm} a={a} />
+        <RightPanel showLogin={showLogin} toggleForm={toggleForm}  toggleLoading={toggleLoading} a={a} />
       </div>
     </div>
   );
@@ -50,7 +60,7 @@ function LeftPanel() {
   );
 }
 
-function RightPanel({ showLogin, toggleForm, a }) {
+function RightPanel({ showLogin, toggleForm, a, toggleLoading }) {
   return (
     <div className="bg-white w-full p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col min-h-full">
       <div className="self-end mb-4 sm:mb-6 lg:mb-8">
@@ -61,7 +71,7 @@ function RightPanel({ showLogin, toggleForm, a }) {
       
       <div className="flex-grow flex flex-col items-center justify-center max-w-md mx-auto w-full px-2 sm:px-4">
         {showLogin ? (
-          <LoginForm onSignupClick={toggleForm} />
+          <LoginForm onSignupClick={toggleForm} toggleLoading={toggleLoading}/>
         ) : (
           <SignupForm onBackToLogin={toggleForm} />
         )}
@@ -70,7 +80,7 @@ function RightPanel({ showLogin, toggleForm, a }) {
   );
 }
 
-function LoginForm({ onSignupClick }) {
+function LoginForm({ onSignupClick,toggleLoading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -85,11 +95,13 @@ function LoginForm({ onSignupClick }) {
     e.preventDefault();
   
     try {
+      toggleLoading();
       const response = await axiosInstance.post('/auth/login', {
         email, password 
       });
   
       if (response.data.user) {
+        toggleLoading();
         localStorage.setItem('token', response.data.token);
         navigate('/dashboard');
       } else {
@@ -111,6 +123,7 @@ function LoginForm({ onSignupClick }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       console.log(user);
+      toggleLoading();
 
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
@@ -118,6 +131,7 @@ function LoginForm({ onSignupClick }) {
         avatar: user.photoURL,
       });
       if (response.data.user) {
+        toggleLoading();
         localStorage.setItem('token', response.data.token);
         navigate('/dashboard');
       }
