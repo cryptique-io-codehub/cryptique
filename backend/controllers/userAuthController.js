@@ -3,23 +3,61 @@ const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Team=require('../models/team');
 const jwt = require('jsonwebtoken');
+const sendOtp = require('../utils/sendOtp');
 require('dotenv').config();
+const generateOtp= ()=>{
+  return Math.floor(100000 + Math.random() * 900000);
+}
+exports.verifyOtp=async (req,res)=>{
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email, otp });
 
-// Controller to create a new user
+    if (!user) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+    user.isVerified = true;
+    await user.save();
+   //create a team
+   const teamName=email.split('@')[0];
+
+   const newTeam = new Team({
+     name:teamName,
+     createdBy:user._id,
+     user:[{userId:user._id,role:'admin'}]
+   })
+
+   //save the team to the database
+   await newTeam.save();
+
+   user.team=[newTeam._id];
+
+   await user.save();
+      res.status(200).json({ message: 'Otp sent successfully', user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error sending otp', error: error.message });
+  }
+}
 exports.createUser = async (req, res) => {
   try {
     const { formData } = req.body;
     
     const { name, email, password, avatar } = formData;
  // Hash the password
+ const userExists = await User.findOne({ email });
+    if(userExists){
+      return res.status(400).json({ message: 'User already exists' });
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Create a new user
-    
+    const otp=generateOtp();
+    // Send OTP to the user
+    await sendOtp(email, 'Otp verification for Cryptique', `Thank you for signing up with Cryptique! Your OTP is ${otp}`);
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       avatar: avatar || '', // Set avatar if provided
+      otp
     });
 
     // Save the user to the database
@@ -29,21 +67,7 @@ exports.createUser = async (req, res) => {
       expiresIn: '1h', // Token expires in 1 hour
     });
 
-    //create a team
-    const teamName=email.split('@')[0];
-
-    const newTeam = new Team({
-      name:teamName,
-      createdBy:newUser._id,
-      user:[{userId:newUser._id,role:'admin'}]
-    })
-
-    //save the team to the database
-    await newTeam.save();
-
-    newUser.team=[newTeam._id];
-
-    await newUser.save();
+ 
 
     res.status(201).json({ message: 'User created successfully', user: newUser, token });
   } catch (error) {
@@ -105,6 +129,9 @@ exports.login=async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+    if (!user.isVerified) {
+      return res.status(402).json({ message: 'User not verified' });
     }
 
     // Compare passwords
