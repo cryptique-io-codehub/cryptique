@@ -18,6 +18,7 @@ app.get("/", (req, res) => {
   );
 });
 app.use("/api/auth", userRouter);
+app.use("/api/team", require("./routes/teamRouter"));
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
