@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Team=require("./team")
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -14,6 +15,13 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    otp: {
+        type: String,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
     password: {
         type: String,
         default:'',
@@ -26,6 +34,10 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    team:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Team"
+    }]
 });
 
 

@@ -10,8 +10,7 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors());
-
+app.use(cors({ origin:[ "http://localhost:3000",process.env.CORS_ORIGIN] }));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
@@ -19,6 +18,7 @@ app.get("/", (req, res) => {
   );
 });
 app.use("/api/auth", userRouter);
+app.use("/api/team", require("./routes/teamRouter"));
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
