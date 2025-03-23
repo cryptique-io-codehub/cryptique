@@ -10,7 +10,8 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors({ origin:[ "https://cryptique.vercel.app"] }));
+app.use(cors());
+
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
