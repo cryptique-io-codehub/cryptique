@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
+import Sidebar from "../../components/Sidebar.js";
+import Header from "../../components/Header.js";
 import Tabs from "./components/Tabs";
 import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
-import Settings from "./Settings.js";
+import Settings from "../Setting/Settings.js";
 import { Menu } from "lucide-react";
 
 const Dashboard = () => {

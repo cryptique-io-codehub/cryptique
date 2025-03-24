@@ -1,5 +1,6 @@
 import { Home, BarChart, BellRing, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
   const [isHovering, setIsHovering] = useState(false);
@@ -52,12 +53,12 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
       </div>
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className="space-y-1 text-xs font-medium">
-          <li 
+          <Link to={'/dashboard'}
             className={`${currentPage === "dashboard" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("dashboard")}
+            // onClick={() => onNavigate && onNavigate("dashboard")}
           >
             <Home size={14} /> {showExpanded && "Dashboard"}
-          </li>
+          </Link>
           <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
             <BarChart size={14} /> {showExpanded && "Off-chain analytics"}
           </li>
@@ -93,12 +94,12 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
             <Globe size={14} /> {showExpanded && "Manage websites"}
           </li>
-          <li 
+          <Link  to={'/setting'}
             className={`${currentPage === "settings" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("settings")}
+            // onClick={() => onNavigate && onNavigate("settings")}
           >
             <Settings size={14} /> {showExpanded && "Settings"}
-          </li>
+          </Link>
         </ul>
       </nav>
       {showExpanded && (

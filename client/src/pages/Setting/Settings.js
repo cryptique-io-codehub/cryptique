@@ -1,27 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X } from "lucide-react";
-import Header from "./components/Header";
-import BillingSection from "./BillingSection";
+import Header from "../../components/Header";
+import BillingSection from "./Billing/BillingSection";
 import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
+import Sidebar from "../../components/Sidebar";
 
 // Team selector component that will be reused across sections
-const TeamSelector = () => {
-  return (
-    <div className="mb-6">
-      <div className="flex items-center flex-wrap">
-        <span className="text-sm font-medium text-gray-700 mr-2">Team:</span>
-        <div className="relative">
-          <button className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm">
-            <span>Cryptique (Growth)</span>
-            <ChevronDown size={16} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+
 
 const Settings = ({ onMenuClick }) => {
   const [activeSection, setActiveSection] = useState("general");
@@ -53,6 +40,7 @@ const Settings = ({ onMenuClick }) => {
   
   return (
     <div className="flex flex-col lg:flex-row w-full h-screen overflow-hidden">
+      <Sidebar />
       {/* Mobile overlay for sidebar */}
       {sidebarOpen && (
         <div 
@@ -158,7 +146,6 @@ const Settings = ({ onMenuClick }) => {
         <div className="flex-1 overflow-y-auto bg-gray-50">
           {activeSection === "general" && (
             <div className="p-4 sm:p-6 bg-white">
-              <TeamSelector />
               
               <div className="max-w-2xl">
                 <div className="mb-6">
@@ -224,30 +211,23 @@ const Settings = ({ onMenuClick }) => {
             </div>
           )}
           
-          {activeSection === "billing" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <TeamSelector />
-              <BillingSection/>
-            </div>
-          )}
-          
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
-              <TeamSelector />
+              
               <MembersSection/>
             </div>
           )}
           
           {activeSection === "personal" && (
             <div className="p-4 sm:p-6 bg-white">
-              <TeamSelector />
+              
               <PersonalInfoSection/>
             </div>
           )}
           
           {activeSection === "teams" && (
             <div className="p-4 sm:p-6 bg-white">
-              <TeamSelector />
+             
               <TeamsSection/>
             </div>
           )}
