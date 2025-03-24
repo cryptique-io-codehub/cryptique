@@ -68,3 +68,30 @@ exports.addMember=async (req,res)=>{
     }
 
 }
+
+exports.createNewTeam=async(req,res)=>{
+    try{
+    const {teamName,email}=req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    const newTeam = new Team({
+        name:teamName,
+        createdBy:user._id,
+        user:[{userId:user._id,role:'admin'}]
+      })
+   
+      //save the team to the database
+    await newTeam.save();
+    user.team=[newTeam._id];
+
+    await user.save();
+    res.status(200).json({ message:'Team Created Successfully',user });
+    }
+    catch(err){
+        res.status(500).json({ message: 'Error creating team', error: error.message });
+    }
+
+
+}
