@@ -40,7 +40,7 @@ exports.verifyOtp=async (req,res)=>{
 }
 exports.createUser = async (req, res) => {
   try {
-    const { formData } = req.body;
+    const formData = req.body;
     
     const { name, email, password, avatar } = formData;
  // Hash the password
@@ -61,7 +61,9 @@ exports.createUser = async (req, res) => {
     });
 
     // Save the user to the database
+
     await newUser.save();
+
      // Generate JWT
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: '1h', // Token expires in 1 hour
@@ -123,17 +125,18 @@ res.status(200).json({ message: 'User logged in successfully', user, token });
 
 exports.login=async (req, res) => {
   const { email, password } = req.body;
-
   try {
     // Fetch user from the database
     const user = await User.findOne({ email });
+    console.log(user);
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     if (!user.isVerified) {
       return res.status(402).json({ message: 'User not verified' });
     }
-
+    console.log('a');
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -149,6 +152,7 @@ exports.login=async (req, res) => {
     res.status(200).json({ message: 'Login successful', user, token });
 
   } catch (error) {
+    console.log('b');
     console.error('Error during login:', error);
     res.status(500).json({ message: 'Server error' });
   }

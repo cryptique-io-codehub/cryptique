@@ -1,32 +1,65 @@
 import React, { useState } from "react";
+import axios from "axios";
 import { Plus, Trash2, Users } from "lucide-react";
 
 const MembersSection = () => {
-  const [invites, setInvites] = useState([
-    { email: "", role: "Admin" }
-  ]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("admin");
   const [activeTab, setActiveTab] = useState("members");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const addInvite = () => {
-    setInvites([...invites, { email: "", role: "Admin" }]);
+  const handleEmailChange = (value) => {
+    setEmail(value);
   };
 
-  const removeInvite = (index) => {
-    const newInvites = [...invites];
-    newInvites.splice(index, 1);
-    setInvites(newInvites);
+  const handleRoleChange = (value) => {
+    setRole(value);
   };
 
-  const handleEmailChange = (index, value) => {
-    const newInvites = [...invites];
-    newInvites[index].email = value;
-    setInvites(newInvites);
-  };
+  const sendInvite = async () => {
+    try {
+      // Basic validation
+      if (!email.trim()) {
+        setError("Email is required");
+        return;
+      }
 
-  const handleRoleChange = (index, value) => {
-    const newInvites = [...invites];
-    newInvites[index].role = value;
-    setInvites(newInvites);
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No authentication token found. Please log in.");
+      }
+
+      // Log the exact request payload for debugging
+      const requestPayload = { email, role };
+      console.log("Sending request payload:", requestPayload);
+
+      const response = await axios.post(
+        "http://localhost:3002/api/team/create",
+        requestPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log(response);
+      alert("Invite sent successfully!");
+      setEmail(""); // Reset form
+    } catch (err) {
+      console.error("Full error object:", err);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+      console.error("Error sending invite:", errorMsg);
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,57 +69,60 @@ const MembersSection = () => {
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-medium mb-4">Add members to your team</h2>
-        <p className="text-sm text-gray-500 mb-4">Enter the email addresses of the people you want to invite to your team.</p>
+        <p className="text-sm text-gray-500 mb-4">
+          Enter the email address of the person you want to invite to your team.
+        </p>
 
         <div className="space-y-3 mb-4">
-          {invites.map((invite, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="email"
-                placeholder="Enter email address"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md"
-                value={invite.email}
-                onChange={(e) => handleEmailChange(index, e.target.value)}
-              />
-              <div className="relative w-40">
-                <select
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md appearance-none"
-                  value={invite.role}
-                  onChange={(e) => handleRoleChange(index, e.target.value)}
-                >
-                  <option>Admin</option>
-                  <option>Editor</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </div>
-              </div>
-              <button 
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
-                onClick={() => removeInvite(index)}
+          <div className="flex items-center gap-2">
+            <input
+              type="email"
+              placeholder="Enter email address"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md"
+              value={email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              required
+            />
+            <div className="relative w-40">
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-md appearance-none"
+                value={role}
+                onChange={(e) => handleRoleChange(e.target.value)}
               >
-                <Trash2 size={20} />
-              </button>
+                <option value="admin">Admin</option>
+                <option value="editor">Editor</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <button
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            onClick={addInvite}
-          >
-            <Users size={16} className="mr-2" />
-            Add another
-          </button>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
+        <div className="flex justify-end">
           <button
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+              loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+            onClick={sendInvite}
+            disabled={loading}
           >
-            <Plus size={16} className="mr-2" />
-            Send invite
+            {loading ? "Sending..." : 
+              <>
+                <Plus size={16} className="mr-2" />
+                Send invite
+              </>
+            }
           </button>
         </div>
       </div>
@@ -117,14 +153,12 @@ const MembersSection = () => {
       {activeTab === "members" && (
         <div className="bg-white rounded-lg shadow">
           {/* Member list would go here */}
-          {/* This is a placeholder - you'd typically fetch and display team members here */}
         </div>
       )}
 
       {activeTab === "invitations" && (
         <div className="bg-white rounded-lg shadow">
           {/* Pending invitations would go here */}
-          {/* This is a placeholder - you'd typically fetch and display pending invitations here */}
         </div>
       )}
     </div>
