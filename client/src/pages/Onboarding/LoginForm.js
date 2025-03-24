@@ -103,6 +103,7 @@ function LoginForm({ onSignupClick,toggleLoading }) {
       if (response.data.user) {
         toggleLoading();
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('User', response.data.user);
         navigate('/dashboard');
       } else {
         alert(response.data.message || 'Invalid credentials');

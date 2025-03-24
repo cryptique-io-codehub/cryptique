@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users } from "lucide-react";
 import axios from 'axios';
-import {jwtDecode} from 'jwt-decode';
 const TeamsSection = () => {
     const [teams,setteams]=useState([]);
     useEffect(()=>{

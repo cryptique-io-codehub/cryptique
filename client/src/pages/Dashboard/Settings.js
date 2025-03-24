@@ -8,6 +8,8 @@ import TeamsSection from "./TeamsSection";
 
 // Team selector component that will be reused across sections
 const TeamSelector = () => {
+  const user=localStorage.getItem('User');
+  console.log(user);
   return (
     <div className="mb-6">
       <div className="flex items-center flex-wrap">
@@ -234,7 +236,7 @@ const Settings = ({ onMenuClick }) => {
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
               <TeamSelector />
-              <MembersSection/>
+              <MembersSection />
             </div>
           )}
           
