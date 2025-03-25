@@ -183,7 +183,7 @@ function trackEvent(eventType, eventData = {}) {
             deviceType: userSession.deviceType,
             resolution: userSession.resolution,
             language: userSession.language,
-            country: userSession.country,
+            country: getCountryName(),
         },
         timestamp: new Date().toISOString(),
         version: VERSION
