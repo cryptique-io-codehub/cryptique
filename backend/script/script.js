@@ -24,8 +24,19 @@ let userSession = {
     utmData: getUTMParameters(),
     browser: getBrowserInfo(),
     os: getOSInfo(),
-    deviceType: getDeviceType()
+    deviceType: getDeviceType(),
+    country:getCountryName()
 };
+//countryName
+function getCountryName() {
+    fetch('https://ipapi.co/json/')
+        .then(response => response.json())
+        .then(data => {
+            return data.country_name;
+        }
+        )
+        .catch(error => console.error('Error:', error));
+}
 
 // 🚀 Utility Functions
 function generateSessionId() {
@@ -171,7 +182,8 @@ function trackEvent(eventType, eventData = {}) {
             os: userSession.os,
             deviceType: userSession.deviceType,
             resolution: userSession.resolution,
-            language: userSession.language
+            language: userSession.language,
+            country: userSession.country,
         },
         timestamp: new Date().toISOString(),
         version: VERSION
