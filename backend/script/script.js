@@ -192,6 +192,7 @@ function trackEvent(eventType, eventData = {}) {
 
     // ✅ Display payload in the console before sending
     console.log('Payload:', JSON.stringify(payload, null, 2));
+    console.log('User Session:', userSession);
 
     fetch(API_URL, {
         method: 'POST',
