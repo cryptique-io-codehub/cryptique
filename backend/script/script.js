@@ -29,11 +29,11 @@ let userSession = {
 };
 //countryName
 function getCountryName() {
-    const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://ipapi.co/json/');
+    const url = 'https://ipapi.co/json/';
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            return data.country_name;
+            userSession.country = data.country_name;
         }
         )
         .catch(error => console.error('Error:', error));
@@ -205,7 +205,7 @@ function trackEvent(eventType, eventData = {}) {
 
 // 🚀 Initialization
 function initCryptiqueAnalytics() {
-    userSession.country = getCountryName();
+    getCountryName();
     trackPageView();
 }
 
