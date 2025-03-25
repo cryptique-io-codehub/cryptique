@@ -29,7 +29,8 @@ let userSession = {
 };
 //countryName
 function getCountryName() {
-    fetch('https://ipapi.co/json/')
+    const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://ipapi.co/json/');
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             return data.country_name;
