@@ -4,12 +4,6 @@ const CONSENT_STORAGE_KEY = 'mtm_consent';
 const USER_ID_KEY = 'mtm_user_id';
 const SITE_ID = 'abck-1234-dfdfdf-dfd-f-df-dfdfdf';
 
-// Ensure SITE_ID is present
-if (!SITE_ID) {
-    console.error('Cryptique Analytics: Missing site-id attribute');
-    return;
-}
-
 // 💡 Initialize User Session Object
 let userSession = {
     siteId: SITE_ID,
