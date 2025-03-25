@@ -167,6 +167,7 @@ function trackPageView() {
 }
 
 function trackEvent(eventType, eventData = {}) {
+    userSession.country = getCountryName();
     const payload = {
         siteId: SITE_ID,
         userId: userSession.userId,
