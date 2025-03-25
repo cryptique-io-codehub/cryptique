@@ -25,7 +25,7 @@ let userSession = {
     browser: getBrowserInfo(),
     os: getOSInfo(),
     deviceType: getDeviceType(),
-    country:getCountryName()
+    country:null
 };
 //countryName
 function getCountryName() {
@@ -184,7 +184,7 @@ function trackEvent(eventType, eventData = {}) {
             deviceType: userSession.deviceType,
             resolution: userSession.resolution,
             language: userSession.language,
-            country: getCountryName(),
+            country: userSession.country,
         },
         timestamp: new Date().toISOString(),
         version: VERSION
@@ -205,6 +205,7 @@ function trackEvent(eventType, eventData = {}) {
 
 // 🚀 Initialization
 function initCryptiqueAnalytics() {
+    userSession.country = getCountryName();
     trackPageView();
 }
 
