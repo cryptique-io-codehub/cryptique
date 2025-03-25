@@ -20,6 +20,10 @@ app.get("/", (req, res) => {
 app.use("/api/auth", userRouter);
 app.use("/api/team", require("./routes/teamRouter"));
 app.use("/api/sdk", require("./routes/sdkRouter"));
+//send the content of script.js file
+app.get("/cryptique-script.js", (req, res) => {
+  res.sendFile(__dirname + "/script/script.txt");
+});
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
