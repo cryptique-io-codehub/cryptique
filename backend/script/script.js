@@ -104,7 +104,6 @@
         if (!userSession.consentGiven) return;
         
         const payload = {
-            siteId: SITE_ID,
             userId: userSession.userId,
             sessionId: userSession.sessionId,
             type: eventType,
