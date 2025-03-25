@@ -3,16 +3,8 @@
     const VERSION = 'v0.11.21';
     const CONSENT_STORAGE_KEY = 'mtm_consent';
     const USER_ID_KEY = 'mtm_user_id';
-    const currentScript = document.currentScript;
-    const SITE_ID = currentScript.getAttribute('site-id');
-
-    if (!SITE_ID) {
-        console.error('Cryptique Analytics: Missing site-id attribute');
-        return;
-    }
 
     let userSession = {
-        siteId: SITE_ID,
         sessionId: generateSessionId(),
         userId: getOrCreateUserId(),
         sessionStart: Date.now(),
