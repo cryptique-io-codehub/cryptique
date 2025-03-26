@@ -3,6 +3,7 @@ import { Bell, ChevronDown, User } from "lucide-react";
 import { useNavigate,useParams } from "react-router-dom";
 import axios from "axios";
 import { useTeam } from "../context/teamContext";
+import axiosInstance from "../axiosInstance";
 
 const TeamSelector = () => {
   const navigate = useNavigate();
@@ -15,13 +16,8 @@ const TeamSelector = () => {
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3002/api/team/AdminTeamDetails", {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
+        const response = await axiosInstance.get("/team/admin-team-details");
+        console.log(response);
         const teams = response.data.team;
         setCurTeams(teams);
         

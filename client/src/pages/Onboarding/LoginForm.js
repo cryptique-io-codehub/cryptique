@@ -133,7 +133,9 @@ function LoginForm({ onSignupClick,toggleLoading }) {
       });
       if (response.data.user) {
         toggleLoading();
+        const tempemail = email.split("@");
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('selectedTeam', tempemail[0]);
         navigate('/dashboard');
       }
     } catch (error) {

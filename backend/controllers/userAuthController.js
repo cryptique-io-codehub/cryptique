@@ -127,12 +127,30 @@ exports.googleLogin = async (req, res) => {
       });
 
       await user.save();
+
     }
  // Generate JWT
  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
   expiresIn: '1h', // Token expires in 1 hour
 });
+user.isVerified = true;
+    await user.save();
+   //create a team
+   const teamName=email.split('@')[0];
 
+   const newTeam = new Team({
+     name:teamName,
+     createdBy:user._id,
+     user:[{userId:user._id,role:'admin'}]
+   })
+
+   //save the team to the database
+   await newTeam.save();
+
+   user.team=[newTeam._id];
+
+   await user.save();
+   console.log('User logged in successfully',user);
 res.status(200).json({ message: 'User logged in successfully', user, token });
   } catch (error) {
     res.status(500).json({ message: 'Error during Google login', error: error.message });
