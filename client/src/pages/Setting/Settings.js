@@ -8,27 +8,6 @@ import TeamsSection from "./TeamsSection";
 import Sidebar from "../../components/Sidebar";
 
 // Team selector component that will be reused across sections
-<<<<<<< HEAD:client/src/pages/Dashboard/Settings.js
-const TeamSelector = () => {
-  const user=localStorage.getItem('User');
-  console.log(user);
-  return (
-    <div className="mb-6">
-      <div className="flex items-center flex-wrap">
-        <span className="text-sm font-medium text-gray-700 mr-2">Team:</span>
-        <div className="relative">
-          <button className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm">
-            <span>Cryptique (Growth)</span>
-            <ChevronDown size={16} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-=======
-
->>>>>>> 3e7d36c12c11d0196b385a15278a27bd95da666a:client/src/pages/Setting/Settings.js
 
 const Settings = ({ onMenuClick }) => {
   const [activeSection, setActiveSection] = useState("general");
@@ -233,13 +212,8 @@ const Settings = ({ onMenuClick }) => {
           
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
-<<<<<<< HEAD:client/src/pages/Dashboard/Settings.js
-              <TeamSelector />
-              <MembersSection />
-=======
               
               <MembersSection/>
->>>>>>> 3e7d36c12c11d0196b385a15278a27bd95da666a:client/src/pages/Setting/Settings.js
             </div>
           )}
           
