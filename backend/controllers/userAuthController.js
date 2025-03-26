@@ -38,6 +38,7 @@ exports.verifyOtp=async (req,res)=>{
     res.status(500).json({ message: 'Error sending otp', error: error.message });
   }
 }
+
 exports.createUser = async (req, res) => {
   try {
     const formData = req.body;
@@ -76,7 +77,22 @@ exports.createUser = async (req, res) => {
     res.status(500).json({ message: 'Error creating user', error: error.message });
   }
 };
+exports.getThisUser= async (req, res) => {
+  try {
+      console.log(req);
+      console.log(idd);
+      console.log('b'); 
+      const user = await User.findOne({ _id: idd });
+      console.log(user);
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
 
+      res.status(200).json({ user });
+  } catch (error) {
+      res.status(500).json({ message: 'Error fetching user', error: error.message });
+  }
+};
 // Controller to get a user by ID
 exports.getUser = async (req, res) => {
     try {
@@ -128,7 +144,6 @@ exports.login=async (req, res) => {
   try {
     // Fetch user from the database
     const user = await User.findOne({ email });
-    console.log(user);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -136,7 +151,7 @@ exports.login=async (req, res) => {
     if (!user.isVerified) {
       return res.status(402).json({ message: 'User not verified' });
     }
-    console.log('a');
+    
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -152,7 +167,7 @@ exports.login=async (req, res) => {
     res.status(200).json({ message: 'Login successful', user, token });
 
   } catch (error) {
-    console.log('b');
+    
     console.error('Error during login:', error);
     res.status(500).json({ message: 'Server error' });
   }

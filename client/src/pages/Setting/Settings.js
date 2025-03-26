@@ -1,50 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X } from "lucide-react";
 import Header from "../../components/Header";
-import BillingSection from "./Billing/BillingSection";
+import Billing from "./Billing/Billing";
 import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
 import Sidebar from "../../components/Sidebar";
-
+import { useNavigate,useParams } from "react-router-dom";
+import { useTeam } from "../../context/teamContext";
 // Team selector component that will be reused across sections
-<<<<<<< HEAD:client/src/pages/Dashboard/Settings.js
-const TeamSelector = () => {
-  const user=localStorage.getItem('User');
-  console.log(user);
-  return (
-    <div className="mb-6">
-      <div className="flex items-center flex-wrap">
-        <span className="text-sm font-medium text-gray-700 mr-2">Team:</span>
-        <div className="relative">
-          <button className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm">
-            <span>Cryptique (Growth)</span>
-            <ChevronDown size={16} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-=======
-
->>>>>>> 3e7d36c12c11d0196b385a15278a27bd95da666a:client/src/pages/Setting/Settings.js
 
 const Settings = ({ onMenuClick }) => {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("general");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+  const {team}=useParams();
+  const [seteam,setseTeam]=useState(localStorage.getItem("selectedTeam"))
+  useEffect(()=>{
+    setseTeam(localStorage.getItem("selectedTeam"))
+    },[team,seteam])
+  // const location=window.location.pathname;
+    // useEffect(() => {
+    //   const fetchTeams = async () => {
+          
+    //       // Check if a team is already saved in localStorage
+    //       const storedTeam = localStorage.getItem("selectedTeam");
+    //       if (storedTeam) {
+    //         setSelectedTeam(JSON.parse(storedTeam));
+    //   };
+    // }
+    //   fetchTeams();
+    // }, []);
   // Close sidebar when resizing to larger screens
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
         setSidebarOpen(false);
       }
-    };
+}});
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    // window.addEventListener('resize', handleResize);
+    // return () => window.removeEventListener('resize', handleResize);
+  // }, []);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -90,7 +87,10 @@ const Settings = ({ onMenuClick }) => {
           <ul className="space-y-1 px-2">
             <li>
               <button 
-                onClick={() => handleSectionChange("general")}
+                onClick={() => {
+                handleSectionChange("general")
+                navigate(`/${seteam}/settings`);
+                }}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}
@@ -100,27 +100,35 @@ const Settings = ({ onMenuClick }) => {
             </li>
             <li>
               <button 
-                onClick={() => handleSectionChange("billing")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
-                }`}
-              >
-                Billing
-              </button>
+              onClick={() => {
+              handleSectionChange("billing"); // Update section state
+              navigate(`/${seteam}/settings/billing`); // Navigate to the new route
+            }}
+            className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
+            activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+            }`}
+            >
+            Billing
+            </button>
+            </li>
+            <li>
+            <button 
+              onClick={() => {
+              handleSectionChange("members"); // Update section state
+              navigate(`/${seteam}/settings/members`);// Navigate to the new route
+            }}
+            className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
+            activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+            }`}
+            >
+            Members
+            </button>
             </li>
             <li>
               <button 
-                onClick={() => handleSectionChange("members")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
-                }`}
-              >
-                Members
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("personal")}
+                onClick={() => {handleSectionChange("personal")
+                navigate(`/${seteam}/settings/personal`);
+                }}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}
@@ -130,7 +138,9 @@ const Settings = ({ onMenuClick }) => {
             </li>
             <li>
               <button 
-                onClick={() => handleSectionChange("teams")}
+                onClick={() => {handleSectionChange("teams")
+                  navigate(`/${seteam}/settings/teamsSection`);
+                }}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}
@@ -230,16 +240,16 @@ const Settings = ({ onMenuClick }) => {
               </div>
             </div>
           )}
-          
+           {activeSection === "billing" && (
+            <div className="p-4 sm:p-6 bg-white">
+              
+              <Billing/>
+            </div>
+          )}
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
-<<<<<<< HEAD:client/src/pages/Dashboard/Settings.js
-              <TeamSelector />
-              <MembersSection />
-=======
               
               <MembersSection/>
->>>>>>> 3e7d36c12c11d0196b385a15278a27bd95da666a:client/src/pages/Setting/Settings.js
             </div>
           )}
           

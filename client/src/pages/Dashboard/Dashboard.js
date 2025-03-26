@@ -5,60 +5,68 @@ import Tabs from "./components/Tabs";
 import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
+import OffchainAnalytics from "./components/OffchainAnalytics.js";
 import { Menu } from "lucide-react";
+import { useLocation } from "react-router-dom";
+
+// Placeholder components
+const OnchainExplorer = () => <div>On-chain Explorer Placeholder</div>;
+const KOLIntelligence = () => <div>KOL Intelligence Placeholder</div>;
+const Campaigns = () => <div>Campaigns Placeholder</div>;
+const ConversionEvents = () => <div>Conversion Events Placeholder</div>;
+const Advertise = () => <div>Advertise Placeholder</div>;
+const History = () => <div>History Placeholder</div>;
+const ImportUsers = () => <div>Import Users Placeholder</div>;
+const ManageWebsites = () => <div>Manage Websites Placeholder</div>;
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedPage, setSelectedPage] = useState("dashboard"); // "dashboard" or "settings"
+  const [selectedPage, setSelectedPage] = useState("dashboard");
   const [isMobile, setIsMobile] = useState(false);
+  const location = useLocation();
 
-  // Check for mobile viewport on mount and resize
+  // Mobile check
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is typical mobile breakpoint
+      setIsMobile(window.innerWidth < 768);
     };
-    
-    // Initial check
     checkIfMobile();
-    
-    // Set up event listener for window resize
     window.addEventListener('resize', checkIfMobile);
-    
-    // Clean up
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
+  // Sync selectedPage with URL
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/dashboard') {
+      setSelectedPage("dashboard");
+    } else if (path.includes('/settings')) {
+      setSelectedPage("settings");
+    }
+    // Add more mappings if you extend routing to other pages
+  }, [location]);
+
   const handleNavigation = (page) => {
+    console.log("Navigating to:", page); // Debug log to confirm navigation
     setSelectedPage(page);
-    // When navigating to settings, we want to close the mobile sidebar
     if (isMobile && isSidebarOpen) {
       setIsSidebarOpen(false);
     }
   };
 
-  // Toggle sidebar for mobile only
-  const toggleSidebar = () => {
-    if (isMobile) {
-      setIsSidebarOpen(!isSidebarOpen);
-    }
-  };
-
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Desktop sidebar - always visible with hover behavior intact */}
       {!isMobile && (
         <div className="h-screen sticky top-0 flex-shrink-0">
           <Sidebar 
             isOpen={isSidebarOpen} 
             onClose={() => setIsSidebarOpen(false)} 
             onNavigate={handleNavigation}
-            isCompact={selectedPage === "settings"}
             currentPage={selectedPage}
           />
         </div>
       )}
 
-      {/* Mobile sidebar - hidden by default, shown when toggled */}
       {isMobile && isSidebarOpen && (
         <div className="fixed top-0 left-0 h-full z-50">
           <Sidebar 
@@ -72,7 +80,6 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 flex flex-col overflow-y-auto relative">
-        {/* Mobile-only fixed menu button that stays visible while scrolling */}
         {isMobile && (
           <button 
             className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"
@@ -85,11 +92,8 @@ const Dashboard = () => {
 
         {selectedPage === "dashboard" && (
           <>
-            <Header onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}>
-              {/* We've moved the mobile menu button outside of Header for better visibility */}
-            </Header>
+            <Header onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)} />
             <main className="p-4 flex flex-col gap-6">
-              {/* Add top padding on mobile to account for fixed menu button */}
               <div className={isMobile ? "pt-6" : ""}>
                 <MarketingSection />
               </div>
@@ -99,6 +103,70 @@ const Dashboard = () => {
           </>
         )}
 
+        {selectedPage === "offchain-analytics" && (
+          
+          <OffchainAnalytics 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "onchain-explorer" && (
+          <OnchainExplorer 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "kol-intelligence" && (
+          <KOLIntelligence 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "campaigns" && (
+          <Campaigns 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "conversion-events" && (
+          <ConversionEvents 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "advertise" && (
+          <Advertise 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "history" && (
+          <History 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "import-users" && (
+          <ImportUsers 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
+        {selectedPage === "manage-websites" && (
+          <ManageWebsites 
+            onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setSelectedPage("dashboard")} 
+          />
+        )}
+
         {selectedPage === "settings" && (
           <Settings 
             onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)} 
@@ -106,7 +174,6 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Mobile overlay when sidebar is open */}
       {isMobile && isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40"

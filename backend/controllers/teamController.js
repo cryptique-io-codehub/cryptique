@@ -2,6 +2,22 @@ const Team=require("../models/team")
 const User=require("../models/user")
 
 
+exports.getAdminTeamDetails=async (req,res)=>{
+    
+    try {
+        // Fetch teams where the logged-in user is the creator
+        const teamDetails = await Team.find({ createdBy: req.userId });
+
+        if (!teamDetails || teamDetails.length === 0) {
+            return res.status(404).json({ message: "No teams found" });
+        }
+
+        res.status(200).json({ team: teamDetails });
+    } catch (e) {
+        res.status(500).json({ message: "Error while fetching teams", error: e.message });
+    }
+
+}
 exports.getTeamDetails=async (req,res)=>{
     
     try{
@@ -18,8 +34,8 @@ exports.getTeamDetails=async (req,res)=>{
 
 }
 exports.addMember=async (req,res)=>{
-    console.log(req.body);
     try {
+        console.log(req.body);
         const { email, role } = req.body;
     
         // Find user by email
@@ -70,24 +86,37 @@ exports.addMember=async (req,res)=>{
 }
 
 exports.createNewTeam=async(req,res)=>{
+    console.log('a');
+    console.log(req.body);
+    console.log('b');
     try{
     const {teamName,email}=req.body;
     const user = await User.findOne({ email });
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
-    const newTeam = new Team({
-        name:teamName,
-        createdBy:user._id,
-        user:[{userId:user._id,role:'admin'}]
-      })
-   
-      //save the team to the database
-    await newTeam.save();
-    user.team=[newTeam._id];
-
-    await user.save();
-    res.status(200).json({ message:'Team Created Successfully',user });
+    const teams =await Team.findOne({ name:teamName });
+    console.log(teams);
+    if(!teams){
+        const newTeam = new Team({
+            name:teamName,
+            createdBy:user._id,
+            user:[{userId:user._id,role:'admin'}]
+          })
+       
+          //save the team to the database
+        
+        await newTeam.save();
+        user.team=[newTeam._id];
+    
+        await user.save();
+        res.status(200).json({ message:'Team Created Successfully',user });
+    }
+    else{
+        res.status(400).json({ message:'Team already exist'});
+    }
+    console.log(user);
+    
     }
     catch(err){
         res.status(500).json({ message: 'Error creating team', error: error.message });

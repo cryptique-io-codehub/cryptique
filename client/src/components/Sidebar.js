@@ -1,22 +1,36 @@
 import { Home, BarChart, BellRing, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
   const [isHovering, setIsHovering] = useState(false);
-  
-  // Determine if we should show the expanded view
+  const params = useParams();
+  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const showExpanded = !isCompact || (isCompact && isHovering);
-  
-  // Close sidebar when clicking outside on mobile
+
+  useEffect(() => {
+    // Always use the team from localStorage as the source of truth
+    const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
+    
+    // If URL params don't match stored team, update the URL
+    if (params.team && params.team !== storedTeam) {
+      // This will trigger a re-render with correct params
+      window.history.replaceState(null, '', `/${storedTeam}/settings`);
+    }
+    
+    setSelectedTeam(storedTeam);
+    
+    console.log("params from sidebar", params.team);
+    console.log("selectedTeam from sidebar", storedTeam);
+  }, [params.team]);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Check if sidebar is open and if click is outside sidebar
       if (isOpen && e.target.closest('aside') === null && window.innerWidth < 768) {
         onClose();
       }
     };
-    
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
@@ -53,50 +67,79 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
       </div>
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className="space-y-1 text-xs font-medium">
-          <Link to={'/dashboard'}
+          <Link
+            to={'/dashboard'}
             className={`${currentPage === "dashboard" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            // onClick={() => onNavigate && onNavigate("dashboard")}
+            onClick={() => onNavigate && onNavigate("dashboard")}
           >
             <Home size={14} /> {showExpanded && "Dashboard"}
           </Link>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "offchain-analytics" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("offchain-analytics")}
+          >
             <BarChart size={14} /> {showExpanded && "Off-chain analytics"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "onchain-explorer" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("onchain-explorer")}
+          >
             <LineChart size={14} /> {showExpanded && "On-chain explorer"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "kol-intelligence" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("kol-intelligence")}
+          >
             <Users size={14} /> {showExpanded && "KOL Intelligence"}
           </li>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
           
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "campaigns" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("campaigns")}
+          >
             <Activity size={14} /> {showExpanded && "Campaigns"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "conversion-events" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("conversion-events")}
+          >
             <List size={14} /> {showExpanded && "Conversion events"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "advertise" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("advertise")}
+          >
             <Globe size={14} /> {showExpanded && "Advertise"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "history" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("history")}
+          >
             <Database size={14} /> {showExpanded && "History"}
           </li>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
           
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "import-users" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("import-users")}
+          >
             <Upload size={14} /> {showExpanded && "Import users"}
           </li>
-          <li className={`flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}>
+          <li
+            className={`${currentPage === "manage-websites" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("manage-websites")}
+          >
             <Globe size={14} /> {showExpanded && "Manage websites"}
           </li>
-          <Link  to={'/setting'}
+          <Link
+            to={`/${selectedTeam}/settings`}
             className={`${currentPage === "settings" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            // onClick={() => onNavigate && onNavigate("settings")}
+            onClick={() => onNavigate && onNavigate("settings")}
           >
             <Settings size={14} /> {showExpanded && "Settings"}
           </Link>

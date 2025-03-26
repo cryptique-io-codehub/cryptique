@@ -93,17 +93,17 @@ function LoginForm({ onSignupClick,toggleLoading }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
     try {
       toggleLoading();
       const response = await axiosInstance.post('/auth/login', {
         email, password 
       });
-  
+      
       if (response.data.user) {
         toggleLoading();
+        const tempemail = email.split("@");
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('User', response.data.user);
+        localStorage.setItem('selectedTeam', tempemail[0]);
         navigate('/dashboard');
       } else {
         alert(response.data.message || 'Invalid credentials');
