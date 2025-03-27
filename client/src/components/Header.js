@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Bell, ChevronDown, User } from "lucide-react";
+import React, { useState,useEffect } from "react";
+import { Bell, ChevronDown, User, LogOut } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { useTeam } from "../context/teamContext";
@@ -16,12 +16,7 @@ const TeamSelector = () => {
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3002/api/team/AdminTeamDetails", {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await axiosInstance.get('/team/AdminTeamDetails');
 
         const teams = response.data.team;
         setCurTeams(teams);
@@ -99,6 +94,7 @@ const TeamSelector = () => {
 
 const Header = () => {
   const navigate = useNavigate();
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     // Clear the token from localStorage
@@ -119,12 +115,32 @@ const Header = () => {
           <Bell size={20} className="text-gray-600" />
         </div>
 
-        {/* Profile Icon with Logout Functionality */}
-        <div 
-          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0"
-          onClick={handleLogout}
-        >
-          <User size={20} className="text-gray-600" />
+        {/* Profile Icon with Logout Dropdown */}
+        <div className="relative">
+          <div 
+            className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0"
+            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+          >
+            <User size={20} className="text-gray-600" />
+          </div>
+          {profileDropdownOpen && (
+            <div className="absolute right-0 mt-4 w-48 bg-white border border-gray-300 shadow-lg rounded-lg z-50 overflow-hidden">
+              {/* Dropdown Actions */}
+              <div className="py-1">
+                <button
+                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 
+                    hover:bg-red-50 transition-colors duration-200"
+                  onClick={() => {
+                    handleLogout();
+                    setProfileDropdownOpen(false);
+                  }}
+                >
+                  <LogOut size={16} className="mr-3 text-red-500" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
