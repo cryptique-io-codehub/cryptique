@@ -10,16 +10,22 @@ const TeamsSection = () => {
     const [error, setError] = useState('');
     const [result, setResult] = useState();
     const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
-    const [selectedTeam, setSelectedTeam] = useState(null);
+    const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchTeams = async () => {
             try {
-                const response = await axiosInstance.get('/team/details');
+                const token=localStorage.getItem("token");
+                const response = await axiosInstance.get('/team/details',{
+                    headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type':'application/json'
+                    }
+                  });
                 console.log(response);
                 setTeams(response.data.team);
-                console.log(response.data.team);
+                // console.log(response.data.team);
                 // Automatically select the first team if available
                 if (response.data.team.length > 0) {
                     setSelectedTeam(response.data.team[0]);
@@ -30,7 +36,7 @@ const TeamsSection = () => {
         };
     
         fetchTeams();
-    }, [selectedTeam]);
+    }, []);
 
     const handleCreateTeam = async () => {
         if (!teamName.trim()) {
@@ -51,7 +57,7 @@ const TeamsSection = () => {
                     role: 'admin'
                 }
             );
-            console.log(response);
+            // console.log(response);
             // Ensure the new team has the same structure as existing teams
             const newTeams = {
                 name: response.data.newTeam.name || teamName.trim(),

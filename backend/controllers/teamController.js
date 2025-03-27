@@ -19,6 +19,7 @@ exports.getAdminTeamDetails=async (req,res)=>{
 
 }
 exports.getTeamDetails = async (req, res) => {
+    console.log(req.body);
     try {
         const teamDetails = await Team.find({ "user.userId": req.userId })
             .populate('createdBy', '-password') // populate user details, excluding password

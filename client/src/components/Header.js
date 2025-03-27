@@ -1,23 +1,27 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Bell, ChevronDown, User, LogOut } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useTeam } from "../context/teamContext";
 import axiosInstance from "../axiosInstance";
-
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const val=localStorage.getItem('User');
 
   useEffect(() => {
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axiosInstance.get('/team/AdminTeamDetails');
-
+        const response = await axiosInstance.get('/team/details',{
+          headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type':'application/json'
+          }
+        });
+        console.log('a');
+        console.log(response);
+        console.log('b');
         const teams = response.data.team;
         setCurTeams(teams);
       } catch (error) {
@@ -26,7 +30,7 @@ const TeamSelector = () => {
     };
 
     fetchTeams();
-  }, []);
+  }, [selectedTeam]);
 
   const handleTeamSelect = (teamss) => {
     localStorage.setItem('selectedTeam', teamss.name);
@@ -95,14 +99,33 @@ const TeamSelector = () => {
 const Header = () => {
   const navigate = useNavigate();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    // Fetch user details or get username from localStorage
+    const storedUser = localStorage.getItem('User');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUserName(user.name || user.email || 'User');
+      } catch (error) {
+        setUserName('User');
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     // Clear the token from localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('selectedTeam');
+    localStorage.removeItem('User');
     
     // Navigate to login page
     navigate('/login');
+  };
+
+  const toggleProfileDropdown = () => {
+    setProfileDropdownOpen(!profileDropdownOpen);
   };
 
   return (
@@ -110,38 +133,36 @@ const Header = () => {
       {/* Team Selector */}
       <TeamSelector />
       
-      <div className="flex justify-center items-center">
+      <div className="flex justify-center items-center relative">
         <div className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0">
           <Bell size={20} className="text-gray-600" />
         </div>
 
-        {/* Profile Icon with Logout Dropdown */}
-        <div className="relative">
-          <div 
-            className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0"
-            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-          >
-            <User size={20} className="text-gray-600" />
-          </div>
-          {profileDropdownOpen && (
-            <div className="absolute right-0 mt-4 w-48 bg-white border border-gray-300 shadow-lg rounded-lg z-50 overflow-hidden">
-              {/* Dropdown Actions */}
-              <div className="py-1">
-                <button
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 
-                    hover:bg-red-50 transition-colors duration-200"
-                  onClick={() => {
-                    handleLogout();
-                    setProfileDropdownOpen(false);
-                  }}
-                >
-                  <LogOut size={16} className="mr-3 text-red-500" />
-                  Logout
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Profile Icon with Dropdown */}
+        <div 
+          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0 relative"
+          onClick={toggleProfileDropdown}
+        >
+          <User size={20} className="text-gray-600" />
         </div>
+
+        {/* Profile Dropdown */}
+        {profileDropdownOpen && (
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-50">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-900">{userName}</p>
+            </div>
+            <div className="py-1">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <LogOut size={16} className="mr-2" />
+                Log out
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
