@@ -2,6 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const Website=require("../models/website");
 const Team=require("../models/team");
+const { v4: uuidv4 } = require('uuid');
 
 
 exports.addWebsite=async (req,res)=>{
@@ -15,8 +16,11 @@ exports.addWebsite=async (req,res)=>{
 
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
+        const siteId = uuidv4(); 
+
         const newWebsite=new Website({
-            Domain:`https://${Domain}`,
+            siteId,
+            Domain,
             Name:Name || '',
             team:checkTeam._id,
         })
@@ -30,7 +34,7 @@ exports.addWebsite=async (req,res)=>{
             { new: true } 
         );
 
-        return res.status(200).json({message:"Website added successfully"});
+        return res.status(200).json({message:"Website added successfully",website:newWebsite});
 
    }catch(e){
 
@@ -67,7 +71,7 @@ exports.deleteWebsite=async (req,res)=>{
                 { new: true } 
             );
 
-            return res.status(200).json({message:"website deleted successfully"});
+            return res.status(200).json({message:"website deleted successfully",website});
         }
 
     }catch(e){
@@ -82,20 +86,26 @@ exports.deleteWebsite=async (req,res)=>{
 exports.verify=async (req,res)=>{
     try{
 
-        const {url,siteId}=req.body;
+        const {Domain,siteId}=req.body;
 
-        if(!url && !siteId) return res.status(400).json({message:"Required fields are missing"});
+        if(!Domain && !siteId) return res.status(400).json({message:"Required fields are missing"});
 
-        const {data}=await axios.get(url);
+        const {data}=await axios.get(`https://${Domain}`);
 
         const $=cheerio.load(data);
 
         //put our script source link here
-        const scriptSrc="our script source";
+        const scriptSrc="";
         
         const scriptTag=$(`script[src="${scriptSrc}"][site-id="${siteId}"]`);
 
         if(scriptTag.length>0) {
+
+            await Website.findOneAndUpdate(
+                { Domain }, 
+                { $set: { isVerified: true } }, 
+                { new: true } 
+            );
 
             return res.status(200).json({message:"Script found"});
 

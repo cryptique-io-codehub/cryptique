@@ -24,7 +24,8 @@ const websiteSchema=new mongoose.Schema({
         ref:"Analytics"
     },
     isVerified:{
-        type:Boolean
+        type:Boolean,
+        default:false
     }
 })
 

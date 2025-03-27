@@ -5,6 +5,6 @@ const {addWebsite,deleteWebsite,verify}=require("../controllers/websiteControlle
 const router = express.Router();
 
 router.post('/create',addWebsite);
-router.get('/delete',deleteWebsite);
+router.post('/delete',deleteWebsite);
 router.post('/verify',verify);
 module.exports = router;

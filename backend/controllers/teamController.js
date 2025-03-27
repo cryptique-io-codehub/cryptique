@@ -15,7 +15,6 @@ exports.getTeamDetails=async (req,res)=>{
         res.status(500).json({ message: 'Error while fetching members', error: e.message });
     }
 
-
 }
 
 exports.addMember=async (req,res)=>{
@@ -93,6 +92,5 @@ exports.createNewTeam=async(req,res)=>{
     catch(err){
         res.status(500).json({ message: 'Error creating team', error: error.message });
     }
-
 
 }
