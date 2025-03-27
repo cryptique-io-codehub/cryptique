@@ -2,24 +2,42 @@ import React, { useState, useEffect } from 'react';
 import SignupForm from './SignupForm.js';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../components/firebase.js';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import phone from './login-phone.png'
 import axiosInstance from '../../axiosInstance.js';
 
 function Interface() {
-  const [loading,setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [a, seta] = useState(0);
-  const toggleLoading = () => {
-    setLoading(!loading);
-  };
-  const toggleForm = () => {
-    if(showLogin) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Effect to handle routing based on current path
+  useEffect(() => {
+    if (location.pathname === '/signup') {
+      setShowLogin(false);
       seta(1);
     } else {
+      // Default to login page
+      setShowLogin(true);
       seta(0);
+      navigate('/login');
     }
-    setShowLogin(!showLogin);
+  }, [location.pathname, navigate]);
+
+  const toggleLoading = (isLoading) => {
+    setLoading(isLoading !== undefined ? isLoading : !loading);
+  };
+
+  const toggleForm = () => {
+    if (showLogin) {
+      // Switch to signup route
+      navigate('/signup');
+    } else {
+      // Switch to login route
+      navigate('/login');
+    }
   };
 
   return (
@@ -28,9 +46,10 @@ function Interface() {
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50 flex items-center justify-center">
           <div className="bg-white p-3 px-6 rounded-md">
             <p className="text-md text-gray-800 font-semibold">Loading...</p>
-            </div>
-            </div>
-            )}
+          </div>
+        </div>
+      )}
+      
       {/* Left panel - Full height on desktop, partial on mobile */}
       <div className="w-full h-60 sm:h-72 md:h-80 lg:w-1/2 lg:h-screen bg-indigo-900 fixed lg:relative z-10">
         <LeftPanel/>
@@ -38,7 +57,12 @@ function Interface() {
       
       {/* Right panel - Properly positioned on all devices */}
       <div className="w-full lg:w-1/2 mt-60 sm:mt-72 md:mt-80 lg:mt-0 overflow-y-auto h-full pb-16">
-        <RightPanel showLogin={showLogin} toggleForm={toggleForm}  toggleLoading={toggleLoading} a={a} />
+        <RightPanel 
+          showLogin={showLogin} 
+          toggleForm={toggleForm}  
+          toggleLoading={toggleLoading} 
+          a={a} 
+        />
       </div>
     </div>
   );
@@ -80,7 +104,7 @@ function RightPanel({ showLogin, toggleForm, a, toggleLoading }) {
   );
 }
 
-function LoginForm({ onSignupClick,toggleLoading }) {
+function LoginForm({ onSignupClick, toggleLoading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -94,23 +118,31 @@ function LoginForm({ onSignupClick,toggleLoading }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      toggleLoading();
+      toggleLoading(true);
       const response = await axiosInstance.post('/auth/login', {
-        email, password 
+        email, 
+        password 
       });
-      
+      const aa=email.split('@')[0];
       if (response.data.user) {
-        toggleLoading();
-        const tempemail = email.split("@");
+        toggleLoading(false);
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('selectedTeam', tempemail[0]);
-        navigate('/dashboard');
+        localStorage.setItem('selectedTeam', aa);
+        navigate(`/${aa}/dashboard`);
       } else {
+        toggleLoading(false);
         alert(response.data.message || 'Invalid credentials');
       }
     } catch (error) {
-      console.error('Error during login:', error);
-      alert('An error occurred. Please try again.');
+      toggleLoading(false);
+      
+      if (error.response && 
+          [401, 404, 402].includes(error.response.status)) {
+        alert(error.response.data.message);
+      } else {
+        console.error('Error during login:', error);
+        alert('An error occurred. Please try again.');
+      }
     }
   };
 
@@ -121,23 +153,25 @@ function LoginForm({ onSignupClick,toggleLoading }) {
   const googleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      toggleLoading(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log(user);
-      toggleLoading();
 
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
       });
+
       if (response.data.user) {
-        toggleLoading();
+        toggleLoading(false);
         localStorage.setItem('token', response.data.token);
-        navigate('/dashboard');
+        navigate(`/${email}/dashboard`);
       }
     } catch (error) {
+      toggleLoading(false);
       console.error('Error during Google login:', error);
+      alert('Google login failed. Please try again.');
     }
   };
 
@@ -210,7 +244,7 @@ function LoginForm({ onSignupClick,toggleLoading }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    Hide
+                    Show
                   </span>
                 )}
               </button>

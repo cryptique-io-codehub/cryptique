@@ -6,42 +6,48 @@ import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
 import Sidebar from "../../components/Sidebar";
-import { useNavigate,useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
-// Team selector component that will be reused across sections
 
 const Settings = ({ onMenuClick }) => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("general");
+  const location = useLocation();
+  const { team } = useParams();
+  const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
+
+  // Determine active section based on current path
+  const determineActiveSection = () => {
+    const path = location.pathname;
+    if (path.includes('/billing')) return 'billing';
+    if (path.includes('/members')) return 'members';
+    if (path.includes('/personal')) return 'personal';
+    if (path.includes('/teamsSection')) return 'teams';
+    return 'general';
+  };
+
+  const [activeSection, setActiveSection] = useState(determineActiveSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const {team}=useParams();
-  const [seteam,setseTeam]=useState(localStorage.getItem("selectedTeam"))
-  useEffect(()=>{
-    setseTeam(localStorage.getItem("selectedTeam"))
-    },[team,seteam])
-  // const location=window.location.pathname;
-    // useEffect(() => {
-    //   const fetchTeams = async () => {
-          
-    //       // Check if a team is already saved in localStorage
-    //       const storedTeam = localStorage.getItem("selectedTeam");
-    //       if (storedTeam) {
-    //         setSelectedTeam(JSON.parse(storedTeam));
-    //   };
-    // }
-    //   fetchTeams();
-    // }, []);
+
+  useEffect(() => {
+    setseTeam(localStorage.getItem("selectedTeam"));
+  }, [team]);
+
+  useEffect(() => {
+    // Update active section when route changes
+    setActiveSection(determineActiveSection());
+  }, [location.pathname]);
+  
   // Close sidebar when resizing to larger screens
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
         setSidebarOpen(false);
       }
-}});
-    
-    // window.addEventListener('resize', handleResize);
-    // return () => window.removeEventListener('resize', handleResize);
-  // }, []);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -49,6 +55,25 @@ const Settings = ({ onMenuClick }) => {
   
   const handleSectionChange = (section) => {
     setActiveSection(section);
+    // Navigate to the corresponding route
+    switch(section) {
+      case 'general':
+        navigate(`/${seteam}/settings`);
+        break;
+      case 'billing':
+        navigate(`/${seteam}/settings/billing`);
+        break;
+      case 'members':
+        navigate(`/${seteam}/settings/members`);
+        break;
+      case 'personal':
+        navigate(`/${seteam}/settings/personal`);
+        break;
+      case 'teams':
+        navigate(`/${seteam}/settings/teamsSection`);
+        break;
+    }
+
     // On mobile, close the sidebar after selecting a section
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
@@ -87,10 +112,7 @@ const Settings = ({ onMenuClick }) => {
           <ul className="space-y-1 px-2">
             <li>
               <button 
-                onClick={() => {
-                handleSectionChange("general")
-                navigate(`/${seteam}/settings`);
-                }}
+                onClick={() => handleSectionChange("general")}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}
@@ -100,35 +122,27 @@ const Settings = ({ onMenuClick }) => {
             </li>
             <li>
               <button 
-              onClick={() => {
-              handleSectionChange("billing"); // Update section state
-              navigate(`/${seteam}/settings/billing`); // Navigate to the new route
-            }}
-            className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-            activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
-            }`}
-            >
-            Billing
-            </button>
-            </li>
-            <li>
-            <button 
-              onClick={() => {
-              handleSectionChange("members"); // Update section state
-              navigate(`/${seteam}/settings/members`);// Navigate to the new route
-            }}
-            className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-            activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
-            }`}
-            >
-            Members
-            </button>
+                onClick={() => handleSectionChange("billing")}
+                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
+                  activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                }`}
+              >
+                Billing
+              </button>
             </li>
             <li>
               <button 
-                onClick={() => {handleSectionChange("personal")
-                navigate(`/${seteam}/settings/personal`);
-                }}
+                onClick={() => handleSectionChange("members")}
+                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
+                  activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                }`}
+              >
+                Members
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => handleSectionChange("personal")}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}
@@ -138,9 +152,7 @@ const Settings = ({ onMenuClick }) => {
             </li>
             <li>
               <button 
-                onClick={() => {handleSectionChange("teams")
-                  navigate(`/${seteam}/settings/teamsSection`);
-                }}
+                onClick={() => handleSectionChange("teams")}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
                 }`}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { Plus, Trash2, Users } from "lucide-react";
+import axiosInstance from "../../axiosInstance";
 
 const MembersSection = () => {
   const [email, setEmail] = useState("");
@@ -38,16 +39,7 @@ const MembersSection = () => {
       const requestPayload = { email, role };
       console.log("Sending request payload:", requestPayload);
 
-      const response = await axios.post(
-        "http://localhost:3002/api/team/create",
-        requestPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axiosInstance.post('/team/create',requestPayload);
 
       console.log(response);
       alert("Invite sent successfully!");

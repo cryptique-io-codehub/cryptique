@@ -18,24 +18,26 @@ exports.getAdminTeamDetails=async (req,res)=>{
     }
 
 }
-exports.getTeamDetails=async (req,res)=>{
-    
-    try{
+exports.getTeamDetails = async (req, res) => {
+    try {
         const teamDetails = await Team.find({ "user.userId": req.userId })
-        console.log(teamDetails);
+            .populate('createdBy', '-password') // populate user details, excluding password
+            .exec();
 
-        if(!teamDetails) res.status(404).json({message:"details not found"});
+        // console.log(teamDetails);
 
-        res.status(200).json({team:teamDetails});
-    }catch(e){
+        if (!teamDetails || teamDetails.length === 0) {
+            return res.status(404).json({ message: "Details not found" });
+        }
+        
+        res.status(200).json({ team: teamDetails });
+    } catch (e) {
         res.status(500).json({ message: 'Error while fetching members', error: e.message });
     }
-
-
 }
 exports.addMember=async (req,res)=>{
     try {
-        console.log(req.body);
+        // console.log(req.body);
         const { email, role } = req.body;
     
         // Find user by email
@@ -86,17 +88,16 @@ exports.addMember=async (req,res)=>{
 }
 
 exports.createNewTeam=async(req,res)=>{
-    console.log('a');
-    console.log(req.body);
-    console.log('b');
     try{
     const {teamName,email}=req.body;
     const user = await User.findOne({ email });
+    console.log('a');
+    // console.log(user);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
     const teams =await Team.findOne({ name:teamName });
-    console.log(teams);
+    // console.log(teams);
     if(!teams){
         const newTeam = new Team({
             name:teamName,
@@ -110,12 +111,12 @@ exports.createNewTeam=async(req,res)=>{
         user.team=[newTeam._id];
     
         await user.save();
-        res.status(200).json({ message:'Team Created Successfully',user });
+        res.status(200).json({ message:'Team Created Successfully',newTeam});
     }
     else{
         res.status(400).json({ message:'Team already exist'});
     }
-    console.log(user);
+    // console.log(user);
     
     }
     catch(err){

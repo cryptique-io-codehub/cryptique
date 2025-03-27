@@ -8,7 +8,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   const params = useParams();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const showExpanded = !isCompact || (isCompact && isHovering);
-
+  console.log(selectedTeam);
   useEffect(() => {
     // Always use the team from localStorage as the source of truth
     const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
@@ -68,74 +68,73 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className="space-y-1 text-xs font-medium">
           <Link
-            to={'/dashboard'}
+            to={`/${selectedTeam}/dashboard`}
             className={`${currentPage === "dashboard" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("dashboard")}
           >
             <Home size={14} /> {showExpanded && "Dashboard"}
           </Link>
-          <li
+          <Link 
+          to={`/${selectedTeam}/offchain`}
             className={`${currentPage === "offchain-analytics" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("offchain-analytics")}
           >
             <BarChart size={14} /> {showExpanded && "Off-chain analytics"}
-          </li>
-          <li
+          </Link>
+          <Link to={`/${selectedTeam}/onchain`}
             className={`${currentPage === "onchain-explorer" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("onchain-explorer")}
           >
-            <LineChart size={14} /> {showExpanded && "On-chain explorer"}
-          </li>
-          <li
+          <LineChart size={14} /> {showExpanded && "On-chain explorer"}
+          </Link>
+          <Link to={`/${selectedTeam}/kol`}
             className={`${currentPage === "kol-intelligence" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("kol-intelligence")}
           >
-            <Users size={14} /> {showExpanded && "KOL Intelligence"}
-          </li>
+          <Users size={14} /> {showExpanded && "KOL Intelligence"}
+          </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
-          
-          <li
+          <Link to={`/${selectedTeam}/campaigns`}
             className={`${currentPage === "campaigns" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("campaigns")}
           >
             <Activity size={14} /> {showExpanded && "Campaigns"}
-          </li>
-          <li
+          </Link>
+          <Link to={`/${selectedTeam}/conversion-events`}
             className={`${currentPage === "conversion-events" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("conversion-events")}
           >
             <List size={14} /> {showExpanded && "Conversion events"}
-          </li>
-          <li
+          </Link>
+          <Link to={`/${selectedTeam}/advertise`}
             className={`${currentPage === "advertise" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("advertise")}
           >
             <Globe size={14} /> {showExpanded && "Advertise"}
-          </li>
-          <li
+          </Link>
+          <Link to={`/${selectedTeam}/history`}
             className={`${currentPage === "history" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("history")}
           >
             <Database size={14} /> {showExpanded && "History"}
-          </li>
+          </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
-          
-          <li
+          <Link to={`/${selectedTeam}/importusers`}
             className={`${currentPage === "import-users" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("import-users")}
           >
             <Upload size={14} /> {showExpanded && "Import users"}
-          </li>
-          <li
+          </Link>
+          <Link to={`/${selectedTeam}/managewebsites`}
             className={`${currentPage === "manage-websites" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("manage-websites")}
           >
             <Globe size={14} /> {showExpanded && "Manage websites"}
-          </li>
+          </Link>
           <Link
             to={`/${selectedTeam}/settings`}
             className={`${currentPage === "settings" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}

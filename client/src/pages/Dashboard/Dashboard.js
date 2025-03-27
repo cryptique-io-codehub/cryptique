@@ -5,26 +5,26 @@ import Tabs from "./components/Tabs";
 import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
-import OffchainAnalytics from "./components/OffchainAnalytics.js";
 import { Menu } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import OffchainAnalytics from './OffchainAnalytics.js'
+import OnchainExplorer from './OnchainExplorer.js'
+import ManageWebsites from './ManageWebsites.js'
+import KOLIntelligence from './KOLIntelligence.js'
+import ImportUsers from './ImportUsers.js'
+import  History  from "./History.js";
+import ConversionEvents from './ConversionEvents.js'
+import Campaigns from './Campaigns.js'
+import Advertise from './Advertise.js'
 
 // Placeholder components
-const OnchainExplorer = () => <div>On-chain Explorer Placeholder</div>;
-const KOLIntelligence = () => <div>KOL Intelligence Placeholder</div>;
-const Campaigns = () => <div>Campaigns Placeholder</div>;
-const ConversionEvents = () => <div>Conversion Events Placeholder</div>;
-const Advertise = () => <div>Advertise Placeholder</div>;
-const History = () => <div>History Placeholder</div>;
-const ImportUsers = () => <div>Import Users Placeholder</div>;
-const ManageWebsites = () => <div>Manage Websites Placeholder</div>;
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState("dashboard");
   const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
-
+  const [setselectedTeam,selectedTeam]=useState(localStorage.getItem("selectedTeam"));
   // Mobile check
   useEffect(() => {
     const checkIfMobile = () => {
@@ -38,7 +38,7 @@ const Dashboard = () => {
   // Sync selectedPage with URL
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/dashboard') {
+    if (path === `/${selectedTeam}/dashboard`) {
       setSelectedPage("dashboard");
     } else if (path.includes('/settings')) {
       setSelectedPage("settings");
@@ -90,6 +90,7 @@ const Dashboard = () => {
           </button>
         )}
 
+        {/* Always render the selected page component */}
         {selectedPage === "dashboard" && (
           <>
             <Header onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)} />
@@ -104,7 +105,6 @@ const Dashboard = () => {
         )}
 
         {selectedPage === "offchain-analytics" && (
-          
           <OffchainAnalytics 
             onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)}
             onClose={() => setSelectedPage("dashboard")} 
@@ -170,6 +170,7 @@ const Dashboard = () => {
         {selectedPage === "settings" && (
           <Settings 
             onMenuClick={() => isMobile && setIsSidebarOpen(!isSidebarOpen)} 
+            onClose={() => setSelectedPage("dashboard")} 
           />
         )}
       </div>

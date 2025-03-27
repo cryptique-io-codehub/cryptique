@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Bell, ChevronDown, User } from "lucide-react";
-import { useNavigate,useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { useTeam } from "../context/teamContext";
+import axiosInstance from "../axiosInstance";
 
 const TeamSelector = () => {
   const navigate = useNavigate();
@@ -15,22 +16,10 @@ const TeamSelector = () => {
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3002/api/team/AdminTeamDetails", {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await axiosInstance.get('/team/AdminTeamDetails');
 
         const teams = response.data.team;
         setCurTeams(teams);
-        
-        // If no team is selected, default to the first team
-        // if (!localStorage.getItem('selectedTeam') && teams.length > 0) {
-        //   const firstTeam = teams[0];
-        //   localStorage.setItem('selectedTeam', firstTeam.name);
-        //   setSelectedTeam(firstTeam.name);
-        // }
       } catch (error) {
         console.error("Error fetching teams:", error);
       }
@@ -44,13 +33,11 @@ const TeamSelector = () => {
     setSelectedTeam(teamss.name);
     console.log(teamss);
     
-    // Get current path and update team in route if needed
     const currentPath = window.location.pathname;
     if (currentPath.includes('/settings')) {
         navigate(`/${teamss.name}/settings`, { replace: true });
     }
     
-    // Close dropdown after selection
     setDropdownOpen(false);
   };
 
@@ -59,7 +46,6 @@ const TeamSelector = () => {
       <div className="flex items-center flex-wrap">
         <span className="text-sm font-medium text-gray-700 mr-2">Team:</span>
         
-        {/* Dropdown button */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -69,10 +55,8 @@ const TeamSelector = () => {
             <ChevronDown size={16} />
           </button>
 
-          {/* Dropdown menu */}
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
-              {/* Scrollable container with max height */}
               <div className="max-h-60 overflow-y-auto">
                 {curTeams.length > 0 ? (
                   curTeams.map((team) => (
@@ -86,7 +70,6 @@ const TeamSelector = () => {
                     >
                       <div className="flex justify-between items-center">
                         <span>{team.name}</span>
-                        {/* Optional: Show additional team info */}
                         {team.members && (
                           <span className="text-xs text-gray-500 ml-2">
                             {team.members} members
@@ -110,6 +93,17 @@ const TeamSelector = () => {
 };
 
 const Header = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear the token from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('selectedTeam');
+    
+    // Navigate to login page
+    navigate('/login');
+  };
+
   return (
     <header className="flex justify-between px-5 items-center py-1">
       {/* Team Selector */}
@@ -120,8 +114,11 @@ const Header = () => {
           <Bell size={20} className="text-gray-600" />
         </div>
 
-        {/* Profile Icon */}
-        <div className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0">
+        {/* Profile Icon with Logout Functionality */}
+        <div 
+          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0"
+          onClick={handleLogout}
+        >
           <User size={20} className="text-gray-600" />
         </div>
       </div>

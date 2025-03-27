@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, ChevronDown } from "lucide-react";
 import axios from 'axios';
+import axiosInstance from '../../axiosInstance';
 
 const TeamsSection = () => {
     const [teams, setTeams] = useState([]);
@@ -10,18 +11,15 @@ const TeamsSection = () => {
     const [result, setResult] = useState();
     const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchTeams = async () => {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get("http://localhost:3002/api/team/details", {
-                    headers: { 
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type':'application/json'
-                    }
-                });
+                const response = await axiosInstance.get('/team/details');
+                console.log(response);
                 setTeams(response.data.team);
+                console.log(response.data.team);
                 // Automatically select the first team if available
                 if (response.data.team.length > 0) {
                     setSelectedTeam(response.data.team[0]);
@@ -32,7 +30,7 @@ const TeamsSection = () => {
         };
     
         fetchTeams();
-    }, []);
+    }, [selectedTeam]);
 
     const handleCreateTeam = async () => {
         if (!teamName.trim()) {
@@ -40,36 +38,41 @@ const TeamsSection = () => {
             return;
         }
 
+        setIsLoading(true);
+        setError('');
+
         try {
             const token = localStorage.getItem("token");
             const a = localStorage.getItem('selectedTeam')+"@gmail.com";
-            const response = await axios.post("http://localhost:3002/api/team/createNewTeam", 
+            const response = await axiosInstance.post('/team/createNewTeam',
                 { 
                     teamName: teamName.trim(),
                     email: a,
                     role: 'admin'
-                }, 
-                {
-                    headers: { 
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type':'application/json'
-                    }
                 }
             );
-            setResult(response.data);
-            
+            console.log(response);
+            // Ensure the new team has the same structure as existing teams
+            const newTeams = {
+                name: response.data.newTeam.name || teamName.trim(),
+                user: [{ email: a }], // Add the creator as the first user
+                role: 'admin',
+                createdBy:response.data.newTeam.createdBy
+            };
+
             // Update teams list and select the newly created team
-            const updatedTeams = [...teams, response.data.team];
+            const updatedTeams = [...teams, newTeams];
             setTeams(updatedTeams);
-            setSelectedTeam(response.data.team);
+            setSelectedTeam(newTeams);
             
             // Close modal and reset
             setIsModalOpen(false);
             setTeamName('');
-            setError('');
         } catch (err) {
             console.error("Team creation error:", err);
             setError(err.response?.data?.message || 'Failed to create team');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -139,9 +142,9 @@ const TeamsSection = () => {
                             {teams.map((team, index) => (
                                 <tr key={index} className="bg-white hover:bg-gray-50">
                                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{team.name}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{team.user.length}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{team.user ? team.user.length : 0}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{team.role}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{team.name}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{team.createdBy?.name || 'Unknown'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -187,9 +190,10 @@ const TeamsSection = () => {
                         
                         <button 
                             onClick={handleCreateTeam}
-                            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors"
+                            disabled={isLoading}
+                            className={`w-full py-2 rounded-md transition-colors ${isLoading ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
                         >
-                            Create
+                            {isLoading ? 'Creating...' : 'Create'}
                         </button>
                     </div>
                 </div>
