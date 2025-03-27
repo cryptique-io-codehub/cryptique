@@ -17,19 +17,18 @@ exports.addWebsite=async (req,res)=>{
 
         const newWebsite=new Website({
             Domain:`https://${Domain}`,
-            Name:Name || ''
+            Name:Name || '',
+            team:checkTeam._id,
         })
 
         await newWebsite.save();
 
         
-        const team = await Team.findOneAndUpdate(
+        await Team.findOneAndUpdate(
             { name: teamName }, 
             { $push: { websites: newWebsite._id } },
             { new: true } 
         );
-
-        if(!team) return res.status(404).json({message:"Error while updating team"});
 
         return res.status(200).json({message:"Website added successfully"});
 
