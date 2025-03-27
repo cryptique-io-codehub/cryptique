@@ -1,5 +1,5 @@
 const mongoose=require("mongoose");
-
+const Team=require("./team");
 
 const websiteSchema=new mongoose.Schema({
     siteId:{
@@ -14,7 +14,11 @@ const websiteSchema=new mongoose.Schema({
     Name:{
         type:String
     },
-    status:{
+    team:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Team"
+    },
+    isVerified:{
         type:Boolean
     }
 })
