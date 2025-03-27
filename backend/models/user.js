@@ -34,7 +34,11 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
-    team:[{
+    myTeams:[{//Teams whose owner is the user or teams made by the user
+        type:mongoose.Types.ObjectId,
+        ref:"Team"
+    }],
+    team:[{//Teams in which User is a member
         type:mongoose.Schema.Types.ObjectId,
         ref:"Team"
     }]

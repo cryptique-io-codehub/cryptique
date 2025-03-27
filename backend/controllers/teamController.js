@@ -17,6 +17,40 @@ exports.getTeamDetails=async (req,res)=>{
 
 
 }
+
+exports.createTeam=async(req,res)=>{
+    try{
+        const {teamName}=req.body;
+
+        if(!teamName) return res.status(400).json({message:"Team Name is required"});
+
+        const newTeam=new Team({
+            name:teamName,
+            createdBy:req.userId,
+            user:[{userId:req.userId,role:'admin'}]
+        })
+
+        await newTeam.save()
+
+        const user=await User.findById(req.userId);
+
+        user.myTeams.push(newTeam._id);
+
+        user.team.push(newTeam._id);
+
+        await user.save();
+
+        return res.status(200).json({message:"Team Created Successfully",newTeam});
+
+    }catch(e){
+
+        res.status(500).json({ message: 'Error while creating team', error: e.message });
+        
+    }
+
+
+}
+
 exports.addMember=async (req,res)=>{
     console.log(req.body);
     try {
