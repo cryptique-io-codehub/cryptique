@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.post('/create',verifyToken,addMember);
 router.get('/details',verifyToken,getTeamDetails);
-router.get('/AdminTeamDetails',verifyToken,getAdminTeamDetails);
+router.get('/admin-team-details',verifyToken,getAdminTeamDetails);
 router.post('/createNewTeam',verifyToken,createNewTeam);
 module.exports = router;

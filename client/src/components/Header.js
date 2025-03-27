@@ -16,7 +16,12 @@ const TeamSelector = () => {
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axiosInstance.get('/team/AdminTeamDetails');
+        const response = await axios.get("http://localhost:3002/api/team/AdminTeamDetails", {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
 
         const teams = response.data.team;
         setCurTeams(teams);
