@@ -1,5 +1,6 @@
 const mongoose=require("mongoose");
 const Team=require("./team");
+const Analytics=require("./analytics")
 
 const websiteSchema=new mongoose.Schema({
     siteId:{
@@ -17,6 +18,10 @@ const websiteSchema=new mongoose.Schema({
     team:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Team"
+    },
+    analytics:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Analytics"
     },
     isVerified:{
         type:Boolean
