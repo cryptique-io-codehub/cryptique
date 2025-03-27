@@ -2,7 +2,7 @@ const API_URL = 'https://cryptique-backend.vercel.app/api/sdk/track';
 const VERSION = 'v0.11.21';
 const CONSENT_STORAGE_KEY = 'mtm_consent';
 const USER_ID_KEY = 'mtm_user_id';
-const SITE_ID = 'abck-1234-dfdfdf-dfd-f-df-dfdfdf';
+const SITE_ID = 'abck-1234-dfdfdf-dfd-f-acbkdfc';
 
 // 💡 Initialize User Session Object
 let userSession = {
@@ -22,22 +22,14 @@ let userSession = {
     chainId: null,
     provider: null,
     utmData: getUTMParameters(),
-    browser: getBrowserInfo(),
-    os: getOSInfo(),
-    deviceType: getDeviceType(),
+    browser: getBrowserAndDeviceInfo().browser,
+    os: getBrowserAndDeviceInfo().device.os,
+    device: getBrowserAndDeviceInfo().device,
+
     country:null
 };
 //countryName
-function getCountryName() {
-    const url = 'https://ipapi.co/json/';
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            userSession.country = data.country_name;
-        }
-        )
-        .catch(error => console.error('Error:', error));
-}
+
 
 // 🚀 Utility Functions
 function generateSessionId() {
@@ -76,39 +68,27 @@ function getUTMParameters() {
 function getStoredReferrer() {
     return localStorage.getItem('referrer') || document.referrer;
 }
+function getBrowserAndDeviceInfo() {
+    const userAgent = navigator.userAgent;
+    let deviceType = 'desktop';
 
-function getBrowserInfo() {
-    const ua = navigator.userAgent;
-    let tem, M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-
-    if (/trident/i.test(M[1])) return { name: 'IE', version: M[2] || '' };
-
-    if (M[1] === 'Chrome') {
-        tem = ua.match(/\b(OPR|Edg)\/(\d+)/);
-        if (tem) return { name: tem[1].replace('OPR', 'Opera'), version: tem[2] };
+    if (/Mobi|Android/i.test(userAgent)) {
+        deviceType = 'mobile';
+    } else if (/Tablet|iPad/i.test(userAgent)) {
+        deviceType = 'tablet';
     }
 
-    M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
-    if ((tem = ua.match(/version\/(\d+)/i))) M.splice(1, 1, tem[1]);
-
-    return { name: M[0], version: M[1] };
-}
-
-function getOSInfo() {
-    const ua = navigator.userAgent;
-    if (/Windows/.test(ua)) return 'Windows';
-    if (/Mac OS/.test(ua)) return 'MacOS';
-    if (/Android/.test(ua)) return 'Android';
-    if (/iOS|iPhone|iPad|iPod/.test(ua)) return 'iOS';
-    if (/Linux/.test(ua)) return 'Linux';
-    return 'Unknown OS';
-}
-
-function getDeviceType() {
-    const ua = navigator.userAgent;
-    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'Tablet';
-    if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) return 'Mobile';
-    return 'Desktop';
+    return {
+        browser: {
+            name: navigator.userAgentData?.brands?.[0]?.brand || navigator.appName,
+            version: navigator.appVersion
+        },
+        device: {
+            type: deviceType,
+            os: navigator.platform,
+            resolution: `${window.screen.width}x${window.screen.height}`
+        }
+    };
 }
 
 // 🛠️ Activity Tracking Functions
@@ -165,13 +145,68 @@ function trackPageView() {
         }
     });
 }
+let sessionData = {
+    sessionId: generateSessionId(),
+    siteId: SITE_ID,
+    referrer: document.referrer || 'direct',
+    utmData: getUTMParameters(),
+    startTime: new Date().toISOString(),
+    endTime: null,
+    pagesViewed: 0,
+    duration: 0,
+    isBounce: true,
+    country: '', 
+    device:getBrowserAndDeviceInfo().device,
+    browser:getBrowserAndDeviceInfo().browser
+    
+};
+let timer;
+let countryName;
+function getCountryName() {
+    fetch('https://ipapi.co/json/')
+    .then(res => res.json())
+    .then(data => {
+        countryName = data.country_name;
+        sessionData.country = countryName;
+    })
+    .catch(err => console.error('Error:', err));
+    return countryName;
+}
+function startSessionTracking() {
+    sessionData.pagesViewed++;
+    sessionData.country = countryName;
+    timer = setInterval(() => {
+        const currentTime = new Date();
+        sessionData.endTime = currentTime.toISOString();
+        sessionData.duration = Math.round((currentTime - new Date(sessionData.startTime)) / 1000);
+        sessionData.isBounce = sessionData.pagesViewed === 1;
+        fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({sessionData})
+        })
+        .then(res => res.json())
+        .then(res => console.log('Session sent:', res.message))
+        .catch(err => console.error('Error:', err));
+    }, 5000);  // Send data every 5 seconds
+}
+window.addEventListener('beforeunload', () => {
+    sessionData.pagesViewed++;
+    sessionData.endTime = new Date().toISOString();
+    sessionData.duration = Math.round((new Date() - new Date(sessionData.startTime)) / 1000);
+    sessionData.isBounce = sessionData.pagesViewed === 1;
+    navigator.sendBeacon(API_URL, JSON.stringify(sessionData));
+    clearInterval(timer);  // Stop the timer
+});
 
 function trackEvent(eventType, eventData = {}) {
+    userSession.country = getCountryName();
     const payload = {
         siteId: SITE_ID,
         userId: userSession.userId,
         sessionId: userSession.sessionId,
         type: eventType,
+        pagePath: window.location.pathname,
         eventData: {
             ...eventData,
             ...userSession.utmData,
@@ -191,7 +226,8 @@ function trackEvent(eventType, eventData = {}) {
     };
 
     // ✅ Display payload in the console before sending
-    console.log('Payload:', JSON.stringify(payload, null, 2));
+    // console.log('Payload:', JSON.stringify(payload, null, 2));
+    // console.log('User Session:', userSession);
 
     fetch(API_URL, {
         method: 'POST',
@@ -207,6 +243,7 @@ function trackEvent(eventType, eventData = {}) {
 function initCryptiqueAnalytics() {
     getCountryName();
     trackPageView();
+    startSessionTracking();
 }
 
 // Start Analytics

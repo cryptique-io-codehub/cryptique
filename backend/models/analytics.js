@@ -1,16 +1,93 @@
-const mongoose = require('mongoose');
+// models/analyticsModel.js
+const mongoose = require("mongoose");
 
-const analyticsSchema = new mongoose.Schema(
-    {
-        countryName: {
-            type: String,
-        },
+const hourlyStatsSchema = new mongoose.Schema({
+  hour: {
+    type: Date,
+    required: true,
+    index: true,
+  },
+  uniqueVisitors: {
+    type: Number,
+    default: 0,
+  },
+  walletsConnected: {
+    type: Number,
+    default: 0,
+  },
+});
+const analyticsSchema = new mongoose.Schema({
+  siteId: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  totalVisitors: {
+    type: Number,
+    default: 0,
+  },
+  uniqueVisitors: {
+    type: Number,
+    default: 0,
+  },
+  pageViews: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
+  totalPageViews: {
+    type: Number,
+    default: 0,
+  },
+  newVisitors: {
+    type: Number,
+    default: 0,
+  },
+    returningVisitors: {
+    type: Number,
+    default: 0,
     },
+  userId: [String],
+  walletsConnected: {
+    type: Number,
+    default: 0,
+  },
+  sessions: [
     {
-        timestamps: true,
-    }
-);
+      sessionId: String,
+      referrer: String,
+      utmData: {
+        source: String,
+        medium: String,
+        campaign: String,
+        term: String,
+        content: String,
+      },
+      startTime: Date,
+      endTime: Date,
+      pagesViewed: Number,
+      duration: Number,
+      isBounce: Boolean,
+      country: String,
+      browser: {
+        name: String,
+        version: String,
+      },
+      device: {
+        type: Object
+      },
+    },
+  ],
+  hourlyStats: [hourlyStatsSchema],
+  userAgents: [String], // To track unique devices
+  walletAddresses: [String], // To track unique wallets
+});
 
-const Analytics = mongoose.model('Analytics', analyticsSchema);
+// Indexes for faster querying
+analyticsSchema.index({ siteId: 1 });
+analyticsSchema.index({ "sessions.sessionId": 1 });
+analyticsSchema.index({ "hourlyStats.hour": 1 });
+
+const Analytics = mongoose.model("Analytics", analyticsSchema);
 
 module.exports = Analytics;
