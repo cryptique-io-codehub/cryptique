@@ -17,12 +17,7 @@ const TeamsSection = () => {
         const fetchTeams = async () => {
             try {
                 const token=localStorage.getItem("token");
-                const response = await axiosInstance.get('/team/details',{
-                    headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type':'application/json'
-                    }
-                  });
+                const response = await axiosInstance.get('/team/details');
                 console.log(response);
                 setTeams(response.data.team);
                 // console.log(response.data.team);

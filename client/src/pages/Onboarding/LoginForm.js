@@ -128,7 +128,7 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         toggleLoading(false);
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('selectedTeam', aa);
-        navigate(`/${aa}/dashboard`);
+        navigate(`/dashboard`);
       } else {
         toggleLoading(false);
         alert(response.data.message || 'Invalid credentials');
@@ -156,17 +156,18 @@ function LoginForm({ onSignupClick, toggleLoading }) {
       toggleLoading(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
       });
-
+      console.log(user.email);
+      const aa=user.email.split('@')[0];
       if (response.data.user) {
         toggleLoading(false);
         localStorage.setItem('token', response.data.token);
-        navigate(`/${email}/dashboard`);
+        localStorage.setItem('selectedTeam', aa);
+        navigate(`/dashboard`);
       }
     } catch (error) {
       toggleLoading(false);

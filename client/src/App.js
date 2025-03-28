@@ -29,7 +29,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Interface />} />
         <Route path="/signup" element={<Interface />} />
-        <Route path="/:team/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/:team/offchain" element={<OffchainAnalytics />} />
         <Route path="/:team/onchain" element={<OnchainExplorer />} />
         <Route path="/:team/kol" element={<KOLIntelligence/>} />

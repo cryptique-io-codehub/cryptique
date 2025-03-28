@@ -43,6 +43,7 @@ function SignupForm({ onBackToLogin }) {
         },
       });
       console.log(response);
+      localStorage.setItem('token', response.data.token);
       if (response.data.user) {
         // Switch to OTP view
         setIsOtpView(true);
@@ -88,7 +89,7 @@ function SignupForm({ onBackToLogin }) {
       if (response.status===200) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('selectedTeam',aa);
-        navigate(`/${aa}/dashboard`);
+        navigate(`/dashboard`);
       } else {
         // If verification fails, reset to signup view
         setIsOtpView(false);
@@ -117,13 +118,13 @@ function SignupForm({ onBackToLogin }) {
           email: user.email,
           avatar: user.photoURL,
       });
-      const aa=email.split('@')[0];
+      const aa=user.email.split('@')[0];
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('selectedTeam',aa);
         // Redirect to dashboard
-        navigate(`${aa}/dashboard`);
+        navigate(`/dashboard`);
       }
     } catch (error) {
       console.error('Error during Google login:', error);

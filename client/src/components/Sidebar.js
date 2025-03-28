@@ -68,7 +68,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className="space-y-1 text-xs font-medium">
           <Link
-            to={`/${selectedTeam}/dashboard`}
+            to={`/dashboard`}
             className={`${currentPage === "dashboard" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("dashboard")}
           >
