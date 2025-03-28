@@ -38,7 +38,7 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(payload);
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
-    const { siteId, userId, pagePath } = payload;
+    const { siteId, userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
     console.log(pagePath);
     // const {pageUrl, pageTitle, userActivity} = eventData;
     const analytics = await Analytics.findOne({ siteId: siteId });
@@ -49,12 +49,23 @@ exports.postAnalytics = async (req, res) => {
         totalVisitors: 1,
         uniqueVisitors: 1,
         pageViews: { [pagePath]: 1 },
-        walletsConnected: 0,
+        walletsConnected: walletsConnected || 0,
+        walletAddresses: walletAddresses || [],
+        chainId: chainId || [null],
         sessions: [],
       });
       await analytics.save();
     }
-
+    //update the wallet stuff if something updates
+    const walletIndex = analytics.walletAddresses.findIndex(
+      (wallet) => wallet === walletAddresses
+    );
+    if (walletIndex === -1) {
+        
+        analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
+        analytics.walletsConnected += 1; // Increment wallets connected
+    } 
+        
     if (!analytics.userId.includes(userId)) {
       analytics.userId.push(userId); // Add userId to the array if not already present
       analytics.uniqueVisitors += 1; // Increment unique visitors

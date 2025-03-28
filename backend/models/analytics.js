@@ -81,6 +81,7 @@ const analyticsSchema = new mongoose.Schema({
   hourlyStats: [hourlyStatsSchema],
   userAgents: [String], // To track unique devices
   walletAddresses: [String], // To track unique wallets
+  chainId: [String], // To track unique chains
 });
 
 // Indexes for faster querying
