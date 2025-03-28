@@ -1,5 +1,6 @@
 const mongoose=require("mongoose");
 const User=require("./user");
+const Website=require("./website");
 
 const teamsSchema=new mongoose.Schema({
     name:{
@@ -16,6 +17,10 @@ const teamsSchema=new mongoose.Schema({
             type:String,
             enum:['admin','editor','viewer']
         }
+    }],
+    websites:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Website"
     }]
 })
 
