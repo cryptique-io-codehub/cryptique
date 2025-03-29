@@ -38,20 +38,21 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(payload);
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
-    const { siteId, userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
+    const { siteId,websiteUrl , userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
     console.log(pagePath);
     // const {pageUrl, pageTitle, userActivity} = eventData;
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
       const analytics = new Analytics({
         siteId: siteId,
+        websiteUrl: websiteUrl,
         userId: [userId], // Initialize userId as an array with the current userId
         totalVisitors: 1,
         uniqueVisitors: 1,
         pageViews: { [pagePath]: 1 },
         walletsConnected: walletsConnected || 0,
         walletAddresses: walletAddresses || [],
-        chainId: chainId || [null],
+        chainId: chainId || [],
         sessions: [],
       });
       await analytics.save();

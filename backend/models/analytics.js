@@ -22,6 +22,9 @@ const analyticsSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  websiteUrl: {
+    type: String,
+  },
   totalVisitors: {
     type: Number,
     default: 0,
