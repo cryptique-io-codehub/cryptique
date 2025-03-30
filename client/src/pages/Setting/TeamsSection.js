@@ -31,7 +31,7 @@ const TeamsSection = () => {
         };
     
         fetchTeams();
-    }, []);
+    }, [selectedTeam]);
 
     const handleCreateTeam = async () => {
         if (!teamName.trim()) {

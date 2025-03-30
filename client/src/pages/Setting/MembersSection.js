@@ -17,7 +17,7 @@ const MembersSection = () => {
       fetchMembers();
     }
   }, [activeTab]);
-
+  
   const fetchMembers = async () => {
     try {
       const selectedTeam = localStorage.getItem("selectedTeam");
