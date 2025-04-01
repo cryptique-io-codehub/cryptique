@@ -3,7 +3,7 @@ const cheerio = require("cheerio");
 const Website=require("../models/website");
 const Team=require("../models/team");
 const { v4: uuidv4 } = require('uuid');
-
+const puppeteer = require('puppeteer');
 
 exports.addWebsite=async (req,res)=>{
    try{
@@ -83,43 +83,41 @@ exports.deleteWebsite=async (req,res)=>{
     }
 }
 
-exports.verify=async (req,res)=>{
-    try{
 
-        const {Domain,siteId}=req.body;
 
-        if(!Domain && !siteId) return res.status(400).json({message:"Required fields are missing"});
+exports.verify = async (req, res) => {
+    try {
+        const { Domain, siteId } = req.body;
+        if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
-        const {data}=await axios.get(`https://${Domain}`);
+        const scriptSrc = "https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
 
-        const $=cheerio.load(data);
+        const browser = await puppeteer.launch({ headless: "new" });
+        const page = await browser.newPage();
 
-        //put our script source link here
-        const scriptSrc="";
-        
-        const scriptTag=$(`script[src="${scriptSrc}"][site-id="${siteId}"]`);
+        await page.goto(`http://${Domain}`, { waitUntil: "networkidle2" });
 
-        if(scriptTag.length>0) {
+        // Evaluate if script with matching siteId exists
+        const scriptExists = await page.evaluate((scriptSrc, siteId) => {
+            const scripts = Array.from(document.querySelectorAll('script'));
+            return scripts.some(script => script.src === scriptSrc && script.getAttribute('site-id') === siteId);
+        }, scriptSrc, siteId);
 
+        await browser.close();
+
+        if (scriptExists) {
             await Website.findOneAndUpdate(
-                { Domain }, 
-                { $set: { isVerified: true } }, 
-                { new: true } 
+                { Domain },
+                { $set: { isVerified: true } },
+                { new: true }
             );
-
-            return res.status(200).json({message:"Script found"});
-
-        }else {
-
-            return res.status(404).json({message:"Script not found"});
-
+            return res.status(200).json({ message: "Script found" });
+        } else {
+            return res.status(404).json({ message: "Script not found" });
         }
 
-
-    }catch(e){
-
-        console.error('Error while fetching the website',e);
-
-        res.status(500).json({ message: 'Error while web scrapping', e: e.message });
+    } catch (e) {
+        console.error('Error while fetching the website', e);
+        res.status(500).json({ message: 'Error while web scraping', error: e.message });
     }
-}
+};
