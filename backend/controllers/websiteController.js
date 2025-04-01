@@ -95,7 +95,7 @@ exports.verify=async (req,res)=>{
         const $=cheerio.load(data);
 
         //put our script source link here
-        const scriptSrc="";
+        const scriptSrc="https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
         
         const scriptTag=$(`script[src="${scriptSrc}"][site-id="${siteId}"]`);
 
