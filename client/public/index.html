@@ -25,13 +25,16 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>React App</title>
+      
+      
     <script>
       var script = document.createElement('script');
-      script.src = 'https://cryptique-backend.vercel.app/cryptique-script.js';
-     
+      script.src = 'https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
+      script.setAttribute('site-id', '57ab3ccb-f0bf-4b09-a49e-d8c31503c42a');
       document.head.appendChild(script);
     </script>
-    
+
+      
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

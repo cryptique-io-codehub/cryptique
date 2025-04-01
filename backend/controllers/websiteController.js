@@ -9,6 +9,9 @@ exports.addWebsite=async (req,res)=>{
    try{
 
         const {teamName,Domain,Name}=req.body;
+        console.log(teamName);
+        console.log(Domain);
+        console.log(Name);
 
         if(!teamName && !Domain) return res.status(400).json({message:"Required field is missing"});
 
@@ -17,23 +20,23 @@ exports.addWebsite=async (req,res)=>{
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
         const siteId = uuidv4(); 
-
+        console.log(siteId);
         const newWebsite=new Website({
             siteId,
             Domain,
             Name:Name || '',
             team:checkTeam._id,
         })
-
+        console.log('c');
         await newWebsite.save();
-
+        console.log('b');
         
         await Team.findOneAndUpdate(
             { name: teamName }, 
             { $push: { websites: newWebsite._id } },
             { new: true } 
         );
-
+        console.log('ritik');
         return res.status(200).json({message:"Website added successfully",website:newWebsite});
 
    }catch(e){
@@ -87,20 +90,21 @@ exports.verify=async (req,res)=>{
     try{
 
         const {Domain,siteId}=req.body;
-
+        // console.log(Domain);
+        // console.log(siteId);
         if(!Domain && !siteId) return res.status(400).json({message:"Required fields are missing"});
 
-        const {data}=await axios.get(`https://${Domain}`);
+        const {data}=await axios.get(`http://${Domain}`);
+        
 
         const $=cheerio.load(data);
-
         //put our script source link here
-        const scriptSrc="https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
-        
+        console.log($);
+        const scriptSrc='https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
         const scriptTag=$(`script[src="${scriptSrc}"][site-id="${siteId}"]`);
-
+        // console.log(scriptTag);
         if(scriptTag.length>0) {
-
+            console.log('bbb');
             await Website.findOneAndUpdate(
                 { Domain }, 
                 { $set: { isVerified: true } }, 

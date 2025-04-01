@@ -12,281 +12,363 @@ import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalyt
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
 
-const AddWebsiteForm = ({hasAddedWebsite, setHasAddedWebsite}) => {
+const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
   const [domain, setDomain] = useState('');
-  const [websiteName, setWebsiteName] = useState('');
-  const [error, setError] = useState('');
-  const [showVerifyPopup, setShowVerifyPopup] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [name, setName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
-  const [responseMessage, setResponseMessage] = useState('');
-  const [showVerifyButton, setShowVerifyButton] = useState(false);
-  const [websiteId, setWebsiteId] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [siteIds, setSiteIds] = useState("");
-  const navigate = useNavigate();
-  
-  // Add useEffect to log siteIds changes
-  useEffect(() => {
-    console.log("siteIds updated:", siteIds);
-  }, [siteIds]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [scriptCode, setScriptCode] = useState('');
+  const [showScript, setShowScript] = useState(false);
 
-  const handleSubmit = (e) => {
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validation logic here
+    
+    // Validate domain
     if (!domain) {
       setError('Domain is required');
       return;
     }
-    // Show verification popup instead of submitting right away
-    setShowVerifyPopup(true);
-  };
-
-  const handleVerify = async () => {
+    
+    setIsSubmitting(true);
+    setError('');
+    setShowScript(false);
+    
     try {
-      setIsSubmitting(true);
-      setError('');
-      
-      // Prepare data for POST request
-      const websiteData = {
-        domain,
-        name: websiteName || domain, // Use the website name if provided, otherwise use domain
-        teamName: selectedTeam
-      };
-      
-      // Send POST request to the API endpoint
+      // Send POST request to the website/create endpoint
       const response = await fetch('http://localhost:3002/api/website/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(websiteData),
+        body: JSON.stringify({
+          Domain: domain,
+          Name: name || domain, // Use domain as name if no name provided
+          teamName: selectedTeam // Include team name in request body
+        }),
       });
-      
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! Status: ${response.status}`);
+        throw new Error('Failed to add website');
       }
       
-      // Log the site ID directly from the response data
-      console.log('Direct siteId:', data.website.siteId);
+      // Check if there is an ID in the response
+      const siteId = responseData.website.siteId;
+      console.log(siteId);
       
-      // Store the site ID in state (properly waiting for state update)
-      const siteIdValue = JSON.stringify(data.website.siteId);
-      console.log('Stringified siteId to be stored:', siteIdValue);
-      setSiteIds(siteIdValue);
-      
-      // Close popup
-      setShowVerifyPopup(false);
-      
-      // Display response message and show verify button
-      setResponseMessage(data.message || 'Website added. Please verify to continue.');
-      setShowVerifyButton(true);
-      
-      // Store website ID for verification if available in response
-      if (data.websiteId) {
-        setWebsiteId(data.websiteId);
+      if (siteId) {
+        // Create the script code with the siteId
+        const scriptHTML = `<script>
+  var script = document.createElement('script');
+  script.src = 'https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
+  script.setAttribute('site-id', '${siteId}');
+  document.head.appendChild(script);
+</script>`;
+        
+        setScriptCode(scriptHTML);
+        setShowScript(true);
       }
       
+      // Success
+      onSuccess && onSuccess();
+      // Note: We're not closing the popup immediately so the user can see and copy the script
     } catch (error) {
       console.error('Error adding website:', error);
-      setError(error.message || 'Failed to add website. Please try again.');
+      setError(error.message || 'Failed to add website');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  const handleVerifyWebsite = async () => {
+
+  const handleVerify = () => {
+    // You can add verification logic here if needed
+    // For example, checking if the script is installed on the website
+    
+    // For now, just close the popup
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 mx-4">
+        <div className="flex items-center mb-6">
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <h2 className="text-xl font-semibold ml-2">Add a new website</h2>
+        </div>
+        
+        {showScript ? (
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-2">Installation Script</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Add this script to your website to start tracking:
+            </p>
+            <div className="bg-gray-100 p-3 rounded-md">
+              <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{scriptCode}</pre>
+            </div>
+            <div className="mt-4 flex justify-between">
+              <button
+                onClick={() => {navigator.clipboard.writeText(scriptCode)}}
+                className="py-2 px-4 bg-blue-500 text-white font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                Copy to clipboard
+              </button>
+              <button
+                onClick={handleVerify}
+                className="py-2 px-4 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                Verify
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-2">
+                Domain<span className="text-red-600">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <span className="text-gray-500">https://</span>
+                </div>
+                <input
+                  type="text"
+                  id="domain"
+                  placeholder="example.com"
+                  className="pl-16 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  required
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
+              </p>
+            </div>
+            
+            <div className="mb-4">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                Name (optional)
+              </label>
+              <input
+                type="text"
+                id="name"
+                placeholder="Please enter a name for your website"
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                This is the name that will be displayed in the dashboard
+              </p>
+            </div>
+            
+            {error && (
+              <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+            
+            <p className="text-sm text-gray-600 mb-4">
+              By adding a website, you agree to our privacy policy
+            </p>
+            
+            <button
+              type="submit"
+              className="w-full py-2 px-4 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 flex items-center justify-center"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Adding...' : 'Add website'} 
+              {!isSubmitting && (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+// Main AddWebsiteForm Component - Unchanged for GET requests
+const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
+  const [websites, setWebsites] = useState([]);
+  const [selectedWebsite, setSelectedWebsite] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAddWebsitePopupOpen, setIsAddWebsitePopupOpen] = useState(false);
+
+  // Fetch websites on component mount - Keeping original endpoint
+  useEffect(() => {
+    const fetchWebsites = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/websites', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch websites');
+        }
+        
+        const data = await response.json();
+        setWebsites(data.websites || []);
+        
+        // Set first website as selected if available and no selection exists
+        if (data.websites && data.websites.length > 0 && !selectedWebsite) {
+          setSelectedWebsite(data.websites[0].domain);
+        }
+      } catch (error) {
+        console.error('Error fetching websites:', error);
+      }
+    };
+    
+    fetchWebsites();
+  }, [selectedWebsite]);
+
+  // Handle website selection
+  const handleSelectWebsite = (domain) => {
+    setSelectedWebsite(domain);
+    setIsDropdownOpen(false);
+    // You might want to trigger other actions here, like changing context
+  };
+
+  // Handle add website option click
+  const handleAddWebsite = () => {
+    setIsAddWebsitePopupOpen(true);
+    setIsDropdownOpen(false);
+  };
+
+  // Handle successful website addition - Keeping original GET endpoint
+  const handleWebsiteAdded = async () => {
+    // Refresh the websites list
     try {
-      setIsVerifying(true);
-      setError('');
-      
-      // Prepare verification data
-      const verificationData = {
-        Domain: domain,
-        siteId: siteIds // Use stored website ID
-      };
-      
-      console.log('Sending verification request with:', verificationData);
-      
-      // Send POST request to verify endpoint
-      const response = await fetch('http://localhost:3002/api/website/verify', {
-        method: 'POST',
+      const response = await fetch('http://localhost:3002/api/websites', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(verificationData),
       });
       
-      const data = await response.json();
-      console.log('Website verification response:', data);
-      
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! Status: ${response.status}`);
+        throw new Error('Failed to fetch websites');
       }
       
-      // Update state to indicate website has been added and verified
-      setHasAddedWebsite(true);
+      const data = await response.json();
+      setWebsites(data.websites || []);
       
-      // Show success message briefly before redirecting
-      setResponseMessage(data.message || 'Website verified successfully!');
+      // Set newly added website as selected if available
+      if (data.websites && data.websites.length > 0) {
+        setSelectedWebsite(data.websites[0].domain);
+      }
       
-      // Redirect to offchain analytics after a short delay
-      setTimeout(() => {
-        navigate('/offchain-analytics'); // Update this path to match your actual route
-      }, 1500);
-      
+      // Update parent component state if needed
+      if (setHasAddedWebsite) {
+        setHasAddedWebsite(true);
+      }
     } catch (error) {
-      console.error('Error verifying website:', error);
-      setError(error.message || 'Failed to verify website. Please try again.');
-    } finally {
-      setIsVerifying(false);
+      console.error('Error fetching websites:', error);
     }
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-white rounded-xl shadow-md p-6 mt-8">
-      <div className="flex items-center mb-6">
-        <button 
-          onClick={() => window.history.back()} 
-          className="text-gray-500 hover:text-gray-700 flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
+    <div className="relative">
+      <div className="select-website mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select website
+        </label>
+        
+        <div className="relative">
+          <button
+            type="button"
+            className="flex items-center justify-between w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            {selectedWebsite ? (
+              <div className="flex items-center">
+                <span className="inline-block w-6 h-6 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                </span>
+                <span className="text-gray-800">{selectedWebsite}</span>
+              </div>
+            ) : (
+              <span className="text-gray-500">Select a website</span>
+            )}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+          
+          {/* Dropdown menu */}
+          {isDropdownOpen && (
+            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
+              <ul className="py-1 max-h-60 overflow-auto">
+                {websites.length > 0 ? (
+                  websites.map((website) => (
+                    <li key={website.id || website.domain}>
+                      <button
+                        type="button"
+                        className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
+                        onClick={() => handleSelectWebsite(website.domain)}
+                      >
+                        <span className="inline-block w-6 h-6 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                        </span>
+                        <span>{website.name || website.domain}</span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-4 py-2 text-gray-500">No websites found</li>
+                )}
+                
+                {/* Add website option */}
+                <li className="border-t border-gray-200">
+                  <button
+                    type="button"
+                    className="flex items-center w-full px-4 py-2 text-left text-blue-600 hover:bg-gray-100"
+                    onClick={handleAddWebsite}
+                  >
+                    <span className="inline-block w-6 h-6 mr-2 bg-blue-600 rounded-full text-white flex-shrink-0 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span>Add website</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
       
-      <h2 className="text-2xl font-bold mb-6">Add a new website</h2>
-      
-      {/* Display response message */}
-      {responseMessage && (
-        <div className="mb-6 p-4 bg-blue-50 text-blue-800 rounded-md">
-          {responseMessage}
-        </div>
-      )}
-      
-      {/* Display error message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-md">
-          {error}
-        </div>
-      )}
-      
-      {/* Verification button section */}
-      {showVerifyButton && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-md">
-          <p className="mb-4">Please click the verify button to complete the website setup:</p>
-          <button
-            onClick={handleVerifyWebsite}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            disabled={isVerifying}
-          >
-            {isVerifying ? 'Verifying...' : 'Verify Website'}
-            {!isVerifying && (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
-      
-      {/* Form only shows if not in verification stage */}
-      {!showVerifyButton && (
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Domain*
-            </label>
-            <div className="flex rounded-md shadow-sm">
-              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                https://
-              </span>
-              <input
-                type="text"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder=""
-              />
-            </div>
-            <p className="mt-2 text-sm text-gray-500">
-              Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
-            </p>
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Name (optional)
-            </label>
-            <input
-              type="text"
-              value={websiteName}
-              onChange={(e) => setWebsiteName(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Please enter a name for your website"
-            />
-            <p className="mt-2 text-sm text-gray-500">
-              This is the name that will be displayed on your dashboard
-            </p>
-          </div>
-          
-          <p className="text-sm text-gray-500 mb-6">
-            By adding a website, you agree to our privacy policy
-          </p>
-          
-          <button
-            type="submit"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Adding...' : 'Add website'}
-            {!isSubmitting && (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            )}
-          </button>
-        </form>
-      )}
-
-      {/* Confirmation Popup */}
-      {showVerifyPopup && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-auto">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Website</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to add {domain ? `https://${domain}` : 'this website'}?
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowVerifyPopup(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleVerify}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Processing...' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add website popup */}
+      <AddWebsitePopup 
+        isOpen={isAddWebsitePopupOpen}
+        onClose={() => setIsAddWebsitePopupOpen(false)}
+        onSuccess={handleWebsiteAdded}
+      />
     </div>
   );
 };
-
-
-
-
 
 
 
@@ -611,111 +693,104 @@ const OffchainAnalytics = () => {
     
 // setDatas(datas);
 // console.log(datas);
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Mobile menu toggle button for main sidebar */}
-      {/* <button 
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
-        onClick={toggleSidebar}
-      > */}
-        {/* <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg> */}
-  
-      {/* </button> */}
-  
-      {/* Main sidebar - fixed on desktop, slide-in on mobile */}
-      <div className={`h-screen flex-shrink-0 md:block ${sidebarOpen ? 'block fixed z-40' : 'hidden'}`}>
-        <Sidebar currentPage="offchain-analytics" />
-      </div>
-  
-      {/* Content area with header and flexible content */}
-      <div className="flex flex-col w-full h-screen">
-        {/* Header - fixed at top */}
-        <Header className="w-full flex-shrink-0" />
-  
-        {/* Content area below header */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Mobile menu toggle button for second navigation */}
-          <button 
-            className="md:hidden fixed top-4 left-16 z-40 p-2 bg-white rounded-md shadow-md"
-            onClick={toggleSecondNav}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-          
-          {/* Second navigation bar - fixed on desktop, slide-in drawer on mobile */}
-          <div className={`md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 
-            ${secondNavOpen ? 'fixed left-0 top-0 w-64 z-30 pt-16' : 'hidden'}`}>
-            <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
-              {navItems.map((item, index) => (
-                item.type === 'header' ? (
-                  <div 
-                    key={index} 
-                    className="text-xs text-gray-500 uppercase mt-4 mb-2 font-semibold"
-                  >
-                    {item.section}
-                  </div>
-                ) : (
-                  <div 
-                    key={index}
-                    className={`
-                      px-3 py-2 rounded-md cursor-pointer 
-                      ${activeSection === item.label 
-                        ? 'bg-purple-100 text-purple-600' 
-                        : 'text-gray-700 hover:bg-gray-100'}
-                      text-sm
-                    `}
-                    onClick={() => {
-                      setActiveSection(item.label);
-                      // Close navigation drawer on mobile after selection
-                      if (window.innerWidth < 768) {
-                        setSecondNavOpen(false);
-                      }
-                    }}
-                  >
-                    {item.label}
-                  </div>
-                )
-              ))}
-            </nav>
-          </div>
-          
-          {/* Main content area - scrollable */}
-          <div className="flex-grow overflow-y-auto">
-            {!hasAddedWebsite && activeSection === 'Dashboard' ? (
-              // Show Add Website Form if no website has been added yet
-              <AddWebsiteForm hasAddedWebsite={hasAddedWebsite} setHasAddedWebsite={setHasAddedWebsite}/>
-            ) 
-            :(
+return (
+  <div className="flex h-screen overflow-hidden bg-gray-50">
+    {/* Mobile menu toggle button for main sidebar */}
+    <button 
+      className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
+      onClick={toggleSidebar}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+
+    {/* Main sidebar - fixed on desktop, slide-in on mobile */}
+    <div className={`h-screen flex-shrink-0 md:block ${sidebarOpen ? 'block fixed z-40' : 'hidden'}`}>
+      <Sidebar currentPage="offchain-analytics" />
+    </div>
+
+    {/* Content area with header and flexible content */}
+    <div className="flex flex-col w-full h-screen">
+      {/* Header - fixed at top */}
+      <Header className="w-full flex-shrink-0" />
+
+      {/* Content area below header */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Mobile menu toggle button for second navigation */}
+        <button 
+          className="md:hidden fixed top-4 left-16 z-40 p-2 bg-white rounded-md shadow-md"
+          onClick={toggleSecondNav}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        
+        {/* Second navigation bar - fixed on desktop, slide-in drawer on mobile */}
+        <div className={`md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 
+          ${secondNavOpen ? 'fixed left-0 top-0 w-64 z-30 pt-16' : 'hidden'}`}>
+          <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
+            {navItems.map((item, index) => (
+              item.type === 'header' ? (
+                <div 
+                  key={index} 
+                  className="text-xs text-gray-500 uppercase mt-4 mb-2 font-semibold"
+                >
+                  {item.section}
+                </div>
+              ) : (
+                <div 
+                  key={index}
+                  className={`
+                    px-3 py-2 rounded-md cursor-pointer 
+                    ${activeSection === item.label 
+                      ? 'bg-purple-100 text-purple-600' 
+                      : 'text-gray-700 hover:bg-gray-100'}
+                    text-sm
+                  `}
+                  onClick={() => {
+                    setActiveSection(item.label);
+                    // Close navigation drawer on mobile after selection
+                    if (window.innerWidth < 768) {
+                      setSecondNavOpen(false);
+                    }
+                  }}
+                >
+                  {item.label}
+                </div>
+              )
+            ))}
+          </nav>
+        </div>
+        
+        {/* Main content area - scrollable */}
+        <div className="flex-grow overflow-y-auto">
+          {!hasAddedWebsite ? (
+            // Show AddWebsiteForm if no website has been added yet, regardless of which section is active
+            <AddWebsiteForm hasAddedWebsite={hasAddedWebsite} setHasAddedWebsite={setHasAddedWebsite}/>
+          ) : (
             <>
-              {/* Banner with dynamic user name */}
-              
-  
-              {/* Filters */}
-  
               {/* Main content */}
               <div className="px-2 md:px-4 pb-4">
                 {/* Main content section */}
-                {activeSection === 'Dashboard' ? (
+                {activeSection === 'Dashboard' && (
                   <div className="flex flex-col">
-                  <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
-                <div className="max-w-7xl mx-auto">
-                  <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
-                  <p className="text-xs md:text-sm text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
-                </div>
-              </div>
-              <Filters 
-                selectedDate={selectedDate} 
-                setSelectedDate={setSelectedDate} 
-                selectedWebsite={selectedWebsite} 
-                setSelectedWebsite={setSelectedWebsite}
-                selectedFilters={selectedFilters} 
-                setSelectedFilters={setSelectedFilters}
-              />
-              
+                    <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
+                      <div className="max-w-7xl mx-auto">
+                        <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
+                        <p className="text-xs md:text-sm text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
+                      </div>
+                    </div>
+                    <Filters 
+                      selectedDate={selectedDate} 
+                      setSelectedDate={setSelectedDate} 
+                      selectedWebsite={selectedWebsite} 
+                      setSelectedWebsite={setSelectedWebsite}
+                      selectedFilters={selectedFilters} 
+                      setSelectedFilters={setSelectedFilters}
+                    />
+                    
                     {/* MODIFICATION: Analytics cards in full width single row */}
                     <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 h-auto pl-2">
                       <AnalyticsCard 
@@ -773,31 +848,6 @@ const OffchainAnalytics = () => {
                       />
                     </div>
                     
-                    {/* MODIFICATION: Web3 visitors and wallets card in full width after chart */}
-                    {/* <div className="w-full bg-white p-4 md:p-6 rounded-xl md:rounded-2xl">
-                      <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6">Web3 visitors and wallets</h2>
-                      
-                      <div className="flex flex-col sm:flex-row justify-between mb-4 md:mb-6 space-y-4 sm:space-y-0">
-                        <div>
-                          <div className="text-2xl md:text-3xl font-bold">{web3Data.visitorsPercentage}</div>
-                          <div className="flex items-center text-green-500 text-xs">
-                            <span className="mr-1">↑</span> {web3Data.visitorsIncrease}
-                          </div>
-                          <div className="text-sm md:text-base font-bold mt-1">Web3 visitors</div>
-                        </div>
-                        
-                        <div className="sm:text-right">
-                          <div className="text-2xl md:text-3xl font-bold">{web3Data.walletsConnected}</div>
-                          <div className="flex items-center sm:justify-end text-green-500 text-xs">
-                            <span className="mr-1">↑</span> {web3Data.walletsIncrease}
-                          </div>
-                          <div className="text-sm md:text-base font-bold mt-1">Wallets connected</div>
-                        </div>
-                      </div>
-                      
-                      {/* Simplified funnel visualization */}
-                      
-                    {/* </div> */}
                     <FunnelDashboard/>
                     
                     {/* MODIFICATION: Remaining content in two-column layout */}
@@ -842,7 +892,7 @@ const OffchainAnalytics = () => {
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
-  
+
                           {/* Table */}
                           <div className="mt-4">
                             <div className="overflow-x-auto">
@@ -873,52 +923,55 @@ const OffchainAnalytics = () => {
                       </div>
                     </div>
                   </div>
-                ) : activeSection === 'Traffic analytics' ? (
-                  // Render the Traffic Analytics component when Traffic analytics is selected
+                )}
+                
+                {activeSection === 'Traffic analytics' && (
                   <>
-                  <Filters 
-                selectedDate={selectedDate} 
-                setSelectedDate={setSelectedDate} 
-                selectedWebsite={selectedWebsite} 
-                setSelectedWebsite={setSelectedWebsite}
-                selectedFilters={selectedFilters} 
-                setSelectedFilters={setSelectedFilters}
-              />
-                  <TrafficAnalytics  trafficSources={trafficSources} 
-                  setTrafficSources={setTrafficSources}/>
+                    <Filters 
+                      selectedDate={selectedDate} 
+                      setSelectedDate={setSelectedDate} 
+                      selectedWebsite={selectedWebsite} 
+                      setSelectedWebsite={setSelectedWebsite}
+                      selectedFilters={selectedFilters} 
+                      setSelectedFilters={setSelectedFilters}
+                    />
+                    <TrafficAnalytics 
+                      trafficSources={trafficSources} 
+                      setTrafficSources={setTrafficSources}
+                    />
                   </>
-                ) : 
-                activeSection === 'Geo Insights' ? (
-                  // Render the GeoAnalytics component when Geo analytics is selected
+                )}
+                
+                {activeSection === 'Geo Insights' && (
                   <>
-                   <Filters 
-                selectedDate={selectedDate} 
-                setSelectedDate={setSelectedDate} 
-                selectedWebsite={selectedWebsite} 
-                setSelectedWebsite={setSelectedWebsite}
-                selectedFilters={selectedFilters} 
-                setSelectedFilters={setSelectedFilters}
-              />
-                  <GeoAnalyticss />
+                    <Filters 
+                      selectedDate={selectedDate} 
+                      setSelectedDate={setSelectedDate} 
+                      selectedWebsite={selectedWebsite} 
+                      setSelectedWebsite={setSelectedWebsite}
+                      selectedFilters={selectedFilters} 
+                      setSelectedFilters={setSelectedFilters}
+                    />
+                    <GeoAnalyticss />
                   </>
-                ) :
-                activeSection === 'Retention' ? (
-                  // Render the Retention component when Retention is selected
+                )}
+                
+                {activeSection === 'Retention' && (
                   <>
-                   <Filters 
-                selectedDate={selectedDate} 
-                setSelectedDate={setSelectedDate} 
-                selectedWebsite={selectedWebsite} 
-                setSelectedWebsite={setSelectedWebsite}
-                selectedFilters={selectedFilters} 
-                setSelectedFilters={setSelectedFilters}
-              />
-                  <RetentionAnalytics/>
+                    <Filters 
+                      selectedDate={selectedDate} 
+                      setSelectedDate={setSelectedDate} 
+                      selectedWebsite={selectedWebsite} 
+                      setSelectedWebsite={setSelectedWebsite}
+                      selectedFilters={selectedFilters} 
+                      setSelectedFilters={setSelectedFilters}
+                    />
+                    <RetentionAnalytics/>
                   </>
-                ) 
-                :
-                (
-                  // For all other sections, display placeholder content
+                )}
+                
+                {/* For all other sections, display placeholder content */}
+                {!['Dashboard', 'Traffic analytics', 'Geo Insights', 'Retention'].includes(activeSection) && (
                   <div className="w-full bg-white p-4 md:p-6 rounded-xl md:rounded-2xl">
                     <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-4">{activeSection} Content</h2>
                     <p className="text-sm md:text-base">This is the content for the {activeSection} section. It spans the full width without the right panel.</p>
@@ -927,23 +980,23 @@ const OffchainAnalytics = () => {
                 )}
               </div>
             </>
-            )}
-          </div>        
-        </div>
+          )}
+        </div>        
       </div>
-      
-      {/* Overlay for mobile navigation */}
-      {(sidebarOpen || secondNavOpen) && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-          onClick={() => {
-            setSidebarOpen(false);
-            setSecondNavOpen(false);
-          }}
-        />
-      )}
     </div>
-  );
+    
+    {/* Overlay for mobile navigation */}
+    {(sidebarOpen || secondNavOpen) && (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+        onClick={() => {
+          setSidebarOpen(false);
+          setSecondNavOpen(false);
+        }}
+      />
+    )}
+  </div>
+);
 };
 
 export default OffchainAnalytics;
