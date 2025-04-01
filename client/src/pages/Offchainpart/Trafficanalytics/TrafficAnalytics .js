@@ -1,6 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Legend, ZAxis } from 'recharts';
-
+import TrafficSourcesComponent from '../TrafficSourcesComponent';
 const AttributionJourneySankey = () => {
   // Data for the Sankey diagram
   const attributionJourneyData = [
@@ -128,7 +128,7 @@ const AttributionJourneySankey = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg w-full">
+    <div className="bg-white rounded-lg w-full">
       <h3 className="text-lg md:text-xl font-bold px-2 pt-2">Attribution Journey</h3>
       <div className="w-full">
         {/* Make SVG responsive with proper aspect ratio */}
@@ -201,7 +201,7 @@ const AttributionJourneySankey = () => {
       </div>
     </div>
   );
-};
+};      
 
 // Helper component for responsive metric cards
 const MetricCard = ({ title, value, source }) => (
@@ -215,7 +215,7 @@ const MetricCard = ({ title, value, source }) => (
   </div>
 );
 
-const TrafficAnalytics = () => {
+const TrafficAnalytics = ( {trafficSources, setTrafficSources}) => {
   // Sample data for the charts
   const attributionJourneyData = [
     { source: 'Ads', target: 'Wallet Connect', value: 2500 },
@@ -328,7 +328,7 @@ const TrafficAnalytics = () => {
       <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">TrafficAnalytics</h1>
       
       {/* Responsive grid for metrics - changes to 2 columns on small screens */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
         <MetricCard title="Total Sessions" value="10,000,000" source="LinkedIn" />
         <MetricCard title="Web3 Users" value="10,000,000" source="LinkedIn" />
         <MetricCard title="Wallets Connected" value="10,000,000" source="LinkedIn" />
@@ -345,12 +345,12 @@ const TrafficAnalytics = () => {
       {/* Attribution Journey + Traffic Medium Sources - goes to full width on small screens */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-6">
         <div className="col-span-1 md:col-span-2 bg-white rounded-lg shadow">
-          <AttributionJourneySankey/>
+          <AttributionJourneySankey />
         </div>
-        <div className="col-span-1 bg-white rounded-lg shadow p-1 md:p-2">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4 px-2">Traffic medium/sources</h3>
-          <div className="overflow-auto max-h-48 md:max-h-96">
-            <table className="min-w-full">
+        {/* <div className="col-span-1 bg-white rounded-lg shadow p-1 md:p-2"> */}
+          {/* <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4 px-2">Traffic medium/sources</h3>
+          <div className="overflow-auto max-h-48 md:max-h-96"> */}
+            {/* <table className="min-w-full">
               <thead>
                 <tr>
                   <th className="px-1 md:px-2 py-1 md:py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
@@ -380,9 +380,16 @@ const TrafficAnalytics = () => {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-        </div>
+            </table> */}
+             <div className="col-span-1 md:col-span-1">
+            <TrafficSourcesComponent 
+            trafficSources={trafficSources} 
+          setTrafficSources={setTrafficSources} 
+            />
+            </div>
+
+          {/* </div> */}
+        {/* </div> */}
       </div>
 
       {/* Traffic Quality + Web3 Users by Medium - goes to full width on small screens */}
