@@ -1,9 +1,9 @@
 const express = require('express');
-const { postCountryName } = require('../controllers/sdkController');
+const {  postAnalytics } = require('../controllers/sdkController');
 
 const router = express.Router();
 
 
-router.post('/track', postCountryName);
+router.post('/track', postAnalytics);
 
 module.exports = router;
