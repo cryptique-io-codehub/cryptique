@@ -132,9 +132,9 @@ exports.googleLogin = async (req, res) => {
 user.isVerified = true;
     await user.save();
    //create a team
+   const teamName=email.split('@')[0];
    const teams =await Team.findOne({ name:teamName });
    if(!teams){
-   const teamName=email.split('@')[0];
 
    const newTeam = new Team({
      name:teamName,
