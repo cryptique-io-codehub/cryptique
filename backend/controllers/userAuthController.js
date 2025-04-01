@@ -23,6 +23,9 @@ exports.verifyOtp=async (req,res)=>{
    //create a team
    const teamName=email.split('@')[0];
 
+   const teams =await Team.findOne({ name:teamName });
+   if(!teams){
+  
    const newTeam = new Team({
      name:teamName,
      createdBy:user._id,
@@ -35,7 +38,9 @@ exports.verifyOtp=async (req,res)=>{
    user.team=[newTeam._id];
 
    await user.save();
-   console.log('aaaa');
+
+    console.log('Team Created Successfully',newTeam);
+    }
    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
     expiresIn: '2h', // Token expires in 1 hour
   });
@@ -127,6 +132,8 @@ exports.googleLogin = async (req, res) => {
 user.isVerified = true;
     await user.save();
    //create a team
+   const teams =await Team.findOne({ name:teamName });
+   if(!teams){
    const teamName=email.split('@')[0];
 
    const newTeam = new Team({
@@ -141,6 +148,8 @@ user.isVerified = true;
    user.team=[newTeam._id];
 
    await user.save();
+    console.log('Team Created Successfully',newTeam);
+    }
    console.log('User logged in successfully',user);
 res.status(200).json({ message: 'User logged in successfully', user, token });
   } catch (error) {
