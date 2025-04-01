@@ -124,3 +124,18 @@ exports.verify = async (req, res) => {
         res.status(500).json({ message: 'Error while web scraping', error: e.message });
     }
 };
+
+exports.getWebsitesOfTeam = async (req, res) => {
+    try {
+        const { teamName } = req.body;
+        if (!teamName) return res.status(400).json({ message: "Required fields are missing" });
+
+        const team = await Team.findOne({ name: teamName }).populate('websites');
+        if (!team) return res.status(404).json({ message: "Team not found" });
+
+        return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
+    } catch (e) {
+        console.error("Error while fetching websites", e);
+        res.status(500).json({ message: 'Error while fetching websites', error: e.message });
+    }
+}

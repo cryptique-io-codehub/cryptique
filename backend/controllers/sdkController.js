@@ -101,3 +101,22 @@ exports.postAnalytics = async (req, res) => {
       .json({ message: "Error while posting analyics name", error: e.message });
   }
 };
+
+
+// Controller to handle getting the analytics data
+exports.getAnalytics = async (req, res) => {
+  try {
+    const { siteId } = req.params;
+    if (!siteId) {
+      return res.status(400).json({ message: "Required fields are missing" });
+    }
+    const analytics = await Analytics.findOne({ siteId: siteId });
+    if (!analytics) {
+      return res.status(404).json({ message: "Analytics not found" });
+    }
+    return res.status(200).json({ message: "Analytics fetched successfully", analytics });
+  } catch (e) {
+    console.error("Error while fetching analytics", e);
+    res.status(500).json({ message: "Error while fetching analytics", error: e.message });
+  }
+};
