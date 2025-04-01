@@ -9,6 +9,9 @@ exports.addWebsite=async (req,res)=>{
    try{
 
         const {teamName,Domain,Name}=req.body;
+        console.log(teamName);
+        console.log(Domain);
+        console.log(Name);
 
         if(!teamName && !Domain) return res.status(400).json({message:"Required field is missing"});
 
@@ -17,23 +20,23 @@ exports.addWebsite=async (req,res)=>{
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
         const siteId = uuidv4(); 
-
+        console.log(siteId);
         const newWebsite=new Website({
             siteId,
             Domain,
             Name:Name || '',
             team:checkTeam._id,
         })
-
+        console.log('c');
         await newWebsite.save();
-
+        console.log('b');
         
         await Team.findOneAndUpdate(
             { name: teamName }, 
             { $push: { websites: newWebsite._id } },
             { new: true } 
         );
-
+        console.log('ritik');
         return res.status(200).json({message:"Website added successfully",website:newWebsite});
 
    }catch(e){

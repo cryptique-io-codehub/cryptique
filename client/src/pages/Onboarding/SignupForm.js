@@ -7,23 +7,31 @@ import axiosInstance from '../../axiosInstance.js';
 function SignupForm({ onBackToLogin }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [avatar, setavatar] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isOtpView, setIsOtpView] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsFormValid(
       fullName.trim() !== '' && 
       email.trim() !== '' && 
+      avatar.trim() !== '' && 
       password.trim() !== '' && 
       password === confirmPassword
     );
-  }, [fullName, email, password, confirmPassword]);
+  }, [fullName, email, password, avatar, confirmPassword]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Set loading state to true when submission starts
+    setIsLoading(true);
   
     try {
       const response = await axiosInstance.post('/auth/create', {
@@ -31,16 +39,67 @@ function SignupForm({ onBackToLogin }) {
           name: fullName,
           email,
           password,
+          avatar
         },
       });
-  
+      console.log(response);
+      localStorage.setItem('token', response.data.token);
       if (response.data.user) {
-        localStorage.setItem('token', response.data.token);
-        // Redirect to dashboard
-        navigate('/dashboard');
+        // Switch to OTP view
+        setIsOtpView(true);
+      }
+      else{
+        alert(response.data.message);
       }
     } catch (error) {
       console.error('Error during signup:', error.response?.data || error.message);
+      if (error.response && 
+        [400, 500].includes(error.response.status)) {
+        alert(error.response.data.message);
+      } else {
+        console.error('Error during login:', error);
+        alert('An error occurred. Please try again.');
+      }
+    } finally {
+      // Ensure loading state is set to false whether the request succeeds or fails
+      setIsLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto focus to next input
+    if (value && index < 5) {
+      document.getElementById(`otp-${index + 1}`).focus();
+    }
+  };
+
+  const handleOtpConfirm = async () => {
+    const otpCode = otp.join('');
+    try {
+      const response = await axiosInstance.post('/auth/verifyOTP', {
+        email,
+        otp: otpCode
+      });
+      console.log(response);
+      const aa=email.split('@')[0];
+      if (response.status===200) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('selectedTeam',aa);
+        navigate(`/dashboard`);
+      } else {
+        // If verification fails, reset to signup view
+        setIsOtpView(false);
+        alert('Invalid OTP. Please try again.');
+      }
+    } catch (error) {
+      console.error('OTP Verification Error:', error);
+      // If there's an error, reset to signup view
+      setIsOtpView(false);
+      alert('An error occurred during OTP verification. Please try again.');
     }
   };
 
@@ -59,17 +118,59 @@ function SignupForm({ onBackToLogin }) {
           email: user.email,
           avatar: user.photoURL,
       });
+      const aa=user.email.split('@')[0];
       
       if (response.data.user) {
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('selectedTeam',aa);
         // Redirect to dashboard
-        navigate('/dashboard');
+        navigate(`/dashboard`);
       }
     } catch (error) {
       console.error('Error during Google login:', error);
     }
   };
 
+  // OTP View
+  if (isOtpView) {
+    return (
+      <div className="form-container w-full max-w-md mx-auto p-4 sm:p-6 mt-0">
+        <div className="header mb-4 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold">Enter OTP</h1>
+          <p className="text-sm text-gray-500 mt-2">This should take no longer than 1 min</p>
+        </div>
+
+        <div className="otp-input-container flex justify-center gap-2 mb-4">
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              id={`otp-${index}`}
+              type="text"
+              maxLength="1"
+              value={digit}
+              onChange={(e) => handleOtpChange(index, e.target.value)}
+              className="w-10 h-10 text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          ))}
+        </div>
+
+        <div className="text-center mb-4">
+          <p className="text-xs text-gray-500">
+            If you haven't received your OTP yet, <button className="text-blue-600 hover:underline">click here to send it again</button>
+          </p>
+        </div>
+
+        <button 
+          onClick={handleOtpConfirm}
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Confirm
+        </button>
+      </div>
+    );
+  }
+
+  // Original Signup Form
   return (
     <div className="form-container w-full max-w-md mx-auto p-4 sm:p-6 mt-0">
       <div className="header mb-4 text-center sm:text-left">
@@ -140,6 +241,17 @@ function SignupForm({ onBackToLogin }) {
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          <div className="form-group">
+          <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
+          <input 
+            type="text" 
+            id="avatar" 
+            value={avatar}
+            onChange={(e) => setavatar(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
         </div>
 
         <div className="form-group">
@@ -159,9 +271,19 @@ function SignupForm({ onBackToLogin }) {
         <button 
           type="submit" 
           className={`submit-btn w-full py-2 px-4 rounded-md text-white font-medium transition ${isFormValid ? 'bg-blue-600 hover:bg-blue-700 active' : 'bg-blue-300 cursor-not-allowed'}`}
-          disabled={!isFormValid}
+          disabled={!isFormValid || isLoading}
         >
-          Create Account
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating Account...
+            </div>
+          ) : (
+            'Create Account'
+          )}
         </button>
       </form>
 

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Trash2, Users } from "lucide-react";
+import axiosInstance from "../../axiosInstance";
 
 const MembersSection = () => {
   const [email, setEmail] = useState("");
@@ -8,6 +9,36 @@ const MembersSection = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [members, setMembers] = useState([]);
+
+  // Fetch members when component mounts or when active tab changes
+  useEffect(() => {
+    if (activeTab === "members") {
+      fetchMembers();
+    }
+  }, [activeTab]);
+  
+  const fetchMembers = async () => {
+    try {
+      const selectedTeam = localStorage.getItem("selectedTeam");
+      
+      if (!selectedTeam) {
+        throw new Error("No team selected");
+      }
+
+      setLoading(true);
+      const response = await axiosInstance.post('/team/members', { teams: selectedTeam });
+      
+      // Assuming the response contains an array of members
+      setMembers(response.data || []);
+    } catch (err) {
+      console.error("Error fetching members:", err);
+      const errorMsg = err.response?.data?.message || "Failed to fetch members";
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailChange = (value) => {
     setEmail(value);
@@ -35,23 +66,17 @@ const MembersSection = () => {
       }
 
       // Log the exact request payload for debugging
-      const requestPayload = { email, role };
+      const teamss = localStorage.getItem("selectedTeam");
+      const requestPayload = { email, role, teamss };
       console.log("Sending request payload:", requestPayload);
-
-      const response = await axios.post(
-        "http://localhost:3002/api/team/create",
-        requestPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axiosInstance.post('/team/create', requestPayload);
 
       console.log(response);
       alert("Invite sent successfully!");
       setEmail(""); // Reset form
+      
+      // Refresh members list after sending invite
+      fetchMembers();
     } catch (err) {
       console.error("Full error object:", err);
       const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
@@ -136,7 +161,7 @@ const MembersSection = () => {
           }`}
           onClick={() => setActiveTab("members")}
         >
-          Members (3)
+          Members ({members.length})
         </button>
         <button
           className={`px-6 py-3 text-sm font-medium ${
@@ -152,7 +177,31 @@ const MembersSection = () => {
 
       {activeTab === "members" && (
         <div className="bg-white rounded-lg shadow">
-          {/* Member list would go here */}
+          {loading ? (
+            <div className="p-4 text-center text-gray-500">Loading members...</div>
+          ) : error ? (
+            <div className="p-4 text-center text-red-500">{error}</div>
+          ) : members.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">No members found</div>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {members.map((member, index) => (
+                <li 
+                  key={index} 
+                  className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+                >
+                  <div className="flex items-center">
+                    <Users className="w-6 h-6 text-gray-400 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{member.name}</p>
+                      <p className="text-sm text-gray-500">{member.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500 capitalize">{member.role}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

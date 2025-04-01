@@ -1,4 +1,3 @@
-
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Team=require('../models/team');
@@ -10,9 +9,12 @@ const generateOtp= ()=>{
 }
 exports.verifyOtp=async (req,res)=>{
   try {
+    console.log('a');
+    console.log(req.body);
     const { email, otp } = req.body;
+    console.log(otp);
     const user = await User.findOne({ email, otp });
-
+    console.log(user);
     if (!user) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
@@ -33,18 +35,24 @@ exports.verifyOtp=async (req,res)=>{
    user.team=[newTeam._id];
 
    await user.save();
-      res.status(200).json({ message: 'Otp sent successfully', user });
+   console.log('aaaa');
+   const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    expiresIn: '2h', // Token expires in 1 hour
+  });
+  console.log(token);
+      res.status(200).json({ message: 'Otp sent successfully', user,token });
   } catch (error) {
     res.status(500).json({ message: 'Error sending otp', error: error.message });
   }
 }
+
 exports.createUser = async (req, res) => {
   try {
-    const formData = req.body;
-    
-    const { name, email, password, avatar } = formData;
+    const formDatas = req.body.formData;
+    const { name, email, password, avatar } = formDatas;
  // Hash the password
  const userExists = await User.findOne({ email });
+ console.log(userExists);
     if(userExists){
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -66,7 +74,7 @@ exports.createUser = async (req, res) => {
 
      // Generate JWT
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h', // Token expires in 1 hour
+      expiresIn: '2h', // Token expires in 1 hour
     });
 
  
@@ -76,7 +84,6 @@ exports.createUser = async (req, res) => {
     res.status(500).json({ message: 'Error creating user', error: error.message });
   }
 };
-
 // Controller to get a user by ID
 exports.getUser = async (req, res) => {
     try {
@@ -111,12 +118,30 @@ exports.googleLogin = async (req, res) => {
       });
 
       await user.save();
+
     }
  // Generate JWT
  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
   expiresIn: '1h', // Token expires in 1 hour
 });
+user.isVerified = true;
+    await user.save();
+   //create a team
+   const teamName=email.split('@')[0];
 
+   const newTeam = new Team({
+     name:teamName,
+     createdBy:user._id,
+     user:[{userId:user._id,role:'admin'}]
+   })
+
+   //save the team to the database
+   await newTeam.save();
+
+   user.team=[newTeam._id];
+
+   await user.save();
+   console.log('User logged in successfully',user);
 res.status(200).json({ message: 'User logged in successfully', user, token });
   } catch (error) {
     res.status(500).json({ message: 'Error during Google login', error: error.message });
@@ -128,15 +153,13 @@ exports.login=async (req, res) => {
   try {
     // Fetch user from the database
     const user = await User.findOne({ email });
-    console.log(user);
-    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     if (!user.isVerified) {
       return res.status(402).json({ message: 'User not verified' });
     }
-    console.log('a');
+    
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -145,14 +168,13 @@ exports.login=async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h', // Token expires in 1 hour
+      expiresIn: '2h', // Token expires in 1 hour
     });
 
     // Return success with token
     res.status(200).json({ message: 'Login successful', user, token });
 
   } catch (error) {
-    console.log('b');
     console.error('Error during login:', error);
     res.status(500).json({ message: 'Server error' });
   }

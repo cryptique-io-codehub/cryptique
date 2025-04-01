@@ -1,17 +1,41 @@
 import React, { useState, useEffect } from "react";
 import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X } from "lucide-react";
 import Header from "../../components/Header";
-import BillingSection from "./Billing/BillingSection";
+import Billing from "./Billing/Billing";
 import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
 import Sidebar from "../../components/Sidebar";
-
-// Team selector component that will be reused across sections
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useTeam } from "../../context/teamContext";
 
 const Settings = ({ onMenuClick }) => {
-  const [activeSection, setActiveSection] = useState("general");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { team } = useParams();
+  const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
+
+  // Determine active section based on current path
+  const determineActiveSection = () => {
+    const path = location.pathname;
+    if (path.includes('/billing')) return 'billing';
+    if (path.includes('/members')) return 'members';
+    if (path.includes('/personal')) return 'personal';
+    if (path.includes('/teamsSection')) return 'teams';
+    return 'general';
+  };
+
+  const [activeSection, setActiveSection] = useState(determineActiveSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setseTeam(localStorage.getItem("selectedTeam"));
+  }, [team]);
+
+  useEffect(() => {
+    // Update active section when route changes
+    setActiveSection(determineActiveSection());
+  }, [location.pathname]);
   
   // Close sidebar when resizing to larger screens
   useEffect(() => {
@@ -20,7 +44,7 @@ const Settings = ({ onMenuClick }) => {
         setSidebarOpen(false);
       }
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -31,6 +55,25 @@ const Settings = ({ onMenuClick }) => {
   
   const handleSectionChange = (section) => {
     setActiveSection(section);
+    // Navigate to the corresponding route
+    switch(section) {
+      case 'general':
+        navigate(`/${seteam}/settings`);
+        break;
+      case 'billing':
+        navigate(`/${seteam}/settings/billing`);
+        break;
+      case 'members':
+        navigate(`/${seteam}/settings/members`);
+        break;
+      case 'personal':
+        navigate(`/${seteam}/settings/personal`);
+        break;
+      case 'teams':
+        navigate(`/${seteam}/settings/teamsSection`);
+        break;
+    }
+
     // On mobile, close the sidebar after selecting a section
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
@@ -209,7 +252,12 @@ const Settings = ({ onMenuClick }) => {
               </div>
             </div>
           )}
-          
+           {activeSection === "billing" && (
+            <div className="p-4 sm:p-6 bg-white">
+              
+              <Billing/>
+            </div>
+          )}
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
               
