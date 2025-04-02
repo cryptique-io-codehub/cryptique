@@ -32,9 +32,10 @@ exports.postAnalytics = async (req, res) => {
           walletType: wallet.walletType,
           chainName: wallet.chainName
         }
-        const walletIndex= analytics.wallets.findIndex(
-          (walletAddress) => walletAddress === wallet.walletAddress[0]
-        );
+        const walletIndex = analytics.wallets.findIndex(
+          (w) => w.walletAddress === wallet.walletAddress[0] // Correct comparison
+      );
+  
         if (walletIndex === -1) {
           analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected

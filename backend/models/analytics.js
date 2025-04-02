@@ -95,7 +95,9 @@ const analyticsSchema = new mongoose.Schema({
   userAgents: [String], // To track unique devices
   wallets: [
     {
-      type: Object,
+      walletAddress: String,
+      walletType: String,
+      chainName: String
     }
   ]
 });
