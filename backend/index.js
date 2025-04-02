@@ -10,7 +10,7 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors({ origin:[ "http://localhost:3000",process.env.CORS_ORIGIN] }));
+app.use(cors("*"));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
