@@ -11,15 +11,40 @@ import GeoAnalyticss from '../Offchainpart/Trafficanalytics/GeoAnalyticss';
 import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalytics';
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
-
-const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
-  const [domain, setDomain] = useState('');
-  const [name, setName] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
+import axiosInstance from '../../axiosInstance';
+const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAddedWebsite }) => {
+  // Initialize state from localStorage when available
+  const [domain, setDomain] = useState(() => localStorage.getItem('crypto_domain') || '');
+  const [name, setName] = useState(() => localStorage.getItem('crypto_name') || '');
+  const [selectedTeam, setSelectedTeam] = useState(() => localStorage.getItem('selectedTeam') || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [scriptCode, setScriptCode] = useState('');
-  const [showScript, setShowScript] = useState(false);
+  const [scriptCode, setScriptCode] = useState(() => localStorage.getItem('crypto_scriptCode') || '');
+  const [showScript, setShowScript] = useState(() => localStorage.getItem('crypto_showScript') === 'true');
+  const [idd, setidd] = useState(() => localStorage.getItem('crypto_siteId') || '');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Update localStorage whenever certain state values change
+  useEffect(() => {
+    if (domain) localStorage.setItem('crypto_domain', domain);
+    if (name) localStorage.setItem('crypto_name', name);
+    if (scriptCode) localStorage.setItem('crypto_scriptCode', scriptCode);
+    localStorage.setItem('crypto_showScript', showScript.toString());
+    if (idd) localStorage.setItem('crypto_siteId', idd);
+  }, [domain, name, scriptCode, showScript, idd]);
+
+  // Clear localStorage values when popup is closed
+  const handleClose = () => {
+    if (!showScript) {
+      // Only clear if user hasn't generated a script yet
+      localStorage.removeItem('crypto_domain');
+      localStorage.removeItem('crypto_name');
+      localStorage.removeItem('crypto_scriptCode');
+      localStorage.removeItem('crypto_showScript');
+      localStorage.removeItem('crypto_siteId');
+    }
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -35,46 +60,48 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
     setIsSubmitting(true);
     setError('');
     setShowScript(false);
+    setSuccessMessage('');
     
     try {
       // Send POST request to the website/create endpoint
-      const response = await fetch('http://localhost:3002/api/website/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await axiosInstance.post('/website/create',
+        {
           Domain: domain,
           Name: name || domain, // Use domain as name if no name provided
           teamName: selectedTeam // Include team name in request body
-        }),
-      });
-      const responseData = await response.json();
+        }
+      );
+      console.log(response.data.website.siteId);
       
-      if (!response.ok) {
-        throw new Error('Failed to add website');
-      }
+      // if (!response.ok) {
+      //   throw new Error('Failed to add website');
+      // }
       
       // Check if there is an ID in the response
-      const siteId = responseData.website.siteId;
+      const siteId = response.data.website.siteId;
       console.log(siteId);
+      setidd(siteId);
       
       if (siteId) {
-        // Create the script code with the siteId
+        // Create the script code with the siteId - Modified for async loading
         const scriptHTML = `<script>
-  var script = document.createElement('script');
-  script.src = 'https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
-  script.setAttribute('site-id', '${siteId}');
-  document.head.appendChild(script);
-</script>`;
+      var script = document.createElement('script');
+      script.src = 'http://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
+      script.setAttribute('site-id','${siteId}');
+      document.head.appendChild(script);
+    </script>`;
         
         setScriptCode(scriptHTML);
         setShowScript(true);
+        
+        // Save to localStorage
+        localStorage.setItem('crypto_scriptCode', scriptHTML);
+        localStorage.setItem('crypto_showScript', 'true');
+        localStorage.setItem('crypto_siteId', siteId);
       }
       
       // Success
       onSuccess && onSuccess();
-      // Note: We're not closing the popup immediately so the user can see and copy the script
     } catch (error) {
       console.error('Error adding website:', error);
       setError(error.message || 'Failed to add website');
@@ -83,12 +110,51 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const handleVerify = () => {
-    // You can add verification logic here if needed
-    // For example, checking if the script is installed on the website
-    
-    // For now, just close the popup
-    onClose();
+  const handleVerify = async () => {
+    // Send verification request to server
+    try {
+      setIsSubmitting(true);
+      setError('');
+      setSuccessMessage('');
+      console.log(idd);
+      
+      const response = await axiosInstance.post('/website/verify',
+        {
+          Domain: domain,
+          siteId: idd
+        });
+      
+      // Parse response before checking ok status
+      // const responseData = await response.json();
+      console.log(response);
+      
+      if (response.status===200) {
+        setSuccessMessage(`Verification successful for ${domain}`);
+        setHasAddedWebsite(true);
+        
+      }
+      else{
+        throw new Error(response.message || 'Verification failed');
+      }
+      // Display success message
+      
+      
+      // Clean up localStorage after successful verification
+      setTimeout(() => {
+        localStorage.removeItem('crypto_domain');
+        localStorage.removeItem('crypto_name');
+        localStorage.removeItem('crypto_scriptCode');
+        localStorage.removeItem('crypto_showScript');
+        localStorage.removeItem('crypto_siteId');
+        onClose();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error verifying website:', error);
+      setError(error.message || 'Failed to verify website');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -96,7 +162,7 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 mx-4">
         <div className="flex items-center mb-6">
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-500 hover:text-gray-700"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -125,10 +191,21 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
               <button
                 onClick={handleVerify}
                 className="py-2 px-4 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+                disabled={isSubmitting}
               >
-                Verify
+                {isSubmitting ? 'Verifying...' : 'Verify'}
               </button>
             </div>
+            {error && (
+              <div className="mt-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="mt-4 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
+                {successMessage}
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -200,42 +277,51 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess }) => {
     </div>
   );
 };
-// Main AddWebsiteForm Component - Unchanged for GET requests
+
+// Main AddWebsiteForm Component
 const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
   const [websites, setWebsites] = useState([]);
   const [selectedWebsite, setSelectedWebsite] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAddWebsitePopupOpen, setIsAddWebsitePopupOpen] = useState(false);
 
-  // Fetch websites on component mount - Keeping original endpoint
+  // Check localStorage on mount to determine if popup should be open
   useEffect(() => {
-    const fetchWebsites = async () => {
-      try {
-        const response = await fetch('http://localhost:3002/api/websites', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+    const showScript = localStorage.getItem('crypto_showScript') === 'true';
+    if (showScript) {
+      setIsAddWebsitePopupOpen(true);
+    }
+  }, []);
+
+  // Fetch websites on component mount
+  // useEffect(() => {
+  //   const fetchWebsites = async () => {
+  //     try {
+  //       const response = await fetch('http://localhost:3002/api/websites', {
+  //         method: 'GET',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch websites');
-        }
+  //       if (!response.ok) {
+  //         throw new Error('Failed to fetch websites');
+  //       }
         
-        const data = await response.json();
-        setWebsites(data.websites || []);
+  //       const data = await response.json();
+  //       setWebsites(data.websites || []);
         
-        // Set first website as selected if available and no selection exists
-        if (data.websites && data.websites.length > 0 && !selectedWebsite) {
-          setSelectedWebsite(data.websites[0].domain);
-        }
-      } catch (error) {
-        console.error('Error fetching websites:', error);
-      }
-    };
+  //       // Set first website as selected if available and no selection exists
+  //       if (data.websites && data.websites.length > 0 && !selectedWebsite) {
+  //         setSelectedWebsite(data.websites[0].domain);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching websites:', error);
+  //     }
+  //   };
     
-    fetchWebsites();
-  }, [selectedWebsite]);
+  //   fetchWebsites();
+  // }, [selectedWebsite]);
 
   // Handle website selection
   const handleSelectWebsite = (domain) => {
@@ -250,7 +336,6 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
     setIsDropdownOpen(false);
   };
 
-  // Handle successful website addition - Keeping original GET endpoint
   const handleWebsiteAdded = async () => {
     // Refresh the websites list
     try {
@@ -276,6 +361,7 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
       // Update parent component state if needed
       if (setHasAddedWebsite) {
         setHasAddedWebsite(true);
+        
       }
     } catch (error) {
       console.error('Error fetching websites:', error);
@@ -365,11 +451,12 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
         isOpen={isAddWebsitePopupOpen}
         onClose={() => setIsAddWebsitePopupOpen(false)}
         onSuccess={handleWebsiteAdded}
+        hasAddedWebsite={hasAddedWebsite}
+        setHasAddedWebsite={setHasAddedWebsite}
       />
     </div>
   );
 };
-
 
 
 const OffchainAnalytics = () => {

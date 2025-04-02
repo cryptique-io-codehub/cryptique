@@ -91,9 +91,12 @@ exports.deleteWebsite=async (req,res)=>{
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
+        console.log(req.body);
+        console.log(Domain);
+        console.log(siteId);
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
-        const scriptSrc = "https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const scriptSrc = "http://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
 
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
