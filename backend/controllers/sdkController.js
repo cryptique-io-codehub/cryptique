@@ -24,7 +24,9 @@ exports.postAnalytics = async (req, res) => {
         });
         await analytics.save();
       }
-      if(wallet.walletAddress.length > 0){
+      console.log("wallet", wallet);
+      //update the wallet stuff if something updates
+      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet ={
           walletAddress: wallet.walletAddress[0],
           walletType: wallet.walletType,
