@@ -6,7 +6,7 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, userId, pagePath } = sessionData;
+      const { siteId, userId, pagePath ,walletAddresses,chainId} = sessionData;
       //find the siteId in the database and particular sessionId and update the data accordingly
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
       // console.log("sanitizedPagePath", sanitizedPagePath);
@@ -27,7 +27,6 @@ exports.postAnalytics = async (req, res) => {
       const sessionIndex = analytics.sessions.findIndex(
         (session) => session.sessionId === sessionData.sessionId
       );
-      console.log("sessionIndex");
       if (sessionIndex !== -1) {
         analytics.sessions[sessionIndex] = sessionData;
         await analytics.save();
@@ -35,6 +34,16 @@ exports.postAnalytics = async (req, res) => {
         analytics.sessions.push(sessionData);
         await analytics.save();
       }
+         const walletIndex = analytics.walletAddresses.findIndex(
+      (wallet) => wallet === walletAddresses
+    );
+    if (walletIndex === -1) {
+        
+        analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
+        analytics.walletsConnected += 1; // Increment wallets connected
+    } 
+  
+        
       return res
         .status(200)
         .json({ message: "Session Data Updated successfully", analytics });
@@ -42,7 +51,7 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(payload);
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
-    const { siteId,websiteUrl , userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
+    const { siteId,websiteUrl , userId, pagePath ,walletsConnected} = payload;
     console.log("walletAddress", walletAddresses);
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
     // const {pageUrl, pageTitle, userActivity} = eventData;
@@ -64,15 +73,7 @@ exports.postAnalytics = async (req, res) => {
       await analytics.save();
     }
     //update the wallet stuff if something updates
-    // const walletIndex = analytics.walletAddresses.findIndex(
-    //   (wallet) => wallet === walletAddresses
-    // );
-    // if (walletIndex === -1) {
-        
-    //     analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
-    //     analytics.walletsConnected += 1; // Increment wallets connected
-    // } 
-        
+ 
     if (!analytics.userId.includes(userId)) {
       analytics.userId.push(userId); // Add userId to the array if not already present
       analytics.uniqueVisitors += 1; // Increment unique visitors

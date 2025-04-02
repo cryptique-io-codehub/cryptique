@@ -66,6 +66,8 @@ const analyticsSchema = new mongoose.Schema({
         term: String,
         content: String,
       },
+      walletAddresses: [String],
+      chainId: [String],
       startTime: Date,
       endTime: Date,
       pagesViewed: Number,
