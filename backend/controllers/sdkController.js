@@ -5,9 +5,11 @@ exports.postAnalytics = async (req, res) => {
   try {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
+      // console.log("sessionData", sessionData);
       const { siteId, userId, pagePath } = sessionData;
       //find the siteId in the database and particular sessionId and update the data accordingly
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
+      // console.log("sanitizedPagePath", sanitizedPagePath);
       const analytics = await Analytics.findOne({ siteId: siteId });
       if (!analytics) {
         const analytics = new Analytics({
@@ -25,6 +27,7 @@ exports.postAnalytics = async (req, res) => {
       const sessionIndex = analytics.sessions.findIndex(
         (session) => session.sessionId === sessionData.sessionId
       );
+      console.log("sessionIndex");
       if (sessionIndex !== -1) {
         analytics.sessions[sessionIndex] = sessionData;
         await analytics.save();
