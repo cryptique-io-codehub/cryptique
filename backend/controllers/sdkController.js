@@ -6,7 +6,8 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, userId, pagePath ,walletAddresses,chainId} = sessionData;
+      const { siteId, userId, pagePath, walletAddresses, chainId } =
+        sessionData;
       //find the siteId in the database and particular sessionId and update the data accordingly
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
       // console.log("sanitizedPagePath", sanitizedPagePath);
@@ -34,24 +35,24 @@ exports.postAnalytics = async (req, res) => {
         analytics.sessions.push(sessionData);
         await analytics.save();
       }
-         const walletIndex = analytics.walletAddresses.findIndex(
-      (wallet) => wallet === walletAddresses
-    );
-    if (walletIndex === -1) {
-        
-        analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
-        analytics.walletsConnected += 1; // Increment wallets connected
-    } 
-  
-        
+
+
+      // const walletIndex = analytics.walletAddresses.findIndex(
+      //   (wallet) => wallet === walletAddresses
+      // );
+      // if (walletIndex === -1) {
+      //   analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
+      //   analytics.walletsConnected += 1; // Increment wallets connected
+      // }
+
       return res
         .status(200)
-        .json({ message: "Session Data Updated successfully", analytics });
+        .json({ message: "Session Data Updated successfully", analytics, "walletadress": walletAddresses });
     }
     //    console.log(payload);
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
-    const { siteId,websiteUrl , userId, pagePath ,walletsConnected} = payload;
+    const { siteId, websiteUrl, userId, pagePath, walletsConnected } = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
     // const {pageUrl, pageTitle, userActivity} = eventData;
 
@@ -65,14 +66,14 @@ exports.postAnalytics = async (req, res) => {
         uniqueVisitors: 1,
         pageViews: { [sanitizedPagePath]: 1 },
         walletsConnected: walletsConnected || 0,
-        walletAddresses:  [],
-        chainId:  [],
+        walletAddresses: [],
+        chainId: [],
         sessions: [],
       });
       await analytics.save();
     }
     //update the wallet stuff if something updates
- 
+
     if (!analytics.userId.includes(userId)) {
       analytics.userId.push(userId); // Add userId to the array if not already present
       analytics.uniqueVisitors += 1; // Increment unique visitors
@@ -108,7 +109,6 @@ exports.postAnalytics = async (req, res) => {
   }
 };
 
-
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {
   try {
@@ -120,9 +120,13 @@ exports.getAnalytics = async (req, res) => {
     if (!analytics) {
       return res.status(404).json({ message: "Analytics not found" });
     }
-    return res.status(200).json({ message: "Analytics fetched successfully", analytics });
+    return res
+      .status(200)
+      .json({ message: "Analytics fetched successfully", analytics });
   } catch (e) {
     console.error("Error while fetching analytics", e);
-    res.status(500).json({ message: "Error while fetching analytics", error: e.message });
+    res
+      .status(500)
+      .json({ message: "Error while fetching analytics", error: e.message });
   }
 };
