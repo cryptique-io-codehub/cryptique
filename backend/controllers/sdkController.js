@@ -8,9 +8,9 @@ exports.postAnalytics = async (req, res) => {
       // console.log("sessionData", sessionData);
       const { siteId, wallet } = sessionData;
       const analytics = await Analytics.findOne({ siteId: siteId });
-      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
+      if (wallet && wallet.walletAddress.length > 0) {
         const newWallet = {
-          walletAddress: wallet.walletAddress[0],
+          walletAddress: wallet.walletAddress,
           walletType: wallet.walletType,
           chainName: wallet.chainName,
         };
