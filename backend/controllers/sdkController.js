@@ -7,6 +7,7 @@ exports.postAnalytics = async (req, res) => {
     if (!payload && sessionData) {
       const { siteId, userId, pagePath } = sessionData;
       //find the siteId in the database and particular sessionId and update the data accordingly
+      const sanitizedPagePath = pagePath.replace(/\./g, "_");
       const analytics = await Analytics.findOne({ siteId: siteId });
       if (!analytics) {
         const analytics = new Analytics({
@@ -14,7 +15,7 @@ exports.postAnalytics = async (req, res) => {
           userId: [userId], // Initialize userId as an array with the current userId
           totalVisitors: 1,
           uniqueVisitors: 1,
-          pageViews: { [pagePath]: 1 },
+          pageViews: { [sanitizedPagePath]: 1 },
           walletsConnected: 0,
           sessions: [],
         });
@@ -39,8 +40,9 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
     const { siteId,websiteUrl , userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
-    console.log(pagePath);
+    const sanitizedPagePath = pagePath.replace(/\./g, "_");
     // const {pageUrl, pageTitle, userActivity} = eventData;
+
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
       const analytics = new Analytics({
@@ -49,7 +51,7 @@ exports.postAnalytics = async (req, res) => {
         userId: [userId], // Initialize userId as an array with the current userId
         totalVisitors: 1,
         uniqueVisitors: 1,
-        pageViews: { [pagePath]: 1 },
+        pageViews: { [sanitizedPagePath]: 1 },
         walletsConnected: walletsConnected || 0,
         walletAddresses: walletAddresses || [],
         chainId: chainId || [],
@@ -72,14 +74,14 @@ exports.postAnalytics = async (req, res) => {
       analytics.uniqueVisitors += 1; // Increment unique visitors
       analytics.totalVisitors += 1; // Increment total visitors
       analytics.pageViews.set(
-        pagePath,
-        (analytics.pageViews.get(pagePath) || 0) + 1
+        sanitizedPagePath,
+        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
       );
     } else {
       analytics.totalVisitors += 1; // Increment total visitors
       analytics.pageViews.set(
-        pagePath,
-        (analytics.pageViews.get(pagePath) || 0) + 1
+        sanitizedPagePath,
+        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
       );
     }
     //sum all pageviews to get total pageviews
