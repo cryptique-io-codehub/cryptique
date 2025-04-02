@@ -6,44 +6,25 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, userId, pagePath, wallet } =
-        sessionData;
-      //find the siteId in the database and particular sessionId and update the data accordingly
-      const sanitizedPagePath = pagePath.replace(/\./g, "_");
-      // console.log("sanitizedPagePath", sanitizedPagePath);
+      const { siteId, wallet } = sessionData;
       const analytics = await Analytics.findOne({ siteId: siteId });
-      if (!analytics) {
-        const newAnalytics = new Analytics({
-          siteId: siteId,
-          userId: [userId], // Initialize userId as an array with the current userId
-          totalVisitors: 1,
-          uniqueVisitors: 1,
-          pageViews: { [sanitizedPagePath]: 1 },
-          walletsConnected: 0,
-          sessions: [],
-        });
-        await newAnalytics.save();
-      }
       if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
-        const newWallet ={
+        const newWallet = {
           walletAddress: wallet.walletAddress[0],
           walletType: wallet.walletType,
-          chainName: wallet.chainName
-        }
+          chainName: wallet.chainName,
+        };
         const walletExists = analytics.wallets.some(
           (w) => w.walletAddress === newWallet.walletAddress
-      );
-  
-      if (!walletExists) {
+        );
+
+        if (!walletExists) {
           analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected
-      }
-  
-      await analytics.save(); // Increment wallets connected
+        }
 
-       
+        await analytics.save(); // Increment wallets connected
       }
-
 
       //if sessionid is same just update the session data
       const sessionIndex = analytics.sessions.findIndex(
@@ -56,12 +37,11 @@ exports.postAnalytics = async (req, res) => {
         analytics.sessions.push(sessionData);
         await analytics.save();
       }
-
       return res
         .status(200)
-        .json({ message: "Session Data Updated successfully", analytics });
+        .json({ message: "Data Updated successfully", analytics });
     }
-    const { siteId, websiteUrl, userId, pagePath ,isWeb3User} = payload;
+    const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
@@ -79,7 +59,7 @@ exports.postAnalytics = async (req, res) => {
       await analytics.save();
     }
     //update the wallet stuff if something updates
-    if(isWeb3User){
+    if (isWeb3User) {
       const walletIndex = analytics.web3UserId.findIndex(
         (wallet) => wallet === userId
       );
