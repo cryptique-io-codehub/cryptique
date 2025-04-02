@@ -33,6 +33,11 @@ const analyticsSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  web3Visitors: {
+    type: Number,
+    default: 0,
+  },
+  web3UserId: [String],
   pageViews: {
     type: Map,
     of: Number,
@@ -66,8 +71,11 @@ const analyticsSchema = new mongoose.Schema({
         term: String,
         content: String,
       },
-      walletAddresses: [String],
-      chainId: [String],
+      wallet:{
+        walletAddress: String,
+        walletType: String,
+        chainName: String
+      },
       startTime: Date,
       endTime: Date,
       pagesViewed: Number,
@@ -85,10 +93,14 @@ const analyticsSchema = new mongoose.Schema({
   ],
   hourlyStats: [hourlyStatsSchema],
   userAgents: [String], // To track unique devices
-  walletAddresses: [String], // To track unique wallets
-  chainId: [String], // To track unique chains
+  wallets: [
+    {
+      type: Object,
+    }
+  ]
 });
 
+// Pre-save hook to update walletsConnect
 // Indexes for faster querying
 analyticsSchema.index({ siteId: 1 });
 analyticsSchema.index({ "sessions.sessionId": 1 });

@@ -6,7 +6,7 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, userId, pagePath, walletAddresses, chainId } =
+      const { siteId, userId, pagePath, wallet } =
         sessionData;
       //find the siteId in the database and particular sessionId and update the data accordingly
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
@@ -24,6 +24,23 @@ exports.postAnalytics = async (req, res) => {
         });
         await analytics.save();
       }
+      if(wallet.walletAddress.length > 0){
+        const wallet ={
+          walletAddress: wallet.walletAddress[0],
+          walletType: wallet.walletType,
+          chainName: wallet.chainName
+        }
+        const walletIndex= analytics.wallets.findIndex(
+          (walletAddress) => walletAddress === wallet.walletAddress[0]
+        );
+        if (walletIndex === -1) {
+          analytics.wallets.push(wallet); // Add wallet address to the array if not already present
+          analytics.walletsConnected += 1; // Increment wallets connected
+
+        }
+      }
+
+
       //if sessionid is same just update the session data
       const sessionIndex = analytics.sessions.findIndex(
         (session) => session.sessionId === sessionData.sessionId
@@ -36,26 +53,12 @@ exports.postAnalytics = async (req, res) => {
         await analytics.save();
       }
 
-
-      // const walletIndex = analytics.walletAddresses.findIndex(
-      //   (wallet) => wallet === walletAddresses
-      // );
-      // if (walletIndex === -1) {
-      //   analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
-      //   analytics.walletsConnected += 1; // Increment wallets connected
-      // }
-
       return res
         .status(200)
         .json({ message: "Session Data Updated successfully", analytics, "walletadress": walletAddresses });
     }
-    //    console.log(payload);
-    //    console.log(sessionData);
-    //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
-    const { siteId, websiteUrl, userId, pagePath, walletsConnected } = payload;
+    const { siteId, websiteUrl, userId, pagePath ,isWeb3User} = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
-    // const {pageUrl, pageTitle, userActivity} = eventData;
-
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
       const analytics = new Analytics({
@@ -64,15 +67,23 @@ exports.postAnalytics = async (req, res) => {
         userId: [userId], // Initialize userId as an array with the current userId
         totalVisitors: 1,
         uniqueVisitors: 1,
+        web3Visitors: isWeb3User ? 1 : 0,
+        walletsConnected: 0,
         pageViews: { [sanitizedPagePath]: 1 },
-        walletsConnected: walletsConnected || 0,
-        walletAddresses: [],
-        chainId: [],
         sessions: [],
       });
       await analytics.save();
     }
     //update the wallet stuff if something updates
+    if(isWeb3User){
+      const walletIndex = analytics.web3UserId.findIndex(
+        (wallet) => wallet === userId
+      );
+      if (walletIndex === -1) {
+        analytics.web3UserId.push(userId); // Add wallet address to the array if not already present
+        analytics.web3Visitors += 1; // Increment wallets connected
+      }
+    }
 
     if (!analytics.userId.includes(userId)) {
       analytics.userId.push(userId); // Add userId to the array if not already present
