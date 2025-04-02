@@ -52,7 +52,6 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
     const { siteId,websiteUrl , userId, pagePath ,walletsConnected} = payload;
-    console.log("walletAddress", walletAddresses);
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
     // const {pageUrl, pageTitle, userActivity} = eventData;
 
