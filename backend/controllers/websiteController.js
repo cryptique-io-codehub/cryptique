@@ -101,7 +101,7 @@ exports.verify = async (req, res) => {
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
 
-        await page.goto(`http://${Domain}`, { waitUntil: "networkidle2" });
+        await page.goto(`https://${Domain}`, { waitUntil: "networkidle2" });
 
         // Evaluate if script with matching siteId exists
         const scriptExists = await page.evaluate((scriptSrc, siteId) => {
