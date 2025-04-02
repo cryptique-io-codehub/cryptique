@@ -97,20 +97,20 @@ exports.verify = async (req, res) => {
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
         const scriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
-        const browser = await puppeteer.launch({ headless: "new" });
-        const page = await browser.newPage();
+        const data = axios.get(`https://${Domain}`);
+        //parse the data such that we can get the script tag and check if it has the siteId
+        const $ = cheerio.load(data.data);
+        const scriptTag = $('script[src="https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js"]');
+        if (scriptTag.length === 0) {
+            return res.status(404).json({ message: "Script not found" });
+        }
+        // Check if the script tag has the siteId attribute
+        const scriptSiteId = scriptTag.attr('site-id');
+        if (scriptSiteId !== siteId) {
+            return res.status(404).json({ message: "Script not found" });
+        }
 
-        await page.goto(`https://${Domain}`, { waitUntil: "networkidle2" });
-
-        // Evaluate if script with matching siteId exists
-        const scriptExists = await page.evaluate((scriptSrc, siteId) => {
-            const scripts = Array.from(document.querySelectorAll('script'));
-            return scripts.some(script => script.src === scriptSrc && script.getAttribute('site-id') === siteId);
-        }, scriptSrc, siteId);
-
-        await browser.close();
-
-        if (scriptExists) {
+        if (scriptSiteId === siteId&& scriptTag.length > 0) {
             await Website.findOneAndUpdate(
                 { Domain },
                 { $set: { isVerified: true } },
