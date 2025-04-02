@@ -13,7 +13,7 @@ exports.postAnalytics = async (req, res) => {
       // console.log("sanitizedPagePath", sanitizedPagePath);
       const analytics = await Analytics.findOne({ siteId: siteId });
       if (!analytics) {
-        const analytics = new Analytics({
+        const newAnalytics = new Analytics({
           siteId: siteId,
           userId: [userId], // Initialize userId as an array with the current userId
           totalVisitors: 1,
@@ -22,7 +22,7 @@ exports.postAnalytics = async (req, res) => {
           walletsConnected: 0,
           sessions: [],
         });
-        await analytics.save();
+        await newAnalytics.save();
       }
       if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet ={
@@ -59,7 +59,7 @@ exports.postAnalytics = async (req, res) => {
 
       return res
         .status(200)
-        .json({ message: "Session Data Updated successfully", analytics, "walletadress": walletAddresses });
+        .json({ message: "Session Data Updated successfully", analytics });
     }
     const { siteId, websiteUrl, userId, pagePath ,isWeb3User} = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
