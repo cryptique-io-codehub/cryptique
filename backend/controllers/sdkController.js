@@ -25,7 +25,7 @@ exports.postAnalytics = async (req, res) => {
         await analytics.save();
       }
       if(wallet.walletAddress.length > 0){
-        const wallet ={
+        const newWallet ={
           walletAddress: wallet.walletAddress[0],
           walletType: wallet.walletType,
           chainName: wallet.chainName
@@ -34,7 +34,7 @@ exports.postAnalytics = async (req, res) => {
           (walletAddress) => walletAddress === wallet.walletAddress[0]
         );
         if (walletIndex === -1) {
-          analytics.wallets.push(wallet); // Add wallet address to the array if not already present
+          analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected
 
         }
