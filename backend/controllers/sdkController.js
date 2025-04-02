@@ -24,17 +24,22 @@ exports.postAnalytics = async (req, res) => {
         });
         await analytics.save();
       }
-      // console.log("wallet", wallet);
-      //update the wallet stuff if something updates
       if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet ={
           walletAddress: wallet.walletAddress[0],
           walletType: wallet.walletType,
           chainName: wallet.chainName
         }
-        console.log("newWallet", newWallet);
+        const walletExists = analytics.wallets.some(
+          (w) => w.walletAddress === newWallet.walletAddress
+      );
+  
+      if (!walletExists) {
           analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected
+      }
+  
+      await analytics.save(); // Increment wallets connected
 
        
       }
