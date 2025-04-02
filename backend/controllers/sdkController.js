@@ -43,6 +43,7 @@ exports.postAnalytics = async (req, res) => {
     //    console.log(sessionData);
     //    return res.status(200).json({ message: "Data Updated successfully", payload,sessionData });
     const { siteId,websiteUrl , userId, pagePath ,walletsConnected,walletAddresses,chainId} = payload;
+    console.log("walletAddress", walletAddresses);
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
     // const {pageUrl, pageTitle, userActivity} = eventData;
 
@@ -63,14 +64,14 @@ exports.postAnalytics = async (req, res) => {
       await analytics.save();
     }
     //update the wallet stuff if something updates
-    const walletIndex = analytics.walletAddresses.findIndex(
-      (wallet) => wallet === walletAddresses
-    );
-    if (walletIndex === -1) {
+    // const walletIndex = analytics.walletAddresses.findIndex(
+    //   (wallet) => wallet === walletAddresses
+    // );
+    // if (walletIndex === -1) {
         
-        analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
-        analytics.walletsConnected += 1; // Increment wallets connected
-    } 
+    //     analytics.walletAddresses.push(walletAddresses); // Add wallet address to the array if not already present
+    //     analytics.walletsConnected += 1; // Increment wallets connected
+    // } 
         
     if (!analytics.userId.includes(userId)) {
       analytics.userId.push(userId); // Add userId to the array if not already present
