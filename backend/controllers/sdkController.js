@@ -24,7 +24,7 @@ exports.postAnalytics = async (req, res) => {
         });
         await analytics.save();
       }
-      console.log("wallet", wallet);
+      // console.log("wallet", wallet);
       //update the wallet stuff if something updates
       if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet ={
@@ -32,15 +32,11 @@ exports.postAnalytics = async (req, res) => {
           walletType: wallet.walletType,
           chainName: wallet.chainName
         }
-        const walletIndex = analytics.wallets.findIndex(
-          (w) => w.walletAddress === wallet.walletAddress[0] // Correct comparison
-      );
-  
-        if (walletIndex === -1) {
+        console.log("newWallet", newWallet);
           analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected
 
-        }
+       
       }
 
 
