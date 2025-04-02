@@ -51,7 +51,7 @@ exports.postAnalytics = async (req, res) => {
         userId: [userId], // Initialize userId as an array with the current userId
         totalVisitors: 1,
         uniqueVisitors: 1,
-        web3Visitors: isWeb3User ? 1 : 0,
+        web3Visitors:  0,
         walletsConnected: 0,
         pageViews: { [sanitizedPagePath]: 1 },
         sessions: [],
