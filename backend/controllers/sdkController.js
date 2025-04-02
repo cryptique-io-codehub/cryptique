@@ -66,8 +66,8 @@ exports.postAnalytics = async (req, res) => {
         uniqueVisitors: 1,
         pageViews: { [sanitizedPagePath]: 1 },
         walletsConnected: walletsConnected || 0,
-        walletAddresses: walletAddresses || [],
-        chainId: chainId || [],
+        walletAddresses:  [],
+        chainId:  [],
         sessions: [],
       });
       await analytics.save();
