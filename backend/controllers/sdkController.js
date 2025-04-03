@@ -39,7 +39,7 @@ exports.postAnalytics = async (req, res) => {
       }
       return res
         .status(200)
-        .json({ message: "Session Updated successfully", sessionData });
+        .json({ message: "Session Updated successfully", analytics });
     }
     const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
