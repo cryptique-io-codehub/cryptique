@@ -108,7 +108,8 @@ exports.verify = async (req, res) => {
             return res.status(400).json({ message: "Domain and siteId are required" });
         }
 
-        const targetScriptSrc = "https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const targetScriptSrc1 = "https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const targetScriptSrc2 = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
         
         
         let data;
@@ -131,7 +132,7 @@ exports.verify = async (req, res) => {
             const script = $(element);
             
             
-            if (script.attr('src') === targetScriptSrc) {
+            if (script.attr('src') === targetScriptSrc1|| script.attr('src') === targetScriptSrc2) {
                 foundScript = true;
                 if (script.attr('site-id') === siteId) {
                     foundSiteId = true;
@@ -141,7 +142,7 @@ exports.verify = async (req, res) => {
             
             
             const scriptContent = script.html() || '';
-            if (scriptContent.includes(targetScriptSrc)) {
+            if (scriptContent.includes(targetScriptSrc1) || scriptContent.includes(targetScriptSrc2)) {
                 foundScript = true;
                 
                 const siteIdMatch = scriptContent.match(/script\.setAttribute\('site-id',\s*'([^']+)'/);
