@@ -3,9 +3,6 @@ const cheerio = require("cheerio");
 const Website=require("../models/website");
 const Team=require("../models/team");
 const { v4: uuidv4 } = require('uuid');
-// const { chromium } = require('@playwright/test');
-const chromium = require('@sparticuz/chromium');
-const { chromium: playwright } = require('playwright-core');
 
 exports.addWebsite=async (req,res)=>{
    try{
