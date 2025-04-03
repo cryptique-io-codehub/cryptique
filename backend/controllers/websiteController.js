@@ -43,7 +43,7 @@ exports.addWebsite=async (req,res)=>{
 
         console.error("Error while adding website",e);
 
-        res.status(500).json({ message: 'Error creating user', error: error.message });
+        res.status(500).json({ message: 'Error creating user', error: e.message });
 
    }
 
@@ -97,7 +97,7 @@ exports.verify = async (req, res) => {
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
         const scriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
-        const data = axios.get(`https://${Domain}`);
+        const data = await axios.get(`https://${Domain}`);
         //parse the data such that we can get the script tag and check if it has the siteId
         const $ = cheerio.load(data.data);
         const scriptTag = $('script[src="https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js"]');
