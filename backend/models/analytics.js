@@ -63,6 +63,7 @@ const analyticsSchema = new mongoose.Schema({
   sessions: [
     {
       sessionId: String,
+      userId: String,
       referrer: String,
       utmData: {
         source: String,
