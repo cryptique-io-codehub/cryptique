@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 
 const HorizontalFunnelVisualization = ({analytics}) => {
-  console.log(analytics)
+  // console.log(analytics)
   // const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
   // useEffect(()=>{
   // setanalytics(analytics);
@@ -44,11 +44,11 @@ const HorizontalFunnelVisualization = ({analytics}) => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{analytics.walletsConnected/analytics.uniqueVisitors}%</p>
+            <p className="text-xl font-bold">{analytics?.walletsConnected/analytics?.uniqueVisitors}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{analytics.web3Visitors/analytics.uniqueVisitors}%</p>
+            <p className="text-xl font-bold">{analytics?.web3Visitors/analytics?.uniqueVisitors}%</p>
           </div>
         </div>
       </div>
@@ -153,11 +153,11 @@ const HorizontalFunnel = ({ data,analytics }) => {
   // Determine the text value based on item.name
   let textValue;
   if (item.name === 'Unique Visitors') {
-    textValue = analytics.uniqueVisitors;
+    textValue = analytics?.uniqueVisitors;
   } else if (item.name === 'Web3 Users') {
-    textValue = analytics.web3Visitors;
+    textValue = analytics?.web3Visitors;
   } else if (item.name === 'Wallets connected') {
-    textValue = analytics.walletsConnected;
+    textValue = analytics?.walletsConnected;
   } else if (item.name === 'Transaction recorded') {
     textValue = 0;
   } 
@@ -182,7 +182,7 @@ const HorizontalFunnel = ({ data,analytics }) => {
 
 // Example usage
 const FunnelDashboard = ({analytics}) => {
-  console.log(analytics);
+  // console.log(analytics);
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">User Funnel Dashboard</h1>

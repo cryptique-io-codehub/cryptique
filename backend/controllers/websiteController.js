@@ -91,27 +91,27 @@ exports.deleteWebsite=async (req,res)=>{
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
-        console.log('a');
-        console.log(req.body);
-        console.log(Domain);
-        console.log(siteId);
-        console.log('b');
+        console.log('first');
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
-
+        console.log('second');
         const scriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
-
+        console.log('third');
         const browser = await puppeteer.launch({ headless: "new" });
+        console.log('fourth')
         const page = await browser.newPage();
+        console.log('fifth')
 
         await page.goto(`https://${Domain}`, { waitUntil: "networkidle2" });
+        console.log('sixth');
 
         // Evaluate if script with matching siteId exists
         const scriptExists = await page.evaluate((scriptSrc, siteId) => {
             const scripts = Array.from(document.querySelectorAll('script'));
             return scripts.some(script => script.src === scriptSrc && script.getAttribute('site-id') === siteId);
         }, scriptSrc, siteId);
-
+        console.log('seventh');
         await browser.close();
+        console.log('eight');
 
         if (scriptExists) {
             console.log('rrrrr');
@@ -138,7 +138,7 @@ exports.getWebsitesOfTeam = async (req, res) => {
 
         const team = await Team.findOne({ name: teamName }).populate('websites');
         if (!team) return res.status(404).json({ message: "Team not found" });
-        console.log(typeof(team.websites));
+        console.log(team.websites.length);
         return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {
         console.error("Error while fetching websites", e);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import GeoAnalyticsMap from '../GeoAnalyticsMap';
 
-const GeoAnalytics = () => {
-  const [selectedCountry, setSelectedCountry] = useState('United States of America');
+const GeoAnalytics = ({analytics}) => {
+  const [selectedCountry, setSelectedCountry] = useState();
   const [countryData, setCountryData] = useState({
     users: 100000,
     web3Users: 100000,
@@ -106,7 +106,7 @@ const GeoAnalytics = () => {
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
         <div className="w-full lg:w-3/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
           <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Details by country</h2>
-          <GeoAnalyticsMap countriesData={countriesData} onCountrySelect={handleCountrySelect} />
+          <GeoAnalyticsMap analytics={analytics}  selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}/>
         </div>
         
         <div className="w-full lg:w-2/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
@@ -114,7 +114,7 @@ const GeoAnalytics = () => {
             <h2 className="text-base md:text-lg font-semibold">Chosen Country:</h2>
             <div className="flex items-center">
               <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">{selectedCountry}</span>
-              <span className="ml-2">🇺🇸</span>
+              <span className="ml-2"></span>
             </div>
           </div>
           

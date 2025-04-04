@@ -12,518 +12,45 @@ import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalyt
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
-const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAddedWebsite,selectedTeam,setSelectedTeam ,setanalytics,idd,setidd}) => {
-  // Initialize state from localStorage when available
-  const [domain, setDomain] = useState(() => localStorage.getItem('crypto_domain') || '');
-  const [name, setName] = useState(() => localStorage.getItem('crypto_name') || '');
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [scriptCode, setScriptCode] = useState(() => localStorage.getItem('crypto_scriptCode') || '');
-  const [showScript, setShowScript] = useState(() => localStorage.getItem('crypto_showScript') === 'true');
-  const [successMessage, setSuccessMessage] = useState('');
-
-  // Update localStorage whenever certain state values change
-  useEffect(() => {
-    if (domain) localStorage.setItem('crypto_domain', domain);
-    if (name) localStorage.setItem('crypto_name', name);
-    if (scriptCode) localStorage.setItem('crypto_scriptCode', scriptCode);
-    localStorage.setItem('crypto_showScript', showScript.toString());
-    if (idd) localStorage.setItem('crypto_siteId', idd);
-  }, [domain, name, scriptCode, showScript, idd]);
-
-  // Clear localStorage values when popup is closed
-  const handleClose = () => {
-    localStorage.setItem('crypto_showScript', 'false');
-    if (!showScript) {
-      // Only clear if user hasn't generated a script yet
-      localStorage.removeItem('crypto_domain');
-      localStorage.removeItem('crypto_name');
-      localStorage.removeItem('crypto_scriptCode');
-      localStorage.removeItem('crypto_showScript');
-      localStorage.removeItem('crypto_siteId');
-    }
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate domain
-    if (!domain) {
-      setError('Domain is required');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setError('');
-    setShowScript(false);
-    setSuccessMessage('');
-    
-    try {
-      // Send POST request to the website/create endpoint
-      const response = await axiosInstance.post('/website/create',
-        {
-          Domain: domain,
-          Name: name || domain, // Use domain as name if no name provided
-          teamName: selectedTeam // Include team name in request body
-        }
-      );
-      console.log(response.data.website.siteId);
-      
-      // if (!response.ok) {
-      //   throw new Error('Failed to add website');
-      // }
-      
-      // Check if there is an ID in the response
-      const siteId = response.data.website.siteId;
-      localStorage.setItem('siteId_storage',siteId);
-      console.log(siteId);
-      setidd(siteId);
-      
-      if (siteId) {
-        // Create the script code with the siteId - Modified for async loading
-        const scriptHTML = `script>
-      var script = document.createElement('script');
-      script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-      script.setAttribute('site-id', '${siteId}');
-      document.head.appendChild(script);
-    </script>`;
-        
-        setScriptCode(scriptHTML);
-        setShowScript(true);
-        
-        // Save to localStorage
-        localStorage.setItem('crypto_scriptCode', scriptHTML);
-        localStorage.setItem('crypto_showScript', 'true');
-        localStorage.setItem('crypto_siteId', siteId);
-      }
-      
-      // Success
-      onSuccess && onSuccess();
-    } catch (error) {
-      console.error('Error adding website:', error);
-      setError(error.message || 'Failed to add website');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-
-  const handleVerify = async () => {
-    // Send verification request to server
-    try {
-      setIsSubmitting(true);
-      setError('');
-      setSuccessMessage('');
-      console.log(idd);
-      
-      const response = await axiosInstance.post('/website/verify',
-        {
-          Domain: domain,
-          siteId: idd
-        });
-      // Parse response before checking ok status
-      // const responseData = await response.json();
-      
-      if (response.status===200) {
-        setSuccessMessage(`Verification successful for ${domain}`);
-        const idx=localStorage.getItem('siteId_storage');
-        const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`);
-        setanalytics(new_response.data.analytics);
-
-        localStorage.setItem('analytics_storage',new_response.data.analytics);
-        if(new_response.data.message==='Analytics not found'){
-
-        }
-        setHasAddedWebsite(true);
-                
-      }
-      else{
-        throw new Error(response.message || 'Verification failed');
-      }
-      // Display success message
-      
-      
-      // Clean up localStorage after successful verification
-      setTimeout(() => {
-        localStorage.removeItem('crypto_domain');
-        localStorage.removeItem('crypto_name');
-        localStorage.removeItem('crypto_scriptCode');
-        localStorage.removeItem('crypto_showScript');
-        localStorage.removeItem('crypto_siteId');
-        onClose();
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Error verifying website:', error);
-      setError(error.message || 'Failed to verify website');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 mx-4">
-        <div className="flex items-center mb-6">
-          <button 
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <h2 className="text-xl font-semibold ml-2">Add a new website</h2>
-        </div>
-        
-        {showScript ? (
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-2">Installation Script</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Add this script to your website to start tracking:
-            </p>
-            <div className="bg-gray-100 p-3 rounded-md">
-              <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{scriptCode}</pre>
-            </div>
-            <div className="mt-4 flex justify-between">
-              <button
-                onClick={() => {navigator.clipboard.writeText(scriptCode)}}
-                className="py-2 px-4 bg-blue-500 text-white font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                Copy to clipboard
-              </button>
-              <button
-                onClick={handleVerify}
-                className="py-2 px-4 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Verifying...' : 'Verify'}
-              </button>
-            </div>
-            {error && (
-              <div className="mt-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-            {successMessage && (
-              <div className="mt-4 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
-                {successMessage}
-              </div>
-            )}
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-2">
-                Domain<span className="text-red-600">*</span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <span className="text-gray-500">https://</span>
-                </div>
-                <input
-                  type="text"
-                  id="domain"
-                  placeholder="example.com"
-                  className="pl-16 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                  required
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
-              </p>
-            </div>
-            
-            <div className="mb-4">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Name (optional)
-              </label>
-              <input
-                type="text"
-                id="name"
-                placeholder="Please enter a name for your website"
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                This is the name that will be displayed in the dashboard
-              </p>
-            </div>
-            
-            {error && (
-              <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-            
-            <p className="text-sm text-gray-600 mb-4">
-              By adding a website, you agree to our privacy policy
-            </p>
-            
-            <button
-              type="submit"
-              className="w-full py-2 px-4 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 flex items-center justify-center"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Adding...' : 'Add website'} 
-              {!isSubmitting && (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Main AddWebsiteForm Component
-const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite,setanalytics }) => {
-  const [websites, setWebsites] = useState(() => localStorage.getItem('websites_array') || []);
-  const [selectedTeam, setSelectedTeam] = useState(() => localStorage.getItem('selectedTeam') || '');
-  const [selectedWebsite, setSelectedWebsite] = useState(localStorage.getItem('selectedWebsite') || '');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isAddWebsitePopupOpen, setIsAddWebsitePopupOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [idd,setidd]=useState(() => localStorage.getItem('siteId_storage') || '');
-
-
-  console.log(idd);
-  // Function to fetch websites from the server
-  const fetchWebsites = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axiosInstance.post('/website/getWebsites', {
-        teamName: selectedTeam
-      });
-      if (response && response.data && response.data.websites) {
-        setWebsites(response.data.websites);
-        localStorage.setItem('websites_array',websites);
-        console.log(localStorage.getItem('websites_array'));
-        localStorage.setItem("selectedWebsite",response.data.websites[0].Domain);
-        localStorage.setItem('siteId_storage',response.data.websites[0].siteId);
-        const idx=localStorage.getItem('siteId_storage');
-        const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`)
-        localStorage.setItem("analytics_storage",new_response.data.analytics);
-        console.log(new_response.data.analytics);
-      }
-    } catch (error) {
-      console.error('Error fetching websites:', error);
-      setWebsites([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Fetch websites on component mount and when selected team changes
-  useEffect(() => {
-    fetchWebsites();
-  }, [ hasAddedWebsite]); // Re-fetch when team changes or a new website is added
-
-  useEffect(() => {
-    console.log("Updated websites:", websites);
-  }, [websites]);
-
-  useEffect(() => {
-  }, [idd]);
-
-  // Function to store domain in token or wherever needed
-
-  // Handle website selection
-  const handleSelectWebsite = async(website) => {
-    setSelectedWebsite(website.Domain);
-    localStorage.setItem('selectedWebsite', website.Domain);
-    localStorage.setItem('siteId_storage',website.siteId);
-    setIsDropdownOpen(false);
-    const idx=localStorage.getItem('siteId_storage');
-    const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`);
-        console.log(new_response);
-        console.log(idx);
-        if (new_response.data.analytics && 
-          new_response.data.analytics.pageViews !== undefined) {
-        setanalytics(new_response.data.analytics);
-        localStorage.setItem('analytics_storage', new_response.data.analytics);
-        setHasAddedWebsite(true);
-      } 
-      else{
-        setidd(website.siteId);
-        const scriptHTML = `<script>
-        var script = document.createElement('script');
-        script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-        script.setAttribute('site-id', '${website.siteId}');
-        document.head.appendChild(script);
-      </script>`;
-      localStorage.setItem('crypto_domain', website.Domain);
-      localStorage.setItem('crypto_name', website.Name || website.Domain);
-      localStorage.setItem('crypto_scriptCode', scriptHTML);
-      localStorage.setItem('crypto_showScript', 'true');
-
-        setIsAddWebsitePopupOpen(true);
-      }
-    // Store in localStorage
-    
-    // Store domain in token
-
-  };
-
-  // Handle dropdown open to refresh the list
-  const handleDropdownToggle = () => {
-    // If we're opening the dropdown, refresh the websites list
-    if (!isDropdownOpen) {
-      fetchWebsites();
-    }
-    setIsDropdownOpen(!isDropdownOpen);
-  };
-
-  // Handle add website option click
-  const handleAddWebsite = () => {
-    setIsAddWebsitePopupOpen(true);
-    setIsDropdownOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <div className="select-website mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select website
-        </label>
-        
-        <div className="relative">
-          <button
-            type="button"
-            className="flex items-center justify-between w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
-            onClick={handleDropdownToggle}
-            disabled={isLoading}
-          >
-            {selectedWebsite ? (
-              <div className="flex items-center">
-                <span className="inline-block w-6 h-6 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                <span className="text-gray-800">{localStorage.getItem("selectedWebsite")}</span>
-              </div>
-            ) : (
-              <span className="text-gray-500">Select a website</span>
-            )}
-            {isLoading ? (
-              <svg className="animate-spin h-5 w-5 ml-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
-          
-          {/* Dropdown menu */}
-          {isDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
-              <ul className="py-1 max-h-60 overflow-auto">
-                {isLoading ? (
-                  <li className="px-4 py-2 text-gray-500">Loading websites...</li>
-                ) : websites.length > 0 ? (
-                  websites.map((website, index) => (
-                    <li key={website.siteId || index}>
-                      <button
-                        type="button"
-                        className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
-                        onClick={() => handleSelectWebsite(website)}
-                      >
-                        <span className="inline-block w-6 h-6 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                          </svg>
-                        </span>
-                        <span>{website.Domain || website.domain}</span>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-4 py-2 text-gray-500">No websites found</li>
-                )}
-                
-                {/* Add website option */}
-                <li className="border-t border-gray-200">
-                  <button
-                    type="button"
-                    className="flex items-center w-full px-4 py-2 text-left text-blue-600 hover:bg-gray-100"
-                    onClick={handleAddWebsite}
-                  >
-                    <span className="inline-block w-6 h-6 mr-2 bg-blue-600 rounded-full text-white flex-shrink-0 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                    <span>Add website</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Add website popup */}
-      <AddWebsitePopup 
-        isOpen={isAddWebsitePopupOpen}
-        onClose={() => setIsAddWebsitePopupOpen(false)}
-        onSuccess={fetchWebsites} // Use fetchWebsites as the success callback
-        hasAddedWebsite={hasAddedWebsite}
-        setHasAddedWebsite={setHasAddedWebsite}
-        selectedTeam={selectedTeam}
-        setSelectedTeam={setSelectedTeam}
-        setanalytics={setanalytics}
-        idd={idd}
-        setidd={setidd}
-      />
-    </div>
-  );
-};
 
 
 const OffchainAnalytics = () => {
   const [activeSection, setActiveSection] = useState('Dashboard');
-  const [selectedWebsite, setSelectedWebsite] = useState('Dropdown');
+  const [selectedWebsite, setSelectedWebsite] = useState();
   const [selectedDate, setSelectedDate] = useState('Select Date');
   const [selectedFilters, setSelectedFilters] = useState('Select Filters');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [secondNavOpen, setSecondNavOpen] = useState(false);
-  const [hasAddedWebsite, setHasAddedWebsite] =useState(false);
-  const [addedWebsite, setAddedWebsite] = useState(null);
-  // State for chart data
-  const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
+  const [websitearray,setWebsitearray]=useState([]);
+  const [analytics,setanalytics]=useState({});
+  const [idy,setidy]=useState(localStorage.getItem("idy"));
   const [chartData, setChartData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = useState(null);
-  const[noData,setnoData]=useState(true);
 
   // State for analytics cards
-  console.log(analytics);
-  const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
-  const pageViews_size = Object.keys(analytics.pageViews ?? {}).length;
+  // console.log(analytics);
+  useEffect(()=>{
+  const handleSelectWebsite=async()=>{
+   console.log(idy);
+    const idt=localStorage.getItem("idy");
+    if(idt){
+    const new_response = await axiosInstance.get(`/sdk/analytics/${idt}`);
+    setanalytics(new_response.data.analytics);
+    }
+  }
+  handleSelectWebsite();
+},[idy]);
+console.log(idy);
+  const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
+  const pageViews_size = Object.keys(analytics?.pageViews ?? {}).length;
   const pagepervisit=(totalPageViews/pageViews_size).toFixed(2);
   const calculateAverageDuration = (sessions) => {
      if (!Array.isArray(sessions) || sessions.length === 0) return 0;
     const totalDuration = sessions.reduce((sum, session) => sum + session.duration, 0);
     return totalDuration / sessions.length;
   };
- 
 
   const calculateBounceRate = (sessions) => {
     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
@@ -535,8 +62,8 @@ const OffchainAnalytics = () => {
     return bounceCount / sessions.length;
   };
 
-  const bounceRate = calculateBounceRate(analytics.sessions)*100;
-  const avgVisitDuration = calculateAverageDuration(analytics.sessions).toFixed(2);
+  const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+  const avgVisitDuration = calculateAverageDuration(analytics?.sessions).toFixed(2);
   
  
   
@@ -587,8 +114,8 @@ const OffchainAnalytics = () => {
   ];
 
   const data = [
-    { name: "New", value: analytics.newVisitors, color: "#3B82F6" }, // Blue
-    { name: "Returning", value: analytics.returningVisitors, color: "#F59E0B" }, // Orange
+    { name: "New", value: analytics?.newVisitors, color: "#3B82F6" }, // Blue
+    { name: "Returning", value: analytics?.returningVisitors, color: "#F59E0B" }, // Orange
   ];
   
   // Updated AnalyticsCard to be responsive
@@ -606,7 +133,7 @@ const OffchainAnalytics = () => {
   // Fetch analytics data from server when filters change
   useEffect(() => {
     const fetchData = async () => {
-      if (!hasAddedWebsite || activeSection !== 'Dashboard') return;
+    
     
     setIsLoading(true);
     setError(null);
@@ -658,41 +185,6 @@ const OffchainAnalytics = () => {
           walletsIncrease: `${walletsIncreasePercent}% Increase`
         };
         
-        // Generate random analytics card data
-        // const mockAnalyticsData = {
-        //   uniqueVisitors: { 
-        //     value: `${getRandomValue(20, 28)},${getRandomValue(100, 999)}K`, 
-        //     increase: `${getRandomValue(2, 8)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   totalPageView: { 
-        //     value: `${getRandomValue(30, 42)},${getRandomValue(100, 999)}`, 
-        //     increase: `${getRandomValue(3, 9)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   pagePerVisit: { 
-        //     value: `${getRandomValue(3, 7)}.${getRandomValue(1, 9)}`, 
-        //     increase: `${getRandomValue(1, 5)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   bounceRate: { 
-        //     value: `${getRandomValue(20, 45)}%`, 
-        //     increase: `${getRandomValue(1, 4)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   avgVisitDuration: { 
-        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   TotalWalletsConnected: { 
-        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   Web3Users: { 
-        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-        //   },
-        //   TotalOnChainValue: { 
-        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-        //   }
-        // };
         
         // Generate traffic sources data
         const mockTrafficSources = [
@@ -719,7 +211,7 @@ const OffchainAnalytics = () => {
     };
 
     fetchData();
-  }, [hasAddedWebsite,selectedWebsite, selectedDate, selectedFilters, activeSection]);
+  }, [selectedDate, selectedFilters, activeSection]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {
@@ -737,42 +229,7 @@ const OffchainAnalytics = () => {
       walletsIncrease: `${walletsIncreasePercent}% Increase`
     });
     
-    // Update analytics cards based on the data point
-    // setAnalyticsData({
-    //   uniqueVisitors: { 
-    //     value: `${dataPoint.visitors * 0.1}K`, 
-    //     increase: `${(dataPoint.visitors / 100).toFixed(1)}%` 
-    //   },
-    //   totalPageView: { 
-    //     value: `${dataPoint.visitors * 1.5}`, 
-    //     increase: `${(dataPoint.visitors / 80).toFixed(1)}%` 
-    //   },
-    //   pagePerVisit: { 
-    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
-    //   },
-    //   bounceRate: { 
-    //     value: `${30 - (dataPoint.visitors / 10).toFixed(0)}%`, 
-    //     increase: `${(dataPoint.visitors / 200).toFixed(1)}%` 
-    //   },
-    //   avgVisitDuration: { 
-    //     value: `${Math.max(2, Math.round(dataPoint.visitors / 10))}m ${Math.round(dataPoint.visitors / 2)}s`, 
-    //     increase: `${(dataPoint.visitors / 120).toFixed(1)}%` 
-    //   },
-    //   TotalWalletsConnected: { 
-    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
-    //   },
-    //   Web3Users: { 
-    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
-    //   },
-    //   TotalOnChainValue: { 
-    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
-    //   }
-
-    // });
+   
     
     // Update traffic sources based on the data point
     const updatedSources = trafficSources.map(source => {
@@ -916,20 +373,8 @@ return (
         </div>
         
         {/* Main content area - scrollable */}
-        <div className="flex-grow overflow-y-auto">
-          {!hasAddedWebsite? (
-            // Show AddWebsiteForm if no website has been added yet, regardless of which section is active
-            <div className="flex flex-col">
-            <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
-              <div className="max-w-7xl mx-auto">
-                <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
-                <p className="text-xs md:text-sm text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
-              </div>
-            </div>
-            <AddWebsiteForm hasAddedWebsite={hasAddedWebsite} setHasAddedWebsite={setHasAddedWebsite} setanalytics={setanalytics}/>
-            </div>
-          ) : (
-            <>
+       <div className="flex-grow overflow-y-auto">
+             
               {/* Main content */}
               <div className="px-2 md:px-4 pb-4">
                 {/* Main content section */}
@@ -942,25 +387,33 @@ return (
                       </div>
                     </div>
                     <Filters 
+                      websitearray={websitearray}
+                      setWebsitearray={setWebsitearray}
+                      analytics={analytics}
+                      setanalytics={setanalytics}
                       selectedDate={selectedDate} 
                       setSelectedDate={setSelectedDate} 
                       selectedWebsite={selectedWebsite} 
                       setSelectedWebsite={setSelectedWebsite}
                       selectedFilters={selectedFilters} 
                       setSelectedFilters={setSelectedFilters}
+                      idy={idy}
+                      setidy={setidy}
                     />
                     
                     {/* MODIFICATION: Analytics cards in full width single row */}
+                   {websitearray.length>0 ? <div>
                     <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 h-auto pl-2">
+                      
                       <AnalyticsCard 
                         label="Unique visitors" 
-                        data={analytics.uniqueVisitors} 
+                        data={analytics?.uniqueVisitors} 
                         bgColor="bg-[#CAA968]" 
                         textColor="text-black" 
                       />
                       <AnalyticsCard 
                         label="Total Wallets Connected " 
-                        data= {analytics.walletsConnected}
+                        data= {analytics?.walletsConnected}
                         bgColor="bg-[#1D0C46]" 
                         textColor="text-white" 
                       />
@@ -984,7 +437,7 @@ return (
                       />
                       <AnalyticsCard 
                         label="Web3 Users" 
-                        data={analytics.web3Visitors}
+                        data={analytics?.web3Visitors}
                         bgColor="bg-white" 
                         textColor="text-black" 
                       />
@@ -1060,7 +513,7 @@ return (
                                   <tr className="border-b">
                                     <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">Type</th>
                                     <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">Visitors</th>
-                                    <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">Wallet</th>
+                                    <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">%</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1071,7 +524,7 @@ return (
                                         {item.name}
                                       </td>
                                       <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
-                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">81.94%</td>
+                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{(item.value/(analytics.newVisitors + analytics.returningVisitors)*100).toFixed(2)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -1081,51 +534,118 @@ return (
                         </div>
                       </div>
                     </div>
+                    </div>
+                  :(
+                    
+                      <div className="flex h-screen">
+                      <div className="flex-1 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
+                          <h1 className="text-4xl font-bold text-blue-800 mb-4">
+                            Please Add atleast one website
+                          </h1>
+                        </div>
+                      </div>
+                    </div>
+                  
+                  )}
                   </div>
                 )}
                 
                 {activeSection === 'Traffic analytics' && (
                   <>
                     <Filters 
+                      websitearray={websitearray}
+                      setWebsitearray={setWebsitearray}
+                      analytics={analytics}
+                      setanalytics={setanalytics}
                       selectedDate={selectedDate} 
                       setSelectedDate={setSelectedDate} 
                       selectedWebsite={selectedWebsite} 
                       setSelectedWebsite={setSelectedWebsite}
                       selectedFilters={selectedFilters} 
                       setSelectedFilters={setSelectedFilters}
+                      idy={idy}
+                      setidy={setidy}
                     />
-                    <TrafficAnalytics 
+                      {websitearray.length>0 ? <TrafficAnalytics 
                       trafficSources={trafficSources} 
-                      setTrafficSources={setTrafficSources}
-                    />
+                      setTrafficSources={setTrafficSources}  
+                    />:(
+                      <div className="flex h-screen">
+                      <div className="flex-1 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
+                          <h1 className="text-4xl font-bold text-blue-800 mb-4">
+                            Please Add atleast one website
+                          </h1>
+                        </div>
+                      </div>
+                    </div>
+                    )}
+
                   </>
                 )}
                 
                 {activeSection === 'Geo Insights' && (
                   <>
                     <Filters 
+                      websitearray={websitearray}
+                      setWebsitearray={setWebsitearray}
+                      analytics={analytics}
+                      setanalytics={setanalytics}
                       selectedDate={selectedDate} 
                       setSelectedDate={setSelectedDate} 
                       selectedWebsite={selectedWebsite} 
                       setSelectedWebsite={setSelectedWebsite}
                       selectedFilters={selectedFilters} 
                       setSelectedFilters={setSelectedFilters}
+                      idy={idy}
+                      setidy={setidy}
                     />
-                    <GeoAnalyticss />
+                     {websitearray.length>0 ?
+                    <GeoAnalyticss analytics={analytics} />
+                    :(
+                      <div className="flex h-screen">
+                      <div className="flex-1 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
+                          <h1 className="text-4xl font-bold text-blue-800 mb-4">
+                            Please Add atleast one website
+                          </h1>
+                        </div>
+                      </div>
+                    </div>
+                    )}
                   </>
                 )}
                 
                 {activeSection === 'Retention' && (
                   <>
                     <Filters 
+                      websitearray={websitearray}
+                      setWebsitearray={setWebsitearray}
+                      analytics={analytics}
+                      setanalytics={setanalytics}
                       selectedDate={selectedDate} 
                       setSelectedDate={setSelectedDate} 
                       selectedWebsite={selectedWebsite} 
                       setSelectedWebsite={setSelectedWebsite}
                       selectedFilters={selectedFilters} 
                       setSelectedFilters={setSelectedFilters}
+                      idy={idy}
+                      setidy={setidy}
                     />
+                    {websitearray.length>0 ?
                     <RetentionAnalytics/>
+                    :(
+                      <div className="flex h-screen">
+                      <div className="flex-1 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
+                          <h1 className="text-4xl font-bold text-blue-800 mb-4">
+                            Please Add atleast one website
+                          </h1>
+                        </div>
+                      </div>
+                    </div>
+                    )}
                   </>
                 )}
                 
@@ -1138,9 +658,10 @@ return (
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </div>        
+            
+
+        </div>
+            
       </div>
     </div>
     

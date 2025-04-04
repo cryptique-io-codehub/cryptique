@@ -106,7 +106,6 @@ exports.postAnalytics = async (req, res) => {
 
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {
-  console.log('ttttttt');
   try {
     
     const { siteId } = req.params;
