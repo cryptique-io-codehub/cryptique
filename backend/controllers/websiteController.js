@@ -93,9 +93,15 @@ exports.verify = async (req, res) => {
         const { Domain, siteId } = req.body;
         console.log('first');
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
+<<<<<<< HEAD
         console.log('second');
         const scriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
         console.log('third');
+=======
+
+        const scriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
+
+>>>>>>> b0c2f3d0c0c0f9207f911d19e48fa32adc3ff439
         const browser = await puppeteer.launch({ headless: "new" });
         console.log('fourth')
         const page = await browser.newPage();
