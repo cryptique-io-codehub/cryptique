@@ -98,7 +98,7 @@ exports.verify = async (req, res) => {
         console.log('b');
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
-        const scriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const scriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
 
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();

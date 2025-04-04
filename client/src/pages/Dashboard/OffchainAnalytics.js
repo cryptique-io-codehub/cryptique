@@ -85,9 +85,9 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
       
       if (siteId) {
         // Create the script code with the siteId - Modified for async loading
-        const scriptHTML = `script>
+        const scriptHTML = `<script>
       var script = document.createElement('script');
-      script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+      script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
       script.setAttribute('site-id', '${siteId}');
       document.head.appendChild(script);
     </script>`;
