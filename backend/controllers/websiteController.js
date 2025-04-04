@@ -91,12 +91,14 @@ exports.deleteWebsite=async (req,res)=>{
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
+        console.log('a');
         console.log(req.body);
         console.log(Domain);
         console.log(siteId);
+        console.log('b');
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
 
-        const scriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const scriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
 
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
@@ -112,6 +114,7 @@ exports.verify = async (req, res) => {
         await browser.close();
 
         if (scriptExists) {
+            console.log('rrrrr');
             await Website.findOneAndUpdate(
                 { Domain },
                 { $set: { isVerified: true } },
@@ -135,7 +138,7 @@ exports.getWebsitesOfTeam = async (req, res) => {
 
         const team = await Team.findOne({ name: teamName }).populate('websites');
         if (!team) return res.status(404).json({ message: "Team not found" });
-
+        console.log(typeof(team.websites));
         return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {
         console.error("Error while fetching websites", e);
