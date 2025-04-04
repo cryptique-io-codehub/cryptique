@@ -7,25 +7,29 @@ import {
   Tooltip
 } from 'recharts';
 
-const HorizontalFunnelVisualization = () => {
-    
+const HorizontalFunnelVisualization = ({analytics}) => {
+  console.log(analytics)
+  // const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
+  // useEffect(()=>{
+  // setanalytics(analytics);
+  // },[analytics]);
+  // console.log(analytics);
   // State to hold the funnel data - can be updated from props or API
   
   // Update data when initialData changes (if provided as a prop)
   // Helper function to get default colors if not provided
   const [data, setData] = useState([
-    { name: 'Unique Visitors', value:210, fill: '#1D0C46' },
-    { name: 'Web3 Users', value: 150, fill: '#8B5CF6' },
-    { name: 'Wallets connected', value: 120, fill: '#FFB95A' },
-    { name: 'Transaction recorded', value: 90, fill: '#CAA968' }
+    { name: 'Unique Visitors', value:200, fill: '#1D0C46' },
+    { name: 'Web3 Users', value: 130, fill: '#8B5CF6' },
+    { name: 'Wallets connected', value: 90, fill: '#FFB95A' }
   ]);
   const getDefaultColor = (index) => {
-    const defaultColors = ['#1a1053', '#7e57ff', '#ffc168', '#c9b37b'];
+    const defaultColors = ['#1a1053', '#7e57ff', '#ffc168'];
     return defaultColors[index % defaultColors.length];
   };
   
   // Stats calculated from the current data state
-  const conversionRate = data.length >= 4 ? 
+  const conversionRate = data.length >= 3 ? 
     ((data[data.length-1].value / data[0].value) * 100).toFixed(2) : 
     0;
     
@@ -40,11 +44,11 @@ const HorizontalFunnelVisualization = () => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{conversionRate}%</p>
+            <p className="text-xl font-bold">{analytics.walletsConnected/analytics.uniqueVisitors}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{web3UsersRate}%</p>
+            <p className="text-xl font-bold">{analytics.web3Visitors/analytics.uniqueVisitors}%</p>
           </div>
         </div>
       </div>
@@ -52,11 +56,11 @@ const HorizontalFunnelVisualization = () => {
       <div className="flex">
         {/* Custom horizontal funnel using SVG */}
         <div className="w-full h-64 relative">
-          <HorizontalFunnel data={data} />
+          <HorizontalFunnel data={data} analytics={analytics} />
           
           {/* Value displayed at the end of the funnel */}
           <div className="absolute right-2 top-24 text-4xl font-bold">
-            {data[0]?.value || 0}
+            
           </div>
         </div>
       </div>
@@ -78,7 +82,7 @@ const HorizontalFunnelVisualization = () => {
 };
 
 // Custom horizontal funnel component
-const HorizontalFunnel = ({ data }) => {
+const HorizontalFunnel = ({ data,analytics }) => {
   if (!data || data.length === 0) return null;
   
   // Calculate dimensions
@@ -143,33 +147,46 @@ const HorizontalFunnel = ({ data }) => {
       
       {/* Add value labels */}
       {data.map((item, index) => {
-        const x = index * segmentWidth + segmentWidth / 2;
-        const y = height / 2;
-        
-        return (
-          <text 
-            key={`label-${index}`}
-            x={x}
-            y={y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="white"
-            fontWeight="bold"
-          >
-            {item.value}
-          </text>
-        );
-      })}
+  const x = index * segmentWidth + segmentWidth / 2;
+  const y = height / 2;
+
+  // Determine the text value based on item.name
+  let textValue;
+  if (item.name === 'Unique Visitors') {
+    textValue = analytics.uniqueVisitors;
+  } else if (item.name === 'Web3 Users') {
+    textValue = analytics.web3Visitors;
+  } else if (item.name === 'Wallets connected') {
+    textValue = analytics.walletsConnected;
+  } else if (item.name === 'Transaction recorded') {
+    textValue = 0;
+  } 
+
+  return (
+    <text 
+      key={`label-${index}`}
+      x={x}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill="white"
+      fontWeight="bold"
+    >
+      {textValue}
+    </text>
+  );
+})}
     </svg>
   );
 };
 
 // Example usage
-const FunnelDashboard = () => {
+const FunnelDashboard = ({analytics}) => {
+  console.log(analytics);
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">User Funnel Dashboard</h1>
-      <HorizontalFunnelVisualization/>
+      <HorizontalFunnelVisualization analytics={analytics}/>
 
     </div>
   );

@@ -12,16 +12,15 @@ import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalyt
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
-const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAddedWebsite }) => {
+const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAddedWebsite,selectedTeam,setSelectedTeam ,setanalytics,idd,setidd}) => {
   // Initialize state from localStorage when available
   const [domain, setDomain] = useState(() => localStorage.getItem('crypto_domain') || '');
   const [name, setName] = useState(() => localStorage.getItem('crypto_name') || '');
-  const [selectedTeam, setSelectedTeam] = useState(() => localStorage.getItem('selectedTeam') || '');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [scriptCode, setScriptCode] = useState(() => localStorage.getItem('crypto_scriptCode') || '');
   const [showScript, setShowScript] = useState(() => localStorage.getItem('crypto_showScript') === 'true');
-  const [idd, setidd] = useState(() => localStorage.getItem('crypto_siteId') || '');
   const [successMessage, setSuccessMessage] = useState('');
 
   // Update localStorage whenever certain state values change
@@ -35,6 +34,7 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
 
   // Clear localStorage values when popup is closed
   const handleClose = () => {
+    localStorage.setItem('crypto_showScript', 'false');
     if (!showScript) {
       // Only clear if user hasn't generated a script yet
       localStorage.removeItem('crypto_domain');
@@ -79,6 +79,7 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
       
       // Check if there is an ID in the response
       const siteId = response.data.website.siteId;
+      localStorage.setItem('siteId_storage',siteId);
       console.log(siteId);
       setidd(siteId);
       
@@ -86,8 +87,8 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
         // Create the script code with the siteId - Modified for async loading
         const scriptHTML = `<script>
       var script = document.createElement('script');
-      script.src = 'https://cryptique-cdn.vercel.app/scripts/analytics/1.0.1/cryptique.script.min.js';
-      script.setAttribute('site-id','${siteId}');
+      script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+      script.setAttribute('site-id', '${siteId}');
       document.head.appendChild(script);
     </script>`;
         
@@ -110,6 +111,7 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
     }
   };
 
+
   const handleVerify = async () => {
     // Send verification request to server
     try {
@@ -123,15 +125,21 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
           Domain: domain,
           siteId: idd
         });
-      
       // Parse response before checking ok status
       // const responseData = await response.json();
-      console.log(response);
       
       if (response.status===200) {
         setSuccessMessage(`Verification successful for ${domain}`);
+        const idx=localStorage.getItem('siteId_storage');
+        const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`);
+        setanalytics(new_response.data.analytics);
+
+        localStorage.setItem('analytics_storage',new_response.data.analytics);
+        if(new_response.data.message==='Analytics not found'){
+
+        }
         setHasAddedWebsite(true);
-        
+                
       }
       else{
         throw new Error(response.message || 'Verification failed');
@@ -279,93 +287,107 @@ const AddWebsitePopup = ({ isOpen, onClose, onSuccess,hasAddedWebsite, setHasAdd
 };
 
 // Main AddWebsiteForm Component
-const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
-  const [websites, setWebsites] = useState([]);
-  const [selectedWebsite, setSelectedWebsite] = useState('');
+const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite,setanalytics }) => {
+  const [websites, setWebsites] = useState(() => localStorage.getItem('websites_array') || []);
+  const [selectedTeam, setSelectedTeam] = useState(() => localStorage.getItem('selectedTeam') || '');
+  const [selectedWebsite, setSelectedWebsite] = useState(localStorage.getItem('selectedWebsite') || '');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAddWebsitePopupOpen, setIsAddWebsitePopupOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [idd,setidd]=useState(() => localStorage.getItem('siteId_storage') || '');
 
-  // Check localStorage on mount to determine if popup should be open
-  useEffect(() => {
-    const showScript = localStorage.getItem('crypto_showScript') === 'true';
-    if (showScript) {
-      setIsAddWebsitePopupOpen(true);
+
+  console.log(idd);
+  // Function to fetch websites from the server
+  const fetchWebsites = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axiosInstance.post('/website/getWebsites', {
+        teamName: selectedTeam
+      });
+      if (response && response.data && response.data.websites) {
+        setWebsites(response.data.websites);
+        localStorage.setItem('websites_array',websites);
+        console.log(localStorage.getItem('websites_array'));
+        localStorage.setItem("selectedWebsite",response.data.websites[0].Domain);
+        localStorage.setItem('siteId_storage',response.data.websites[0].siteId);
+        const idx=localStorage.getItem('siteId_storage');
+        const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`)
+        localStorage.setItem("analytics_storage",new_response.data.analytics);
+        console.log(new_response.data.analytics);
+      }
+    } catch (error) {
+      console.error('Error fetching websites:', error);
+      setWebsites([]);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  };
+  
+  // Fetch websites on component mount and when selected team changes
+  useEffect(() => {
+    fetchWebsites();
+  }, [ hasAddedWebsite]); // Re-fetch when team changes or a new website is added
 
-  // Fetch websites on component mount
-  // useEffect(() => {
-  //   const fetchWebsites = async () => {
-  //     try {
-  //       const response = await fetch('http://localhost:3002/api/websites', {
-  //         method: 'GET',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-        
-  //       if (!response.ok) {
-  //         throw new Error('Failed to fetch websites');
-  //       }
-        
-  //       const data = await response.json();
-  //       setWebsites(data.websites || []);
-        
-  //       // Set first website as selected if available and no selection exists
-  //       if (data.websites && data.websites.length > 0 && !selectedWebsite) {
-  //         setSelectedWebsite(data.websites[0].domain);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching websites:', error);
-  //     }
-  //   };
-    
-  //   fetchWebsites();
-  // }, [selectedWebsite]);
+  useEffect(() => {
+    console.log("Updated websites:", websites);
+  }, [websites]);
+
+  useEffect(() => {
+  }, [idd]);
+
+  // Function to store domain in token or wherever needed
 
   // Handle website selection
-  const handleSelectWebsite = (domain) => {
-    setSelectedWebsite(domain);
+  const handleSelectWebsite = async(website) => {
+    setSelectedWebsite(website.Domain);
+    localStorage.setItem('selectedWebsite', website.Domain);
+    localStorage.setItem('siteId_storage',website.siteId);
     setIsDropdownOpen(false);
-    // You might want to trigger other actions here, like changing context
+    const idx=localStorage.getItem('siteId_storage');
+    const new_response = await axiosInstance.get(`/sdk/analytics/${idx}`);
+        console.log(new_response);
+        console.log(idx);
+        if (new_response.data.analytics && 
+          new_response.data.analytics.pageViews !== undefined) {
+        setanalytics(new_response.data.analytics);
+        localStorage.setItem('analytics_storage', new_response.data.analytics);
+        setHasAddedWebsite(true);
+      } 
+      else{
+        setidd(website.siteId);
+        const scriptHTML = `<script>
+        var script = document.createElement('script');
+        script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+        script.setAttribute('site-id', '${website.siteId}');
+        document.head.appendChild(script);
+      </script>`;
+      localStorage.setItem('crypto_domain', website.Domain);
+      localStorage.setItem('crypto_name', website.Name || website.Domain);
+      localStorage.setItem('crypto_scriptCode', scriptHTML);
+      localStorage.setItem('crypto_showScript', 'true');
+
+        setIsAddWebsitePopupOpen(true);
+      }
+    // Store in localStorage
+    
+    // Store domain in token
+
+  };
+
+  // Handle dropdown open to refresh the list
+  const handleDropdownToggle = () => {
+    // If we're opening the dropdown, refresh the websites list
+    if (!isDropdownOpen) {
+      fetchWebsites();
+    }
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
   // Handle add website option click
   const handleAddWebsite = () => {
     setIsAddWebsitePopupOpen(true);
     setIsDropdownOpen(false);
-  };
-
-  const handleWebsiteAdded = async () => {
-    // Refresh the websites list
-    try {
-      const response = await fetch('http://localhost:3002/api/websites', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch websites');
-      }
-      
-      const data = await response.json();
-      setWebsites(data.websites || []);
-      
-      // Set newly added website as selected if available
-      if (data.websites && data.websites.length > 0) {
-        setSelectedWebsite(data.websites[0].domain);
-      }
-      
-      // Update parent component state if needed
-      if (setHasAddedWebsite) {
-        setHasAddedWebsite(true);
-        
-      }
-    } catch (error) {
-      console.error('Error fetching websites:', error);
-    }
   };
 
   return (
@@ -379,7 +401,8 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
           <button
             type="button"
             className="flex items-center justify-between w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            onClick={handleDropdownToggle}
+            disabled={isLoading}
           >
             {selectedWebsite ? (
               <div className="flex items-center">
@@ -389,27 +412,36 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
                     <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                   </svg>
                 </span>
-                <span className="text-gray-800">{selectedWebsite}</span>
+                <span className="text-gray-800">{localStorage.getItem("selectedWebsite")}</span>
               </div>
             ) : (
               <span className="text-gray-500">Select a website</span>
             )}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5 ml-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
           
           {/* Dropdown menu */}
           {isDropdownOpen && (
             <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
               <ul className="py-1 max-h-60 overflow-auto">
-                {websites.length > 0 ? (
-                  websites.map((website) => (
-                    <li key={website.id || website.domain}>
+                {isLoading ? (
+                  <li className="px-4 py-2 text-gray-500">Loading websites...</li>
+                ) : websites.length > 0 ? (
+                  websites.map((website, index) => (
+                    <li key={website.siteId || index}>
                       <button
                         type="button"
                         className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
-                        onClick={() => handleSelectWebsite(website.domain)}
+                        onClick={() => handleSelectWebsite(website)}
                       >
                         <span className="inline-block w-6 h-6 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -417,7 +449,7 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
                             <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                           </svg>
                         </span>
-                        <span>{website.name || website.domain}</span>
+                        <span>{website.Domain || website.domain}</span>
                       </button>
                     </li>
                   ))
@@ -450,9 +482,14 @@ const AddWebsiteForm = ({ hasAddedWebsite, setHasAddedWebsite }) => {
       <AddWebsitePopup 
         isOpen={isAddWebsitePopupOpen}
         onClose={() => setIsAddWebsitePopupOpen(false)}
-        onSuccess={handleWebsiteAdded}
+        onSuccess={fetchWebsites} // Use fetchWebsites as the success callback
         hasAddedWebsite={hasAddedWebsite}
         setHasAddedWebsite={setHasAddedWebsite}
+        selectedTeam={selectedTeam}
+        setSelectedTeam={setSelectedTeam}
+        setanalytics={setanalytics}
+        idd={idd}
+        setidd={setidd}
       />
     </div>
   );
@@ -466,26 +503,55 @@ const OffchainAnalytics = () => {
   const [selectedFilters, setSelectedFilters] = useState('Select Filters');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [secondNavOpen, setSecondNavOpen] = useState(false);
-  const [hasAddedWebsite, setHasAddedWebsite] = useState(false);
+  const [hasAddedWebsite, setHasAddedWebsite] =useState(false);
   const [addedWebsite, setAddedWebsite] = useState(null);
   // State for chart data
+  const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
   const [chartData, setChartData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = useState(null);
+  const[noData,setnoData]=useState(true);
 
   // State for analytics cards
-  const [analyticsData, setAnalyticsData] = useState({
-    uniqueVisitors: { value: "0K", increase: "0.0%" },
-    totalPageView: { value: "0", increase: "0.0%" },
-    pagePerVisit: { value: "0", increase: "0.0%" },
-    bounceRate: { value: "0%", increase: "0.0%" },
-    avgVisitDuration: { value: "0m", increase: "0.0%" },
-    TotalWalletsConnected:{value: "0m", increase: "0.0%" },
-    Web3Users:{value: "0m", increase: "0.0%" },
-    TotalOnChainValue:{value: "0m", increase: "0.0%" }
+  console.log(analytics);
+  const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
+  const pageViews_size = Object.keys(analytics.pageViews ?? {}).length;
+  const pagepervisit=(totalPageViews/pageViews_size).toFixed(2);
+  const calculateAverageDuration = (sessions) => {
+     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+    const totalDuration = sessions.reduce((sum, session) => sum + session.duration, 0);
+    return totalDuration / sessions.length;
+  };
+ 
 
-  });
+  const calculateBounceRate = (sessions) => {
+    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+  
+    const bounceCount = sessions.reduce((count, session) => {
+      return session.isBounce === true ? count + 1 : count;
+    }, 0);
+  
+    return bounceCount / sessions.length;
+  };
+
+  const bounceRate = calculateBounceRate(analytics.sessions)*100;
+  const avgVisitDuration = calculateAverageDuration(analytics.sessions).toFixed(2);
+  
+ 
+  
+  console.log(pageViews_size);
+  console.log(totalPageViews);
+  // const [analyticsData, setAnalyticsData] = useState({
+  //   uniqueVisitors:analytics.uniqueVisitors,
+  //   totalPageView:totalPageViews,
+  //   pagePerVisit:totalPageViews/pageViews_size,
+  //   bounceRate:0,
+  //   avgVisitDuration:0,
+  //   TotalWalletsConnected:analytics.walletsConnected, 
+  //   Web3Users:analytics.web3Visitors,
+  //   TotalOnChainValue:0
+  // });
 
   // State for Web3 analytics data
   const [web3Data, setWeb3Data] = useState({
@@ -521,8 +587,8 @@ const OffchainAnalytics = () => {
   ];
 
   const data = [
-    { name: "New", value: 85, color: "#3B82F6" }, // Blue
-    { name: "Returning", value: 15, color: "#F59E0B" }, // Orange
+    { name: "New", value: analytics.newVisitors, color: "#3B82F6" }, // Blue
+    { name: "Returning", value: analytics.returningVisitors, color: "#F59E0B" }, // Orange
   ];
   
   // Updated AnalyticsCard to be responsive
@@ -530,17 +596,12 @@ const OffchainAnalytics = () => {
     <div className={`rounded-xl p-2 md:p-3 ${bgColor} ${textColor} flex flex-col justify-between h-full`}>
       <div className="text-[9px] sm:text-xs opacity-80 mb-0.5">{label}</div>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] sm:text-sm font-bold">{data.value}</div>
-        <div className="pl-1 opacity-70 text-[9px] sm:text-xs">↑ {data.increase}</div>
+        <div className="text-[10px] sm:text-sm font-bold">{data}</div>
+        {/* <div className="pl-1 opacity-70 text-[9px] sm:text-xs">↑ {data.increase}</div> */}
       </div>
     </div>
   );
 
-  const handleWebsiteAdded = (website) => {
-    setAddedWebsite(website);
-    setSelectedWebsite(website.name || website.domain);
-    // setHasAddedWebsite(true);
-  };
 
   // Fetch analytics data from server when filters change
   useEffect(() => {
@@ -563,21 +624,24 @@ const OffchainAnalytics = () => {
         
         // Mock chart data
         const mockChartData = {
-          timeLabels: ['11:30', '12:30', '1:30', '2:30', '3:30', '4:30', '5:30', '6:30', '7:30'],
+          timeLabels: ['11:30', '12:30', '1:30', '2:30', '3:30', '4:30', '5:30', '6:30', '7:30','8:30','9:30','10:30','11:30'],
           datasets: {
-            visitors: [24, 35, 28, 38, 29, 42, 45, 56, 65],
+            visitors: [12, 15, 28, 38, 29, 42, 45, 56, 65],
             wallets: [9, 12, 15, 18, 12, 24, 28, 33, 41]
           },
           dataPoints: [
-            { time: 'Jul 07, 11:30', visitors: 24, wallets: 9 },
-            { time: 'Jul 07, 12:30', visitors: 12, wallets: 12 },
+            { time: 'Jul 07, 11:30', visitors: 124, wallets: 9 },
+            { time: 'Jul 07, 12:30', visitors: 15, wallets: 12 },
             { time: 'Jul 07, 1:30', visitors: 28, wallets: 15 },
             { time: 'Jul 07, 2:30', visitors: 38, wallets: 18 },
             { time: 'Jul 07, 3:30', visitors: 29, wallets: 12 },
             { time: 'Jul 07, 4:30', visitors: 42, wallets: 24 },
             { time: 'Jul 07, 5:30', visitors: 45, wallets: 28 },
-            { time: 'Jul 07, 6:30', visitors: 56, wallets: 33 },
-            { time: 'Jul 07, 7:30', visitors: 65, wallets: 41 }
+            { time: 'Jul 07, 6:30', visitors: 56, wallets: 63 },
+            { time: 'Jul 07, 7:30', visitors: 65, wallets: 41 },
+            { time: 'Jul 07, 8:30', visitors: 70, wallets: 9 },
+            { time: 'Jul 07, 9:30', visitors: 52, wallets: 9 },
+            { time: 'Jul 07, 10:30', visitors: 81, wallets: 9 },
           ]
         };
         
@@ -595,54 +659,54 @@ const OffchainAnalytics = () => {
         };
         
         // Generate random analytics card data
-        const mockAnalyticsData = {
-          uniqueVisitors: { 
-            value: `${getRandomValue(20, 28)},${getRandomValue(100, 999)}K`, 
-            increase: `${getRandomValue(2, 8)}.${getRandomValue(0, 9)}%` 
-          },
-          totalPageView: { 
-            value: `${getRandomValue(30, 42)},${getRandomValue(100, 999)}`, 
-            increase: `${getRandomValue(3, 9)}.${getRandomValue(0, 9)}%` 
-          },
-          pagePerVisit: { 
-            value: `${getRandomValue(3, 7)}.${getRandomValue(1, 9)}`, 
-            increase: `${getRandomValue(1, 5)}.${getRandomValue(0, 9)}%` 
-          },
-          bounceRate: { 
-            value: `${getRandomValue(20, 45)}%`, 
-            increase: `${getRandomValue(1, 4)}.${getRandomValue(0, 9)}%` 
-          },
-          avgVisitDuration: { 
-            value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-            increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-          },
-          TotalWalletsConnected: { 
-            value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-            increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-          },
-          Web3Users: { 
-            value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-            increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-          },
-          TotalOnChainValue: { 
-            value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
-            increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
-          }
-        };
+        // const mockAnalyticsData = {
+        //   uniqueVisitors: { 
+        //     value: `${getRandomValue(20, 28)},${getRandomValue(100, 999)}K`, 
+        //     increase: `${getRandomValue(2, 8)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   totalPageView: { 
+        //     value: `${getRandomValue(30, 42)},${getRandomValue(100, 999)}`, 
+        //     increase: `${getRandomValue(3, 9)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   pagePerVisit: { 
+        //     value: `${getRandomValue(3, 7)}.${getRandomValue(1, 9)}`, 
+        //     increase: `${getRandomValue(1, 5)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   bounceRate: { 
+        //     value: `${getRandomValue(20, 45)}%`, 
+        //     increase: `${getRandomValue(1, 4)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   avgVisitDuration: { 
+        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
+        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   TotalWalletsConnected: { 
+        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
+        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   Web3Users: { 
+        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
+        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
+        //   },
+        //   TotalOnChainValue: { 
+        //     value: `${getRandomValue(2, 8)}m ${getRandomValue(10, 59)}s`, 
+        //     increase: `${getRandomValue(2, 7)}.${getRandomValue(0, 9)}%` 
+        //   }
+        // };
         
         // Generate traffic sources data
         const mockTrafficSources = [
-          { source: 'Twitter', icon: 'twitter', visitors: getRandomValue(600000, 700000), wallets: getRandomValue(3000, 4000),wallets_section:getRandomValue(3000, 4000) },
-          { source: 'Linkedin', icon: 'linkedin', visitors: getRandomValue(10000, 15000), wallets: getRandomValue(500, 800),wallets_section:getRandomValue(3000, 4000) },
-          { source: 'Instagram', icon: 'instagram', visitors: getRandomValue(15000, 20000), wallets: getRandomValue(5000, 6000),wallets_section:getRandomValue(3000, 4000) },
-          { source: 'Dribbble', icon: 'dribbble', visitors: getRandomValue(12000, 15000), wallets: getRandomValue(60000, 70000),wallets_section:getRandomValue(3000, 4000) },
-          { source: 'Behance', icon: 'behance', visitors: getRandomValue(8000, 10000), wallets: getRandomValue(600000, 700000),wallets_section:getRandomValue(3000, 4000) },
-          { source: 'Pinterest', icon: 'pinterest', visitors: getRandomValue(3000, 4000), wallets: getRandomValue(10000, 17000),wallets_section:getRandomValue(3000, 4000) }
+          { source: 'Twitter', icon: 'twitter', visitors: 0, wallets: 0,wallets_section:0},
+          { source: 'Linkedin', icon: 'linkedin', visitors: 0, wallets: 0,wallets_section:0 },
+          { source: 'Instagram', icon: 'instagram', visitors:0, wallets: 0,wallets_section:0 },
+          { source: 'Dribbble', icon: 'dribbble', visitors: 0, wallets: 0,wallets_section:0 },
+          { source: 'Behance', icon: 'behance', visitors: 0, wallets: 0,wallets_section:0 },
+          { source: 'Pinterest', icon: 'pinterest', visitors: 0, wallets: 0,wallets_section:0 }
         ];
         
         setChartData(mockChartData);
         setWeb3Data(mockWeb3Data);
-        setAnalyticsData(mockAnalyticsData);
+        // setAnalyticsData(mockAnalyticsData);
         setTrafficSources(mockTrafficSources);
         // Set the first data point as selected by default
         setSelectedDataPoint(mockChartData.dataPoints[0]);
@@ -674,41 +738,41 @@ const OffchainAnalytics = () => {
     });
     
     // Update analytics cards based on the data point
-    setAnalyticsData({
-      uniqueVisitors: { 
-        value: `${dataPoint.visitors * 0.1}K`, 
-        increase: `${(dataPoint.visitors / 100).toFixed(1)}%` 
-      },
-      totalPageView: { 
-        value: `${dataPoint.visitors * 1.5}`, 
-        increase: `${(dataPoint.visitors / 80).toFixed(1)}%` 
-      },
-      pagePerVisit: { 
-        value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-        increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
-      },
-      bounceRate: { 
-        value: `${30 - (dataPoint.visitors / 10).toFixed(0)}%`, 
-        increase: `${(dataPoint.visitors / 200).toFixed(1)}%` 
-      },
-      avgVisitDuration: { 
-        value: `${Math.max(2, Math.round(dataPoint.visitors / 10))}m ${Math.round(dataPoint.visitors / 2)}s`, 
-        increase: `${(dataPoint.visitors / 120).toFixed(1)}%` 
-      },
-      TotalWalletsConnected: { 
-        value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-        increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
-      },
-      Web3Users: { 
-        value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-        increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
-      },
-      TotalOnChainValue: { 
-        value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
-        increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
-      }
+    // setAnalyticsData({
+    //   uniqueVisitors: { 
+    //     value: `${dataPoint.visitors * 0.1}K`, 
+    //     increase: `${(dataPoint.visitors / 100).toFixed(1)}%` 
+    //   },
+    //   totalPageView: { 
+    //     value: `${dataPoint.visitors * 1.5}`, 
+    //     increase: `${(dataPoint.visitors / 80).toFixed(1)}%` 
+    //   },
+    //   pagePerVisit: { 
+    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
+    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
+    //   },
+    //   bounceRate: { 
+    //     value: `${30 - (dataPoint.visitors / 10).toFixed(0)}%`, 
+    //     increase: `${(dataPoint.visitors / 200).toFixed(1)}%` 
+    //   },
+    //   avgVisitDuration: { 
+    //     value: `${Math.max(2, Math.round(dataPoint.visitors / 10))}m ${Math.round(dataPoint.visitors / 2)}s`, 
+    //     increase: `${(dataPoint.visitors / 120).toFixed(1)}%` 
+    //   },
+    //   TotalWalletsConnected: { 
+    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
+    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
+    //   },
+    //   Web3Users: { 
+    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
+    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%`
+    //   },
+    //   TotalOnChainValue: { 
+    //     value: `${(dataPoint.visitors / 10).toFixed(1)}`, 
+    //     increase: `${(dataPoint.visitors / 150).toFixed(1)}%` 
+    //   }
 
-    });
+    // });
     
     // Update traffic sources based on the data point
     const updatedSources = trafficSources.map(source => {
@@ -853,9 +917,17 @@ return (
         
         {/* Main content area - scrollable */}
         <div className="flex-grow overflow-y-auto">
-          {!hasAddedWebsite ? (
+          {!hasAddedWebsite? (
             // Show AddWebsiteForm if no website has been added yet, regardless of which section is active
-            <AddWebsiteForm hasAddedWebsite={hasAddedWebsite} setHasAddedWebsite={setHasAddedWebsite}/>
+            <div className="flex flex-col">
+            <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
+              <div className="max-w-7xl mx-auto">
+                <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
+                <p className="text-xs md:text-sm text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
+              </div>
+            </div>
+            <AddWebsiteForm hasAddedWebsite={hasAddedWebsite} setHasAddedWebsite={setHasAddedWebsite} setanalytics={setanalytics}/>
+            </div>
           ) : (
             <>
               {/* Main content */}
@@ -882,43 +954,43 @@ return (
                     <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 h-auto pl-2">
                       <AnalyticsCard 
                         label="Unique visitors" 
-                        data={analyticsData.uniqueVisitors} 
+                        data={analytics.uniqueVisitors} 
                         bgColor="bg-[#CAA968]" 
                         textColor="text-black" 
                       />
                       <AnalyticsCard 
                         label="Total Wallets Connected " 
-                        data= {analyticsData.TotalWalletsConnected}
+                        data= {analytics.walletsConnected}
                         bgColor="bg-[#1D0C46]" 
                         textColor="text-white" 
                       />
                        <AnalyticsCard 
                         label="Pages per visit" 
-                        data= {analyticsData.pagePerVisit} 
+                        data= {pagepervisit} 
                         bgColor="bg-white" 
                         textColor="black" 
                       />
                       <AnalyticsCard 
                         label="Total Page Views" 
-                        data= {analyticsData.totalPageView}
+                        data= {totalPageViews}
                         bgColor="bg-white" 
                         textColor="black" 
                       />
                        <AnalyticsCard 
-                        label="Avg. visit duration" 
-                        data={analyticsData.avgVisitDuration} 
+                        label="Avg. visit duration (in sec)" 
+                        data={avgVisitDuration} 
                         bgColor="bg-white" 
                         textColor="text-black" 
                       />
                       <AnalyticsCard 
                         label="Web3 Users" 
-                        data={analyticsData.Web3Users}
+                        data={analytics.web3Visitors}
                         bgColor="bg-white" 
                         textColor="text-black" 
                       />
                       <AnalyticsCard 
                         label="Bounce rate" 
-                        data={analyticsData.bounceRate} 
+                        data={bounceRate} 
                         bgColor="bg-white" 
                         textColor="text-black" 
                       />
@@ -935,14 +1007,14 @@ return (
                       />
                     </div>
                     
-                    <FunnelDashboard/>
+                    <FunnelDashboard analytics={analytics}/>
                     
                     {/* MODIFICATION: Remaining content in two-column layout */}
                     <div className="flex flex-col lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0">
                       {/* Left side */}
                       <div className="w-full lg:w-3/5">
                         {/* Geo Analytics Map */}
-                        <GeoAnalyticsMap/>
+                        <GeoAnalyticsMap analytics={analytics}/>
                       </div>
                       
                       {/* Right side */}
@@ -998,7 +1070,7 @@ return (
                                         <span className="w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2" style={{ backgroundColor: item.color }}></span>
                                         {item.name}
                                       </td>
-                                      <td className="p-1 md:p-2 text-xs md:text-sm">547,914</td>
+                                      <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
                                       <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">81.94%</td>
                                     </tr>
                                   ))}

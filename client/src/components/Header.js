@@ -19,9 +19,9 @@ const TeamSelector = () => {
           'Content-Type':'application/json'
           }
         });
-        console.log('a');
-        console.log(response);
-        console.log('b');
+        // console.log('a');
+        // console.log(response);
+        // console.log('b');
         const teams = response.data.team;
         setCurTeams(teams);
       } catch (error) {
@@ -35,7 +35,7 @@ const TeamSelector = () => {
   const handleTeamSelect = (teamss) => {
     localStorage.setItem('selectedTeam', teamss.name);
     setSelectedTeam(teamss.name);
-    console.log(teamss);
+    // console.log(teamss);
     
     const currentPath = window.location.pathname;
     if (currentPath.includes('/settings')) {

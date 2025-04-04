@@ -8,7 +8,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   const params = useParams();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const showExpanded = !isCompact || (isCompact && isHovering);
-  console.log(selectedTeam);
+  // console.log(selectedTeam);
   useEffect(() => {
     // Always use the team from localStorage as the source of truth
     const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
@@ -21,8 +21,8 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
     
     setSelectedTeam(storedTeam);
     
-    console.log("params from sidebar", params.team);
-    console.log("selectedTeam from sidebar", storedTeam);
+    // console.log("params from sidebar", params.team);
+    // console.log("selectedTeam from sidebar", storedTeam);
   }, [params.team]);
 
   useEffect(() => {

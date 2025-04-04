@@ -106,14 +106,17 @@ exports.postAnalytics = async (req, res) => {
 
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {
+  console.log('ttttttt');
   try {
+    
     const { siteId } = req.params;
     if (!siteId) {
       return res.status(400).json({ message: "Required fields are missing" });
     }
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
-      return res.status(404).json({ message: "Analytics not found" });
+      return res.json({ message: "Analytics not found" });
+      
     }
     return res
       .status(200)
