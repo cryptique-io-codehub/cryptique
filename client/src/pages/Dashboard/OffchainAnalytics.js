@@ -524,7 +524,7 @@ return (
                                         {item.name}
                                       </td>
                                       <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
-                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{(item.value/(analytics.newVisitors + analytics.returningVisitors)*100).toFixed(2)}</td>
+                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{(item.value/(analytics?.newVisitors + analytics?.returningVisitors)*100).toFixed(2)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
