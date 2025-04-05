@@ -62,7 +62,7 @@ const TrafficSourcesComponent = ({ trafficSources, setTrafficSources }) => {
         <div className="grid grid-cols-4 bg-gray-100 p-3 pl-1 text-sm font-medium text-gray-600 pl-3">
           <div>Traffic source</div>
           <div className="text-right">Visitors</div>
-          <div className="text-right">Wallet</div>
+          <div className="text-right">Web3 Users</div>
           <div className="text-right">Wallets Connected</div>
 
         </div>

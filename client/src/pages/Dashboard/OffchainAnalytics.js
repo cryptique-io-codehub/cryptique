@@ -28,6 +28,7 @@ const OffchainAnalytics = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = useState(null);
+   const [selectedCountry, setSelectedCountry] = useState();
 
   // State for analytics cards
   // console.log(analytics);
@@ -402,7 +403,7 @@ return (
                     />
                     
                     {/* MODIFICATION: Analytics cards in full width single row */}
-                   {websitearray.length>0 ? <div>
+                   {websitearray.length>0 && analytics && Object.keys(analytics).length > 0 ?  <div>
                     <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 h-auto pl-2">
                       
                       <AnalyticsCard 
@@ -467,7 +468,7 @@ return (
                       {/* Left side */}
                       <div className="w-full lg:w-3/5">
                         {/* Geo Analytics Map */}
-                        <GeoAnalyticsMap analytics={analytics}/>
+                        <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}/>
                       </div>
                       
                       {/* Right side */}
@@ -541,7 +542,7 @@ return (
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                            Please Add atleast one website
+                            Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>
@@ -567,7 +568,8 @@ return (
                       idy={idy}
                       setidy={setidy}
                     />
-                      {websitearray.length>0 ? <TrafficAnalytics 
+                      {analytics && Object.keys(analytics).length > 0 ? 
+                      <TrafficAnalytics 
                       trafficSources={trafficSources} 
                       setTrafficSources={setTrafficSources}  
                     />:(
@@ -575,7 +577,7 @@ return (
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                            Please Add atleast one website
+                          Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>
@@ -601,14 +603,15 @@ return (
                       idy={idy}
                       setidy={setidy}
                     />
-                     {websitearray.length>0 ?
-                    <GeoAnalyticss analytics={analytics} />
+                     {analytics && Object.keys(analytics).length > 0 ?
+                    <GeoAnalyticss analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                    
                     :(
                       <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                            Please Add atleast one website
+                          Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>
@@ -633,14 +636,14 @@ return (
                       idy={idy}
                       setidy={setidy}
                     />
-                    {websitearray.length>0 ?
+                    {analytics && Object.keys(analytics).length > 0 ?
                     <RetentionAnalytics/>
                     :(
                       <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                            Please Add atleast one website
+                          Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>

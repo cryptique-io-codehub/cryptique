@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import GeoAnalyticsMap from '../GeoAnalyticsMap';
 
-const GeoAnalytics = ({analytics}) => {
-  const [selectedCountry, setSelectedCountry] = useState();
+const GeoAnalytics = ({analytics,selectedCountry,setSelectedCountry}) => {
+ 
   const [countryData, setCountryData] = useState({
     users: 100000,
     web3Users: 100000,

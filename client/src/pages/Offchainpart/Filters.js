@@ -120,18 +120,21 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   };
 
   const handleVerify = async () => {
+    
     try {
+      console.log(selectedWebsite);
+    
       const response = await axiosInstance.post('/website/verify', {
-        Domain: newWebsiteDomain,
-        siteId: verifyid
+        Domain: selectedWebsite.Domain,
+        siteId: selectedWebsite.siteId
       });
   
       if (response.status === 200) {
-        localStorage.setItem("idy", verifyid);
+        localStorage.setItem("idy", selectedWebsite.siteId);
         setscriptmodel(false);
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid}`);
-        setidy(verifyid);
         setanalytics(new_response.data.analytics);
+        setidy(selectedWebsite.siteId);
         
       } 
     } catch (error) {

@@ -91,6 +91,8 @@ exports.deleteWebsite=async (req,res)=>{
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
+        console.log('a');
+        console.log(req.body);
         console.log('first');
         if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
         console.log('second');
