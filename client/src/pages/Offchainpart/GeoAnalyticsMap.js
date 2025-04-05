@@ -20,7 +20,7 @@ const countryNameToCode = {
   // Add more mappings as required
 };
 
-const GeoAnalyticsMap = ({ analytics }) => {
+const GeoAnalyticsMap = ({ analytics,selectedCountry, setSelectedCountry }) => {
   const getUniqueUsersPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryUserMap = new Map();
@@ -43,7 +43,7 @@ const GeoAnalyticsMap = ({ analytics }) => {
     return result;
   };
 
-  const userCountsByCountry = getUniqueUsersPerCountry(analytics.sessions || []);
+  const userCountsByCountry = getUniqueUsersPerCountry(analytics?.sessions || []);
   console.log("userCountsByCountry:", userCountsByCountry);
 
   // Convert to data for WorldMap component
@@ -86,6 +86,9 @@ const GeoAnalyticsMap = ({ analytics }) => {
           value-suffix=" users"
           size="lg"
           data={mapData}
+          onClickFunction={({ countryName, countryCode, countryValue }) => {
+            setSelectedCountry(countryName);
+          }}
         />
       </div>
 

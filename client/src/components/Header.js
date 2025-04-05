@@ -118,7 +118,9 @@ const Header = () => {
     // Clear the token from localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('selectedTeam');
+    localStorage.removeItem('selectedWebsite');
     localStorage.removeItem('User');
+    localStorage.removeItem('idy');
     
     // Navigate to login page
     navigate('/login');
