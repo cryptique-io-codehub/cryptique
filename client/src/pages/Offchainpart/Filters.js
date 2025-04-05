@@ -17,26 +17,36 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   useEffect(() => {
     const selectteam = localStorage.getItem("selectedTeam");
     setSelectedTeam(selectteam);
+  
     const fetchWebsites = async () => {
       setIsLoading(true);
-      const response = await axiosInstance.post('/website/getWebsites', {
-        teamName: selectedTeam
-      });
-      console.log(response.data.websites);
-      if (response.status===200) {
-        setWebsitearray(response.data.websites);
-        console.log(websitearray);
-        if (!selectedWebsite) {
-          setSelectedWebsite(response.data.websites[0]);
-          if(response.data.websites[0].siteId){
-          localStorage.setItem("idy", response.data.websites[0].siteId);
+      try {
+        const response = await axiosInstance.post('/website/getWebsites', {
+          teamName: selectteam // use the value from localStorage directly
+        });
+  
+        if (response.status === 200) {
+          setWebsitearray(response.data.websites);
+          console.log(response.data.websites);
+  
+          if (!selectedWebsite && response.data.websites.length > 0) {
+            const firstWebsite = response.data.websites[0];
+            setSelectedWebsite(firstWebsite);
+            if (firstWebsite.siteId) {
+              localStorage.setItem("idy", firstWebsite.siteId);
+            }
           }
         }
+      } catch (error) {
+        console.error("Error fetching websites:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }
+    };
+  
     fetchWebsites();
   }, []);
+  
 
   const handleSelectWebsite = async (website) => {
     setSelectedWebsite(website);
@@ -120,7 +130,9 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         localStorage.setItem("idy", verifyid);
         setscriptmodel(false);
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid}`);
+        setidy(verifyid);
         setanalytics(new_response.data.analytics);
+        
       } 
     } catch (error) {
       // Handle specific status codes
