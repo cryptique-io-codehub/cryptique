@@ -13,7 +13,7 @@
     }
   ],
   "functions": {
-    "api/sdk/update-all-analytics-stats.js": {
+    "index.js": {
       "maxDuration": 200
     }
   },
