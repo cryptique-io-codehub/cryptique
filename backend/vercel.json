@@ -12,10 +12,16 @@
       "dest": "index.js"
     }
   ],
+  "functions": {
+    "api/sdk/update-all-analytics-stats.js": {
+      "maxDuration": 200
+    }
+  },
   "crons": [
     {
       "path": "/api/sdk/update-all-analytics-stats",
       "schedule": "*/5 * * * *"
+
     }
   ]
 }
