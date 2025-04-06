@@ -149,16 +149,16 @@ exports.updateAnalyticsStats = async (req, res) => {
 
       // Push snapshot if interval met
       if (getLastDiffHours(analytic.hourlyStats) >= 1) {
-        analytic.hourlyStats.push({ stats: snapshot, timeStamp: now,hour: now.getHours() });
+        analytic.hourlyStats.push({ stats: snapshot, timeStamp: now });
       }
       if (getLastDiffHours(analytic.dailyStats) >= 24) {
-        analytic.dailyStats.push({ stats: snapshot, timeStamp: now,hour:now.getHours() });
+        analytic.dailyStats.push({ stats: snapshot, timeStamp: now });
       }
       if (getLastDiffHours(analytic.weeklyStats) >= 168) {
-        analytic.weeklyStats.push({ stats: snapshot, timeStamp: now,hour: now.getHours()  });
+        analytic.weeklyStats.push({ stats: snapshot, timeStamp: now });
       }
       if (getLastDiffHours(analytic.monthlyStats) >= 720) { // ~30 days
-        analytic.monthlyStats.push({ stats: snapshot, timeStamp: now ,hour: now.getHours() });
+        analytic.monthlyStats.push({ stats: snapshot, timeStamp: now });
       }
 
       await analytic.save();
