@@ -12,11 +12,6 @@
       "dest": "index.js"
     }
   ],
-  "functions": {
-    "controllers/sdkController.js": {
-      "maxDuration": 200
-    }
-  },
   "crons": [
     {
       "path": "/api/sdk/update-all-analytics-stats",
