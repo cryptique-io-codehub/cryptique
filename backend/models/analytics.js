@@ -4,7 +4,6 @@ const mongoose = require("mongoose");
 const StatsSchema = new mongoose.Schema({
   stats: {
     type: Object, // Flexible but unvalidated
-    required: true,
   },
   timeStamp: {
     type: Date,
