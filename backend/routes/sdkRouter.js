@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.post('/track', postAnalytics);
 router.get('/analytics/:siteId', getAnalytics);
-router.post('/update-all-analytics-stats', updateAnalyticsStats);
+router.get('/update-all-analytics-stats', updateAnalyticsStats);
 
 module.exports = router;
