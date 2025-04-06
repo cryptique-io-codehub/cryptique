@@ -12,7 +12,7 @@
       "dest": "index.js"
     }
   ],
-  "cron": [
+  "crons": [
     {
       "path": "/api/sdk/update-all-analytics-stats",
       "schedule": "*/5 * * * *"
