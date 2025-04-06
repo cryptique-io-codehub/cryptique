@@ -2,6 +2,9 @@
 const mongoose = require("mongoose");
 
 const StatsSchema = new mongoose.Schema({
+  hour: {
+    type: Number
+  },
   stats: {
     type: Object, // Flexible but unvalidated
   },
