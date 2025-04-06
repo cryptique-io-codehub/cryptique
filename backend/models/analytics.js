@@ -1,21 +1,17 @@
 // models/analyticsModel.js
 const mongoose = require("mongoose");
 
-const hourlyStatsSchema = new mongoose.Schema({
-  hour: {
-    type: Date,
+const StatsSchema = new mongoose.Schema({
+  stats: {
+    type: Object, // Flexible but unvalidated
     required: true,
-    index: true,
   },
-  uniqueVisitors: {
-    type: Number,
-    default: 0,
-  },
-  walletsConnected: {
-    type: Number,
-    default: 0,
+  timeStamp: {
+    type: Date,
+    default: Date.now,
   },
 });
+
 const analyticsSchema = new mongoose.Schema({
   siteId: {
     type: String,
@@ -92,7 +88,10 @@ const analyticsSchema = new mongoose.Schema({
       },
     },
   ],
-  hourlyStats: [hourlyStatsSchema],
+  hourlyStats: [StatsSchema],
+  dailyStats: [StatsSchema],
+  weeklyStats: [StatsSchema],
+  monthlyStats: [StatsSchema],
   userAgents: [String], // To track unique devices
   wallets: [
     {
@@ -107,7 +106,6 @@ const analyticsSchema = new mongoose.Schema({
 // Indexes for faster querying
 analyticsSchema.index({ siteId: 1 });
 analyticsSchema.index({ "sessions.sessionId": 1 });
-analyticsSchema.index({ "hourlyStats.hour": 1 });
 
 const Analytics = mongoose.model("Analytics", analyticsSchema);
 
