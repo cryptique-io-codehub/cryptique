@@ -20,7 +20,7 @@
   "crons": [
     {
       "path": "/api/sdk/update-all-analytics-stats",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/1 * * * *"
 
     }
   ]
