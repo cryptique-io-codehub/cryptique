@@ -13,7 +13,7 @@
     }
   ],
   "functions": {
-    "/index.js": {
+    "controllers/sdkController.js": {
       "maxDuration": 200
     }
   },
