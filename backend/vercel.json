@@ -13,7 +13,7 @@
     }
   ],
   "functions": {
-    "index.js": {
+    "/index.js": {
       "maxDuration": 200
     }
   },
