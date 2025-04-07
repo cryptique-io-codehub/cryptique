@@ -1,9 +1,9 @@
+
 const axios = require("axios");
 const cheerio = require("cheerio");
 const Website=require("../models/website");
 const Team=require("../models/team");
 const { v4: uuidv4 } = require('uuid');
-const puppeteer = require('puppeteer');
 
 exports.addWebsite=async (req,res)=>{
    try{
@@ -43,7 +43,7 @@ exports.addWebsite=async (req,res)=>{
 
         console.error("Error while adding website",e);
 
-        res.status(500).json({ message: 'Error creating user', error: error.message });
+        res.status(500).json({ message: 'Error creating user', error: e.message });
 
    }
 
@@ -87,6 +87,7 @@ exports.deleteWebsite=async (req,res)=>{
     }
 }
 
+<<<<<<< HEAD
 
 
 exports.verify = async (req, res) => {
@@ -134,6 +135,8 @@ exports.verify = async (req, res) => {
     }
 };
 
+=======
+>>>>>>> 0dda56f8503c6aaa2d9f06f5a7e5f38626484c4f
 exports.getWebsitesOfTeam = async (req, res) => {
     try {
         const { teamName } = req.body;
@@ -142,10 +145,85 @@ exports.getWebsitesOfTeam = async (req, res) => {
 
         const team = await Team.findOne({ name: teamName }).populate('websites');
         if (!team) return res.status(404).json({ message: "Team not found" });
-        console.log(team.websites.length);
+
         return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {
         console.error("Error while fetching websites", e);
         res.status(500).json({ message: 'Error while fetching websites', error: e.message });
     }
 }
+
+exports.verify = async (req, res) => {
+    try {
+        const { Domain, siteId } = req.body;
+        console.log(Domain, siteId);
+        if (!Domain || !siteId) {
+            return res.status(400).json({ message: "Domain and siteId are required" });
+        }
+
+        const targetScriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
+        
+        
+        let data;
+        try {
+            data = await axios.get(`https://${Domain}`, { timeout: 5000 });
+        } catch (httpsError) {
+            try {
+                data = await axios.get(`http://${Domain}`, { timeout: 5000 });
+            } catch (httpError) {
+                return res.status(404).json({ message: "Could not access the website" });
+            }
+        }
+
+        const $ = cheerio.load(data.data);
+        let foundScript = false;
+        let foundSiteId = false;
+
+        
+        $('script').each((i, element) => {
+            const script = $(element);
+            
+            
+            if (script.attr('src') === targetScriptSrc) {
+                foundScript = true;
+                if (script.attr('site-id') === siteId) {
+                    foundSiteId = true;
+                }
+                return false; 
+            }
+            
+            
+            const scriptContent = script.html() || '';
+            if (scriptContent.includes(targetScriptSrc)) {
+                foundScript = true;
+                
+                const siteIdMatch = scriptContent.match(/script\.setAttribute\('site-id',\s*'([^']+)'/);
+                if (siteIdMatch && siteIdMatch[1] === siteId) {
+                    foundSiteId = true;
+                }
+                return false; 
+            }
+        });
+
+        if (!foundScript) {
+            return res.status(404).json({ message: "Cryptique analytics script not found on the page" });
+        }
+
+        if (!foundSiteId) {
+            return res.status(403).json({ message: "site-id does not match or is missing" });
+        }
+
+        
+        await Website.findOneAndUpdate(
+            { Domain },
+            { $set: { isVerified: true } },
+            { new: true }
+        );
+
+        return res.status(200).json({ message: "Verification successful" });
+
+    } catch (e) {
+        console.error('Verification error:', e);
+        return res.status(500).json({ message: 'Verification failed', error: e.message});
+    }
+};
