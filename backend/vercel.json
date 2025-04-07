@@ -14,7 +14,7 @@
   ],
   "crons": [
     {
-      "path": "/api/sdk/update-all-analytics-stats/KIFJJI909HENO",
+      "path": "/api/sdk/update-all-analytics-stats",
       "schedule": "*/1 * * * *"
 
     }
