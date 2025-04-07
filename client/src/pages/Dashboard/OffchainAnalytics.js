@@ -43,6 +43,8 @@ const OffchainAnalytics = () => {
   }
   handleSelectWebsite();
 },[idy]);
+
+
 console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
   const pageViews_size = Object.keys(analytics?.pageViews ?? {}).length;
@@ -64,7 +66,22 @@ console.log(idy);
   };
 
   const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
-  const avgVisitDuration = calculateAverageDuration(analytics?.sessions).toFixed(2);
+const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
+const avgVisitDuration = formatDuration(rawAvgDuration);
+
+function formatDuration(seconds) {
+  if (seconds < 60) {
+    return `${seconds.toFixed(0)} sec`;
+  } else if (seconds < 3600) {
+    return `${(seconds / 60).toFixed(1)} min`;
+  } else if (seconds < 86400) {
+    return `${(seconds / 3600).toFixed(1)} hr`;
+  } else if (seconds < 31536000) {
+    return `${(seconds / 86400).toFixed(1)} days`;
+  } else {
+    return `${(seconds / 31536000).toFixed(1)} years`;
+  }
+}
   
  
   
@@ -301,7 +318,7 @@ console.log(idy);
   };
     
 // setDatas(datas);
-// console.log(datas);
+console.log(analytics);
 return (
   <div className="flex h-screen overflow-hidden bg-gray-50">
     {/* Mobile menu toggle button for main sidebar */}
@@ -431,7 +448,7 @@ return (
                         textColor="black" 
                       />
                        <AnalyticsCard 
-                        label="Avg. visit duration (in sec)" 
+                        label="Avg. visit duration" 
                         data={avgVisitDuration} 
                         bgColor="bg-white" 
                         textColor="text-black" 
@@ -452,13 +469,12 @@ return (
                     
                     {/* Dynamic Analytics chart */}
                     <div className="w-full">
-                      <AnalyticsChart 
-                        chartData={chartData}
-                        selectedDataPoint={selectedDataPoint}
-                        setSelectedDataPoint={handleDataPointClick}
-                        isLoading={isLoading}
-                        error={error}
-                      />
+                    <AnalyticsChart 
+                      analytics={analytics}
+                      setAnalytics={setanalytics}
+                      isLoading={isLoading}
+                       error={error}
+                    />
                     </div>
                     
                     <FunnelDashboard analytics={analytics}/>
@@ -475,8 +491,11 @@ return (
                       <div className="w-full lg:w-2/5">
                         {/* Traffic Sources Component */}
                         <TrafficSourcesComponent 
+                          setanalytics={setanalytics}
+                          analytics={analytics}
                           trafficSources={trafficSources} 
-                          setTrafficSources={setTrafficSources} 
+                          setTrafficSources={setTrafficSources}
+                           
                         />
                         
                         {/* User Type Donut Chart */}
@@ -570,6 +589,8 @@ return (
                     />
                       {analytics && Object.keys(analytics).length > 0 ? 
                       <TrafficAnalytics 
+                      analytics={analytics}
+                      setanalytics={setanalytics}
                       trafficSources={trafficSources} 
                       setTrafficSources={setTrafficSources}  
                     />:(
@@ -637,7 +658,7 @@ return (
                       setidy={setidy}
                     />
                     {analytics && Object.keys(analytics).length > 0 ?
-                    <RetentionAnalytics/>
+                    <RetentionAnalytics analytics={analytics} setanalytics={setanalytics}/>
                     :(
                       <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">

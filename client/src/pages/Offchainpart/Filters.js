@@ -8,10 +8,12 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
   const [newWebsiteDomain, setNewWebsiteDomain] = useState('');
   const [newWebsiteName, setNewWebsiteName] = useState('');
-  const[scriptmodel,setscriptmodel]=useState('');
-  const[scriptcode,setscriptcode]=useState('');
-  const[verifyid,setverifyid]=useState('');
-  const[falsemessage,setfalsemessage]=useState('');
+  const [scriptmodel, setscriptmodel] = useState(false);
+  const [scriptcode, setscriptcode] = useState('');
+  const [verifyid, setverifyid] = useState('');
+  const [falsemessage, setfalsemessage] = useState('');
+  const[verifyload,setverifyload]=useState(false);
+  const[deleteload,setdeleteload]=useState(false);
   // fetch website
   // depend-selectedTeam
   useEffect(() => {
@@ -24,16 +26,61 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         const response = await axiosInstance.post('/website/getWebsites', {
           teamName: selectteam // use the value from localStorage directly
         });
-  
         if (response.status === 200) {
-          setWebsitearray(response.data.websites);
           console.log(response.data.websites);
-  
-          if (!selectedWebsite && response.data.websites.length > 0) {
-            const firstWebsite = response.data.websites[0];
-            setSelectedWebsite(firstWebsite);
-            if (firstWebsite.siteId) {
+          if (response && response.data.websites.length > 0) {
+            setWebsitearray(response.data.websites);
+            console.log('c');
+            if(localStorage.getItem("selectedWebsite") === '') {
+              console.log('a');
+              const firstWebsite = response.data.websites[0];
               localStorage.setItem("idy", firstWebsite.siteId);
+              localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+              setSelectedWebsite(firstWebsite);
+              setidy(firstWebsite.siteId);
+              
+              // Generate script code for the first website
+              const iD = firstWebsite.siteId;
+              const scriptHTML = `<script>
+              var script = document.createElement('script');
+              script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+              script.setAttribute('site-id', '${iD}');
+              document.head.appendChild(script);
+            </script>`;
+              setscriptcode(scriptHTML);
+              
+              // Show installation popup if needed for first website
+              if (!firstWebsite.isVerified) {
+                // setscriptmodel(true);
+                setidy(firstWebsite.siteId);
+                // localStorage.setItem("showInstallationPopup", "true");
+              }
+            } else {
+              // Find the selected website in the array
+              const currentWebsite = response.data.websites.find(
+                website => website.Domain === localStorage.getItem("selectedWebsite")
+              );
+              
+              if (currentWebsite) {
+                setSelectedWebsite(currentWebsite);
+                setidy(currentWebsite.siteId);
+                
+                // Generate script code for current website
+                const iD = currentWebsite.siteId;
+                const scriptHTML = `<script>
+                var script = document.createElement('script');
+                script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+                script.setAttribute('site-id', '${iD}');
+                document.head.appendChild(script);
+              </script>`;
+                setscriptcode(scriptHTML);
+                
+                // Show installation popup if website is not verified
+                // if (!currentWebsite.isVerified) {
+                  // setscriptmodel(true);
+                  // localStorage.setItem("showInstallationPopup", "true");
+                // }
+              }
             }
           }
         }
@@ -45,31 +92,32 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
     };
   
     fetchWebsites();
-  }, []);
+  }, [localStorage.getItem("selectedWebsite")]);
   
 
   const handleSelectWebsite = async (website) => {
-    setSelectedWebsite(website);
-    localStorage.setItem("selectedWebsite",website.Domain);
+    localStorage.setItem("selectedWebsite", website.Domain);
     localStorage.setItem("idy", website.siteId);
+    setSelectedWebsite(website);
     setidy(website.siteId);
-    if(website.isVerified){
+    
+    const iD = website.siteId;
+    const scriptHTML = `<script>
+    var script = document.createElement('script');
+    script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.setAttribute('site-id', '${iD}');
+    document.head.appendChild(script);
+  </script>`;
+    setscriptcode(scriptHTML);
+    setscriptmodel(true);
+    // localStorage.setItem("showInstallationPopup", "true");
+    
+    if (website.isVerified) {
+      const new_response = await axiosInstance.get(`/sdk/analytics/${website.siteId}`);
+      setanalytics(new_response.data.analytics);
+    }
+    
     setIsDropdownOpen(false);
-    const new_response = await axiosInstance.get(`/sdk/analytics/${website.siteId}`);
-    setanalytics(new_response.data.analytics);
-    }
-    else{
-      setIsDropdownOpen(false);
-      const iD=website.siteId;
-      const scriptHTML = `<script>
-      var script = document.createElement('script');
-      script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-      script.setAttribute('site-id', '${iD}');
-      document.head.appendChild(script);
-    </script>`;
-      setscriptcode(scriptHTML);
-      setscriptmodel(true);
-    }
   }
 
   const handleDropdownToggle = () => {
@@ -85,9 +133,10 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
     setShowAddWebsiteModal(false);
   };
 
-  const handleClosescriptmodel=()=>{
+  const handleClosescriptmodel = () => {
     setfalsemessage('');
     setscriptmodel(false);
+    // localStorage.removeItem("showInstallationPopup");
   }
 
   const handleAddWebsite = async (e) => {
@@ -100,18 +149,22 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
           teamName: selectedTeam // Include team name in request body
         }
       );
-      if(response.data.message==="Website added successfully" ){
+      setSelectedWebsite(response.data.website);
+      console.log(response);
+      localStorage.setItem("selectedWebsite",response.data.website.Domain);
+      if(response.data.message === "Website added successfully" ) {
         const iD = response.data.website.siteId;
+        localStorage.setItem("idy",iD);
         setverifyid(iD);
-      const scriptHTML = `<script>
-      var script = document.createElement('script');
-      script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-      script.setAttribute('site-id', '${iD}');
-      document.head.appendChild(script);
-    </script>`;
-        
+        const scriptHTML = `<script>
+        var script = document.createElement('script');
+        script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+        script.setAttribute('site-id', '${iD}');
+        document.head.appendChild(script);
+      </script>`;
         setscriptcode(scriptHTML);
         setscriptmodel(true);
+        // localStorage.setItem("showInstallationPopup", "true");
         setShowAddWebsiteModal(false);
       }
     } catch (error) {
@@ -120,8 +173,8 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   };
 
   const handleVerify = async () => {
-    
     try {
+      setverifyload(true);
       console.log(selectedWebsite);
     
       const response = await axiosInstance.post('/website/verify', {
@@ -132,10 +185,10 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
       if (response.status === 200) {
         localStorage.setItem("idy", selectedWebsite.siteId);
         setscriptmodel(false);
-        const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid}`);
+        // localStorage.removeItem("showInstallationPopup");
+        const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);
         setanalytics(new_response.data.analytics);
         setidy(selectedWebsite.siteId);
-        
       } 
     } catch (error) {
       // Handle specific status codes
@@ -147,6 +200,69 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         }
       } else {
         setfalsemessage("Something went wrong, please try again later.");
+      }
+    }
+    finally {
+      setverifyload(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      console.log(selectedWebsite);
+    
+      const response = await axiosInstance.post('/website/delete', {
+        teamName: selectedTeam,
+        webId: selectedWebsite._id
+      });
+  
+      if (response.status === 200) {
+        setfalsemessage("website deleted successfully");
+        setSelectedWebsite();
+        localStorage.setItem("selectedWebsite", '');
+        // localStorage.removeItem("showInstallationPopup");
+        setscriptmodel(false);
+
+
+        const fetchWebsites = async () => {
+          setIsLoading(true);
+          
+          try {
+            const response = await axiosInstance.post('/website/getWebsites', {
+              teamName: localStorage.getItem("selectedTeam") // use the value from localStorage directly
+            });
+      
+            if (response.status === 200) {
+              console.log('adf');
+              console.log(response.data.websites);
+              if (response && response.data.websites.length > 0) {
+                setWebsitearray(response.data.websites);
+                if(localStorage.getItem("selectedWebsite") === null) {
+                const firstWebsite = response.data.websites[0];
+                localStorage.setItem("idy", firstWebsite.siteId);
+                localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+                setSelectedWebsite(firstWebsite);
+                setidy(firstWebsite.siteId);
+                }
+                setfalsemessage('');
+                setscriptmodel(false);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching websites:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+      
+        fetchWebsites();
+      } 
+    } catch (error) {
+      // Handle specific status codes
+      if (error.response) {
+        if (error.response.status === 500) {
+          setfalsemessage("Error while deleting the website");
+        } 
       }
     }
   };
@@ -171,14 +287,21 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
                   onClick={handleDropdownToggle}
                   disabled={isLoading}
                 >
-                  {selectedWebsite ? (
+                  {localStorage.getItem("selectedWebsite") !== null ? (
                     <div className="flex items-center">
-                      <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                      {selectedWebsite && selectedWebsite.isVerified?(<span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                      </span>):(
+                        <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                           <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                         </svg>
                       </span>
+                      )}
                       <span className="text-gray-800 text-sm">{localStorage.getItem("selectedWebsite")}</span>
                     </div>
                   ) : (
@@ -210,12 +333,19 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
                               className="flex items-center w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100"
                               onClick={() => handleSelectWebsite(website)}
                             >
-                              <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                              {website.isVerified ? (<span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                </svg>
+                              </span>):(
+                                <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                   <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                   <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                                 </svg>
                               </span>
+                              )}
                               <span className="text-sm">{website.Domain}</span>
                             </button>
                           </li>
@@ -384,17 +514,44 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
                       </button> */}
                     </div>
                     
-                    <div className="flex justify-center">
-                      <button
-                        onClick={handleVerify}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
-                      >
-                        Verify Installation
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
+                    <div className="flex justify-center space-x-4">
+  {selectedWebsite && (selectedWebsite.isVerified === false) ? (
+    <button
+      onClick={handleVerify}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
+      disabled={verifyload}
+    >
+     {verifyload ? (
+        <>
+          <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Verifying...
+        </>
+      ):(
+        <>
+      Verify Installation
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+      </>
+      )}
+    </button>
+  ) : (
+    <></>
+  )}
+  
+  <button
+    onClick={handleDelete}
+    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
+  >
+    Delete
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z" clipRule="evenodd" />
+    </svg>
+  </button>
+</div>
                     <div className='flex justify-center text-red-500 my-2'   >
                     {falsemessage && (
                     <>{falsemessage}</>

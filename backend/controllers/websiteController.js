@@ -53,7 +53,8 @@ exports.deleteWebsite=async (req,res)=>{
     try{
 
         const {teamName,webId}=req.body;
-
+        console.log(teamName);
+        console.log(webId);
         if(!webId && !teamName) return res.status(400).json({message:"Required fields are missing"});
 
         const checkTeam=await Team.findOne({name:teamName});
@@ -103,7 +104,7 @@ exports.verify = async (req, res) => {
         const page = await browser.newPage();
         console.log('fifth')
 
-        await page.goto(`https://${Domain}`, { waitUntil: "networkidle2" });
+        await page.goto(`http://${Domain}`, { waitUntil: "networkidle2" });
         console.log('sixth');
 
         // Evaluate if script with matching siteId exists
@@ -136,6 +137,7 @@ exports.verify = async (req, res) => {
 exports.getWebsitesOfTeam = async (req, res) => {
     try {
         const { teamName } = req.body;
+        console.log(req.body);
         if (!teamName) return res.status(400).json({ message: "Required fields are missing" });
 
         const team = await Team.findOne({ name: teamName }).populate('websites');

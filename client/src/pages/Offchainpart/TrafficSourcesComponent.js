@@ -1,42 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const TrafficSourcesComponent = ({ trafficSources, setTrafficSources }) => {
+const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   const [selectedMonth, setSelectedMonth] = useState('This Month');
-  
-  // Social media icons component
-  const SocialIcon = ({ platform }) => {
-    const iconColors = {
-      twitter: 'text-blue-400',
-      linkedin: 'text-blue-600',
-      instagram: 'text-pink-500',
-      dribbble: 'text-pink-400',
-      behance: 'text-blue-500',
-      pinterest: 'text-red-500'
-    };
+  const [processedData, setProcessedData] = useState({});
+  const [allSources, setAllSources] = useState([]);
+
+  useEffect(() => {
+    if (analytics && analytics.sessions) {
+      // Process analytics data
+      const result = processAnalytics(analytics);
+      setProcessedData(result);
+      
+      // Get all sources by visitors, sorted by visitor count
+      const sortedSources = Object.entries(result)
+        .map(([source, data]) => ({
+          source: source,
+          visitors: data.visitors,
+          web3users: data.web3users,
+          walletsConnected: data.walletsConnected
+        }))
+        .sort((a, b) => b.visitors - a.visitors);
+      
+      setAllSources(sortedSources);
+    }
+  }, [analytics, selectedMonth]);
+
+  function processAnalytics(analytics) {
+    const resultMap = new Map();
     
-    return (
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${iconColors[platform]}`}>
-        {platform === 'twitter' && <span>𝕏</span>}
-        {platform === 'linkedin' && <span>in</span>}
-        {platform === 'instagram' && <span>📷</span>}
-        {platform === 'dribbble' && <span>🏀</span>}
-        {platform === 'behance' && <span>Be</span>}
-        {platform === 'pinterest' && <span>𝙿</span>}
-      </div>
-    );
+    for (const session of analytics.sessions) {
+      let source = '';
+      if (session.utmData.source !== '') {
+        source = session.utmData.source;
+      }
+      else {
+        source = session.referrer;  
+      }
+      
+      if (!resultMap.has(source)) {
+        resultMap.set(source, {
+          visitors: new Set(),
+          web3users: new Set(),
+          walletsConnected: new Set()
+        });
+      }
+      
+      if (session.userId) {
+        resultMap.get(source).visitors.add(session.userId);
+      }
+      
+      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected' && session.userId) {
+        resultMap.get(source).web3users.add(session.userId);
+      }
+      
+      if (session.wallet && session.wallet.walletAddress !== '' && session.userId) {
+        resultMap.get(source).walletsConnected.add(session.userId);
+      }
+    }
+    
+    const finalResult = {};
+    for (const [source, data] of resultMap.entries()) {
+      finalResult[source] = {
+        visitors: data.visitors.size,
+        web3users: data.web3users.size,
+        walletsConnected: data.walletsConnected.size
+      };
+    }
+    
+    return finalResult;
+  }
+  
+  // Function to format source name for display
+  const formatSourceName = (source) => {
+    // Handle URLs
+    try {
+      if (source.startsWith('http')) {
+        const url = new URL(source);
+        return url.hostname.replace('www.', '');
+      }
+    } catch {}
+    
+    // Default: return the source with first letter capitalized
+    return source.charAt(0).toUpperCase() + source.slice(1);
   };
   
-  // Function to handle month change and update data if needed
   const handleMonthChange = (e) => {
-    const newMonth = e.target.value;
-    setSelectedMonth(newMonth);
-    
-    // Optionally update traffic data based on month selection
-    // For this example, we're just using the state provided by props
+    setSelectedMonth(e.target.value);
+    // In a real app, you would filter analytics data based on month selection
   };
   
   return (
-    <div className="mt-1 pt-4 border-t  bg-white rounded-lg shadow ">
+    <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold pl-3">Traffic sources</h3>
         <div className="relative">
@@ -59,27 +113,31 @@ const TrafficSourcesComponent = ({ trafficSources, setTrafficSources }) => {
       
       <div className="bg-gray-50 rounded-lg overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-4 bg-gray-100 p-3 pl-1 text-sm font-medium text-gray-600 pl-3">
+        <div className="grid grid-cols-4 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
           <div>Traffic source</div>
           <div className="text-right">Visitors</div>
           <div className="text-right">Web3 Users</div>
           <div className="text-right">Wallets Connected</div>
-
         </div>
         
-        {/* Table rows */}
-        <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200 pl-1">
-          {trafficSources.map((source, index) => (
-            <div key={index} className="grid grid-cols-4 p-3 text-sm">
-              <div className="flex items-center space-x-2">
-                <SocialIcon platform={source.icon} />
-                <span>{source.source}</span>
-              </div>
-              <div className="text-right">{source.visitors.toLocaleString()}</div>
-              <div className="text-right">{source.wallets.toLocaleString()}</div>
-              <div className="text-right">{source.wallets_section.toLocaleString()}</div>
-            </div>
-          ))}
+        {/* Table rows - scrollable container */}
+        <div className="max-h-64 overflow-y-auto">
+          <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
+            {allSources.length > 0 ? (
+              allSources.map((source, index) => (
+                <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
+                  <div className="flex items-center space-x-2">
+                    <span className="truncate">{formatSourceName(source.source)}</span>
+                  </div>
+                  <div className="text-right">{source.visitors.toLocaleString()}</div>
+                  <div className="text-right">{source.web3users.toLocaleString()}</div>
+                  <div className="text-right">{source.walletsConnected.toLocaleString()}</div>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-500">No data available</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

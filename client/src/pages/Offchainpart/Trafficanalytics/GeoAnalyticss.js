@@ -1,57 +1,239 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import GeoAnalyticsMap from '../GeoAnalyticsMap';
 
-const GeoAnalytics = ({analytics,selectedCountry,setSelectedCountry}) => {
- 
+// Format seconds into minutes and seconds
+const formatDuration = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')} mins ${secs.toString().padStart(2, '0')} secs`;
+};
+
+const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
+  // Process analytics data to get country-specific metrics
+  const countryMetrics = useMemo(() => {
+    if (!analytics?.sessions || !Array.isArray(analytics.sessions)) {
+      return {};
+    }
+
+    // Initialize metrics tracking objects
+    const metrics = {};
+    
+    // Process each session to gather metrics
+    analytics.sessions.forEach(session => {
+      const { country, userId, duration, isBounce, pagesViewed } = session;
+      
+      if (!country) return;
+      
+      // Initialize country data if not exists
+      if (!metrics[country]) {
+        metrics[country] = {
+          uniqueUsers: new Set(),
+          totalSessions: 0,
+          bounces: 0,
+          totalPageViews: 0,
+          totalDuration: 0,
+          web3Users: new Set(), // Users with wallet data
+          walletConnections: 0,
+          wallets: {}
+        };
+      }
+      
+      // Add user to unique users set
+      if (userId) {
+        metrics[country].uniqueUsers.add(userId);
+      }
+      
+      // Track wallet connections and types
+      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
+        metrics[country].web3Users.add(userId);
+        metrics[country].walletConnections++;
+        
+        // Track wallet types
+        const walletType = session.wallet.walletType;
+        metrics[country].wallets[walletType] = (metrics[country].wallets[walletType] || 0) + 1;
+      }
+      
+      // Increment session count
+      metrics[country].totalSessions++;
+      
+      // Track bounces
+      if (isBounce) {
+        metrics[country].bounces++;
+      }
+      
+      // Add page views
+      metrics[country].totalPageViews += pagesViewed || 0;
+      
+      // Add session duration
+      metrics[country].totalDuration += duration || 0;
+    });
+    
+    // Calculate aggregate metrics for each country
+    const countryStats = {};
+    
+    Object.entries(metrics).forEach(([country, data]) => {
+      // Find most common wallet
+      let commonWallet = "None";
+      let maxWalletCount = 0;
+      
+      Object.entries(data.wallets).forEach(([wallet, count]) => {
+        if (count > maxWalletCount) {
+          maxWalletCount = count;
+          commonWallet = wallet;
+        }
+      });
+      
+      countryStats[country] = {
+        users: data.uniqueUsers.size,
+        web3Users: data.web3Users.size,
+        walletConnects: data.walletConnections,
+        bounceRate: data.totalSessions > 0 ? 
+          `${((data.bounces / data.totalSessions) * 100).toFixed(2)}%` : "0%",
+        totalPageViews: data.totalPageViews.toLocaleString(),
+        avgPageViewPerVisit: data.totalSessions > 0 ? 
+          (data.totalPageViews / data.totalSessions).toFixed(2) : "0",
+        avgVisitDuration: data.totalSessions > 0 ? 
+          formatDuration(data.totalDuration / data.totalSessions) : "00:00",
+        conversionRate: data.uniqueUsers.size > 0 ? 
+          `${((data.web3Users.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0%",
+        commonWallet: commonWallet,
+        webTrafficSource: "Direct", // Default
+        conversionSource: "Website", // Default  
+        retention: "12.34%" // Default
+      };
+    });
+    
+    return countryStats;
+  }, [analytics]);
+  
+  // Calculate global metrics for comparison
+  const globalMetrics = useMemo(() => {
+    const countries = Object.keys(countryMetrics);
+    if (countries.length === 0) return null;
+    
+    // Find countries with max values
+    let maxUsersCountry = countries[0];
+    let maxWeb3UsersCountry = countries[0];
+    let maxWalletConnectsCountry = countries[0];
+    let maxConversionCountry = countries[0];
+    let minConversionCountry = countries[0];
+    let maxBounceRateCountry = countries[0];
+    
+    countries.forEach(country => {
+      // Max users
+      if (countryMetrics[country].users > countryMetrics[maxUsersCountry].users) {
+        maxUsersCountry = country;
+      }
+      
+      // Max web3 users
+      if (countryMetrics[country].web3Users > countryMetrics[maxWeb3UsersCountry].web3Users) {
+        maxWeb3UsersCountry = country;
+      }
+      
+      // Max wallet connects
+      if (countryMetrics[country].walletConnects > countryMetrics[maxWalletConnectsCountry].walletConnects) {
+        maxWalletConnectsCountry = country;
+      }
+      
+      // Max conversion rate
+      const currentConversion = parseFloat(countryMetrics[country].conversionRate);
+      const maxConversion = parseFloat(countryMetrics[maxConversionCountry].conversionRate);
+      if (currentConversion > maxConversion) {
+        maxConversionCountry = country;
+      }
+      
+      // Min conversion rate
+      const minConversion = parseFloat(countryMetrics[minConversionCountry].conversionRate);
+      if (currentConversion < minConversion) {
+        minConversionCountry = country;
+      }
+      
+      // Max bounce rate
+      const currentBounce = parseFloat(countryMetrics[country].bounceRate);
+      const maxBounce = parseFloat(countryMetrics[maxBounceRateCountry].bounceRate);
+      if (currentBounce > maxBounce) {
+        maxBounceRateCountry = country;
+      }
+    });
+    
+    return {
+      maxUsersCountry,
+      maxWeb3UsersCountry,
+      maxWalletConnectsCountry,
+      maxConversionCountry,
+      minConversionCountry,
+      maxBounceRateCountry
+    };
+  }, [countryMetrics]);
+
+  // Default country data if none is selected
   const [countryData, setCountryData] = useState({
-    users: 100000,
-    web3Users: 100000,
-    walletConnects: 100000,
-    conversionRate: '50.12%',
-    commonWallet: 'Metamask',
-    webTrafficSource: 'X',
-    conversionSource: 'Discord',
-    bounceRate: '12.34%',
-    totalPageViews: '10,000,000',
-    avgPageViewPerVisit: '100,000',
-    avgVisitDuration: '04 mins 32 secs',
-    retention: '12.34%'
+    users: 0,
+    web3Users: 0,
+    walletConnects: 0,
+    conversionRate: '0%',
+    commonWallet: 'None',
+    webTrafficSource: 'Direct',
+    conversionSource: 'Website',
+    bounceRate: '0%',
+    totalPageViews: '0',
+    avgPageViewPerVisit: '0',
+    avgVisitDuration: '00:00',
+    retention: '0%'
   });
 
-  // Mock country data for map
-  const countriesData = [
-    { id: 'US', name: 'United States of America', fillColor: '#5D87E8', users: 100000, web3Users: 100000, walletConnects: 100000, conversionRate: '50.12%' },
-    { id: 'GB', name: 'United Kingdom', fillColor: '#5D87E8', users: 85000, web3Users: 75000, walletConnects: 65000, conversionRate: '45.78%' },
-    { id: 'CA', name: 'Canada', fillColor: '#5D87E8', users: 72000, web3Users: 68000, walletConnects: 54000, conversionRate: '43.21%' },
-    { id: 'AU', name: 'Australia', fillColor: '#5D87E8', users: 45000, web3Users: 42000, walletConnects: 38000, conversionRate: '41.5%' },
-    { id: 'FR', name: 'France', fillColor: '#5D87E8', users: 38000, web3Users: 34000, walletConnects: 29000, conversionRate: '39.1%' },
-    { id: 'DE', name: 'Germany', fillColor: '#5D87E8', users: 36000, web3Users: 33000, walletConnects: 27000, conversionRate: '38.5%' },
-    { id: 'JP', name: 'Japan', fillColor: '#5D87E8', users: 29000, web3Users: 25000, walletConnects: 21000, conversionRate: '34.2%' },
-    { id: 'IN', name: 'India', fillColor: '#5D87E8', users: 25000, web3Users: 22000, walletConnects: 18000, conversionRate: '32.1%' },
-    { id: 'BR', name: 'Brazil', fillColor: '#5D87E8', users: 22000, web3Users: 19000, walletConnects: 15000, conversionRate: '30.5%' },
-    { id: 'KR', name: 'South Korea', fillColor: '#5D87E8', users: 18000, web3Users: 16000, walletConnects: 13000, conversionRate: '28.7%' }
-  ];
+  // Handle country data when selection changes
+// Handle country data when selection changes
+// In GeoAnalytics.js
+// Replace the existing useEffect with this
+useEffect(() => {
+  console.log("Selected country:", selectedCountry);
+  
+  if (selectedCountry && countryMetrics[selectedCountry]) {
+    // Data exists for this country
+    console.log("Setting data for:", selectedCountry, countryMetrics[selectedCountry]);
+    setCountryData(countryMetrics[selectedCountry]);
+  } else if (selectedCountry) {
+    // No data for this country - set to default values
+    console.log("No data for:", selectedCountry);
+    setCountryData({
+      users: 0,
+      web3Users: 0,
+      walletConnects: 0,
+      conversionRate: '0%',
+      commonWallet: 'None',
+      webTrafficSource: 'N/A',
+      conversionSource: 'N/A',
+      bounceRate: '0%',
+      totalPageViews: '0',
+      avgPageViewPerVisit: '0',
+      avgVisitDuration: '00:00',
+      retention: '0%'
+    });
+  }
+}, [selectedCountry, countryMetrics]);
 
-  const handleCountrySelect = (country) => {
-    setSelectedCountry(country.name);
-    
-    // Set the country data
-    const selectedData = {
-      users: country.users,
-      web3Users: country.web3Users,
-      walletConnects: country.walletConnects,
-      conversionRate: country.conversionRate,
-      commonWallet: 'Metamask',
-      webTrafficSource: 'X',
-      conversionSource: 'Discord',
-      bounceRate: '12.34%',
-      totalPageViews: '10,000,000',
-      avgPageViewPerVisit: '100,000',
-      avgVisitDuration: '04 mins 32 secs',
-      retention: '12.34%'
+  // Get flag emoji for country
+  const getCountryFlag = (countryName) => {
+    const countryCodeMap = {
+      "United States": "🇺🇸",
+      "United States of America": "🇺🇸",
+      "India": "🇮🇳",
+      "Germany": "🇩🇪",
+      "Brazil": "🇧🇷",
+      "Canada": "🇨🇦",
+      "France": "🇫🇷",
+      "United Kingdom": "🇬🇧",
+      "Australia": "🇦🇺",
+      "Japan": "🇯🇵",
+      "South Korea": "🇰🇷",
+      "China": "🇨🇳",
+      "Russia": "🇷🇺",
+      "Italy": "🇮🇹",
+      "Spain": "🇪🇸"
     };
     
-    setCountryData(selectedData);
+    return countryCodeMap[countryName] || "🌎";
   };
 
   return (
@@ -62,21 +244,21 @@ const GeoAnalytics = ({analytics,selectedCountry,setSelectedCountry}) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
         <MetricCard 
           title="Most Users" 
-          value={countryData.users.toLocaleString()} 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          value={globalMetrics ? countryMetrics[globalMetrics.maxUsersCountry]?.users.toLocaleString() : 0} 
+          country={globalMetrics?.maxUsersCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.maxUsersCountry)} 
         />
         <MetricCard 
           title="Most Web3 Users" 
-          value={countryData.web3Users.toLocaleString()} 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          value={globalMetrics ? countryMetrics[globalMetrics.maxWeb3UsersCountry]?.web3Users.toLocaleString() : 0} 
+          country={globalMetrics?.maxWeb3UsersCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.maxWeb3UsersCountry)} 
         />
         <MetricCard 
           title="Most Wallet Connects" 
-          value={countryData.walletConnects.toLocaleString()} 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          value={globalMetrics ? countryMetrics[globalMetrics.maxWalletConnectsCountry]?.walletConnects.toLocaleString() : 0} 
+          country={globalMetrics?.maxWalletConnectsCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.maxWalletConnectsCountry)} 
         />
       </div>
       
@@ -84,21 +266,21 @@ const GeoAnalytics = ({analytics,selectedCountry,setSelectedCountry}) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
         <MetricCard 
           title="Highest Conversion" 
-          value={countryData.conversionRate} 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          value={globalMetrics ? countryMetrics[globalMetrics.maxConversionCountry]?.conversionRate : "0%"} 
+          country={globalMetrics?.maxConversionCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.maxConversionCountry)} 
         />
         <MetricCard 
           title="Lowest Conversion" 
-          value="12.34%" 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          value={globalMetrics ? countryMetrics[globalMetrics.minConversionCountry]?.conversionRate : "0%"} 
+          country={globalMetrics?.minConversionCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.minConversionCountry)} 
         />
         <MetricCard 
-          title="Highest Bounce rate" 
-          value="45.65%" 
-          country={selectedCountry} 
-          flag="🇺🇸" 
+          title="Highest Bounce Rate" 
+          value={globalMetrics ? countryMetrics[globalMetrics.maxBounceRateCountry]?.bounceRate : "0%"} 
+          country={globalMetrics?.maxBounceRateCountry || "None"} 
+          flag={getCountryFlag(globalMetrics?.maxBounceRateCountry)} 
         />
       </div>
       
@@ -106,15 +288,15 @@ const GeoAnalytics = ({analytics,selectedCountry,setSelectedCountry}) => {
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
         <div className="w-full lg:w-3/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
           <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Details by country</h2>
-          <GeoAnalyticsMap analytics={analytics}  selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}/>
+          <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
         </div>
         
         <div className="w-full lg:w-2/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
           <div className="flex justify-between items-center mb-3 md:mb-4">
             <h2 className="text-base md:text-lg font-semibold">Chosen Country:</h2>
             <div className="flex items-center">
-              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">{selectedCountry}</span>
-              <span className="ml-2"></span>
+              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">{selectedCountry || "Select a country"}</span>
+              <span className="ml-2">{getCountryFlag(selectedCountry)}</span>
             </div>
           </div>
           
@@ -158,44 +340,6 @@ const DetailRow = ({ label, value }) => {
     <div className="flex justify-between items-center border-b border-gray-100 py-1">
       <span className="text-xs md:text-sm text-gray-600">{label}</span>
       <span className="text-xs md:text-sm font-medium truncate max-w-32 md:max-w-48 text-right">{value}</span>
-    </div>
-  );
-};
-
-// Simple World Map Component
-const WorldMap = ({ countriesData, onCountrySelect }) => {
-  return (
-    <div className="relative h-60 sm:h-72 md:h-80 w-full">
-      {/* This is a simplified world map representation */}
-      <div className="absolute inset-0 bg-blue-100 rounded-lg">
-        {/* This would be replaced with an actual SVG map in a real implementation */}
-        <img 
-          src="/api/placeholder/600/300" 
-          alt="World Map" 
-          className="w-full h-full object-cover rounded-lg opacity-50"
-        />
-        
-        {/* Interactive areas for countries */}
-        <div className="absolute inset-0">
-          {countriesData.map((country, index) => (
-            <div 
-              key={index}
-              onClick={() => onCountrySelect(country)}
-              className="absolute cursor-pointer hover:opacity-75 transition-opacity"
-              style={{
-                width: '10%',
-                height: '10%',
-                left: `${10 + (index * 8)}%`,
-                top: `${20 + (index % 5) * 12}%`,
-                backgroundColor: country.fillColor,
-                borderRadius: '50%',
-                opacity: 0.7
-              }}
-              title={country.name}
-            ></div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
