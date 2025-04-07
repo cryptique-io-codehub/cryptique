@@ -101,10 +101,7 @@ const analyticsSchema = new mongoose.Schema({
   ]
 });
 
-// Pre-save hook to update walletsConnect
-// Indexes for faster querying
-analyticsSchema.index({ siteId: 1 });
-analyticsSchema.index({ "sessions.sessionId": 1 });
+
 
 const Analytics = mongoose.model("Analytics", analyticsSchema);
 
