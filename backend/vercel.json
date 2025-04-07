@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/crone-jobs.js": {
-      "maxDuration": 200
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
