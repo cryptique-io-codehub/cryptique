@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/crons-jobs.js": {
+      "maxDuration": 200
+    }
+  },
   "builds": [
     {
       "src": "index.js",
@@ -12,11 +17,6 @@
       "dest": "index.js"
     }
   ],
-  "functions": {
-    "api/crons-jobs.js": {
-      "maxDuration": 200
-    }
-  },
   "crons": [
     {
       "path": "/api/sdk/update-all-analytics-stats/KIFJJI909HENO",
