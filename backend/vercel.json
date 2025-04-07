@@ -12,9 +12,14 @@
       "dest": "index.js"
     }
   ],
+  "functions": {
+    "api/crons-jobs.js": {
+      "maxDuration": 200
+    }
+  },
   "crons": [
     {
-      "path": "/api/sdk/update-all-analytics-stats",
+      "path": "/api/sdk/update-all-analytics-stats/KIFJJI909HENO",
       "schedule": "*/5 * * * *"
 
     }
