@@ -87,56 +87,6 @@ exports.deleteWebsite=async (req,res)=>{
     }
 }
 
-<<<<<<< HEAD
-
-
-exports.verify = async (req, res) => {
-    try {
-        const { Domain, siteId } = req.body;
-        console.log('a');
-        console.log(req.body);
-        console.log('first');
-        if (!Domain || !siteId) return res.status(400).json({ message: "Required fields are missing" });
-        console.log('second');
-        const scriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
-        console.log('third');
-        const browser = await puppeteer.launch({ headless: "new" });
-        console.log('fourth')
-        const page = await browser.newPage();
-        console.log('fifth')
-
-        await page.goto(`http://${Domain}`, { waitUntil: "networkidle2" });
-        console.log('sixth');
-
-        // Evaluate if script with matching siteId exists
-        const scriptExists = await page.evaluate((scriptSrc, siteId) => {
-            const scripts = Array.from(document.querySelectorAll('script'));
-            return scripts.some(script => script.src === scriptSrc && script.getAttribute('site-id') === siteId);
-        }, scriptSrc, siteId);
-        console.log('seventh');
-        await browser.close();
-        console.log('eight');
-
-        if (scriptExists) {
-            console.log('rrrrr');
-            await Website.findOneAndUpdate(
-                { Domain },
-                { $set: { isVerified: true } },
-                { new: true }
-            );
-            return res.status(200).json({ message: "Script found" });
-        } else {
-            return res.status(404).json({ message: "Script not found" });
-        }
-
-    } catch (e) {
-        console.error('Error while fetching the website', e);
-        res.status(500).json({ message: 'Error while web scraping', error: e.message });
-    }
-};
-
-=======
->>>>>>> 0dda56f8503c6aaa2d9f06f5a7e5f38626484c4f
 exports.getWebsitesOfTeam = async (req, res) => {
     try {
         const { teamName } = req.body;

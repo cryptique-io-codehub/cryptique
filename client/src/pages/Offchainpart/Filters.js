@@ -194,12 +194,13 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
       // Handle specific status codes
       if (error.response) {
         if (error.response.status === 404) {
-          setfalsemessage("Please add the script in your site");
-        } else {
-          setfalsemessage("Enter valid website");
+          setfalsemessage("Cryptique analytics script not found on the page");
+        } else if(error.response.status === 403)
+        {
+          setfalsemessage("site-id does not match or is missing");
         }
       } else {
-        setfalsemessage("Something went wrong, please try again later.");
+        setfalsemessage("Verification failed");
       }
     }
     finally {
