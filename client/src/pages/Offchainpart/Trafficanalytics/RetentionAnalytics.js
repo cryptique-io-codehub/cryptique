@@ -213,6 +213,105 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         // Get the chart data from analytics
         const chartData = processChartData();
         
+        // Process cohort data for the past 7 days
+        const processCohortData = () => {
+          const cohortData = [];
+          const today = new Date();
+          
+          // Process data for past 7 days
+          for (let i = 6; i >= 0; i--) {
+            const currentDate = new Date(today);
+            currentDate.setDate(today.getDate() - i);
+            
+            // Format the date for display
+            const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+            
+            // Filter sessions for this day to get initial user count
+            const dayStart = new Date(currentDate);
+            dayStart.setHours(0, 0, 0, 0);
+            
+            const dayEnd = new Date(currentDate);
+            dayEnd.setHours(23, 59, 59, 999);
+            
+            const daysSessions = analytics.sessions.filter(session => {
+              const sessionDate = new Date(session.startTime);
+              return sessionDate >= dayStart && sessionDate <= dayEnd;
+            });
+            
+            // Get unique user IDs for this day (initial users)
+            const dayUniqueUserIds = [...new Set(daysSessions.map(session => session.userId))];
+            const initialUsers = dayUniqueUserIds.length;
+            
+            if (initialUsers === 0) {
+              continue; // Skip days with no users
+            }
+            
+            // Calculate retention for subsequent days
+            const retentionByDay = [];
+            
+            // Day 0 is not showing 100% as requested
+            retentionByDay.push({ day: 0, value: initialUsers });
+            
+            // Calculate retention for each subsequent day
+            for (let j = 1; j <= 7; j++) {
+              // Skip if we're looking beyond today
+              if (i - j < 0) {
+                retentionByDay.push({ day: j, value: null });
+                continue;
+              }
+              
+              const retentionDate = new Date(currentDate);
+              retentionDate.setDate(currentDate.getDate() + j);
+              
+              const retentionDayStart = new Date(retentionDate);
+              retentionDayStart.setHours(0, 0, 0, 0);
+              
+              const retentionDayEnd = new Date(retentionDate);
+              retentionDayEnd.setHours(23, 59, 59, 999);
+              
+              // Get sessions for the retention day
+              const retentionDaySessions = analytics.sessions.filter(session => {
+                const sessionDate = new Date(session.startTime);
+                return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
+              });
+              
+              // Get unique user IDs for retention day
+              const retentionDayUserIds = [...new Set(retentionDaySessions.map(session => session.userId))];
+              
+              // Find returning users (intersection of day 0 and current day)
+              const returningUserIds = dayUniqueUserIds.filter(userId => 
+                retentionDayUserIds.includes(userId)
+              );
+              
+              // Calculate retention value - number of returning users
+              const retentionValue = returningUserIds.length;
+              
+              // Calculate retention percentage
+              const retentionPercentage = initialUsers > 0 
+                ? (retentionValue / initialUsers) * 100 
+                : 0;
+              
+              retentionByDay.push({ 
+                day: j, 
+                value: retentionValue, 
+                percentage: retentionPercentage.toFixed(1)
+              });
+            }
+            
+            // Add cohort data for this day
+            cohortData.push({
+              date: formattedDate,
+              initialUsers: initialUsers,
+              retentionByDay: retentionByDay
+            });
+          }
+          
+          return cohortData;
+        };
+        
+        // Get cohort data
+        const cohortData = processCohortData();
+        
         // If we don't have any chart data, use a placeholder
         const finalChartData = chartData.length > 0 ? chartData : [
           { month: 'No Data', DAU: 0, WAU: 0, MAU: 0 }
@@ -245,173 +344,20 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           ],
           // Use the dynamic chart data instead of hardcoded values
           retentionChart: finalChartData,
-          cohortData: [
+          // Use dynamic cohort data
+          cohortData: cohortData.length > 0 ? cohortData : [
             { 
-              date: 'May 14-20', 
-              initialUsers: 454,
+              date: 'No Data', 
+              initialUsers: 0,
               retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 5.2 },
-                { day: 2, value: 3.2 },
-                { day: 3, value: 2.1 },
-                { day: 4, value: 1.9 },
-                { day: 5, value: 1.2 },
-                { day: 6, value: 1.1 },
-                { day: 7, value: 0.7 }
-              ]
-            },
-            { 
-              date: 'May 17-20', 
-              initialUsers: 322,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 5.0 },
-                { day: 2, value: 4.4 },
-                { day: 3, value: 4.0 },
-                { day: 4, value: 3.3 },
-                { day: 5, value: 2.5 },
-                { day: 6, value: 1.5 },
-                { day: 7, value: 0.7 }
-              ]
-            },
-            { 
-              date: 'May 16-20', 
-              initialUsers: 564,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 5.7 },
-                { day: 2, value: 3.2 },
-                { day: 3, value: 2.3 },
-                { day: 4, value: 1.9 },
-                { day: 5, value: 1.2 },
-                { day: 6, value: 0.7 },
-                { day: 7, value: 0.3 }
-              ] 
-            },
-            { 
-              date: 'May 20-22', 
-              initialUsers: 348,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 3.1 },
-                { day: 2, value: 2.1 },
-                { day: 3, value: 1.4 },
-                { day: 4, value: 0.9 },
-                { day: 5, value: 0.7 },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 20-23', 
-              initialUsers: 433,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 2.4 },
-                { day: 2, value: 1.7 },
-                { day: 3, value: 1.2 },
-                { day: 4, value: 0.5 },
-                { day: 5, value: 0.2 },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 21-25', 
-              initialUsers: 387,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 3.2 },
-                { day: 2, value: 0.2 },
-                { day: 3, value: 0.0 },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 22-25', 
-              initialUsers: 311,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 2.0 },
-                { day: 2, value: 1.7 },
-                { day: 3, value: 1.2 },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 23-25', 
-              initialUsers: 290,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 0.5 },
-                { day: 2, value: 0.3 },
-                { day: 3, value: null },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 24-25', 
-              initialUsers: 312,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 0.7 },
-                { day: 2, value: null },
-                { day: 3, value: null },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 25-26', 
-              initialUsers: 278,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: 0.7 },
-                { day: 2, value: null },
-                { day: 3, value: null },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 26-29', 
-              initialUsers: 407,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: null },
-                { day: 2, value: null },
-                { day: 3, value: null },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
-              ]
-            },
-            { 
-              date: 'May 27-30', 
-              initialUsers: 344,
-              retentionByDay: [
-                { day: 0, value: 100.0 },
-                { day: 1, value: null },
-                { day: 2, value: null },
-                { day: 3, value: null },
-                { day: 4, value: null },
-                { day: 5, value: null },
-                { day: 6, value: null },
-                { day: 7, value: null }
+                { day: 0, value: 0 },
+                { day: 1, value: 0 },
+                { day: 2, value: 0 },
+                { day: 3, value: 0 },
+                { day: 4, value: 0 },
+                { day: 5, value: 0 },
+                { day: 6, value: 0 },
+                { day: 7, value: 0 }
               ]
             }
           ]
@@ -430,25 +376,30 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
     }
   }, [analytics, timeFrame]);
 
-  // Get intensity color for cohort cell based on value
-  const getCellColor = (value) => {
+  // Get intensity color for cohort cell based on percentage
+  const getCellColor = (value, initialUsers) => {
     if (value === null || value === undefined) return 'bg-gray-100';
-    if (value === 100) return 'bg-gray-100';
+    if (value === initialUsers) return 'bg-gray-100';
+    
+    // Calculate percentage for color intensity
+    const percentage = initialUsers > 0 ? (value / initialUsers) * 100 : 0;
     
     // Create a color gradient from light green to dark green
-    if (value >= 5.0) return 'bg-green-500 text-white';
-    if (value >= 3.0) return 'bg-green-400 text-white';
-    if (value >= 2.0) return 'bg-green-300';
-    if (value >= 1.0) return 'bg-green-200';
-    if (value > 0) return 'bg-green-100';
+    if (percentage >= 50.0) return 'bg-green-500 text-white';
+    if (percentage >= 30.0) return 'bg-green-400 text-white';
+    if (percentage >= 20.0) return 'bg-green-300';
+    if (percentage >= 10.0) return 'bg-green-200';
+    if (percentage > 0) return 'bg-green-100';
     return 'bg-gray-100';
   };
 
-  // Format the retention value
-  const formatRetentionValue = (value) => {
+  // Format the retention value to show returning users count
+  const formatRetentionValue = (value, percentage) => {
     if (value === null || value === undefined) return '-';
-    if (value === 100) return '100%';
-    return `${value.toFixed(1)}%`;
+    if (percentage !== undefined) {
+      return `${value} (${percentage}%)`;
+    }
+    return value.toString();
   };
 
   if (isLoading || !retentionData) {
@@ -505,7 +456,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
           <div>
             <h3 className="text-md md:text-lg font-semibold">Visitors retention</h3>
-            <p className="text-xs md:text-sm text-gray-500">The retention rate is the percentage of users still visiting the website over a certain period of time</p>
+            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site on subsequent days</p>
           </div>
           
           <div className="self-start sm:self-center">
@@ -530,7 +481,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   <th className="p-1 md:p-2 bg-gray-50 border text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10">Day</th>
                   {Array.from({ length: 8 }, (_, i) => (
                     <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {i}
+                      {i === 0 ? 'Initial' : `Day ${i}`}
                     </th>
                   ))}
                 </tr>
@@ -540,14 +491,14 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   <tr key={index}>
                     <td className="p-1 md:p-2 border bg-gray-50 sticky left-0 z-10">
                       <div className="font-medium text-xs md:text-sm">{cohort.date}</div>
-                      <div className="text-xs text-gray-500">Initial: {cohort.initialUsers}</div>
+                      <div className="text-xs text-gray-500">Users: {cohort.initialUsers}</div>
                     </td>
                     {cohort.retentionByDay.slice(0, 8).map((day, dayIndex) => (
                       <td 
                         key={dayIndex} 
-                        className={`p-1 md:p-2 border text-center ${getCellColor(day.value)}`}
+                        className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
                       >
-                        {formatRetentionValue(day.value)}
+                        {formatRetentionValue(day.value, day.percentage)}
                       </td>
                     ))}
                     {/* Fill the remaining cells if less than 8 days of data */}
@@ -558,32 +509,6 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Mobile-friendly card view for small screens */}
-        <div className="md:hidden mt-4">
-          <h4 className="text-sm font-medium mb-2">Recent Retention Data</h4>
-          <div className="space-y-3">
-            {retentionData.cohortData.slice(0, 4).map((cohort, index) => (
-              <div key={`mobile-${index}`} className="bg-gray-50 p-3 rounded border">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium">{cohort.date}</span>
-                  <span className="text-xs text-gray-500">Initial: {cohort.initialUsers}</span>
-                </div>
-                <div className="grid grid-cols-4 gap-1 mt-2">
-                  {cohort.retentionByDay.slice(0, 4).map((day, dayIndex) => (
-                    <div 
-                      key={`mobile-day-${dayIndex}`} 
-                      className={`p-1 text-center rounded ${getCellColor(day.value)}`}
-                    >
-                      <div className="text-xs text-gray-600">Day {day.day}</div>
-                      <div>{formatRetentionValue(day.value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
