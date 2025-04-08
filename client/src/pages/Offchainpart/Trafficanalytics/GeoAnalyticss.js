@@ -8,6 +8,43 @@ const formatDuration = (seconds) => {
   return `${mins.toString().padStart(2, '0')} mins ${secs.toString().padStart(2, '0')} secs`;
 };
 
+// Country code to name mapping
+const countryCodeToName = {
+  "US": "United States",
+  "IN": "India",
+  "DE": "Germany",
+  "BR": "Brazil",
+  "CA": "Canada",
+  "FR": "France",
+  "GB": "United Kingdom",
+  "AU": "Australia",
+  "JP": "Japan",
+  "KR": "South Korea",
+  "CN": "China",
+  "RU": "Russia",
+  "IT": "Italy",
+  "ES": "Spain",
+  // Add more mappings as needed
+};
+
+// Function to normalize country information (handle both names and codes)
+const normalizeCountry = (countryInput) => {
+  if (!countryInput) return null;
+  
+  // If it's already a full country name we know
+  if (Object.values(countryCodeToName).includes(countryInput)) {
+    return countryInput;
+  }
+  
+  // Check if it's a country code we can map
+  if (countryCodeToName[countryInput]) {
+    return countryCodeToName[countryInput];
+  }
+  
+  // If we can't map it, return as is
+  return countryInput;
+};
+
 const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
   // Process analytics data to get country-specific metrics
   const countryMetrics = useMemo(() => {
@@ -20,13 +57,14 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
     
     // Process each session to gather metrics
     analytics.sessions.forEach(session => {
-      const { country, userId, duration, isBounce, pagesViewed } = session;
+      // Normalize the country name from whatever format it's in
+      const countryName = normalizeCountry(session.country);
       
-      if (!country) return;
+      if (!countryName) return;
       
       // Initialize country data if not exists
-      if (!metrics[country]) {
-        metrics[country] = {
+      if (!metrics[countryName]) {
+        metrics[countryName] = {
           uniqueUsers: new Set(),
           totalSessions: 0,
           bounces: 0,
@@ -38,34 +76,36 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         };
       }
       
+      const { userId, duration, isBounce, pagesViewed } = session;
+      
       // Add user to unique users set
       if (userId) {
-        metrics[country].uniqueUsers.add(userId);
+        metrics[countryName].uniqueUsers.add(userId);
       }
       
       // Track wallet connections and types
       if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
-        metrics[country].web3Users.add(userId);
-        metrics[country].walletConnections++;
+        metrics[countryName].web3Users.add(userId);
+        metrics[countryName].walletConnections++;
         
         // Track wallet types
         const walletType = session.wallet.walletType;
-        metrics[country].wallets[walletType] = (metrics[country].wallets[walletType] || 0) + 1;
+        metrics[countryName].wallets[walletType] = (metrics[countryName].wallets[walletType] || 0) + 1;
       }
       
       // Increment session count
-      metrics[country].totalSessions++;
+      metrics[countryName].totalSessions++;
       
       // Track bounces
       if (isBounce) {
-        metrics[country].bounces++;
+        metrics[countryName].bounces++;
       }
       
       // Add page views
-      metrics[country].totalPageViews += pagesViewed || 0;
+      metrics[countryName].totalPageViews += pagesViewed || 0;
       
       // Add session duration
-      metrics[country].totalDuration += duration || 0;
+      metrics[countryName].totalDuration += duration || 0;
     });
     
     // Calculate aggregate metrics for each country
@@ -183,38 +223,41 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
   });
 
   // Handle country data when selection changes
-// Handle country data when selection changes
-// In GeoAnalytics.js
-// Replace the existing useEffect with this
-useEffect(() => {
-  console.log("Selected country:", selectedCountry);
-  
-  if (selectedCountry && countryMetrics[selectedCountry]) {
-    // Data exists for this country
-    console.log("Setting data for:", selectedCountry, countryMetrics[selectedCountry]);
-    setCountryData(countryMetrics[selectedCountry]);
-  } else if (selectedCountry) {
-    // No data for this country - set to default values
-    console.log("No data for:", selectedCountry);
-    setCountryData({
-      users: 0,
-      web3Users: 0,
-      walletConnects: 0,
-      conversionRate: '0%',
-      commonWallet: 'None',
-      webTrafficSource: 'N/A',
-      conversionSource: 'N/A',
-      bounceRate: '0%',
-      totalPageViews: '0',
-      avgPageViewPerVisit: '0',
-      avgVisitDuration: '00:00',
-      retention: '0%'
-    });
-  }
-}, [selectedCountry, countryMetrics]);
+  useEffect(() => {
+    console.log("Selected country:", selectedCountry);
+    
+    // Normalize the selected country in case it's a code
+    const normalizedCountry = normalizeCountry(selectedCountry);
+    
+    if (normalizedCountry && countryMetrics[normalizedCountry]) {
+      // Data exists for this country
+      console.log("Setting data for:", normalizedCountry, countryMetrics[normalizedCountry]);
+      setCountryData(countryMetrics[normalizedCountry]);
+    } else if (selectedCountry) {
+      // No data for this country - set to default values
+      console.log("No data for:", selectedCountry);
+      setCountryData({
+        users: 0,
+        web3Users: 0,
+        walletConnects: 0,
+        conversionRate: '0%',
+        commonWallet: 'None',
+        webTrafficSource: 'N/A',
+        conversionSource: 'N/A',
+        bounceRate: '0%',
+        totalPageViews: '0',
+        avgPageViewPerVisit: '0',
+        avgVisitDuration: '00:00',
+        retention: '0%'
+      });
+    }
+  }, [selectedCountry, countryMetrics]);
 
   // Get flag emoji for country
   const getCountryFlag = (countryName) => {
+    // Normalize the country name first
+    const normalizedCountry = normalizeCountry(countryName);
+    
     const countryCodeMap = {
       "United States": "🇺🇸",
       "United States of America": "🇺🇸",
@@ -233,7 +276,7 @@ useEffect(() => {
       "Spain": "🇪🇸"
     };
     
-    return countryCodeMap[countryName] || "🌎";
+    return countryCodeMap[normalizedCountry] || "🌎";
   };
 
   return (
@@ -295,7 +338,9 @@ useEffect(() => {
           <div className="flex justify-between items-center mb-3 md:mb-4">
             <h2 className="text-base md:text-lg font-semibold">Chosen Country:</h2>
             <div className="flex items-center">
-              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">{selectedCountry || "Select a country"}</span>
+              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">
+                {normalizeCountry(selectedCountry) || "Select a country"}
+              </span>
               <span className="ml-2">{getCountryFlag(selectedCountry)}</span>
             </div>
           </div>
