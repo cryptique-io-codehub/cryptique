@@ -8,6 +8,28 @@ const AttributionJourneySankey = ({analytics}) => {
       return [];
     }
     
+    // Function to normalize domain names
+    const normalizeDomain = (domain) => {
+      if (!domain) return 'Direct';
+      
+      // Convert to lowercase
+      domain = domain.toLowerCase();
+      
+      // Remove trailing slashes, www prefix, and common subdomains
+      domain = domain.replace(/\/$/, '').replace(/^www\./, '');
+      
+      // Extract base domain for other cases
+      const domainParts = domain.split('.');
+      if (domainParts.length >= 2) {
+        // For domains like abc.example.com or example.com
+        const baseDomain = domainParts[domainParts.length - 2];
+        // Capitalize first letter for display
+        return baseDomain.charAt(0).toUpperCase() + baseDomain.slice(1);
+      }
+      
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    };
+    
     // Group sessions by source (utm source or referrer)
     const sourceGroups = {};
     
@@ -16,14 +38,15 @@ const AttributionJourneySankey = ({analytics}) => {
       let source = 'Direct';
       
       if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
-        source = session.utmData.source;
+        // Normalize UTM source
+        source = normalizeDomain(session.utmData.source);
       } else if (session.referrer && session.referrer !== 'direct') {
-        // Extract domain from referrer
+        // Extract and normalize domain from referrer
         try {
           const url = new URL(session.referrer);
-          source = url.hostname || url.host || session.referrer;
+          source = normalizeDomain(url.hostname || url.host || session.referrer);
         } catch (e) {
-          source = session.referrer;
+          source = normalizeDomain(session.referrer);
         }
       }
       
@@ -445,11 +468,33 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
   // State for traffic quality data
   const [trafficQualityData, setTrafficQualityData] = useState([]);
 
-  // Helper function to extract source from session
+  // Function to normalize domain names
+  const normalizeDomain = (domain) => {
+    if (!domain) return 'Direct';
+    
+    // Convert to lowercase
+    domain = domain.toLowerCase();
+    
+    // Remove trailing slashes, www prefix, and common subdomains
+    domain = domain.replace(/\/$/, '').replace(/^www\./, '');
+    
+    // Extract base domain for other cases
+    const domainParts = domain.split('.');
+    if (domainParts.length >= 2) {
+      // For domains like abc.example.com or example.com
+      const baseDomain = domainParts[domainParts.length - 2];
+      // Capitalize first letter for display
+      return baseDomain.charAt(0).toUpperCase() + baseDomain.slice(1);
+    }
+    
+    return domain.charAt(0).toUpperCase() + domain.slice(1);
+  };
+
+  // Helper function to extract normalized source from session
   const getSourceFromSession = (session) => {
     // Check UTM source first
     if (session.utmData && session.utmData.source && session.utmData.source !== '') {
-      return session.utmData.source;
+      return normalizeDomain(session.utmData.source);
     }
     
     // Then check referrer
@@ -457,15 +502,15 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       // Extract domain from referrer URL
       try {
         const url = new URL(session.referrer);
-        return url.hostname;
+        return normalizeDomain(url.hostname || url.host || session.referrer);
       } catch (e) {
-        // If referrer is not a valid URL, return as is
-        return session.referrer;
+        // If referrer is not a valid URL, normalize as is
+        return normalizeDomain(session.referrer);
       }
     }
     
     // Default to direct if no source found
-    return 'direct';
+    return 'Direct';
   };
 
   // Calculate metrics based on analytics data
@@ -538,10 +583,10 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     
     // If we didn't find any sources (shouldn't happen but just in case)
     if (maxSource === '') {
-      maxSource = 'direct';
+      maxSource = 'Direct';
     }
     if (minSource === '') {
-      minSource = 'direct';
+      minSource = 'Direct';
     }
     
     // Calculate metrics for the best source
