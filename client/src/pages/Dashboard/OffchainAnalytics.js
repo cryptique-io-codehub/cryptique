@@ -65,7 +65,7 @@ console.log(idy);
     return bounceCount / sessions.length;
   };
 
-  const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
 const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
 const avgVisitDuration = formatDuration(rawAvgDuration);
 
