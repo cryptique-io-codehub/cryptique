@@ -4,37 +4,70 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   const [selectedMonth, setSelectedMonth] = useState('This Month');
   const [processedData, setProcessedData] = useState({});
   const [allSources, setAllSources] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (analytics && analytics.sessions) {
-      // Process analytics data
-      const result = processAnalytics(analytics);
-      setProcessedData(result);
-      
-      // Get all sources by visitors, sorted by visitor count
-      const sortedSources = Object.entries(result)
-        .map(([source, data]) => ({
-          source: source,
-          visitors: data.visitors,
-          web3users: data.web3users,
-          walletsConnected: data.walletsConnected
-        }))
-        .sort((a, b) => b.visitors - a.visitors);
-      
-      setAllSources(sortedSources);
+    // Reset state when analytics changes
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      if (analytics && Array.isArray(analytics.sessions)) {
+        // Process analytics data
+        const result = processAnalytics(analytics);
+        setProcessedData(result);
+        
+        // Get all sources by visitors, sorted by visitor count
+        const sortedSources = Object.entries(result)
+          .map(([source, data]) => ({
+            source: source || 'Direct', // Add fallback for empty sources
+            visitors: data?.visitors || 0,
+            web3users: data?.web3users || 0,
+            walletsConnected: data?.walletsConnected || 0
+          }))
+          .sort((a, b) => b.visitors - a.visitors);
+        
+        setAllSources(sortedSources);
+      } else {
+        // Handle case where analytics or sessions is undefined
+        setAllSources([]);
+        setProcessedData({});
+      }
+    } catch (err) {
+      console.error("Error processing analytics data:", err);
+      setError("Failed to process analytics data");
+      setAllSources([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [analytics, selectedMonth]);
 
   function processAnalytics(analytics) {
+    if (!analytics || !Array.isArray(analytics.sessions)) {
+      return {};
+    }
+
     const resultMap = new Map();
     
     for (const session of analytics.sessions) {
-      let source = '';
-      if (session.utmData.source !== '') {
+      // Skip if session is undefined or null
+      if (!session) continue;
+      
+      let source = 'Direct'; // Default to 'Direct' instead of empty string
+      
+      // Safely access nested properties
+      if (session.utmData && typeof session.utmData === 'object' && 
+          session.utmData.source && session.utmData.source !== '') {
         source = session.utmData.source;
       }
-      else {
+      else if (session.referrer && typeof session.referrer === 'string' && session.referrer !== '') {
         source = session.referrer;  
+      }
+      
+      // Ensure source is a string
+      if (typeof source !== 'string') {
+        source = 'Direct';
       }
       
       if (!resultMap.has(source)) {
@@ -45,16 +78,22 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         });
       }
       
-      if (session.userId) {
-        resultMap.get(source).visitors.add(session.userId);
+      // Only add userId if it exists and is a valid string/number
+      if (session.userId && (typeof session.userId === 'string' || typeof session.userId === 'number')) {
+        resultMap.get(source).visitors.add(String(session.userId));
       }
       
-      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected' && session.userId) {
-        resultMap.get(source).web3users.add(session.userId);
+      // Safely check wallet properties
+      const hasWallet = session.wallet && typeof session.wallet === 'object';
+      const walletType = hasWallet && session.wallet.walletType ? session.wallet.walletType : null;
+      const walletAddress = hasWallet && session.wallet.walletAddress ? session.wallet.walletAddress : null;
+      
+      if (session.userId && walletType && walletType !== 'No Wallet Detected') {
+        resultMap.get(source).web3users.add(String(session.userId));
       }
       
-      if (session.wallet && session.wallet.walletAddress !== '' && session.userId) {
-        resultMap.get(source).walletsConnected.add(session.userId);
+      if (session.userId && walletAddress && walletAddress !== '') {
+        resultMap.get(source).walletsConnected.add(String(session.userId));
       }
     }
     
@@ -72,22 +111,49 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   
   // Function to format source name for display
   const formatSourceName = (source) => {
+    if (source === null || source === undefined || source === '') {
+      return 'Direct';
+    }
+    
+    // Ensure source is a string
+    const sourceStr = String(source);
+    
     // Handle URLs
     try {
-      if (source.startsWith('http')) {
-        const url = new URL(source);
+      if (sourceStr.startsWith('http')) {
+        const url = new URL(sourceStr);
         return url.hostname.replace('www.', '');
       }
-    } catch {}
+    } catch (e) {
+      // If URL parsing fails, continue to default formatting
+    }
     
     // Default: return the source with first letter capitalized
-    return source.charAt(0).toUpperCase() + source.slice(1);
+    return sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
   };
   
   const handleMonthChange = (e) => {
     setSelectedMonth(e.target.value);
     // In a real app, you would filter analytics data based on month selection
   };
+  
+  // Safe number formatting
+  const formatNumber = (num) => {
+    if (typeof num !== 'number' || isNaN(num)) return '0';
+    try {
+      return num.toLocaleString();
+    } catch (e) {
+      return num.toString();
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow p-4">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
   
   return (
     <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow">
@@ -98,6 +164,7 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
             className="text-sm bg-gray-50 border border-gray-200 rounded-md px-2 py-1 pr-8 appearance-none"
             value={selectedMonth}
             onChange={handleMonthChange}
+            disabled={isLoading}
           >
             <option>This Month</option>
             <option>Last Month</option>
@@ -122,22 +189,26 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         
         {/* Table rows - scrollable container */}
         <div className="max-h-64 overflow-y-auto">
-          <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
-            {allSources.length > 0 ? (
-              allSources.map((source, index) => (
-                <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
-                  <div className="flex items-center space-x-2">
-                    <span className="truncate">{formatSourceName(source.source)}</span>
+          {isLoading ? (
+            <div className="p-4 text-center text-gray-500">Loading data...</div>
+          ) : (
+            <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
+              {allSources.length > 0 ? (
+                allSources.map((source, index) => (
+                  <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
+                    <div className="flex items-center space-x-2">
+                      <span className="truncate">{formatSourceName(source.source)}</span>
+                    </div>
+                    <div className="text-right">{formatNumber(source.visitors)}</div>
+                    <div className="text-right">{formatNumber(source.web3users)}</div>
+                    <div className="text-right">{formatNumber(source.walletsConnected)}</div>
                   </div>
-                  <div className="text-right">{source.visitors.toLocaleString()}</div>
-                  <div className="text-right">{source.web3users.toLocaleString()}</div>
-                  <div className="text-right">{source.walletsConnected.toLocaleString()}</div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">No data available</div>
-            )}
-          </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">No data available</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
