@@ -43,7 +43,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
               const iD = firstWebsite.siteId;
               const scriptHTML = `<script>
               var script = document.createElement('script');
-              script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
               script.setAttribute('site-id', '${iD}');
               document.head.appendChild(script);
             </script>`;
@@ -69,7 +69,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
                 const iD = currentWebsite.siteId;
                 const scriptHTML = `<script>
                 var script = document.createElement('script');
-                script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+                script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
                 script.setAttribute('site-id', '${iD}');
                 document.head.appendChild(script);
               </script>`;
@@ -104,7 +104,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
     const iD = website.siteId;
     const scriptHTML = `<script>
     var script = document.createElement('script');
-    script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
     script.setAttribute('site-id', '${iD}');
     document.head.appendChild(script);
   </script>`;
@@ -158,7 +158,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         setverifyid(iD);
         const scriptHTML = `<script>
         var script = document.createElement('script');
-        script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+        script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
         script.setAttribute('site-id', '${iD}');
         document.head.appendChild(script);
       </script>`;
@@ -183,7 +183,10 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
       });
   
       if (response.status === 200) {
+        selectedWebsite.isVerified=true;
+
         localStorage.setItem("idy", selectedWebsite.siteId);
+        localStorage.setItem("selectedWebsite",selectedWebsite.Domain);
         setscriptmodel(false);
         // localStorage.removeItem("showInstallationPopup");
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);

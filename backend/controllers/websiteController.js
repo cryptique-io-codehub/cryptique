@@ -108,6 +108,8 @@ exports.getWebsitesOfTeam = async (req, res) => {
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
+        console.log('ac');
+        console.log(req.body);
         
         if (!Domain || !siteId) {
             return res.status(400).json({ message: "Domain and siteId are required" });
@@ -121,7 +123,7 @@ exports.verify = async (req, res) => {
             data = await axios.get(`https://${Domain}`, { timeout: 5000 });
         } catch (httpsError) {
             try {
-                data = await axios.get(`https://${Domain}`, { timeout: 5000 });
+                data = await axios.get(`http://${Domain}`, { timeout: 5000 });
             } catch (httpError) {
                 return res.status(404).json({ message: "Could not access the website" });
             }
