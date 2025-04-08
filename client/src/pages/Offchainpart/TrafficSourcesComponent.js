@@ -43,6 +43,54 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
     }
   }, [analytics, selectedMonth]);
 
+  // Function to normalize source URLs and domains
+  function normalizeSource(source) {
+    if (!source || typeof source !== 'string' || source.trim() === '') {
+      return 'Direct';
+    }
+    
+    const sourceStr = source.trim();
+    
+    // Domain mapping for known redirects and variations
+    const domainMapping = {
+      'l.instagram.com': 'Instagram',
+      'lm.instagram.com': 'Instagram',
+      'l.facebook.com': 'Facebook',
+      'lm.facebook.com': 'Facebook',
+      't.co': 'Twitter',
+      'x.com': 'Twitter'
+    };
+    
+    try {
+      let hostname;
+      
+      if (sourceStr.includes('://')) {
+        // Full URL with protocol
+        const url = new URL(sourceStr);
+        hostname = url.hostname;
+      } else if (sourceStr.includes('.')) {
+        // Domain without protocol
+        hostname = sourceStr.split('/')[0];
+      } else {
+        // Not a URL or domain
+        return sourceStr;
+      }
+      
+      // Remove www. prefix
+      hostname = hostname.replace(/^www\./, '');
+      
+      // Check if it's a known redirect domain
+      if (domainMapping[hostname]) {
+        return domainMapping[hostname];
+      }
+      
+      return hostname;
+    } catch (e) {
+      // If URL parsing fails, return the original source
+      return sourceStr;
+    }
+  }
+
   function processAnalytics(analytics) {
     if (!analytics || !Array.isArray(analytics.sessions)) {
       return {};
@@ -59,10 +107,10 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       // Safely access nested properties
       if (session.utmData && typeof session.utmData === 'object' && 
           session.utmData.source && session.utmData.source !== '') {
-        source = session.utmData.source;
+        source = normalizeSource(session.utmData.source);
       }
       else if (session.referrer && typeof session.referrer === 'string' && session.referrer !== '') {
-        source = session.referrer;  
+        source = normalizeSource(session.referrer);  
       }
       
       // Ensure source is a string
@@ -115,21 +163,8 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       return 'Direct';
     }
     
-    // Ensure source is a string
-    const sourceStr = String(source);
-    
-    // Handle URLs
-    try {
-      if (sourceStr.startsWith('http')) {
-        const url = new URL(sourceStr);
-        return url.hostname.replace('www.', '');
-      }
-    } catch (e) {
-      // If URL parsing fails, continue to default formatting
-    }
-    
-    // Default: return the source with first letter capitalized
-    return sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
+    // Capitalize first letter for better display
+    return source.charAt(0).toUpperCase() + source.slice(1);
   };
   
   const handleMonthChange = (e) => {
