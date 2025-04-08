@@ -1,26 +1,26 @@
 import React from 'react';
 import WorldMap from "react-svg-worldmap";
 
-// Country name to ISO Alpha-2 code map (add more as needed)
-const countryNameToCode = {
-  India: "IN",
-  "United States": "US",
-  Germany: "DE",
-  Brazil: "BR",
-  Canada: "CA",
-  France: "FR",
-  China: "CN",
-  Australia: "AU",
-  Nigeria: "NG",
-  Pakistan: "PK",
-  Bangladesh: "BD",
-  Mexico: "MX",
-  Russia: "RU",
-  Indonesia: "ID",
+// ISO Alpha-2 code to country name map (for display purposes)
+const countryCodeToName = {
+  "IN": "India",
+  "US": "United States",
+  "DE": "Germany",
+  "BR": "Brazil",
+  "CA": "Canada",
+  "FR": "France",
+  "CN": "China",
+  "AU": "Australia",
+  "NG": "Nigeria",
+  "PK": "Pakistan",
+  "BD": "Bangladesh",
+  "MX": "Mexico",
+  "RU": "Russia",
+  "ID": "Indonesia",
   // Add more mappings as required
 };
 
-const GeoAnalyticsMap = ({ analytics,selectedCountry, setSelectedCountry }) => {
+const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
   const getUniqueUsersPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryUserMap = new Map();
@@ -46,12 +46,14 @@ const GeoAnalyticsMap = ({ analytics,selectedCountry, setSelectedCountry }) => {
   const userCountsByCountry = getUniqueUsersPerCountry(analytics?.sessions || []);
   console.log("userCountsByCountry:", userCountsByCountry);
 
-  // Convert to data for WorldMap component
+  // Convert to data for WorldMap component - assuming country codes are already in the sessions data
   const mapData = Object.entries(userCountsByCountry)
-    .map(([countryName, value]) => {
-      const code = countryNameToCode[countryName];
-      if (!code) return null;
-      return { country: code.toLowerCase(), value };
+    .map(([countryCode, value]) => {
+      // Make sure the country code is valid
+      if (countryCode && countryCode.length === 2) {
+        return { country: countryCode.toLowerCase(), value };
+      }
+      return null;
     })
     .filter(Boolean); // remove nulls
 
@@ -79,15 +81,15 @@ const GeoAnalyticsMap = ({ analytics,selectedCountry, setSelectedCountry }) => {
       </div>
 
       {/* World Map */}
-      <div className="App mb-6">
+      <div className="mb-6">
         <WorldMap
           color="blue"
           title="Unique Users by Country"
-          value-suffix=" users"
+          valueSuffix=" users"
           size="lg"
           data={mapData}
           onClickFunction={({ countryName, countryCode, countryValue }) => {
-            setSelectedCountry(countryName);
+            setSelectedCountry(countryCode.toUpperCase());
           }}
         />
       </div>
@@ -97,9 +99,8 @@ const GeoAnalyticsMap = ({ analytics,selectedCountry, setSelectedCountry }) => {
         <h3 className="text-lg font-medium mb-2">Top Countries</h3>
         <ul className="space-y-1 text-sm text-gray-700">
           {topCountries.map(({ country, value }) => {
-            const countryName = Object.entries(countryNameToCode).find(
-              ([, code]) => code.toLowerCase() === country
-            )?.[0] || country;
+            const countryCode = country.toUpperCase();
+            const countryName = countryCodeToName[countryCode] || countryCode;
             return (
               <li key={country} className="flex justify-between">
                 <span>{countryName}</span>
