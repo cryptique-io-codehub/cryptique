@@ -44,6 +44,7 @@ exports.addWebsite=async (req,res)=>{
         console.error("Error while adding website",e);
 
         res.status(500).json({ message: 'Error creating user', error: e.message });
+        res.status(500).json({ message: 'Error creating user', error: e.message });
 
    }
 
@@ -96,6 +97,7 @@ exports.getWebsitesOfTeam = async (req, res) => {
         const team = await Team.findOne({ name: teamName }).populate('websites');
         if (!team) return res.status(404).json({ message: "Team not found" });
 
+
         return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {
         console.error("Error while fetching websites", e);
@@ -106,7 +108,7 @@ exports.getWebsitesOfTeam = async (req, res) => {
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
-        console.log(Domain, siteId);
+        
         if (!Domain || !siteId) {
             return res.status(400).json({ message: "Domain and siteId are required" });
         }

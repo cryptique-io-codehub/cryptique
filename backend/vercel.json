@@ -11,6 +11,12 @@
       "src": "/(.*)",
       "dest": "index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/sdk/update-all-analytics-stats",
+      "schedule": "*/1 * * * *"
+
+    }
   ]
-  
 }
