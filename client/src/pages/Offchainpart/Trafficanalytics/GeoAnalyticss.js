@@ -45,6 +45,20 @@ const normalizeCountry = (countryInput) => {
   return countryInput;
 };
 
+// Normalize domain name for source tracking
+const normalizeDomain = (domainInput) => {
+  if (!domainInput) return null;
+  
+  // Remove www. prefix and standardize domains
+  const domain = domainInput.toLowerCase()
+    .replace(/^www\./, '')
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+  
+  return domain;
+};
+
 const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
   // Process analytics data to get country-specific metrics
   const countryMetrics = useMemo(() => {
@@ -71,8 +85,9 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
           totalPageViews: 0,
           totalDuration: 0,
           web3Users: new Set(), // Users with wallet data
-          walletConnections: 0,
-          wallets: {}
+          walletConnections: new Set(), // Users who connected wallet (has address)
+          wallets: {},
+          sourceTraffic: {}
         };
       }
       
@@ -83,14 +98,47 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         metrics[countryName].uniqueUsers.add(userId);
       }
       
+      // Track sources with web3 users
+      let source = '';
+      if (session.source) {
+        source = session.source;
+      } else if (session.referer) {
+        source = normalizeDomain(session.referer);
+      }
+      
       // Track wallet connections and types
-      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
-        metrics[countryName].web3Users.add(userId);
-        metrics[countryName].walletConnections++;
+      if (session.wallet) {
+        if (session.wallet.walletType !== 'No Wallet Detected') {
+          metrics[countryName].web3Users.add(userId);
+          
+          // Track sources for web3 users
+          if (source) {
+            metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
+              users: new Set(),
+              web3Users: new Set()
+            };
+            metrics[countryName].sourceTraffic[source].web3Users.add(userId);
+          }
+          
+          // Track wallet types
+          const walletType = session.wallet.walletType;
+          metrics[countryName].wallets[walletType] = metrics[countryName].wallets[walletType] || new Set();
+          metrics[countryName].wallets[walletType].add(userId);
+        }
         
-        // Track wallet types
-        const walletType = session.wallet.walletType;
-        metrics[countryName].wallets[walletType] = (metrics[countryName].wallets[walletType] || 0) + 1;
+        // Track wallet connections (has address)
+        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+          metrics[countryName].walletConnections.add(userId);
+        }
+      }
+      
+      // Track sources for all users
+      if (source) {
+        metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
+          users: new Set(),
+          web3Users: new Set()
+        };
+        metrics[countryName].sourceTraffic[source].users.add(userId);
       }
       
       // Increment session count
@@ -116,30 +164,39 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       let commonWallet = "None";
       let maxWalletCount = 0;
       
-      Object.entries(data.wallets).forEach(([wallet, count]) => {
-        if (count > maxWalletCount) {
-          maxWalletCount = count;
+      Object.entries(data.wallets).forEach(([wallet, users]) => {
+        if (users.size > maxWalletCount) {
+          maxWalletCount = users.size;
           commonWallet = wallet;
+        }
+      });
+      
+      // Find best source for web3 traffic
+      let bestWeb3Source = "Direct";
+      let maxWeb3UserCount = 0;
+      
+      Object.entries(data.sourceTraffic).forEach(([source, counts]) => {
+        if (counts.web3Users.size > maxWeb3UserCount) {
+          maxWeb3UserCount = counts.web3Users.size;
+          bestWeb3Source = source;
         }
       });
       
       countryStats[country] = {
         users: data.uniqueUsers.size,
         web3Users: data.web3Users.size,
-        walletConnects: data.walletConnections,
+        walletConnects: data.walletConnections.size,
         bounceRate: data.totalSessions > 0 ? 
           `${((data.bounces / data.totalSessions) * 100).toFixed(2)}%` : "0%",
         totalPageViews: data.totalPageViews.toLocaleString(),
-        avgPageViewPerVisit: data.totalSessions > 0 ? 
-          (data.totalPageViews / data.totalSessions).toFixed(2) : "0",
+        avgPageViewPerVisit: "1.00", // As specified
         avgVisitDuration: data.totalSessions > 0 ? 
-          formatDuration(data.totalDuration / data.totalSessions) : "00:00",
+          formatDuration(data.totalDuration / data.totalSessions) : "00 mins 00 secs",
         conversionRate: data.uniqueUsers.size > 0 ? 
-          `${((data.web3Users.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0%",
+          `${((data.walletConnections.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0%",
         commonWallet: commonWallet,
-        webTrafficSource: "Direct", // Default
-        conversionSource: "Website", // Default  
-        retention: "12.34%" // Default
+        webTrafficSource: bestWeb3Source,
+        retention: "12.34%" // Default as specified
       };
     });
     
@@ -214,12 +271,11 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
     conversionRate: '0%',
     commonWallet: 'None',
     webTrafficSource: 'Direct',
-    conversionSource: 'Website',
     bounceRate: '0%',
     totalPageViews: '0',
-    avgPageViewPerVisit: '0',
-    avgVisitDuration: '00:00',
-    retention: '0%'
+    avgPageViewPerVisit: '1.00',
+    avgVisitDuration: '00 mins 00 secs',
+    retention: '12.34%'
   });
 
   // Handle country data when selection changes
@@ -243,12 +299,11 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         conversionRate: '0%',
         commonWallet: 'None',
         webTrafficSource: 'N/A',
-        conversionSource: 'N/A',
         bounceRate: '0%',
         totalPageViews: '0',
-        avgPageViewPerVisit: '0',
-        avgVisitDuration: '00:00',
-        retention: '0%'
+        avgPageViewPerVisit: '1.00',
+        avgVisitDuration: '00 mins 00 secs',
+        retention: '12.34%'
       });
     }
   }, [selectedCountry, countryMetrics]);
@@ -352,7 +407,6 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
             <DetailRow label="Conversion Rate:" value={countryData.conversionRate} />
             <DetailRow label="Most Common Wallet:" value={countryData.commonWallet} />
             <DetailRow label="Best Source by web3 traffic:" value={countryData.webTrafficSource} />
-            <DetailRow label="Best Source by conversion:" value={countryData.conversionSource} />
             <DetailRow label="Bounce rate:" value={countryData.bounceRate} />
             <DetailRow label="Total Page views:" value={countryData.totalPageViews} />
             <DetailRow label="Avg Page view per visit:" value={countryData.avgPageViewPerVisit} />
