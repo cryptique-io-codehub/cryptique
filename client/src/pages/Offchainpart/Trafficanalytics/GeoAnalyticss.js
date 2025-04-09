@@ -106,32 +106,38 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         source = normalizeDomain(session.referer);
       }
       
-    // Track wallet connections and types
-if (session.wallet) {
-  if (session.wallet.walletType !== 'No Wallet Detected') {
-    metrics[countryName].web3Users.add(userId);
-    
-    // Track sources for web3 users
-    if (source) {
-      metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
-        users: new Set(),
-        web3Users: new Set()
-      };
-      metrics[countryName].sourceTraffic[source].web3Users.add(userId);
-    }
-    
-    // Track wallet types
-    const walletType = session.wallet.walletType;
-    metrics[countryName].wallets[walletType] = metrics[countryName].wallets[walletType] || new Set();
-    metrics[countryName].wallets[walletType].add(userId);
-    
-    // Track wallet connections (has address) - ONLY when wallet type is detected
-    if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
-      metrics[countryName].walletConnections.add(userId);
-    }
-  }
-  // The wallet connections tracking moved inside the if-block for wallet type detection
-}
+      // Track wallet connections and types
+      if (session.wallet) {
+        // CORRECTED: Check for web3 users - has wallet type and it's not "No Wallet Detected"
+        if (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
+          metrics[countryName].web3Users.add(userId);
+          
+          // Track sources for web3 users
+          if (source) {
+            metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
+              users: new Set(),
+              web3Users: new Set()
+            };
+            metrics[countryName].sourceTraffic[source].web3Users.add(userId);
+          }
+          
+          // Track wallet types
+          const walletType = session.wallet.walletType;
+          metrics[countryName].wallets[walletType] = metrics[countryName].wallets[walletType] || new Set();
+          metrics[countryName].wallets[walletType].add(userId);
+        }
+        
+        // CORRECTED: Track wallet connections (has non-empty address)
+        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+          // If wallet type is "No Wallet Detected" but has wallet address, count as web3 user too
+          if (session.wallet.walletType === 'No Wallet Detected') {
+            metrics[countryName].web3Users.add(userId);
+          }
+          
+          // Count as wallet connection regardless of wallet type
+          metrics[countryName].walletConnections.add(userId);
+        }
+      }
       
       // Track sources for all users
       if (source) {
