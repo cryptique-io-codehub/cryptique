@@ -19,12 +19,52 @@ import History from "./pages/Dashboard/History.js";
 import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
+import { useLocation } from "react-router-dom";
+const RouteListener = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const pathSegments = location.pathname.split('/').filter(Boolean); // removes empty strings
+    const lastSegment = pathSegments[pathSegments.length - 1] || 'login';
+
+    const titleMap = {
+      dashboard: 'Dashboard',
+      settings: 'Settings',
+      billing: 'Billing',
+      members: 'Members',
+      personal: 'Personal Info',
+      teamsSection: 'Teams',
+      offchain: 'Offchain Analytics',
+      onchain: 'Onchain Explorer',
+      kol: 'KOL Intelligence',
+      campaigns: 'Campaigns',
+      'conversion-events': 'Conversion Events',
+      advertise: 'Advertise',
+      history: 'History',
+      importusers: 'Import Users',
+      managewebsites: 'Manage Websites',
+      login: 'Login',
+      signup: 'Sign Up',
+    };
+
+    const pageTitle = titleMap[lastSegment.toLowerCase()] || 'MyApp';
+    document.title = `${pageTitle}`;
+  }, [location]);
+
+  return null; // this component doesn't render anything
+};
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   // const Navigate = useNavigate();
+  
+
+
+
   return (
     
     <BrowserRouter>
+    <RouteListener />
+
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Interface />} />

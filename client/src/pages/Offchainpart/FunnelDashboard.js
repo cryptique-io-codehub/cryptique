@@ -44,11 +44,11 @@ const HorizontalFunnelVisualization = ({analytics}) => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{((analytics?.walletsConnected/analytics?.uniqueVisitors)*100).toFixed(2)}%</p>
+            <p className="text-xl font-bold">{(((analytics?.walletsConnected|| 100)/(analytics?.uniqueVisitors || 257))*100).toFixed(2)}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{((analytics?.web3Visitors/analytics?.uniqueVisitors)*100).toFixed(2)}%</p>
+            <p className="text-xl font-bold">{(((analytics?.web3Visitors|| 150)/(analytics?.uniqueVisitors || 257))*100).toFixed(2)}%</p>
           </div>
         </div>
       </div>

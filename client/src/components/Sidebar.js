@@ -1,14 +1,20 @@
-import { Home, BarChart, BellRing, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
-const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
+const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   const [isHovering, setIsHovering] = useState(false);
   const params = useParams();
+  const location = useLocation();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const showExpanded = !isCompact || (isCompact && isHovering);
-  // console.log(selectedTeam);
+  
+  // Extract the current page from the URL path
+  const path = location.pathname;
+  const pathSegments = path.split('/').filter(segment => segment);
+  const currentPage = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || 'dashboard';
+  
   useEffect(() => {
     // Always use the team from localStorage as the source of truth
     const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
@@ -20,9 +26,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
     }
     
     setSelectedTeam(storedTeam);
-    
-    // console.log("params from sidebar", params.team);
-    // console.log("selectedTeam from sidebar", storedTeam);
   }, [params.team]);
 
   useEffect(() => {
@@ -34,6 +37,11 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
+  
+  // Helper function to determine if a menu item is active
+  const isActive = (page) => {
+    return currentPage === page;
+  };
   
   return (
     <aside
@@ -69,53 +77,53 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
         <ul className="space-y-1 text-xs font-medium">
           <Link
             to={`/dashboard`}
-            className={`${currentPage === "dashboard" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("dashboard")}
           >
             <Home size={14} /> {showExpanded && "Dashboard"}
           </Link>
           <Link 
-          to={`/${selectedTeam}/offchain`}
-            className={`${currentPage === "offchain-analytics" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("offchain-analytics")}
+            to={`/${selectedTeam}/offchain`}
+            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("offchain")}
           >
             <BarChart size={14} /> {showExpanded && "Off-chain analytics"}
           </Link>
-          <Link to={`/${selectedTeam}/onchain`}
-            className={`${currentPage === "onchain-explorer" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("onchain-explorer")}
+          <Link 
+            to={`/${selectedTeam}/onchain`}
+            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("onchain")}
           >
-          <LineChart size={14} /> {showExpanded && "On-chain explorer"}
+            <LineChart size={14} /> {showExpanded && "On-chain explorer"}
           </Link>
-          <Link to={`/${selectedTeam}/kol`}
-            className={`${currentPage === "kol-intelligence" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("kol-intelligence")}
-          >
-          <Users size={14} /> {showExpanded && "KOL Intelligence"}
-          </Link>
+          
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
-          <Link to={`/${selectedTeam}/campaigns`}
-            className={`${currentPage === "campaigns" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+          <Link 
+            to={`/${selectedTeam}/campaigns`}
+            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("campaigns")}
           >
             <Activity size={14} /> {showExpanded && "Campaigns"}
           </Link>
-          <Link to={`/${selectedTeam}/conversion-events`}
-            className={`${currentPage === "conversion-events" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+          <Link 
+            to={`/${selectedTeam}/conversion-events`}
+            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("conversion-events")}
           >
             <List size={14} /> {showExpanded && "Conversion events"}
           </Link>
-          <Link to={`/${selectedTeam}/advertise`}
-            className={`${currentPage === "advertise" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+          <Link 
+            to={`/${selectedTeam}/advertise`}
+            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("advertise")}
           >
             <Globe size={14} /> {showExpanded && "Advertise"}
           </Link>
-          <Link to={`/${selectedTeam}/history`}
-            className={`${currentPage === "history" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+          <Link 
+            to={`/${selectedTeam}/history`}
+            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("history")}
           >
             <Database size={14} /> {showExpanded && "History"}
@@ -123,21 +131,23 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
-          <Link to={`/${selectedTeam}/importusers`}
-            className={`${currentPage === "import-users" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("import-users")}
+          <Link 
+            to={`/${selectedTeam}/importusers`}
+            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("importusers")}
           >
             <Upload size={14} /> {showExpanded && "Import users"}
           </Link>
-          <Link to={`/${selectedTeam}/managewebsites`}
-            className={`${currentPage === "manage-websites" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("manage-websites")}
+          <Link 
+            to={`/${selectedTeam}/managewebsites`}
+            className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("managewebsites")}
           >
             <Globe size={14} /> {showExpanded && "Manage websites"}
           </Link>
           <Link
             to={`/${selectedTeam}/settings`}
-            className={`${currentPage === "settings" ? "text-blue-600" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("settings")}
           >
             <Settings size={14} /> {showExpanded && "Settings"}

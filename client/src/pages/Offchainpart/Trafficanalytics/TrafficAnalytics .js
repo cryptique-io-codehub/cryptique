@@ -30,10 +30,21 @@ const AttributionJourneySankey = ({analytics}) => {
       return domain.charAt(0).toUpperCase() + domain.slice(1);
     };
     
-    // Group sessions by source (utm source or referrer)
-    const sourceGroups = {};
+    // First, determine the first source for each user
+    const userFirstSources = {};
     
-    analytics.sessions.forEach(session => {
+    // Sort sessions by timestamp to determine the first session per user
+    const sortedSessions = [...analytics.sessions].sort((a, b) => {
+      return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+    });
+    
+    // Determine the first source for each user
+    sortedSessions.forEach(session => {
+      const userId = session.userId;
+      
+      // Skip if we already have the first source for this user
+      if (userFirstSources[userId]) return;
+      
       // Determine the source (utm source or referrer)
       let source = 'Direct';
       
@@ -50,6 +61,17 @@ const AttributionJourneySankey = ({analytics}) => {
         }
       }
       
+      // Record the first source for this user
+      userFirstSources[userId] = source;
+    });
+    
+    // Group sessions by the first source of each user, ignoring later sources
+    const sourceGroups = {};
+    
+    analytics.sessions.forEach(session => {
+      const userId = session.userId;
+      const source = userFirstSources[userId] || 'Direct';
+      
       // Create the source group if it doesn't exist
       if (!sourceGroups[source]) {
         sourceGroups[source] = {
@@ -60,18 +82,22 @@ const AttributionJourneySankey = ({analytics}) => {
       }
       
       // Add userId to track unique visitors
-      sourceGroups[source].uniqueVisitors.add(session.userId);
+      sourceGroups[source].uniqueVisitors.add(userId);
       
       // Check if wallet is connected
       const isWalletConnected = session.wallet && 
                                session.wallet.walletAddress && 
                                session.wallet.walletAddress.trim() !== '';
       
-      // Add userId to the appropriate set
+      // Add userId to the appropriate set - based on ANY session with this userId
+      // This means if they connect a wallet in any session, they're counted as connected
       if (isWalletConnected) {
-        sourceGroups[source].connected.add(session.userId);
-      } else {
-        sourceGroups[source].notConnected.add(session.userId);
+        sourceGroups[source].connected.add(userId);
+        // Remove from notConnected if they were there
+        sourceGroups[source].notConnected.delete(userId);
+      } else if (!sourceGroups[source].connected.has(userId)) {
+        // Only mark as not connected if they haven't connected in any other session
+        sourceGroups[source].notConnected.add(userId);
       }
     });
     
@@ -293,7 +319,7 @@ const AttributionJourneySankey = ({analytics}) => {
 
   return (
     <div className="bg-white rounded-lg w-full">
-      <h3 className="text-lg md:text-xl font-bold px-4 pt-4 pb-2">Top 5 Sources Attribution Journey</h3>
+      <h3 className="text-lg md:text-xl font-bold px-4 pt-4 pb-2">Top 5 First-Source Attribution Journey</h3>
       <div className="w-full">
         {/* Make SVG responsive with proper aspect ratio */}
         <div className="w-full aspect-[4/3] md:aspect-[16/9] relative overflow-hidden">
@@ -462,7 +488,9 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     walletsConnected: 0,
     leastEffectiveSource: '',
     avgConversion: '0%',
-    avgBounceRate: '0%'
+    avgBounceRate: '0%',
+    bestSourceByWeb3: '',
+    bestSourceByWallets: '',
   });
 
   // State for traffic quality data
@@ -517,6 +545,9 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
   useEffect(() => {
     if (!analytics || !analytics.sessions || analytics.sessions.length === 0) return;
     
+    // Track user's first source
+    const userFirstSource = {};
+    
     // Count sessions by source
     const sourceCounts = {};
     const sourceBounceCounts = {};
@@ -525,91 +556,151 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     const uniqueUserIdsBySource = {};
     const sourceDurations = {};
     
-    analytics.sessions.forEach(session => {
-      const source = getSourceFromSession(session);
+    // Sort sessions by timestamp to ensure consistent assignment of first source
+    const sortedSessions = [...analytics.sessions].sort((a, b) => 
+      new Date(a.timestamp || 0) - new Date(b.timestamp || 0)
+    );
+    
+    // First pass: identify each user's first source
+    sortedSessions.forEach(session => {
+      if (!session.userId) return;
       
-      // Count sessions by source
-      sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      // Only record the first source for each user
+      if (!userFirstSource[session.userId]) {
+        userFirstSource[session.userId] = getSourceFromSession(session);
+      }
+    });
+    
+    // Second pass: count metrics, but attribute activities to the user's first source only
+    sortedSessions.forEach(session => {
+      if (!session.userId) return;
       
-      // Sum durations by source
+      // Get the user's first source
+      const firstSource = userFirstSource[session.userId];
+      if (!firstSource) return;
+      
+      // Count sessions by first source
+      sourceCounts[firstSource] = (sourceCounts[firstSource] || 0) + 1;
+      
+      // Sum durations by first source
       if (session.duration) {
-        sourceDurations[source] = (sourceDurations[source] || 0) + session.duration;
+        sourceDurations[firstSource] = (sourceDurations[firstSource] || 0) + session.duration;
       }
       
-      // Count bounces by source
+      // Count bounces by first source
       if (session.isBounce) {
-        sourceBounceCounts[source] = (sourceBounceCounts[source] || 0) + 1;
+        sourceBounceCounts[firstSource] = (sourceBounceCounts[firstSource] || 0) + 1;
       }
       
-      // Track unique users by source to count web3 users and wallets
-      if (!uniqueUserIdsBySource[source]) {
-        uniqueUserIdsBySource[source] = new Set();
+      // Track unique users by first source
+      if (!uniqueUserIdsBySource[firstSource]) {
+        uniqueUserIdsBySource[firstSource] = new Set();
       }
-      uniqueUserIdsBySource[source].add(session.userId);
+      uniqueUserIdsBySource[firstSource].add(session.userId);
       
-      // Count web3 users by source (wallet type not "No Wallet Detected")
+      // Count web3 users by first source (wallet type not "No Wallet Detected")
       if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
-        if (!web3UsersBySource[source]) {
-          web3UsersBySource[source] = new Set();
+        if (!web3UsersBySource[firstSource]) {
+          web3UsersBySource[firstSource] = new Set();
         }
-        web3UsersBySource[source].add(session.userId);
+        web3UsersBySource[firstSource].add(session.userId);
       }
       
-      // Count wallets by source (wallet address not empty)
+      // Count wallets by first source (wallet address not empty)
       if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
-        if (!walletsBySource[source]) {
-          walletsBySource[source] = new Set();
+        if (!walletsBySource[firstSource]) {
+          walletsBySource[firstSource] = new Set();
         }
-        walletsBySource[source].add(session.userId);
+        walletsBySource[firstSource].add(session.userId);
       }
     });
 
-    // Find best and worst performing sources
-    let maxSessions = 0;
-    let maxSource = '';
-    let minSessions = Infinity;
-    let minSource = '';
+    // Calculate conversion rates for each source
+    const conversionRates = {};
+    Object.keys(uniqueUserIdsBySource).forEach(source => {
+      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      conversionRates[source] = uniqueUsers > 0 ? (wallets / uniqueUsers) * 100 : 0;
+    });
+
+    // Find best and worst performing sources by conversion rate
+    let bestConversionRate = -1;
+    let bestConversionSource = '';
+    let lowestConversionRate = Infinity;
+    let lowestConversionSource = '';
     
-    Object.entries(sourceCounts).forEach(([source, count]) => {
-      if (count > maxSessions) {
-        maxSessions = count;
-        maxSource = source;
+    // Find source with maximum web3 users
+    let maxWeb3Users = 0;
+    let maxWeb3Source = '';
+    
+    // Find source with maximum wallet connections
+    let maxWallets = 0;
+    let maxWalletSource = '';
+    
+    Object.entries(conversionRates).forEach(([source, rate]) => {
+      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
+      
+      // Only consider sources with users
+      if (uniqueUsers > 0) {
+        if (rate > bestConversionRate) {
+          bestConversionRate = rate;
+          bestConversionSource = source;
+        }
+        if (rate < lowestConversionRate) {
+          lowestConversionRate = rate;
+          lowestConversionSource = source;
+        }
       }
-      if (count < minSessions) {
-        minSessions = count;
-        minSource = source;
+      
+      // Find source with most web3 users
+      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      if (web3Users > maxWeb3Users) {
+        maxWeb3Users = web3Users;
+        maxWeb3Source = source;
+      }
+      
+      // Find source with most wallet connections
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      if (wallets > maxWallets) {
+        maxWallets = wallets;
+        maxWalletSource = source;
       }
     });
     
     // If we didn't find any sources (shouldn't happen but just in case)
-    if (maxSource === '') {
-      maxSource = 'Direct';
+    if (bestConversionSource === '') {
+      bestConversionSource = 'Direct';
     }
-    if (minSource === '') {
-      minSource = 'Direct';
+    if (lowestConversionSource === '') {
+      lowestConversionSource = 'Direct';
+    }
+    if (maxWeb3Source === '') {
+      maxWeb3Source = 'Direct';
+    }
+    if (maxWalletSource === '') {
+      maxWalletSource = 'Direct';
     }
     
-    // Calculate metrics for the best source
-    const totalSessions = sourceCounts[maxSource] || 0;
-    const web3Users = web3UsersBySource[maxSource] ? web3UsersBySource[maxSource].size : 0;
-    const walletsConnected = walletsBySource[maxSource] ? walletsBySource[maxSource].size : 0;
+    // Get metrics for the best source by conversion
+    const totalSessions = sourceCounts[bestConversionSource] || 0;
+    const uniqueUsers = uniqueUserIdsBySource[bestConversionSource] ? uniqueUserIdsBySource[bestConversionSource].size : 0;
+    const totalWeb3Users = web3UsersBySource[maxWeb3Source] ? web3UsersBySource[maxWeb3Source].size : 0;
+    const totalWallets = walletsBySource[maxWalletSource] ? walletsBySource[maxWalletSource].size : 0;
     
     // Calculate bounce rate for the best source
-    const bounces = sourceBounceCounts[maxSource] || 0;
+    const bounces = sourceBounceCounts[bestConversionSource] || 0;
     const bounceRate = totalSessions > 0 ? (bounces / totalSessions) * 100 : 0;
     
-    // Calculate conversion rate (wallets connected / total unique users)
-    const uniqueUsers = uniqueUserIdsBySource[maxSource] ? uniqueUserIdsBySource[maxSource].size : 0;
-    const conversionRate = uniqueUsers > 0 ? (walletsConnected / uniqueUsers) * 100 : 0;
-    
     setMetrics({
-      bestSource: maxSource,
+      bestSource: bestConversionSource,
       totalSessions,
-      web3Users,
-      walletsConnected,
-      leastEffectiveSource: minSource,
-      avgConversion: `${conversionRate.toFixed(2)}%`,
-      avgBounceRate: `${bounceRate.toFixed(2)}%`
+      web3Users: totalWeb3Users,
+      walletsConnected: totalWallets,
+      leastEffectiveSource: lowestConversionSource,
+      avgConversion: `${bestConversionRate.toFixed(2)}%`,
+      avgBounceRate: `${bounceRate.toFixed(2)}%`,
+      bestSourceByWeb3: maxWeb3Source,
+      bestSourceByWallets: maxWalletSource,
     });
 
     // Generate colors for sources
@@ -619,7 +710,11 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     ];
     
     // Generate traffic quality data for the scatter chart
-    const qualityData = Object.keys(sourceCounts).map((source, index) => {
+    const qualityData = Object.keys(uniqueUserIdsBySource).map((source, index) => {
+      // Only include sources with users
+      const sourceUniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
+      if (sourceUniqueUsers === 0) return null;
+      
       // Calculate engagement time in minutes (average session duration)
       const totalDuration = sourceDurations[source] || 0;
       const sessionCount = sourceCounts[source] || 0;
@@ -627,12 +722,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         ? (totalDuration / sessionCount) / 60  // Convert seconds to minutes
         : 0;
       
-      // Calculate conversion rate (wallets connected / unique users)
-      const sourceUniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      const sourceWallets = walletsBySource[source] ? walletsBySource[source].size : 0;
-      const conversion = sourceUniqueUsers > 0 
-        ? (sourceWallets / sourceUniqueUsers) * 100 
-        : 0;
+      // Use the already calculated conversion rate
+      const conversion = conversionRates[source] || 0;
       
       return {
         source,
@@ -640,7 +731,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         conversion: parseFloat(conversion.toFixed(2)),
         color: colorPalette[index % colorPalette.length]
       };
-    });
+    }).filter(item => item !== null); // Remove null entries
     
     setTrafficQualityData(qualityData);
   }, [analytics]);
@@ -709,15 +800,15 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
         <MetricCard title="Total Sessions" value={formatNumber(metrics.totalSessions)} source={metrics.bestSource} />
-        <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSource} />
-        <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSource} />
+        <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSourceByWeb3} />
+        <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSourceByWallets} />
         <div className="col-span-2 md:col-span-1 bg-white rounded-lg shadow p-2 md:p-4">
           <div className="text-xs md:text-sm text-gray-500 mb-1">Least effective source</div>
           <div className="flex items-center justify-center h-12 md:h-24">
             <span className="text-lg md:text-xl font-bold">{metrics.leastEffectiveSource}</span>
           </div>
         </div>
-        <MetricCard title="Avg Conversions" value={metrics.avgConversion} source={metrics.bestSource} />
+        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSource} />
         <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.bestSource} />
       </div>
 

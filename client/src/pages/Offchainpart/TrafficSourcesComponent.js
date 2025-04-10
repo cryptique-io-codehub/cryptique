@@ -97,14 +97,27 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
     }
 
     const resultMap = new Map();
+    const userSourceMap = new Map(); // Track first source for each user
     
-    for (const session of analytics.sessions) {
-      // Skip if session is undefined or null
-      if (!session) continue;
+    // Sort sessions by timestamp to ensure first touchpoint is identified correctly
+    const sortedSessions = [...analytics.sessions].sort((a, b) => {
+      const timestampA = a?.timestamp || 0;
+      const timestampB = b?.timestamp || 0;
+      return timestampA - timestampB;
+    });
+    
+    // First pass: Determine each user's first source
+    for (const session of sortedSessions) {
+      if (!session || !session.userId) continue;
       
-      let source = 'Direct'; // Default to 'Direct' instead of empty string
+      const userId = String(session.userId);
       
-      // Safely access nested properties
+      // Skip if we've already identified this user's first source
+      if (userSourceMap.has(userId)) continue;
+      
+      let source = 'Direct'; // Default
+      
+      // Determine source
       if (session.utmData && typeof session.utmData === 'object' && 
           session.utmData.source && session.utmData.source !== '') {
         source = normalizeSource(session.utmData.source);
@@ -118,6 +131,10 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         source = 'Direct';
       }
       
+      // Record this user's first source
+      userSourceMap.set(userId, source);
+      
+      // Initialize source in resultMap if needed
       if (!resultMap.has(source)) {
         resultMap.set(source, {
           visitors: new Set(),
@@ -126,25 +143,44 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         });
       }
       
-      // Only add userId if it exists and is a valid string/number
-      if (session.userId && (typeof session.userId === 'string' || typeof session.userId === 'number')) {
-        resultMap.get(source).visitors.add(String(session.userId));
+      // Count this user as a visitor for their first source
+      resultMap.get(source).visitors.add(userId);
+    }
+    
+    // Second pass: Process all sessions and attribute activities to first source only
+    for (const session of sortedSessions) {
+      // Skip if session is undefined or null
+      if (!session) continue;
+      
+      // Skip if user ID is missing or invalid
+      if (!session.userId || !(typeof session.userId === 'string' || typeof session.userId === 'number')) {
+        continue;
       }
+      
+      const userId = String(session.userId);
+      
+      // Get the user's first source
+      const userFirstSource = userSourceMap.get(userId);
+      
+      // Skip if we couldn't determine this user's first source
+      if (!userFirstSource) continue;
       
       // Safely check wallet properties
       const hasWallet = session.wallet && typeof session.wallet === 'object';
       const walletType = hasWallet && session.wallet.walletType ? session.wallet.walletType : null;
       const walletAddress = hasWallet && session.wallet.walletAddress ? session.wallet.walletAddress : null;
       
-      if (session.userId && walletType && walletType !== 'No Wallet Detected') {
-        resultMap.get(source).web3users.add(String(session.userId));
+      // Always attribute wallet activities to the user's FIRST source only
+      if (walletType && walletType !== 'No Wallet Detected') {
+        resultMap.get(userFirstSource).web3users.add(userId);
       }
       
-      if (session.userId && walletAddress && walletAddress !== '') {
-        resultMap.get(source).walletsConnected.add(String(session.userId));
+      if (walletAddress && walletAddress !== '') {
+        resultMap.get(userFirstSource).walletsConnected.add(userId);
       }
     }
     
+    // Convert Set sizes to numbers for the final result
     const finalResult = {};
     for (const [source, data] of resultMap.entries()) {
       finalResult[source] = {
@@ -215,11 +251,12 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       
       <div className="bg-gray-50 rounded-lg overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-4 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
-          <div>Traffic source</div>
-          <div className="text-right">Visitors</div>
-          <div className="text-right">Web3 Users</div>
-          <div className="text-right">Wallets Connected</div>
+        <div className="grid grid-cols-12 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
+          <div className="col-span-4">Traffic source</div>
+          <div className="col-span-2 text-right">Visitors</div>
+          <div className="col-span-1"></div> {/* Empty column for spacing */}
+          <div className="col-span-2 text-right">Web3 Users</div>
+          <div className="col-span-3 text-right">Wallets Connected</div>
         </div>
         
         {/* Table rows - scrollable container */}
