@@ -93,6 +93,16 @@ exports.postAnalytics = async (req, res) => {
     analytics.newVisitors = analytics.userId.length;
     analytics.returningVisitors =
       analytics.totalVisitors - analytics.newVisitors;
+      const sessionIndex = analytics.sessions.findIndex(
+        (session) => session.sessionId === sessionData.sessionId
+      );
+      if (sessionIndex !== -1) {
+        analytics.sessions[sessionIndex] = sessionData;
+        await analytics.save();
+      } else {
+        analytics.sessions.push(sessionData);
+        await analytics.save();
+      }
     await analytics.save();
     return res
       .status(200)
