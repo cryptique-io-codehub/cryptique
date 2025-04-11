@@ -157,6 +157,15 @@ exports.getAnalytics = async (req, res) => {
     await analytics.populate("hourlyStats");
     await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId");
     await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("dailyStats");
+    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("weeklyStats");
+    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("monthlyStats");
+    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId.sessions");
 
     return res
       .status(200)
