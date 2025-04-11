@@ -1,5 +1,5 @@
 const express = require('express');
-const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats} = require('../controllers/sdkController');
+const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats, updateDailyAnalyticsStats, updateWeeklyAnalyticsStats, updateMonthlyAnalyticsStats} = require('../controllers/sdkController');
 
 const router = express.Router();
 
