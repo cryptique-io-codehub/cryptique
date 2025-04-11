@@ -31,7 +31,12 @@ exports.postAnalytics = async (req, res) => {
         (session) => session.sessionId === sessionData.sessionId
       );
       if (sessionIndex !== -1) {
+        console.log("UPDATED SESSION");
         analytics.sessions[sessionIndex] = sessionData;
+        if(analytics.sessions[sessionIndex].duration>30) {
+          analytics.sessions[sessionIndex].isBounce = false;
+        }
+        console.log("analytics.sessions[sessionIndex]", analytics.sessions[sessionIndex]);
         await analytics.save();
       } else {
         analytics.sessions.push(sessionData);
