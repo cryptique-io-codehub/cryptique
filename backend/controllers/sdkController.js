@@ -1,5 +1,6 @@
 const Analytics = require("../models/analytics");
 const Session = require("../models/session");
+const { HourlyStats } = require("../models/stats");
 
 // Controller to handle posting the countryName
 exports.postAnalytics = async (req, res) => {
@@ -64,6 +65,17 @@ exports.postAnalytics = async (req, res) => {
         sessions: [],
       });
       await analytics.save();
+      const newStats = new HourlyStats({
+        siteId: siteId,
+        analyticsSnapshot: [
+          {
+            analyticsId: analytics._id,
+            hour: new Date(),
+          }
+        ],
+        lastSnapshotAt: new Date(),
+      });
+      await newStats.save();
     }
     //update the wallet stuff if something updates
     if (isWeb3User) {
@@ -142,44 +154,50 @@ exports.getAnalytics = async (req, res) => {
 };
 
 //add a cron job to update the analytics data every hour of entire website i have in my db
-exports.updateAnalyticsStats = async (req, res) => {
+exports.updateAnalyticsStats = async () => {
   try {
-    const analytics = await Analytics.find({});
-    if (!analytics || analytics.length === 0) {
-      return res.json({ message: "Analytics not found" });
+    const now = new Date();
+    const roundedHour = new Date(now);
+
+    const allAnalytics = await Analytics.find({});
+
+    for (const analytic of allAnalytics) {
+      const { siteId, _id: analyticsId } = analytic;
+      const hourlyStats = await HourlyStats.findOne({ siteId });
+      const lastSnapshotAt = hourlyStats && hourlyStats.lastSnapshotAt;
+      const lastSnapshotDate = new Date(lastSnapshotAt);
+
+      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5; // Convert milliseconds to hours
+      const alreadyUpdated = differenceInHours < 1; // Check if the last snapshot was taken in the last hour
+
+      if (alreadyUpdated) continue;
+
+      await HourlyStats.updateOne(
+        { siteId },
+        {
+          $push: {
+            analyticsSnapshot: {
+              $each: [{ analyticsId, hour: roundedHour }],
+              $sort: { hour: -1 },
+              $slice: 24,
+            },
+          },
+        },
+        { upsert: true }
+      );
+      await HourlyStats.updateOne(
+        { siteId },
+        {
+          $set: {
+            lastSnapshotAt: roundedHour,
+          },
+        }
+      );
     }
-
-    for (const analytic of analytics) {
-      const now = new Date();
-      const snapshot = analytic._id;
-      const siteId = analytic.siteId;
-      // Utility to get last timestamp diff
-      const getLastDiffHours = (arr) => {
-        if (arr.length === 0) return Infinity;
-        const last = arr[arr.length - 1].timeStamp;
-        return (now - new Date(last)) / 36e5;
-      };
-
-      // Push snapshot if interval met
-      // if (getLastDiffHours(analytic.hourlyStats) >= 1) {
-      //   analytic.hourlyStats.push({ stats: snapshot, timeStamp: now });
-      // }
-      // if (getLastDiffHours(analytic.dailyStats) >= 24) {
-      //   analytic.dailyStats.push({ stats: snapshot, timeStamp: now });
-      // }
-      // if (getLastDiffHours(analytic.weeklyStats) >= 168) {
-      //   analytic.weeklyStats.push({ stats: snapshot, timeStamp: now });
-      // }
-      // if (getLastDiffHours(analytic.monthlyStats) >= 720) { // ~30 days
-      //   analytic.monthlyStats.push({ stats: snapshot, timeStamp: now });
-      // }
-
-      // await analytic.save();
-    }
-
-    return res.status(200).json({ message: "Analytics updated successfully" });
-  } catch (e) {
-    console.error("Error while updating analytics", e);
-    res.status(500).json({ message: "Error while updating analytics", error: e.message });
+    console.log("Analytics stats updated successfully");
+    return { message: "Analytics stats updated successfully" };
+  } catch (error) {
+    console.error("Error while updating analytics stats", error);
+    throw new Error("Error while updating analytics stats: " + error.message);
   }
 };
