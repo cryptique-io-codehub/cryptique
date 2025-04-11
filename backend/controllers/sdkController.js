@@ -126,8 +126,10 @@ exports.getAnalytics = async (req, res) => {
     const analytics = await Analytics.findOne({ siteId: siteId });
     if (!analytics) {
       return res.json({ message: "Analytics not found" });
-      
     }
+    // Populate the sessions field with session data
+    await analytics.populate("sessions");
+    
     return res
       .status(200)
       .json({ message: "Analytics fetched successfully", analytics });
