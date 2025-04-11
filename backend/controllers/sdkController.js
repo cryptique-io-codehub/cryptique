@@ -46,7 +46,7 @@ exports.postAnalytics = async (req, res) => {
       }
       return res
         .status(200)
-        .json({ message: "Session Updated successfully", session });
+        .json({ session });
     }
     const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
@@ -129,7 +129,7 @@ exports.getAnalytics = async (req, res) => {
     }
     // Populate the sessions field with session data
     await analytics.populate("sessions");
-    
+
     return res
       .status(200)
       .json({ message: "Analytics fetched successfully", analytics });
