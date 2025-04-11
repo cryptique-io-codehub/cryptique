@@ -1,4 +1,5 @@
 const Analytics = require("../models/analytics");
+const Session = require("../models/session");
 
 // Controller to handle posting the countryName
 exports.postAnalytics = async (req, res) => {
@@ -6,8 +7,9 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, wallet } = sessionData;
+      const { siteId, wallet,sessionId } = sessionData;
       const analytics = await Analytics.findOne({ siteId: siteId });
+      const session=await Session.findOne({sessionId:sessionId});
       if (wallet && wallet.walletAddress.length > 0) {
         const newWallet = {
           walletAddress: wallet.walletAddress,
@@ -27,20 +29,20 @@ exports.postAnalytics = async (req, res) => {
       }
 
       //if sessionid is same just update the session data
-      const sessionIndex = analytics.sessions.findIndex(
-        (session) => session.sessionId === sessionData.sessionId
-      );
-      if (sessionIndex !== -1) {
-        console.log("UPDATED SESSION");
-        analytics.sessions[sessionIndex] = sessionData;
-        if(analytics.sessions[sessionIndex].duration>30) {
-          analytics.sessions[sessionIndex].isBounce = false;
+      if(!session) {
+        const newSession = new Session(sessionData);
+        await newSession.save();
+        analytics.sessions.push(newSession._id); // Add session to the analytics
+        await analytics.save();
+      }
+      else{
+        const updatedSession = await Session.findByIdAndUpdate(session._id, sessionData, { new: true });
+
+        if (updatedSession.duration > 30) {
+          updatedSession.isBounce = false;
+          await updatedSession.save();
         }
-        console.log("analytics.sessions[sessionIndex]", analytics.sessions[sessionIndex]);
-        await analytics.save();
-      } else {
-        analytics.sessions.push(sessionData);
-        await analytics.save();
+        console.log("updatedSession", updatedSession);  
       }
       return res
         .status(200)
@@ -98,17 +100,11 @@ exports.postAnalytics = async (req, res) => {
     analytics.newVisitors = analytics.userId.length;
     analytics.returningVisitors =
       analytics.totalVisitors - analytics.newVisitors;
-      const sessionIndex = analytics.sessions.findIndex(
-        (session) => session.sessionId === sessionData.sessionId
-      );
-      if (sessionIndex !== -1) {
-        analytics.sessions[sessionIndex] = sessionData;
-        await analytics.save();
-      } else {
-        analytics.sessions.push(sessionData);
-        await analytics.save();
-      }
-    await analytics.save();
+
+      const newSession = new Session(sessionData);
+      await newSession.save();
+      analytics.sessions.push(newSession._id); // Add session to the analytics
+      await analytics.save();
     return res
       .status(200)
       .json({ message: "Data Updated successfully", analytics });
@@ -153,8 +149,8 @@ exports.updateAnalyticsStats = async (req, res) => {
 
     for (const analytic of analytics) {
       const now = new Date();
-      const snapshot = analytic.toObject();
-
+      const snapshot = analytic._id;
+      const siteId = analytic.siteId;
       // Utility to get last timestamp diff
       const getLastDiffHours = (arr) => {
         if (arr.length === 0) return Infinity;
@@ -163,20 +159,20 @@ exports.updateAnalyticsStats = async (req, res) => {
       };
 
       // Push snapshot if interval met
-      if (getLastDiffHours(analytic.hourlyStats) >= 1) {
-        analytic.hourlyStats.push({ stats: snapshot, timeStamp: now });
-      }
-      if (getLastDiffHours(analytic.dailyStats) >= 24) {
-        analytic.dailyStats.push({ stats: snapshot, timeStamp: now });
-      }
-      if (getLastDiffHours(analytic.weeklyStats) >= 168) {
-        analytic.weeklyStats.push({ stats: snapshot, timeStamp: now });
-      }
-      if (getLastDiffHours(analytic.monthlyStats) >= 720) { // ~30 days
-        analytic.monthlyStats.push({ stats: snapshot, timeStamp: now });
-      }
+      // if (getLastDiffHours(analytic.hourlyStats) >= 1) {
+      //   analytic.hourlyStats.push({ stats: snapshot, timeStamp: now });
+      // }
+      // if (getLastDiffHours(analytic.dailyStats) >= 24) {
+      //   analytic.dailyStats.push({ stats: snapshot, timeStamp: now });
+      // }
+      // if (getLastDiffHours(analytic.weeklyStats) >= 168) {
+      //   analytic.weeklyStats.push({ stats: snapshot, timeStamp: now });
+      // }
+      // if (getLastDiffHours(analytic.monthlyStats) >= 720) { // ~30 days
+      //   analytic.monthlyStats.push({ stats: snapshot, timeStamp: now });
+      // }
 
-      await analytic.save();
+      // await analytic.save();
     }
 
     return res.status(200).json({ message: "Analytics updated successfully" });
