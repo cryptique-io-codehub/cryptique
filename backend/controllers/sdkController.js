@@ -76,6 +76,8 @@ exports.postAnalytics = async (req, res) => {
         lastSnapshotAt: new Date(),
       });
       await newStats.save();
+      analytics.hourlyStats = newStats._id; // Add the new stats reference to the analytics
+      await analytics.save(); // Save the updated analytics document
     }
     //update the wallet stuff if something updates
     if (isWeb3User) {
