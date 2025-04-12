@@ -4,39 +4,137 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   const [selectedMonth, setSelectedMonth] = useState('This Month');
   const [processedData, setProcessedData] = useState({});
   const [allSources, setAllSources] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (analytics && analytics.sessions) {
-      // Process analytics data
-      const result = processAnalytics(analytics);
-      setProcessedData(result);
-      
-      // Get all sources by visitors, sorted by visitor count
-      const sortedSources = Object.entries(result)
-        .map(([source, data]) => ({
-          source: source,
-          visitors: data.visitors,
-          web3users: data.web3users,
-          walletsConnected: data.walletsConnected
-        }))
-        .sort((a, b) => b.visitors - a.visitors);
-      
-      setAllSources(sortedSources);
+    // Reset state when analytics changes
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      if (analytics && Array.isArray(analytics.sessions)) {
+        // Process analytics data
+        const result = processAnalytics(analytics);
+        setProcessedData(result);
+        
+        // Get all sources by visitors, sorted by visitor count
+        const sortedSources = Object.entries(result)
+          .map(([source, data]) => ({
+            source: source || 'Direct', // Add fallback for empty sources
+            visitors: data?.visitors || 0,
+            web3users: data?.web3users || 0,
+            walletsConnected: data?.walletsConnected || 0
+          }))
+          .sort((a, b) => b.visitors - a.visitors);
+        
+        setAllSources(sortedSources);
+      } else {
+        // Handle case where analytics or sessions is undefined
+        setAllSources([]);
+        setProcessedData({});
+      }
+    } catch (err) {
+      console.error("Error processing analytics data:", err);
+      setError("Failed to process analytics data");
+      setAllSources([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [analytics, selectedMonth]);
 
-  function processAnalytics(analytics) {
-    const resultMap = new Map();
+  // Function to normalize source URLs and domains
+  function normalizeSource(source) {
+    if (!source || typeof source !== 'string' || source.trim() === '') {
+      return 'Direct';
+    }
     
-    for (const session of analytics.sessions) {
-      let source = '';
-      if (session.utmData.source !== '') {
-        source = session.utmData.source;
-      }
-      else {
-        source = session.referrer;  
+    const sourceStr = source.trim();
+    
+    // Domain mapping for known redirects and variations
+    const domainMapping = {
+      'l.instagram.com': 'Instagram',
+      'lm.instagram.com': 'Instagram',
+      'l.facebook.com': 'Facebook',
+      'lm.facebook.com': 'Facebook',
+      't.co': 'Twitter',
+      'x.com': 'Twitter'
+    };
+    
+    try {
+      let hostname;
+      
+      if (sourceStr.includes('://')) {
+        // Full URL with protocol
+        const url = new URL(sourceStr);
+        hostname = url.hostname;
+      } else if (sourceStr.includes('.')) {
+        // Domain without protocol
+        hostname = sourceStr.split('/')[0];
+      } else {
+        // Not a URL or domain
+        return sourceStr;
       }
       
+      // Remove www. prefix
+      hostname = hostname.replace(/^www\./, '');
+      
+      // Check if it's a known redirect domain
+      if (domainMapping[hostname]) {
+        return domainMapping[hostname];
+      }
+      
+      return hostname;
+    } catch (e) {
+      // If URL parsing fails, return the original source
+      return sourceStr;
+    }
+  }
+
+  function processAnalytics(analytics) {
+    if (!analytics || !Array.isArray(analytics.sessions)) {
+      return {};
+    }
+
+    const resultMap = new Map();
+    const userSourceMap = new Map(); // Track first source for each user
+    
+    // Sort sessions by timestamp to ensure first touchpoint is identified correctly
+    const sortedSessions = [...analytics.sessions].sort((a, b) => {
+      const timestampA = a?.timestamp || 0;
+      const timestampB = b?.timestamp || 0;
+      return timestampA - timestampB;
+    });
+    
+    // First pass: Determine each user's first source
+    for (const session of sortedSessions) {
+      if (!session || !session.userId) continue;
+      
+      const userId = String(session.userId);
+      
+      // Skip if we've already identified this user's first source
+      if (userSourceMap.has(userId)) continue;
+      
+      let source = 'Direct'; // Default
+      
+      // Determine source
+      if (session.utmData && typeof session.utmData === 'object' && 
+          session.utmData.source && session.utmData.source !== '') {
+        source = normalizeSource(session.utmData.source);
+      }
+      else if (session.referrer && typeof session.referrer === 'string' && session.referrer !== '') {
+        source = normalizeSource(session.referrer);  
+      }
+      
+      // Ensure source is a string
+      if (typeof source !== 'string') {
+        source = 'Direct';
+      }
+      
+      // Record this user's first source
+      userSourceMap.set(userId, source);
+      
+      // Initialize source in resultMap if needed
       if (!resultMap.has(source)) {
         resultMap.set(source, {
           visitors: new Set(),
@@ -45,19 +143,44 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         });
       }
       
-      if (session.userId) {
-        resultMap.get(source).visitors.add(session.userId);
+      // Count this user as a visitor for their first source
+      resultMap.get(source).visitors.add(userId);
+    }
+    
+    // Second pass: Process all sessions and attribute activities to first source only
+    for (const session of sortedSessions) {
+      // Skip if session is undefined or null
+      if (!session) continue;
+      
+      // Skip if user ID is missing or invalid
+      if (!session.userId || !(typeof session.userId === 'string' || typeof session.userId === 'number')) {
+        continue;
       }
       
-      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected' && session.userId) {
-        resultMap.get(source).web3users.add(session.userId);
+      const userId = String(session.userId);
+      
+      // Get the user's first source
+      const userFirstSource = userSourceMap.get(userId);
+      
+      // Skip if we couldn't determine this user's first source
+      if (!userFirstSource) continue;
+      
+      // Safely check wallet properties
+      const hasWallet = session.wallet && typeof session.wallet === 'object';
+      const walletType = hasWallet && session.wallet.walletType ? session.wallet.walletType : null;
+      const walletAddress = hasWallet && session.wallet.walletAddress ? session.wallet.walletAddress : null;
+      
+      // Always attribute wallet activities to the user's FIRST source only
+      if (walletType && walletType !== 'No Wallet Detected') {
+        resultMap.get(userFirstSource).web3users.add(userId);
       }
       
-      if (session.wallet && session.wallet.walletAddress !== '' && session.userId) {
-        resultMap.get(source).walletsConnected.add(session.userId);
+      if (walletAddress && walletAddress !== '') {
+        resultMap.get(userFirstSource).walletsConnected.add(userId);
       }
     }
     
+    // Convert Set sizes to numbers for the final result
     const finalResult = {};
     for (const [source, data] of resultMap.entries()) {
       finalResult[source] = {
@@ -72,15 +195,11 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   
   // Function to format source name for display
   const formatSourceName = (source) => {
-    // Handle URLs
-    try {
-      if (source.startsWith('http')) {
-        const url = new URL(source);
-        return url.hostname.replace('www.', '');
-      }
-    } catch {}
+    if (source === null || source === undefined || source === '') {
+      return 'Direct';
+    }
     
-    // Default: return the source with first letter capitalized
+    // Capitalize first letter for better display
     return source.charAt(0).toUpperCase() + source.slice(1);
   };
   
@@ -88,6 +207,24 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
     setSelectedMonth(e.target.value);
     // In a real app, you would filter analytics data based on month selection
   };
+  
+  // Safe number formatting
+  const formatNumber = (num) => {
+    if (typeof num !== 'number' || isNaN(num)) return '0';
+    try {
+      return num.toLocaleString();
+    } catch (e) {
+      return num.toString();
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow p-4">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
   
   return (
     <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow">
@@ -98,6 +235,7 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
             className="text-sm bg-gray-50 border border-gray-200 rounded-md px-2 py-1 pr-8 appearance-none"
             value={selectedMonth}
             onChange={handleMonthChange}
+            disabled={isLoading}
           >
             <option>This Month</option>
             <option>Last Month</option>
@@ -113,31 +251,36 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       
       <div className="bg-gray-50 rounded-lg overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-4 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
-          <div>Traffic source</div>
-          <div className="text-right">Visitors</div>
-          <div className="text-right">Web3 Users</div>
-          <div className="text-right">Wallets Connected</div>
+        <div className="grid grid-cols-12 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
+          <div className="col-span-4">Traffic source</div>
+          <div className="col-span-2 text-right">Visitors</div>
+          <div className="col-span-1"></div> {/* Empty column for spacing */}
+          <div className="col-span-2 text-right">Web3 Users</div>
+          <div className="col-span-3 text-right">Wallets Connected</div>
         </div>
         
         {/* Table rows - scrollable container */}
         <div className="max-h-64 overflow-y-auto">
-          <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
-            {allSources.length > 0 ? (
-              allSources.map((source, index) => (
-                <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
-                  <div className="flex items-center space-x-2">
-                    <span className="truncate">{formatSourceName(source.source)}</span>
+          {isLoading ? (
+            <div className="p-4 text-center text-gray-500">Loading data...</div>
+          ) : (
+            <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
+              {allSources.length > 0 ? (
+                allSources.map((source, index) => (
+                  <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
+                    <div className="flex items-center space-x-2">
+                      <span className="truncate">{formatSourceName(source.source)}</span>
+                    </div>
+                    <div className="text-right">{formatNumber(source.visitors)}</div>
+                    <div className="text-right">{formatNumber(source.web3users)}</div>
+                    <div className="text-right">{formatNumber(source.walletsConnected)}</div>
                   </div>
-                  <div className="text-right">{source.visitors.toLocaleString()}</div>
-                  <div className="text-right">{source.web3users.toLocaleString()}</div>
-                  <div className="text-right">{source.walletsConnected.toLocaleString()}</div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">No data available</div>
-            )}
-          </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">No data available</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

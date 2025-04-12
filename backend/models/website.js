@@ -10,7 +10,6 @@ const websiteSchema=new mongoose.Schema({
     Domain:{
         type:String,
         required:true,
-        unique:true
     },
     Name:{
         type:String

@@ -108,6 +108,8 @@ exports.getWebsitesOfTeam = async (req, res) => {
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
+        console.log('ac');
+        console.log(req.body);
         
         if (!Domain || !siteId) {
             return res.status(400).json({ message: "Domain and siteId are required" });
@@ -171,7 +173,7 @@ exports.verify = async (req, res) => {
             { $set: { isVerified: true } },
             { new: true }
         );
-
+        console.log("success")
         return res.status(200).json({ message: "Verification successful" });
 
     } catch (e) {

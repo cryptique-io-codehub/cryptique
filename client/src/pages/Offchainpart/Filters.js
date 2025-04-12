@@ -27,12 +27,12 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
           teamName: selectteam // use the value from localStorage directly
         });
         if (response.status === 200) {
-          console.log(response.data.websites);
+          // console.log(response.data.websites);
           if (response && response.data.websites.length > 0) {
             setWebsitearray(response.data.websites);
-            console.log('c');
+            // console.log('c');
             if(localStorage.getItem("selectedWebsite") === '') {
-              console.log('a');
+              // console.log('a');
               const firstWebsite = response.data.websites[0];
               localStorage.setItem("idy", firstWebsite.siteId);
               localStorage.setItem("selectedWebsite", firstWebsite.Domain);
@@ -43,7 +43,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
               const iD = firstWebsite.siteId;
               const scriptHTML = `<script>
               var script = document.createElement('script');
-              script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
               script.setAttribute('site-id', '${iD}');
               document.head.appendChild(script);
             </script>`;
@@ -69,7 +69,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
                 const iD = currentWebsite.siteId;
                 const scriptHTML = `<script>
                 var script = document.createElement('script');
-                script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+                script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
                 script.setAttribute('site-id', '${iD}');
                 document.head.appendChild(script);
               </script>`;
@@ -96,6 +96,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   
 
   const handleSelectWebsite = async (website) => {
+    console.log(website);
     localStorage.setItem("selectedWebsite", website.Domain);
     localStorage.setItem("idy", website.siteId);
     setSelectedWebsite(website);
@@ -104,7 +105,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
     const iD = website.siteId;
     const scriptHTML = `<script>
     var script = document.createElement('script');
-    script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
     script.setAttribute('site-id', '${iD}');
     document.head.appendChild(script);
   </script>`;
@@ -150,7 +151,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         }
       );
       setSelectedWebsite(response.data.website);
-      console.log(response);
+      // console.log(response);
       localStorage.setItem("selectedWebsite",response.data.website.Domain);
       if(response.data.message === "Website added successfully" ) {
         const iD = response.data.website.siteId;
@@ -158,7 +159,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         setverifyid(iD);
         const scriptHTML = `<script>
         var script = document.createElement('script');
-        script.src = 'http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+        script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
         script.setAttribute('site-id', '${iD}');
         document.head.appendChild(script);
       </script>`;
@@ -175,7 +176,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   const handleVerify = async () => {
     try {
       setverifyload(true);
-      console.log(selectedWebsite);
+      // console.log(selectedWebsite);
     
       const response = await axiosInstance.post('/website/verify', {
         Domain: selectedWebsite.Domain,
@@ -183,7 +184,9 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
       });
   
       if (response.status === 200) {
+        selectedWebsite.isVerified=true;
         localStorage.setItem("idy", selectedWebsite.siteId);
+        localStorage.setItem("selectedWebsite",selectedWebsite.Domain);
         setscriptmodel(false);
         // localStorage.removeItem("showInstallationPopup");
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);
@@ -210,7 +213,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
 
   const handleDelete = async () => {
     try {
-      console.log(selectedWebsite);
+      // console.log(selectedWebsite);
     
       const response = await axiosInstance.post('/website/delete', {
         teamName: selectedTeam,
@@ -234,8 +237,8 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
             });
       
             if (response.status === 200) {
-              console.log('adf');
-              console.log(response.data.websites);
+              // console.log('adf');
+              // console.log(response.data.websites);
               if (response && response.data.websites.length > 0) {
                 setWebsitearray(response.data.websites);
                 if(localStorage.getItem("selectedWebsite") === null) {

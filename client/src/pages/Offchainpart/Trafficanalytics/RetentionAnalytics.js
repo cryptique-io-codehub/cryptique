@@ -18,36 +18,62 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         // Calculate metrics from real analytics data
         const now = new Date();
         
-        // Calculate DAU - Users active in the last 24 hours
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const dailyActiveSessions = analytics.sessions.filter(session => 
-          new Date(session.startTime) >= oneDayAgo
-        );
-        const dailyActiveUserIds = [...new Set(dailyActiveSessions.map(session => session.userId))];
-        const dailyActiveUsers = dailyActiveUserIds.length;
+        // Calculate DAU - All unique users across all dailyStats elements
+        const dailyActiveUserIds = new Set();
+        if (analytics.dailyStats && analytics.dailyStats.length > 0) {
+          analytics.dailyStats.forEach(dailyData => {
+            if (dailyData.stats && dailyData.stats.sessions) {
+              dailyData.stats.sessions.forEach(session => {
+                if (session.userId) {
+                  dailyActiveUserIds.add(session.userId);
+                }
+              });
+            }
+          });
+        }
+        const dailyActiveUsers = dailyActiveUserIds.size;
         
-        // Calculate WAU - Users active in the last 7 days
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const weeklyActiveSessions = analytics.sessions.filter(session => 
-          new Date(session.startTime) >= sevenDaysAgo
-        );
-        const weeklyActiveUserIds = [...new Set(weeklyActiveSessions.map(session => session.userId))];
-        const weeklyActiveUsers = weeklyActiveUserIds.length;
+        // Calculate WAU - All unique users across all weeklyStats elements
+        const weeklyActiveUserIds = new Set();
+        if (analytics.weeklyStats && analytics.weeklyStats.length > 0) {
+          analytics.weeklyStats.forEach(weeklyData => {
+            if (weeklyData.stats && weeklyData.stats.sessions) {
+              weeklyData.stats.sessions.forEach(session => {
+                if (session.userId) {
+                  weeklyActiveUserIds.add(session.userId);
+                }
+              });
+            }
+          });
+        }
+        const weeklyActiveUsers = weeklyActiveUserIds.size;
         
-        // Calculate MAU - Users active in the last 30 days
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const monthlyActiveSessions = analytics.sessions.filter(session => 
-          new Date(session.startTime) >= thirtyDaysAgo
-        );
-        const monthlyActiveUserIds = [...new Set(monthlyActiveSessions.map(session => session.userId))];
-        const monthlyActiveUsers = monthlyActiveUserIds.length;
+        // Calculate MAU - All unique users across all monthlyStats elements
+        const monthlyActiveUserIds = new Set();
+        if (analytics.monthlyStats && analytics.monthlyStats.length > 0) {
+          analytics.monthlyStats.forEach(monthlyData => {
+            if (monthlyData.stats && monthlyData.stats.sessions) {
+              monthlyData.stats.sessions.forEach(session => {
+                if (session.userId) {
+                  monthlyActiveUserIds.add(session.userId);
+                }
+              });
+            }
+          });
+        }
+        const monthlyActiveUsers = monthlyActiveUserIds.size;
         
         // Determine top country for each time period by counting userIds by country
-        const getTopCountry = (sessions) => {
+        const getTopCountry = (userIds, sessions) => {
           const countryUserCounts = {};
           
+          // Filter sessions to only include those from the provided userIds
+          const relevantSessions = sessions.filter(session => 
+            userIds.has(session.userId)
+          );
+          
           // Count distinct userIds per country
-          sessions.forEach(session => {
+          relevantSessions.forEach(session => {
             // Use the actual country from the session if available
             const country = session.country || 'Unknown';
             
@@ -91,9 +117,9 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         };
         
         // Get top countries for each time period
-        const dailyTopCountry = getTopCountry(dailyActiveSessions);
-        const weeklyTopCountry = getTopCountry(weeklyActiveSessions);
-        const monthlyTopCountry = getTopCountry(monthlyActiveSessions);
+        const dailyTopCountry = getTopCountry(dailyActiveUserIds, analytics.sessions);
+        const weeklyTopCountry = getTopCountry(weeklyActiveUserIds, analytics.sessions);
+        const monthlyTopCountry = getTopCountry(monthlyActiveUserIds, analytics.sessions);
         
         // Calculate growth percentage (placeholder - would need historical data)
         const calculateGrowth = (value) => {
@@ -119,9 +145,9 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   }
                 });
                 
-                // Format the date for display
+                // Format the date for display in dd/mm format
                 const date = new Date(dailyData.timeStamp);
-                const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
                 
                 // Add to chart data
                 chartData.push({
@@ -145,7 +171,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 });
                 
                 const date = new Date(weeklyData.timeStamp);
-                const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
                 
                 // Check if we already have this date in chartData
                 const existingEntry = chartData.find(entry => entry.month === formattedDate);
@@ -173,7 +199,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 });
                 
                 const date = new Date(monthlyData.timeStamp);
-                const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
                 
                 // Check if we already have this date in chartData
                 const existingEntry = chartData.find(entry => entry.month === formattedDate);
@@ -191,8 +217,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           
           // Sort chart data by date
           chartData.sort((a, b) => {
-            const [aMonth, aDay] = a.month.split('/').map(Number);
-            const [bMonth, bDay] = b.month.split('/').map(Number);
+            const [aDay, aMonth] = a.month.split('/').map(Number);
+            const [bDay, bMonth] = b.month.split('/').map(Number);
             
             if (aMonth !== bMonth) {
               return aMonth - bMonth;
@@ -223,8 +249,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             const currentDate = new Date(today);
             currentDate.setDate(today.getDate() - i);
             
-            // Format the date for display
-            const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+            // Format the date for display in dd/mm format
+            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
             
             // Filter sessions for this day to get initial user count
             const dayStart = new Date(currentDate);
@@ -323,21 +349,21 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             { 
               title: 'Daily Active Users', 
               value: dailyActiveUsers.toLocaleString(), 
-              increase: calculateGrowth(dailyActiveUsers),
+              // increase: calculateGrowth(dailyActiveUsers),
               country: dailyTopCountry.name,
               flag: dailyTopCountry.flag
             },
             { 
               title: 'Weekly Active Users', 
               value: weeklyActiveUsers.toLocaleString(), 
-              increase: calculateGrowth(weeklyActiveUsers),
+              // increase: calculateGrowth(weeklyActiveUsers),
               country: weeklyTopCountry.name,
               flag: weeklyTopCountry.flag
             },
             { 
               title: 'Monthly Active Users', 
               value: monthlyActiveUsers.toLocaleString(), 
-              increase: calculateGrowth(monthlyActiveUsers),
+              // increase: calculateGrowth(monthlyActiveUsers),
               country: monthlyTopCountry.name,
               flag: monthlyTopCountry.flag
             }

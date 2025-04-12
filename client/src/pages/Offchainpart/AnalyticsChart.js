@@ -26,13 +26,17 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     const dataPoints = Array(24).fill().map((_, i) => ({
       time: timeLabels[i],
       visitors: 0,
-      wallets: 0
+      wallets: 0,
+      absoluteVisitors: 0,
+      absoluteWallets: 0
     }));
 
     setChartData({
       datasets: {
         visitors: visitors,
-        wallets: wallets
+        wallets: wallets,
+        absoluteVisitors: Array(24).fill(0),
+        absoluteWallets: Array(24).fill(0)
       },
       timeLabels: timeLabels,
       dataPoints: dataPoints
@@ -42,8 +46,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const processAnalyticsData = () => {
     try {
       // Initialize arrays for 24 hours with absolute values from stats
-      const absoluteVisitors = Array(24).fill(0);
-      const absoluteWallets = Array(24).fill(0);
+      const absoluteVisitors = Array(24).fill(null); // Use null to track which hours have actual data
+      const absoluteWallets = Array(24).fill(null);
       const timeLabels = Array(24).fill().map((_, i) => `${i.toString().padStart(2, '0')}:00`);
       
       // Sort hourlyStats by timestamp to ensure chronological order
@@ -51,44 +55,52 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         new Date(a.timeStamp) - new Date(b.timeStamp)
       );
 
-      // First, populate the absolute values
+      // First, populate the hours we have actual data for
       sortedStats.forEach((hourStat) => {
         if (!hourStat || !hourStat.timeStamp || !hourStat.stats) {
           return;
         }
-
+        
         const timestamp = new Date(hourStat.timeStamp);
         const hour = timestamp.getHours();
         
         // Get the absolute values from stats
         absoluteVisitors[hour] = hourStat.stats.totalVisitors || 0;
-        absoluteWallets[hour] = hourStat.stats.walletsConnected || 0;
+        absoluteWallets[hour] = hourStat.stats.walletsConnected || 0; // Fixed: Changed 'L' to 0
       });
       
-      // Now calculate the differences between each hour
+      // Fill in gaps by carrying forward the last known value
+      let lastKnownVisitors = 0;
+      let lastKnownWallets = 0;
+      
+      for (let i = 0; i < 24; i++) {
+        if (absoluteVisitors[i] === null) {
+          // If we don't have data for this hour, use the last known value
+          absoluteVisitors[i] = lastKnownVisitors;
+        } else {
+          // Otherwise update our last known value
+          lastKnownVisitors = absoluteVisitors[i];
+        }
+        
+        if (absoluteWallets[i] === null) {
+          // If we don't have data for this hour, use the last known value
+          absoluteWallets[i] = lastKnownWallets;
+        } else {
+          // Otherwise update our last known value
+          lastKnownWallets = absoluteWallets[i];
+        }
+      }
+      
+      // Now calculate the differences between each hour (new visitors/wallets)
       const visitors = Array(24).fill(0);
       const wallets = Array(24).fill(0);
       
       for (let i = 0; i < 24; i++) {
-        // For the first hour, the difference is the absolute value itself
-        // For other hours, it's the difference from the previous hour
         const prevHour = (i - 1 + 24) % 24; // Handle wrap-around for hour 0
         
-        if (absoluteVisitors[prevHour] === 0 && absoluteVisitors[i] > 0) {
-          // First hour with data gets the absolute value
-          visitors[i] = absoluteVisitors[i];
-        } else {
-          // Otherwise, calculate the difference
-          visitors[i] = absoluteVisitors[i] - absoluteVisitors[prevHour];
-        }
-        
-        if (absoluteWallets[prevHour] === 0 && absoluteWallets[i] > 0) {
-          // First hour with data gets the absolute value
-          wallets[i] = absoluteWallets[i];
-        } else {
-          // Otherwise, calculate the difference
-          wallets[i] = absoluteWallets[i] - absoluteWallets[prevHour];
-        }
+        // Calculate difference from previous hour, ensuring it's never negative
+        visitors[i] = Math.max(0, absoluteVisitors[i] - absoluteVisitors[prevHour]);
+        wallets[i] = Math.max(0, absoluteWallets[i] - absoluteWallets[prevHour]);
       }
       
       // Create dataPoints array with differences
@@ -379,18 +391,18 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                 />
               ))}
             </svg>
-            
-            {/* X-axis with hour labels - always visible */}
-            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-500 pb-1">
-              {Array(7).fill().map((_, index) => {
-                const hour = Math.floor((index / 6) * 24);
-                return (
-                  <span key={index}>{`${hour.toString().padStart(2, '0')}:00`}</span>
-                );
-              })}
-            </div>
           </div>
         </div>
+      </div>
+      
+      {/* Moved X-axis time labels below the chart tile */}
+      <div className="mt-2 flex justify-between text-xs text-gray-500 px-10">
+        {Array(7).fill().map((_, index) => {
+          const hour = Math.floor((index / 6) * 24);
+          return (
+            <span key={index}>{`${hour.toString().padStart(2, '0')}:00`}</span>
+          );
+        })}
       </div>
     </div>
   );
