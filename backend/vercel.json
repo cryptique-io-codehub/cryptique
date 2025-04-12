@@ -14,9 +14,21 @@
   ],
   "crons": [
     {
-      "path": "/api/sdk/update-all-analytics-stats",
+      "path": "/api/sdk/update-all-analytics-stats-hourly",
       "schedule": "*/1 * * * *"
-
+    },
+    {
+      "path": "/api/sdk/update-all-analytics-stats-daily",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/sdk/update-all-analytics-stats-weekly",
+        "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/sdk/update-all-analytics-stats-monthly",
+      "schedule": "*/30 * * * *"
     }
+
   ]
 }
