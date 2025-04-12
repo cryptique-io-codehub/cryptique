@@ -153,6 +153,7 @@ exports.getAnalytics = async (req, res) => {
       return res.json({ message: "Analytics not found" });
     }
     // Populate the sessions field with session data
+    console.log('t');
     await analytics.populate("sessions");
     await analytics.populate("hourlyStats");
     await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId");
@@ -166,7 +167,7 @@ exports.getAnalytics = async (req, res) => {
     await analytics.populate("monthlyStats");
     await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId");
     await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId.sessions");
-
+    console.log(analytics);
     return res
       .status(200)
       .json({ message: "Analytics fetched successfully", analytics });

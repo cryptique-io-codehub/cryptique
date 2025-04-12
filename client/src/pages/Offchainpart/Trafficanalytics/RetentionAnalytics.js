@@ -18,50 +18,74 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         // Calculate metrics from real analytics data
         const now = new Date();
         
-        // Calculate DAU - All unique users across all dailyStats elements
+        // Extract sessions from the new data structure
+        const allSessions = analytics.sessions || [];
+        
+        // Extract daily stats
+        const dailyStatsData = analytics.dailyStats && analytics.dailyStats.analyticsSnapshot 
+          ? analytics.dailyStats.analyticsSnapshot 
+          : [];
+        
+        // Extract weekly stats
+        const weeklyStatsData = analytics.weeklyStats && analytics.weeklyStats.analyticsSnapshot 
+          ? analytics.weeklyStats.analyticsSnapshot 
+          : [];
+        
+        // Extract monthly stats
+        const monthlyStatsData = analytics.monthlyStats && analytics.monthlyStats.analyticsSnapshot 
+          ? analytics.monthlyStats.analyticsSnapshot 
+          : [];
+        
+        // Calculate DAU - All unique users across all dailyStatsData elements
         const dailyActiveUserIds = new Set();
-        if (analytics.dailyStats && analytics.dailyStats.length > 0) {
-          analytics.dailyStats.forEach(dailyData => {
-            if (dailyData.stats && dailyData.stats.sessions) {
-              dailyData.stats.sessions.forEach(session => {
-                if (session.userId) {
-                  dailyActiveUserIds.add(session.userId);
-                }
-              });
-            }
-          });
-        }
+        dailyStatsData.forEach(snapshot => {
+          // Check if analyticsId exists and has sessions
+          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+            snapshot.analyticsId.sessions.forEach(session => {
+              if (session.userId) {
+                dailyActiveUserIds.add(session.userId);
+              }
+            });
+          }
+        });
         const dailyActiveUsers = dailyActiveUserIds.size;
         
-        // Calculate WAU - All unique users across all weeklyStats elements
+        // Calculate WAU - All unique users across all weeklyStatsData elements
         const weeklyActiveUserIds = new Set();
-        if (analytics.weeklyStats && analytics.weeklyStats.length > 0) {
-          analytics.weeklyStats.forEach(weeklyData => {
-            if (weeklyData.stats && weeklyData.stats.sessions) {
-              weeklyData.stats.sessions.forEach(session => {
-                if (session.userId) {
-                  weeklyActiveUserIds.add(session.userId);
-                }
-              });
-            }
-          });
-        }
+        weeklyStatsData.forEach(snapshot => {
+          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+            snapshot.analyticsId.sessions.forEach(session => {
+              if (session.userId) {
+                weeklyActiveUserIds.add(session.userId);
+              }
+            });
+          }
+        });
         const weeklyActiveUsers = weeklyActiveUserIds.size;
         
-        // Calculate MAU - All unique users across all monthlyStats elements
+        // Calculate MAU - All unique users across all monthlyStatsData elements
         const monthlyActiveUserIds = new Set();
-        if (analytics.monthlyStats && analytics.monthlyStats.length > 0) {
-          analytics.monthlyStats.forEach(monthlyData => {
-            if (monthlyData.stats && monthlyData.stats.sessions) {
-              monthlyData.stats.sessions.forEach(session => {
-                if (session.userId) {
-                  monthlyActiveUserIds.add(session.userId);
-                }
-              });
-            }
-          });
-        }
+        monthlyStatsData.forEach(snapshot => {
+          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+            snapshot.analyticsId.sessions.forEach(session => {
+              if (session.userId) {
+                monthlyActiveUserIds.add(session.userId);
+              }
+            });
+          }
+        });
         const monthlyActiveUsers = monthlyActiveUserIds.size;
+        
+        // Use the data directly from analytics if no daily/weekly/monthly stats found
+        if (dailyActiveUsers === 0 && analytics.userId) {
+          dailyActiveUserIds.add(...analytics.userId);
+        }
+        if (weeklyActiveUsers === 0 && analytics.userId) {
+          weeklyActiveUserIds.add(...analytics.userId);
+        }
+        if (monthlyActiveUsers === 0 && analytics.userId) {
+          monthlyActiveUserIds.add(...analytics.userId);
+        }
         
         // Determine top country for each time period by counting userIds by country
         const getTopCountry = (userIds, sessions) => {
@@ -95,31 +119,33 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             }
           });
           
-          // Map of country names to flags
-          const countryFlags = {
-            'India': '🇮🇳',
-            'United States': '🇺🇸',
-            'United Kingdom': '🇬🇧',
-            'Canada': '🇨🇦',
-            'Germany': '🇩🇪',
-            'Australia': '🇦🇺',
-            'France': '🇫🇷',
-            'Japan': '🇯🇵',
-            'China': '🇨🇳',
-            'Brazil': '🇧🇷',
-            'Unknown': '🌍'
+          // Map of country codes to country names and flags
+          const countryMap = {
+            'IN': { name: 'India', flag: '🇮🇳' },
+            'US': { name: 'United States', flag: '🇺🇸' },
+            'GB': { name: 'United Kingdom', flag: '🇬🇧' },
+            'CA': { name: 'Canada', flag: '🇨🇦' },
+            'DE': { name: 'Germany', flag: '🇩🇪' },
+            'AU': { name: 'Australia', flag: '🇦🇺' },
+            'FR': { name: 'France', flag: '🇫🇷' },
+            'JP': { name: 'Japan', flag: '🇯🇵' },
+            'CN': { name: 'China', flag: '🇨🇳' },
+            'BR': { name: 'Brazil', flag: '🇧🇷' },
+            'Unknown': { name: 'Unknown', flag: '🌍' }
           };
           
+          const countryInfo = countryMap[topCountry] || { name: topCountry, flag: '🌍' };
+          
           return { 
-            name: topCountry, 
-            flag: countryFlags[topCountry] || '🌍' 
+            name: countryInfo.name, 
+            flag: countryInfo.flag
           };
         };
         
         // Get top countries for each time period
-        const dailyTopCountry = getTopCountry(dailyActiveUserIds, analytics.sessions);
-        const weeklyTopCountry = getTopCountry(weeklyActiveUserIds, analytics.sessions);
-        const monthlyTopCountry = getTopCountry(monthlyActiveUserIds, analytics.sessions);
+        const dailyTopCountry = getTopCountry(dailyActiveUserIds, allSessions);
+        const weeklyTopCountry = getTopCountry(weeklyActiveUserIds, allSessions);
+        const monthlyTopCountry = getTopCountry(monthlyActiveUserIds, allSessions);
         
         // Calculate growth percentage (placeholder - would need historical data)
         const calculateGrowth = (value) => {
@@ -133,85 +159,91 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           const chartData = [];
           
           // Process dailyStats
-          if (analytics.dailyStats && analytics.dailyStats.length > 0) {
-            analytics.dailyStats.forEach(dailyData => {
-              // Make sure we have the stats and sessions
-              if (dailyData.stats && dailyData.stats.sessions) {
-                // Get distinct user IDs from this daily stat
-                const distinctUserIds = new Set();
-                dailyData.stats.sessions.forEach(session => {
-                  if (session.userId) {
-                    distinctUserIds.add(session.userId);
-                  }
-                });
-                
-                // Format the date for display in dd/mm format
-                const date = new Date(dailyData.timeStamp);
-                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-                
-                // Add to chart data
-                chartData.push({
-                  month: formattedDate, // Using date as the x-axis label
-                  DAU: distinctUserIds.size,
-                  // We'll add WAU and MAU when processing those stats
-                });
-              }
-            });
-          }
+          dailyStatsData.forEach(snapshot => {
+            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+              // Get distinct user IDs from this daily stat
+              const distinctUserIds = new Set();
+              snapshot.analyticsId.sessions.forEach(session => {
+                if (session.userId) {
+                  distinctUserIds.add(session.userId);
+                }
+              });
+              
+              // Format the date for display in dd/mm format
+              const date = new Date(snapshot.hour);
+              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
+              
+              // Add to chart data
+              chartData.push({
+                month: formattedDate, // Using date as the x-axis label
+                DAU: distinctUserIds.size,
+                // We'll add WAU and MAU when processing those stats
+              });
+            }
+          });
           
           // Process weeklyStats and update matching dates or add new entries
-          if (analytics.weeklyStats && analytics.weeklyStats.length > 0) {
-            analytics.weeklyStats.forEach(weeklyData => {
-              if (weeklyData.stats && weeklyData.stats.sessions) {
-                const distinctUserIds = new Set();
-                weeklyData.stats.sessions.forEach(session => {
-                  if (session.userId) {
-                    distinctUserIds.add(session.userId);
-                  }
-                });
-                
-                const date = new Date(weeklyData.timeStamp);
-                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-                
-                // Check if we already have this date in chartData
-                const existingEntry = chartData.find(entry => entry.month === formattedDate);
-                if (existingEntry) {
-                  existingEntry.WAU = distinctUserIds.size;
-                } else {
-                  chartData.push({
-                    month: formattedDate,
-                    WAU: distinctUserIds.size,
-                  });
+          weeklyStatsData.forEach(snapshot => {
+            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+              const distinctUserIds = new Set();
+              snapshot.analyticsId.sessions.forEach(session => {
+                if (session.userId) {
+                  distinctUserIds.add(session.userId);
                 }
+              });
+              
+              const date = new Date(snapshot.hour);
+              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
+              
+              // Check if we already have this date in chartData
+              const existingEntry = chartData.find(entry => entry.month === formattedDate);
+              if (existingEntry) {
+                existingEntry.WAU = distinctUserIds.size;
+              } else {
+                chartData.push({
+                  month: formattedDate,
+                  WAU: distinctUserIds.size,
+                });
               }
-            });
-          }
+            }
+          });
           
           // Process monthlyStats and update matching dates or add new entries
-          if (analytics.monthlyStats && analytics.monthlyStats.length > 0) {
-            analytics.monthlyStats.forEach(monthlyData => {
-              if (monthlyData.stats && monthlyData.stats.sessions) {
-                const distinctUserIds = new Set();
-                monthlyData.stats.sessions.forEach(session => {
-                  if (session.userId) {
-                    distinctUserIds.add(session.userId);
-                  }
-                });
-                
-                const date = new Date(monthlyData.timeStamp);
-                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-                
-                // Check if we already have this date in chartData
-                const existingEntry = chartData.find(entry => entry.month === formattedDate);
-                if (existingEntry) {
-                  existingEntry.MAU = distinctUserIds.size;
-                } else {
-                  chartData.push({
-                    month: formattedDate,
-                    MAU: distinctUserIds.size,
-                  });
+          monthlyStatsData.forEach(snapshot => {
+            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+              const distinctUserIds = new Set();
+              snapshot.analyticsId.sessions.forEach(session => {
+                if (session.userId) {
+                  distinctUserIds.add(session.userId);
                 }
+              });
+              
+              const date = new Date(snapshot.hour);
+              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
+              
+              // Check if we already have this date in chartData
+              const existingEntry = chartData.find(entry => entry.month === formattedDate);
+              if (existingEntry) {
+                existingEntry.MAU = distinctUserIds.size;
+              } else {
+                chartData.push({
+                  month: formattedDate,
+                  MAU: distinctUserIds.size,
+                });
               }
+            }
+          });
+          
+          // If no chart data found yet, use direct analytics data
+          if (chartData.length === 0 && analytics.userId && analytics.userId.length > 0) {
+            const today = new Date();
+            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
+            
+            chartData.push({
+              month: formattedDate,
+              DAU: analytics.userId.length,
+              WAU: analytics.userId.length,
+              MAU: analytics.userId.length,
             });
           }
           
@@ -259,7 +291,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             const dayEnd = new Date(currentDate);
             dayEnd.setHours(23, 59, 59, 999);
             
-            const daysSessions = analytics.sessions.filter(session => {
+            const daysSessions = allSessions.filter(session => {
               const sessionDate = new Date(session.startTime);
               return sessionDate >= dayStart && sessionDate <= dayEnd;
             });
@@ -296,7 +328,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               retentionDayEnd.setHours(23, 59, 59, 999);
               
               // Get sessions for the retention day
-              const retentionDaySessions = analytics.sessions.filter(session => {
+              const retentionDaySessions = allSessions.filter(session => {
                 const sessionDate = new Date(session.startTime);
                 return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
               });
@@ -332,6 +364,22 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             });
           }
           
+          // If no cohort data was generated, create a single entry for today
+          if (cohortData.length === 0 && analytics.userId && analytics.userId.length > 0) {
+            const today = new Date();
+            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
+            
+            cohortData.push({
+              date: formattedDate,
+              initialUsers: analytics.userId.length,
+              retentionByDay: Array.from({ length: 8 }, (_, i) => ({
+                day: i,
+                value: i === 0 ? analytics.userId.length : 0,
+                percentage: i === 0 ? '100.0' : '0.0'
+              }))
+            });
+          }
+          
           return cohortData;
         };
         
@@ -348,21 +396,21 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           summaryCards: [
             { 
               title: 'Daily Active Users', 
-              value: dailyActiveUsers.toLocaleString(), 
+              value: dailyActiveUsers ? dailyActiveUsers.toLocaleString() : (analytics.userId ? analytics.userId.length.toLocaleString() : '0'), 
               // increase: calculateGrowth(dailyActiveUsers),
               country: dailyTopCountry.name,
               flag: dailyTopCountry.flag
             },
             { 
               title: 'Weekly Active Users', 
-              value: weeklyActiveUsers.toLocaleString(), 
+              value: weeklyActiveUsers ? weeklyActiveUsers.toLocaleString() : (analytics.userId ? analytics.userId.length.toLocaleString() : '0'), 
               // increase: calculateGrowth(weeklyActiveUsers),
               country: weeklyTopCountry.name,
               flag: weeklyTopCountry.flag
             },
             { 
               title: 'Monthly Active Users', 
-              value: monthlyActiveUsers.toLocaleString(), 
+              value: monthlyActiveUsers ? monthlyActiveUsers.toLocaleString() : (analytics.userId ? analytics.userId.length.toLocaleString() : '0'), 
               // increase: calculateGrowth(monthlyActiveUsers),
               country: monthlyTopCountry.name,
               flag: monthlyTopCountry.flag
@@ -397,7 +445,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
       }
     };
     
-    if (analytics && analytics.sessions) {
+    if (analytics) {
       processAnalyticsData();
     }
   }, [analytics, timeFrame]);

@@ -115,12 +115,12 @@ exports.verify = async (req, res) => {
             return res.status(400).json({ message: "Domain and siteId are required" });
         }
 
-        const targetScriptSrc = "http://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
+        const targetScriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
         
         
         let data;
         try {
-            data = await axios.get(`http://${Domain}`, { timeout: 5000 });
+            data = await axios.get(`https://${Domain}`, { timeout: 5000 });
         } catch (httpsError) {
             try {
                 data = await axios.get(`http://${Domain}`, { timeout: 5000 });
@@ -160,6 +160,7 @@ exports.verify = async (req, res) => {
         });
 
         if (!foundScript) {
+            console.log('k');
             return res.status(404).json({ message: "Cryptique analytics script not found on the page" });
         }
 
