@@ -46,12 +46,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   const processAnalyticsData = () => {
     try {
-      // Initialize arrays for 24 hours with absolute values from stats
-      const absoluteVisitors = Array(24).fill(null); // Use null to track which hours have actual data
-      const absoluteWallets = Array(24).fill(null);
-      const timeLabels = Array(24).fill().map((_, i) => `${i.toString().padStart(2, '0')}:00`);
-      
-      // Extract and format hourly stats from the new data structure
+      // Extract and format hourly stats from the data structure
       const hourlySnapshotData = analytics.hourlyStats.analyticsSnapshot.map(snapshot => ({
         timeStamp: snapshot.hour,
         stats: {
@@ -65,61 +60,38 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         new Date(a.timeStamp) - new Date(b.timeStamp)
       );
 
-      // First, populate the hours we have actual data for
-      sortedStats.forEach((hourStat) => {
-        if (!hourStat || !hourStat.timeStamp || !hourStat.stats) {
-          return;
-        }
-        
-        const timestamp = new Date(hourStat.timeStamp);
-        const hour = timestamp.getHours();
-        
-        // Get the absolute values from stats
-        absoluteVisitors[hour] = hourStat.stats.totalVisitors || 0;
-        absoluteWallets[hour] = hourStat.stats.walletsConnected || 0;
+      // Extract actual timestamps as labels
+      const actualTimeLabels = sortedStats.map(stat => {
+        const date = new Date(stat.timeStamp);
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       });
+
+      // Get absolute values for visitors and wallets
+      const absoluteVisitors = sortedStats.map(stat => stat.stats.totalVisitors || 0);
+      const absoluteWallets = sortedStats.map(stat => stat.stats.walletsConnected || 0);
       
-      // Fill in gaps by carrying forward the last known value
-      let lastKnownVisitors = 0;
-      let lastKnownWallets = 0;
+      // Calculate new visitors and wallets (differences)
+      const visitors = [];
+      const wallets = [];
       
-      for (let i = 0; i < 24; i++) {
-        if (absoluteVisitors[i] === null) {
-          // If we don't have data for this hour, use the last known value
-          absoluteVisitors[i] = lastKnownVisitors;
-        } else {
-          // Otherwise update our last known value
-          lastKnownVisitors = absoluteVisitors[i];
-        }
-        
-        if (absoluteWallets[i] === null) {
-          // If we don't have data for this hour, use the last known value
-          absoluteWallets[i] = lastKnownWallets;
-        } else {
-          // Otherwise update our last known value
-          lastKnownWallets = absoluteWallets[i];
-        }
+      // First timestamp: new visitors and wallets are zero
+      visitors.push(0);
+      wallets.push(0);
+      
+      // Subsequent timestamps: calculate difference from previous
+      for (let i = 1; i < sortedStats.length; i++) {
+        visitors.push(Math.max(0, absoluteVisitors[i] - absoluteVisitors[i-1]));
+        wallets.push(Math.max(0, absoluteWallets[i] - absoluteWallets[i-1]));
       }
       
-      // Now calculate the differences between each hour (new visitors/wallets)
-      const visitors = Array(24).fill(0);
-      const wallets = Array(24).fill(0);
-      
-      for (let i = 0; i < 24; i++) {
-        const prevHour = (i - 1 + 24) % 24; // Handle wrap-around for hour 0
-        
-        // Calculate difference from previous hour, ensuring it's never negative
-        visitors[i] = Math.max(0, absoluteVisitors[i] - absoluteVisitors[prevHour]);
-        wallets[i] = Math.max(0, absoluteWallets[i] - absoluteWallets[prevHour]);
-      }
-      
-      // Create dataPoints array with differences
-      const dataPoints = Array(24).fill().map((_, i) => ({
-        time: timeLabels[i],
+      // Create dataPoints array with the actual data
+      const dataPoints = sortedStats.map((stat, i) => ({
+        time: actualTimeLabels[i],
         visitors: visitors[i],
         wallets: wallets[i],
         absoluteVisitors: absoluteVisitors[i],
-        absoluteWallets: absoluteWallets[i]
+        absoluteWallets: absoluteWallets[i],
+        timestamp: new Date(stat.timeStamp)
       }));
 
       // Create chart data object
@@ -130,7 +102,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           absoluteVisitors: absoluteVisitors,
           absoluteWallets: absoluteWallets
         },
-        timeLabels: timeLabels,
+        timeLabels: actualTimeLabels,
         dataPoints: dataPoints
       };
 
@@ -162,8 +134,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   }
 
   // Calculate max values for scaling
-  const maxVisitors = chartData ? Math.max(...chartData.datasets.visitors, 1) : 1;
-  const maxWallets = chartData ? Math.max(...chartData.datasets.wallets, 1) : 1;
+  const maxVisitors = chartData?.datasets.visitors.length > 0 ? Math.max(...chartData.datasets.visitors, 1) : 1;
+  const maxWallets = chartData?.datasets.wallets.length > 0 ? Math.max(...chartData.datasets.wallets, 1) : 1;
   const overallMax = Math.max(maxVisitors, maxWallets);
   
   // Generate Y-axis with dynamic values based on data
@@ -174,17 +146,20 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   ).reverse(); // Reverse to start from top
 
   // Calculate positions for both SVG paths and point markers
-  const calculatePoints = (data) => {
-    if (!data) return [];
+  const calculatePoints = (data, dataPointCount) => {
+    if (!data || data.length === 0) return [];
+    
     return data.map((value, index) => {
-      const x = (index / (data.length - 1)) * 100; // Percentage of width
+      // Calculate x position based on index divided by total points
+      const x = (index / (dataPointCount - 1)) * 100; // Percentage of width
       const y = 100 - (value / yAxisMax) * 100; // Percentage of height from top
       return { x, y, value };
     });
   };
   
-  const visitorPoints = chartData ? calculatePoints(chartData.datasets.visitors) : [];
-  const walletPoints = chartData ? calculatePoints(chartData.datasets.wallets) : [];
+  const dataPointCount = chartData?.datasets.visitors.length || 0;
+  const visitorPoints = chartData ? calculatePoints(chartData.datasets.visitors, dataPointCount) : [];
+  const walletPoints = chartData ? calculatePoints(chartData.datasets.wallets, dataPointCount) : [];
 
   // Generate SVG area path
   const generateAreaPath = (points) => {
@@ -223,27 +198,27 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   };
 
   // Handle data point selection or hover
-  const handleDataPointClick = (dataPoint, index) => {
+  const handleDataPointClick = (dataPoint) => {
     setSelectedDataPoint(dataPoint);
   };
 
   // Show a tooltip when hovering over the chart area
   const handleChartHover = (e) => {
-    if (!chartData || !chartData.dataPoints) return;
+    if (!chartData || !chartData.dataPoints || chartData.dataPoints.length === 0) return;
     
     // Get mouse position relative to chart container
     const chartRect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - chartRect.left;
     const chartWidth = chartRect.width;
     
-    // Calculate which hour this corresponds to
-    const hourIndex = Math.min(
-      Math.floor((mouseX / chartWidth) * 24),
-      23
+    // Calculate which data point this corresponds to
+    const index = Math.min(
+      Math.floor((mouseX / chartWidth) * chartData.dataPoints.length),
+      chartData.dataPoints.length - 1
     );
     
     // Set the selected data point
-    setSelectedDataPoint(chartData.dataPoints[hourIndex]);
+    setSelectedDataPoint(chartData.dataPoints[index]);
   };
 
   return (
@@ -312,10 +287,11 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                 })}
               </g>
               
-              {/* Vertical grid lines for hours */}
+              {/* Vertical grid lines for data points */}
               <g className="grid-lines">
-                {Array(7).fill().map((_, index) => {
-                  const x = (index / 6) * 100;
+                {chartData && chartData.timeLabels && chartData.timeLabels.map((_, index) => {
+                  if (chartData.timeLabels.length <= 1) return null;
+                  const x = (index / (chartData.timeLabels.length - 1)) * 100;
                   return (
                     <line 
                       key={index} 
@@ -383,7 +359,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                   stroke={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#fef3c7" : "none"}
                   strokeWidth="0.3"
                   className="cursor-pointer"
-                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index], index)}
+                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index])}
                 />
               ))}
               
@@ -397,7 +373,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                   stroke={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#ede9fe" : "none"}
                   strokeWidth="0.3"
                   className="cursor-pointer"
-                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index], index)}
+                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index])}
                 />
               ))}
             </svg>
@@ -405,13 +381,14 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         </div>
       </div>
       
-      {/* Moved X-axis time labels below the chart tile */}
+      {/* X-axis time labels */}
       <div className="mt-2 flex justify-between text-xs text-gray-500 px-10">
-        {Array(7).fill().map((_, index) => {
-          const hour = Math.floor((index / 6) * 24);
-          return (
-            <span key={index}>{`${hour.toString().padStart(2, '0')}:00`}</span>
-          );
+        {chartData && chartData.timeLabels.map((label, index) => {
+          // Show labels distributed across the chart
+          if (chartData.timeLabels.length <= 7 || index % Math.ceil(chartData.timeLabels.length / 7) === 0) {
+            return <span key={index}>{label}</span>;
+          }
+          return null;
         })}
       </div>
     </div>
