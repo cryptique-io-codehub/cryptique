@@ -173,7 +173,7 @@ exports.verify = async (req, res) => {
             { $set: { isVerified: true } },
             { new: true }
         );
-
+        console.log("success")
         return res.status(200).json({ message: "Verification successful" });
 
     } catch (e) {

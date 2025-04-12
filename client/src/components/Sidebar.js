@@ -57,17 +57,20 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
     >
       <div className="flex justify-between items-center mb-4 py-2">
         {showExpanded ? (
-          <h2 className="text-sm font-bold flex items-center gap-2 ml-1">
-            <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-6 h-6 shadow-lg">
-              Q
-            </span>
-            <div className="flex flex-col">
-              <span>Cryptique</span>
-              <span className="text-[10px] text-gray-500">Analytics</span>
-            </div>
-          </h2>
-        ) : (
-          <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-6 h-6 shadow-lg mx-auto">
+        <h2 className="text-sm font-bold flex items-center gap-3 ml-1">
+          <img 
+            src="../../logo192.png" 
+            alt="Cryptique logo" 
+            className="w-10 h-10 rounded-full shadow-lg" // Increased from w-8 h-8 to w-10 h-10
+          />
+          <div className="flex flex-col">
+            <span className="text-lg font-bold">Cryptique</span> {/* Increased from text-base to text-lg and added font-bold */}
+            <span className="text-sm text-gray-500">Analytics</span> {/* Increased from text-xs to text-sm */}
+          </div>
+        </h2>
+)
+ : (
+          <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-8 h-8 shadow-lg mx-auto"> {/* Increased from w-6 h-6 to w-8 h-8 */}
             Q
           </span>
         )}

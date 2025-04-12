@@ -7,7 +7,7 @@ import {
   Tooltip
 } from 'recharts';
 
-const HorizontalFunnelVisualization = ({analytics}) => {
+const HorizontalFunnelVisualization = () => {
   // console.log(analytics)
   // const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
   // useEffect(()=>{
@@ -21,7 +21,9 @@ const HorizontalFunnelVisualization = ({analytics}) => {
   const [data, setData] = useState([
     { name: 'Unique Visitors', value:200, fill: '#1D0C46' },
     { name: 'Web3 Users', value: 130, fill: '#8B5CF6' },
-    { name: 'Wallets connected', value: 90, fill: '#FFB95A' }
+    { name: 'Wallets connected', value: 90, fill: '#FFB95A' },
+    { name: 'Wallets recorded', value: 60, fill: '#CAA968' }
+    
   ]);
   const getDefaultColor = (index) => {
     const defaultColors = ['#1a1053', '#7e57ff', '#ffc168'];
@@ -44,11 +46,11 @@ const HorizontalFunnelVisualization = ({analytics}) => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{(((analytics?.walletsConnected)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-xl font-bold">{9.09}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{(((analytics?.web3Visitors)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-xl font-bold">{9.09}%</p>
           </div>
         </div>
       </div>
@@ -56,7 +58,7 @@ const HorizontalFunnelVisualization = ({analytics}) => {
       <div className="flex">
         {/* Custom horizontal funnel using SVG */}
         <div className="w-full h-64 relative">
-          <HorizontalFunnel data={data} analytics={analytics} />
+          <HorizontalFunnel data={data} />
           
           {/* Value displayed at the end of the funnel */}
           <div className="absolute right-2 top-24 text-4xl font-bold">
@@ -82,7 +84,7 @@ const HorizontalFunnelVisualization = ({analytics}) => {
 };
 
 // Custom horizontal funnel component
-const HorizontalFunnel = ({ data,analytics }) => {
+const HorizontalFunnel = ({ data }) => {
   if (!data || data.length === 0) return null;
   
   // Calculate dimensions
@@ -153,13 +155,13 @@ const HorizontalFunnel = ({ data,analytics }) => {
   // Determine the text value based on item.name
   let textValue;
   if (item.name === 'Unique Visitors') {
-    textValue = analytics?.uniqueVisitors;
+    textValue = 11;
   } else if (item.name === 'Web3 Users') {
-    textValue = analytics?.web3Visitors;
+    textValue = 1;
   } else if (item.name === 'Wallets connected') {
-    textValue = analytics?.walletsConnected;
-  } else if (item.name === 'Transaction recorded') {
-    textValue = 0;
+    textValue = 1;
+  } else if (item.name === 'Wallets recorded') {
+    textValue = 1;
   } 
 
   return (
@@ -181,7 +183,7 @@ const HorizontalFunnel = ({ data,analytics }) => {
 };
 
 // Example usage
-const FunnelDashboard = ({analytics}) => {
+const FunnelDashboard2= ({analytics}) => {
   // console.log(analytics);
   return (
     <div>
@@ -192,4 +194,4 @@ const FunnelDashboard = ({analytics}) => {
   );
 };
 
-export default FunnelDashboard;
+export default FunnelDashboard2;

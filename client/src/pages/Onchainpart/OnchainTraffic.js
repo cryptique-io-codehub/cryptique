@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
-import FunnelDashboard from "../Offchainpart/FunnelDashboard";
+import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
+
 export default function OnchainTraffic() {
   // Conversion funnel data
   const [analytics, setanalytics] = useState({});
@@ -9,7 +10,7 @@ export default function OnchainTraffic() {
     { stage: "Unique Visitors", value: 5000 },
     { stage: "Wallet Users", value: 3000 },
     { stage: "Wallets Connected", value: 1500 },
-    { stage: "Transaction Recorded", value: 300 }
+    { stage: "Wallets Recorded", value: 300 }
   ];
   
   // Traffic sources data
@@ -45,19 +46,19 @@ export default function OnchainTraffic() {
   
   // Time to chain conversion data
   const timeToConversionData = [
-    { day: "Day 1", users: 120 },
-    { day: "Day 2", users: 220 },
-    { day: "Day 3", users: 180 },
-    { day: "Day 4", users: 100 },
-    { day: "Day 5", users: 90 },
-    { day: "Day 6", users: 150 },
-    { day: "Day 7", users: 170 }
+    { day: "0-1hr", users: 120 },
+    { day: "1-6hr", users: 220 },
+    { day: "6-24hr", users: 180 },
+    { day: "Day 2", users: 100 },
+    { day: "Day 3", users: 90 },
+    { day: "Day 4", users: 150 },
+    { day: "Day 5", users: 170 }
   ];
 
   // Creating the legend items for traffic quality analysis
   const CustomLegend = () => {
     return (
-      <div className="flex flex-wrap gap-2 text-xs mt-2 justify-center">
+      <div className="flex flex-wrap gap-2 text-xs mt-2 justify-center font-poppins">
         {trafficQualityData.map((item, index) => (
           <div key={index} className="flex items-center">
             <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: item.color }}></div>
@@ -69,19 +70,32 @@ export default function OnchainTraffic() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-8">Unified Intensity Analytics</h1>
+    <div className="bg-gray-50 min-h-screen p-6 font-poppins">
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
+        
+        h1, h2, h3, h4, h5, h6 {
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        body, p, div, span, td, th {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
+      
+      <h1 className="text-2xl font-bold mb-8 font-montserrat">Unified Intensity Analytics</h1>
       
       {/* Main layout with reorganized sections */}
       <div className="space-y-8">
         {/* Funnel Dashboard - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
-          <FunnelDashboard analytics={analytics}/>
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Conversion Funnel</h2>
+          <FunnelDashboard2/>
         </div>
         
         {/* Traffic Sources by On-Chain USD Volume - Full Width */}
         <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-          <h2 className="text-lg font-semibold mb-4">Traffic Sources by On-Chain USD Volume</h2>
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources by On-Chain USD Volume</h2>
           <div className="flex-grow w-full h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -99,9 +113,9 @@ export default function OnchainTraffic() {
                   dataKey="source" 
                   type="category" 
                   width={80}
-                  tick={{ fontSize: 14 }} 
+                  tick={{ fontSize: 14, fontFamily: 'Poppins' }} 
                 />
-                <Tooltip />
+                <Tooltip contentStyle={{ fontFamily: 'Poppins' }} />
                 <Bar 
                   dataKey="value" 
                   barSize={24}
@@ -120,7 +134,7 @@ export default function OnchainTraffic() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Traffic Quality Analysis */}
           <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 className="text-lg font-semibold mb-3">Traffic Quality Analysis</h2>
+            <h2 className="text-lg font-semibold mb-3 font-montserrat">Traffic Quality Analysis</h2>
             <p className="text-xs text-gray-500 mb-3">Value Per Traffic Source</p>
             <div className="flex-grow w-full h-full min-h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -133,9 +147,10 @@ export default function OnchainTraffic() {
                     dataKey="engagement" 
                     name="Engagement" 
                     unit="mins" 
-                    label={{ value: "Engagement (mins)", position: "bottom", offset: 5 }}
+                    label={{ value: "Engagement (mins)", position: "bottom", offset: 5, fontFamily: 'Poppins' }}
                     domain={[0, 55]}
                     ticks={[0, 10, 20, 30, 40, 50]}
+                    tick={{ fontFamily: 'Poppins' }}
                   />
                   <YAxis 
                     type="number" 
@@ -143,10 +158,11 @@ export default function OnchainTraffic() {
                     name="LTV" 
                     domain={[0, 55]} 
                     ticks={[0, 10, 20, 30, 40, 50]} 
-                    label={{ value: "LTV", angle: -90, position: "insideLeft", offset: 0 }}
+                    label={{ value: "LTV  ($ per million)", angle: -90, position: "insideLeft", offset: 0, fontFamily: 'Poppins' }}
+                    tick={{ fontFamily: 'Poppins' }}
                   />
                   <ZAxis range={[70, 70]} />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontFamily: 'Poppins' }} />
                   {trafficQualityData.map((entry, index) => (
                     <Scatter key={index} name={entry.source} data={[entry]} fill={entry.color} />
                   ))}
@@ -158,7 +174,7 @@ export default function OnchainTraffic() {
           
           {/* Time to Chain Conversion */}
           <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 className="text-lg font-semibold mb-4">Time to Chain Conversion (Users)</h2>
+            <h2 className="text-lg font-semibold mb-4 font-montserrat">Time to Chain Conversion (Users)</h2>
             <div className="flex-grow w-full h-full min-h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -166,9 +182,17 @@ export default function OnchainTraffic() {
                   margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 14 }} />
-                  <YAxis domain={[0, 250]} ticks={[0, 50, 100, 150, 200, 250]} />
-                  <Tooltip />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 14, fontFamily: 'Poppins' }} 
+                  />
+                  <YAxis 
+                    domain={[0, 250]} 
+                    ticks={[0, 50, 100, 150, 200, 250]} 
+                    tick={{ fontFamily: 'Poppins' }}
+                    label={{ value: "Users", angle: -90, position: "insideLeft", offset: -5, fontFamily: 'Poppins' }}
+                  />
+                  <Tooltip contentStyle={{ fontFamily: 'Poppins' }} />
                   <Bar dataKey="users" fill="#2563EB" barSize={24} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -180,11 +204,11 @@ export default function OnchainTraffic() {
         <div className="grid grid-cols-1 lg:grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Traffic Sources Table */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Traffic Sources Breakdown</h2>
+            <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources Breakdown</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-100">
+                  <tr className="bg-gray-100 font-montserrat">
                     <th className="p-3 text-left font-medium">Source</th>
                     <th className="p-3 text-center font-medium">Unique Visitors</th>
                     <th className="p-3 text-center font-medium">Web Users</th>
@@ -193,7 +217,7 @@ export default function OnchainTraffic() {
                     <th className="p-3 text-center font-medium">TVL</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="font-poppins">
                   {trafficSourcesTableData.map((row, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
                       <td className="p-3 flex items-center">
@@ -220,7 +244,10 @@ export default function OnchainTraffic() {
           </div>
           
           {/* On-chain Transaction by Country */}
-         <GeoAnalyticsMap analytics={analytics}/>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 font-montserrat">On-chain Transaction by Country</h2>
+            <GeoAnalyticsMap analytics={analytics}/>
+          </div>
         </div>
       </div>
     </div>
