@@ -11,7 +11,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   // Process analytics data whenever it changes
   useEffect(() => {
-    if (analytics && analytics.hourlyStats && analytics.hourlyStats.length > 0) {
+    if (analytics && analytics.hourlyStats && analytics.hourlyStats.analyticsSnapshot 
+        && analytics.hourlyStats.analyticsSnapshot.length > 0) {
       processAnalyticsData();
     } else {
       createEmptyChartData();
@@ -50,8 +51,17 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       const absoluteWallets = Array(24).fill(null);
       const timeLabels = Array(24).fill().map((_, i) => `${i.toString().padStart(2, '0')}:00`);
       
+      // Extract and format hourly stats from the new data structure
+      const hourlySnapshotData = analytics.hourlyStats.analyticsSnapshot.map(snapshot => ({
+        timeStamp: snapshot.hour,
+        stats: {
+          totalVisitors: snapshot.analyticsId.totalVisitors || 0,
+          walletsConnected: snapshot.analyticsId.walletsConnected || 0
+        }
+      }));
+      
       // Sort hourlyStats by timestamp to ensure chronological order
-      const sortedStats = [...analytics.hourlyStats].sort((a, b) => 
+      const sortedStats = [...hourlySnapshotData].sort((a, b) => 
         new Date(a.timeStamp) - new Date(b.timeStamp)
       );
 
@@ -66,7 +76,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         
         // Get the absolute values from stats
         absoluteVisitors[hour] = hourStat.stats.totalVisitors || 0;
-        absoluteWallets[hour] = hourStat.stats.walletsConnected || 0; // Fixed: Changed 'L' to 0
+        absoluteWallets[hour] = hourStat.stats.walletsConnected || 0;
       });
       
       // Fill in gaps by carrying forward the last known value

@@ -191,6 +191,7 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
         // localStorage.removeItem("showInstallationPopup");
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);
         setanalytics(new_response.data.analytics);
+        console.log(analytics);
         setidy(selectedWebsite.siteId);
       } 
     } catch (error) {

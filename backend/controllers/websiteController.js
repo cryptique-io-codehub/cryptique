@@ -9,9 +9,9 @@ exports.addWebsite=async (req,res)=>{
    try{
 
         const {teamName,Domain,Name}=req.body;
-        console.log(teamName);
-        console.log(Domain);
-        console.log(Name);
+        // console.log(teamName);
+        // console.log(Domain);
+        // console.log(Name);
 
         if(!teamName && !Domain) return res.status(400).json({message:"Required field is missing"});
 
@@ -20,23 +20,23 @@ exports.addWebsite=async (req,res)=>{
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
         const siteId = uuidv4(); 
-        console.log(siteId);
+        // console.log(siteId);
         const newWebsite=new Website({
             siteId,
             Domain,
             Name:Name || '',
             team:checkTeam._id,
         })
-        console.log('c');
+        // console.log('c');
         await newWebsite.save();
-        console.log('b');
+        // console.log('b');
         
         await Team.findOneAndUpdate(
             { name: teamName }, 
             { $push: { websites: newWebsite._id } },
             { new: true } 
         );
-        console.log('ritik');
+        // console.log('ritik');
         return res.status(200).json({message:"Website added successfully",website:newWebsite});
 
    }catch(e){
@@ -54,8 +54,8 @@ exports.deleteWebsite=async (req,res)=>{
     try{
 
         const {teamName,webId}=req.body;
-        console.log(teamName);
-        console.log(webId);
+        // console.log(teamName);
+        // console.log(webId);
         if(!webId && !teamName) return res.status(400).json({message:"Required fields are missing"});
 
         const checkTeam=await Team.findOne({name:teamName});
@@ -91,7 +91,7 @@ exports.deleteWebsite=async (req,res)=>{
 exports.getWebsitesOfTeam = async (req, res) => {
     try {
         const { teamName } = req.body;
-        console.log(req.body);
+        // console.log(req.body);
         if (!teamName) return res.status(400).json({ message: "Required fields are missing" });
 
         const team = await Team.findOne({ name: teamName }).populate('websites');
@@ -160,6 +160,7 @@ exports.verify = async (req, res) => {
         });
 
         if (!foundScript) {
+            console.log('k');
             return res.status(404).json({ message: "Cryptique analytics script not found on the page" });
         }
 
