@@ -180,7 +180,7 @@ exports.getAnalytics = async (req, res) => {
 };
 
 //add a cron job to update the analytics data every hour of entire website i have in my db
-exports.updateHourlyAnalyticsStats = async () => {
+exports.updateHourlyAnalyticsStats = async (req,res) => {
   try {
 
     const allAnalytics = await Analytics.find({});
@@ -220,14 +220,14 @@ exports.updateHourlyAnalyticsStats = async () => {
       );
     }
     console.log("Analytics stats updated successfully");
-    return { message: "Analytics stats updated successfully" };
+    res.status(200).json({ message: "Analytics stats updated successfully" });
   } catch (error) {
     console.error("Error while updating analytics stats", error);
-    throw new Error("Error while updating analytics stats: " + error.message);
+    res.status(500).json({ message: "Error while updating analytics stats", error: error.message });
   }
 };
 
-exports.updateDailyAnalyticsStats = async () => {
+exports.updateDailyAnalyticsStats = async (req,res) => {
   try {
     const allAnalytics = await Analytics.find({});
 
@@ -267,13 +267,13 @@ exports.updateDailyAnalyticsStats = async () => {
       );
     }
     console.log("Analytics stats updated successfully");
-    return { message: "Analytics stats updated successfully" };
+    res.status(200).json({ message: "Analytics stats updated successfully" });
   } catch (error) {
     console.error("Error while updating analytics stats", error);
-    throw new Error("Error while updating analytics stats: " + error.message);
+    res.status(500).json({ message: "Error while updating analytics stats", error: error.message });
   }
 };
-exports.updateWeeklyAnalyticsStats = async () => {
+exports.updateWeeklyAnalyticsStats = async (req,res) => {
   try {
     const allAnalytics = await Analytics.find({});
 
@@ -315,13 +315,13 @@ exports.updateWeeklyAnalyticsStats = async () => {
       );
     }
     console.log("Analytics stats updated successfully");
-    return { message: "Analytics stats updated successfully" };
+    res.status(200).json({ message: "Analytics stats updated successfully" });
   } catch (error) {
     console.error("Error while updating analytics stats", error);
-    throw new Error("Error while updating analytics stats: " + error.message);
+    res.status(500).json({ message: "Error while updating analytics stats", error: error.message });
   }
 }
-exports.updateMonthlyAnalyticsStats = async () => {
+exports.updateMonthlyAnalyticsStats = async (req,res) => {
   try {
     const allAnalytics = await Analytics.find({});
 
@@ -361,10 +361,10 @@ exports.updateMonthlyAnalyticsStats = async () => {
       );
     }
     console.log("Analytics stats updated successfully");
-    return { message: "Analytics stats updated successfully" };
+    res.status(200).json({ message: "Analytics stats updated successfully" });
   } catch (error) {
     console.error("Error while updating analytics stats", error);
-    throw new Error("Error while updating analytics stats: " + error.message);
+    res.status(500).json({ message: "Error while updating analytics stats", error: error.message });
   }
 };
 
