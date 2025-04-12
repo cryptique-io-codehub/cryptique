@@ -21,11 +21,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   // Create empty chart data with zero values
   const createEmptyChartData = () => {
-    const visitors = Array(24).fill(0);
-    const wallets = Array(24).fill(0);
     const timeLabels = Array(24).fill().map((_, i) => `${i.toString().padStart(2, '0')}:00`);
-    const dataPoints = Array(24).fill().map((_, i) => ({
-      time: timeLabels[i],
+    const dataPoints = timeLabels.map(time => ({
+      time,
       visitors: 0,
       wallets: 0,
       absoluteVisitors: 0,
@@ -34,81 +32,100 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     setChartData({
       datasets: {
-        visitors: visitors,
-        wallets: wallets,
+        visitors: Array(24).fill(0),
+        wallets: Array(24).fill(0),
         absoluteVisitors: Array(24).fill(0),
         absoluteWallets: Array(24).fill(0)
       },
-      timeLabels: timeLabels,
-      dataPoints: dataPoints
+      timeLabels,
+      dataPoints
     });
   };
 
   const processAnalyticsData = () => {
     try {
+      console.log("Processing analytics data:", analytics);
+      
       // Extract and format hourly stats from the data structure
       const hourlySnapshotData = analytics.hourlyStats.analyticsSnapshot.map(snapshot => ({
         timeStamp: snapshot.hour,
         stats: {
-          totalVisitors: snapshot.analyticsId.totalVisitors || 0,
-          walletsConnected: snapshot.analyticsId.walletsConnected || 0
+          totalVisitors: Number(snapshot.analyticsId.totalVisitors) || 0,
+          walletsConnected: Number(snapshot.analyticsId.walletsConnected) || 0
         }
       }));
+      
+      console.log("Hourly snapshot data:", hourlySnapshotData);
       
       // Sort hourlyStats by timestamp to ensure chronological order
       const sortedStats = [...hourlySnapshotData].sort((a, b) => 
         new Date(a.timeStamp) - new Date(b.timeStamp)
       );
-
-      // Extract actual timestamps as labels
-      const actualTimeLabels = sortedStats.map(stat => {
+      
+      console.log("Sorted stats:", sortedStats);
+      
+      // Extract time labels from timestamps (in HH:MM format)
+      const timeLabels = sortedStats.map(stat => {
         const date = new Date(stat.timeStamp);
         return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       });
-
-      // Get absolute values for visitors and wallets
-      const absoluteVisitors = sortedStats.map(stat => stat.stats.totalVisitors || 0);
-      const absoluteWallets = sortedStats.map(stat => stat.stats.walletsConnected || 0);
       
-      // Calculate new visitors and wallets (differences)
+      console.log("Time labels:", timeLabels);
+      
+      // Get absolute values from each timestamp
+      const absoluteVisitors = sortedStats.map(stat => stat.stats.totalVisitors);
+      const absoluteWallets = sortedStats.map(stat => stat.stats.walletsConnected);
+      
+      console.log("Absolute visitors:", absoluteVisitors);
+      console.log("Absolute wallets:", absoluteWallets);
+      
+      // Initialize arrays for new visitors/wallets
       const visitors = [];
       const wallets = [];
       
-      // First timestamp: new visitors and wallets are zero
+      // First point: new visitors and wallets are 0
       visitors.push(0);
       wallets.push(0);
       
-      // Subsequent timestamps: calculate difference from previous
+      // Calculate differences for remaining points
       for (let i = 1; i < sortedStats.length; i++) {
-        visitors.push(Math.max(0, absoluteVisitors[i] - absoluteVisitors[i-1]));
-        wallets.push(Math.max(0, absoluteWallets[i] - absoluteWallets[i-1]));
+        const newVisitors = Math.max(0, absoluteVisitors[i] - absoluteVisitors[i-1]);
+        const newWallets = Math.max(0, absoluteWallets[i] - absoluteWallets[i-1]);
+        
+        visitors.push(newVisitors);
+        wallets.push(newWallets);
       }
       
-      // Create dataPoints array with the actual data
+      console.log("New visitors per point:", visitors);
+      console.log("New wallets per point:", wallets);
+      
+      // Create dataPoints array
       const dataPoints = sortedStats.map((stat, i) => ({
-        time: actualTimeLabels[i],
+        time: timeLabels[i],
         visitors: visitors[i],
         wallets: wallets[i],
         absoluteVisitors: absoluteVisitors[i],
         absoluteWallets: absoluteWallets[i],
         timestamp: new Date(stat.timeStamp)
       }));
+      
+      console.log("Data points:", dataPoints);
 
-      // Create chart data object
-      const processedChartData = {
+      // Update chart data
+      setChartData({
         datasets: {
-          visitors: visitors,
-          wallets: wallets,
-          absoluteVisitors: absoluteVisitors,
-          absoluteWallets: absoluteWallets
+          visitors,
+          wallets,
+          absoluteVisitors,
+          absoluteWallets
         },
-        timeLabels: actualTimeLabels,
-        dataPoints: dataPoints
-      };
-
-      setChartData(processedChartData);
+        timeLabels,
+        dataPoints
+      });
     } catch (error) {
       console.error('Error processing analytics data:', error);
+      console.error('Error details:', error.message);
+      console.error('Stack trace:', error.stack);
       createEmptyChartData();
     }
   };
@@ -381,15 +398,38 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         </div>
       </div>
       
-      {/* X-axis time labels */}
-      <div className="mt-2 flex justify-between text-xs text-gray-500 px-10">
-        {chartData && chartData.timeLabels.map((label, index) => {
-          // Show labels distributed across the chart
-          if (chartData.timeLabels.length <= 7 || index % Math.ceil(chartData.timeLabels.length / 7) === 0) {
-            return <span key={index}>{label}</span>;
-          }
-          return null;
-        })}
+      {/* X-axis time labels with fixed positioning */}
+      <div className="mt-2 flex justify-between text-xs text-gray-500 px-2 h-8">
+        {chartData && chartData.timeLabels && chartData.timeLabels.length > 0 && (
+          <>
+            {/* Only render a subset of labels if there are too many */}
+            {chartData.timeLabels.map((label, index) => {
+              // Skip some labels if there are too many to fit
+              const totalLabels = chartData.timeLabels.length;
+              
+              // Determine how many labels to skip based on total number
+              let skipFactor = 1;
+              if (totalLabels > 12) skipFactor = Math.ceil(totalLabels / 12);
+              
+              // Only show labels at regular intervals, always show first and last
+              if (index % skipFactor === 0 || index === 0 || index === totalLabels - 1) {
+                return (
+                  <div 
+                    key={index}
+                    className="text-center"
+                    style={{
+                      // Position each label within the flex container
+                      width: `${100 / (Math.ceil(totalLabels / skipFactor) + (totalLabels % skipFactor === 0 ? 0 : 1))}%`
+                    }}
+                  >
+                    {label}
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </>
+        )}
       </div>
     </div>
   );
