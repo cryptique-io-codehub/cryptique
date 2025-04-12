@@ -5,6 +5,8 @@ import Filters from "../Offchainpart/Filters";
 import OnchainDashboard from "../Onchainpart/OnchainDashboard";
 import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
+import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
+import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 const OnchainExplorer = () => {
    const [activeSection, setActiveSection] = useState('Dashboard');
     const [selectedWebsite, setSelectedWebsite] = useState();
@@ -25,7 +27,8 @@ const OnchainExplorer = () => {
       { label: 'Dashboard' },
       { label: 'Traffic analytics' },
       { label: 'User Insights' },
-      { label: 'Market Insights' }
+      { label: 'Market Insights' },
+      { label: 'Wallet Insights' }
     ];
      // Toggle sidebar on mobile
   const toggleSidebar = () => {
@@ -173,7 +176,7 @@ const OnchainExplorer = () => {
                       </>
                     )}
                     
-                    {activeSection === 'Retention' && (
+                    {activeSection === 'Market Insights' && (
                       <>
                         <Filters 
                           websitearray={websitearray}
@@ -189,6 +192,27 @@ const OnchainExplorer = () => {
                           idy={idy}
                           setidy={setidy}
                         />
+                        <OnchainmarketInsights/>
+                      </>
+                    )}
+
+                    {activeSection === 'Wallet Insights' && (
+                      <>
+                        <Filters 
+                          websitearray={websitearray}
+                          setWebsitearray={setWebsitearray}
+                          analytics={analytics}
+                          setanalytics={setanalytics}
+                          selectedDate={selectedDate} 
+                          setSelectedDate={setSelectedDate} 
+                          selectedWebsite={selectedWebsite} 
+                          setSelectedWebsite={setSelectedWebsite}
+                          selectedFilters={selectedFilters} 
+                          setSelectedFilters={setSelectedFilters}
+                          idy={idy}
+                          setidy={setidy}
+                        />
+                        <Onchainwalletinsights/>
                       </>
                     )}
                     
