@@ -15,7 +15,8 @@ const GeoAnalytics = () => {
     country: 'All',
     source: 'All',
     chain: 'All',
-    region: 'All'
+    region: 'All',
+    userTypes: ['Unique Visitors', 'Returning Visitors', 'Web3 Users']
   });
 
   useEffect(() => {

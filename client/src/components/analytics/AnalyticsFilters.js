@@ -177,6 +177,12 @@ export const AnalyticsFilters = ({
           </select>
         </div>
       )}
+
+      {pageType !== 'retention' && renderFilterSection('User Types', 'userTypes', ['Unique Visitors', 'Returning Visitors', 'Web3 Users'])}
+      
+      {pageType === 'retention' && renderFilterSection('Cohort Type', 'cohortType', ['Daily', 'Weekly', 'Monthly'], false)}
+      
+      {pageType === 'retention' && renderFilterSection('Metric', 'metric', ['DAU', 'WAU', 'MAU'], false)}
     </div>
   );
 };
