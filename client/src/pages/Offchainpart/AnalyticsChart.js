@@ -99,14 +99,21 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
-    // Process wallet connects data - only count when there's a valid wallet address
+    // Process wallet connects data - track unique wallets per time slot
     analytics.wallets.forEach(wallet => {
       if (wallet.walletAddress && wallet.walletAddress !== '') {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
         
         if (finalData[timeKey]) {
-          finalData[timeKey].walletConnects++;
+          // Initialize uniqueWallets Set if it doesn't exist
+          if (!finalData[timeKey].uniqueWallets) {
+            finalData[timeKey].uniqueWallets = new Set();
+          }
+          // Add wallet to this time slot's unique wallets
+          finalData[timeKey].uniqueWallets.add(wallet.walletAddress);
+          // Update the count
+          finalData[timeKey].walletConnects = finalData[timeKey].uniqueWallets.size;
         }
       }
     });
