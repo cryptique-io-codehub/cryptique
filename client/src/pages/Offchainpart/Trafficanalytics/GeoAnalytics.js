@@ -1,18 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  format, 
-  isWithinInterval, 
-  addDays, 
-  subDays, 
-  addMonths, 
-  subMonths, 
-  addYears, 
-  subYears,
-  parseISO,
-  startOfDay,
-  endOfDay
-} from 'date-fns';
-import { enUS } from 'date-fns/locale';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
 import { AnalyticsFilters } from '../../../components/analytics/AnalyticsFilters';
@@ -25,11 +11,6 @@ const GeoAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    dateRange: {
-      startDate: subMonths(new Date(), 1).toISOString(),
-      endDate: new Date().toISOString(),
-      key: 'selection'
-    },
     timeframe: 'Monthly',
     country: 'All',
     source: 'All',
@@ -43,17 +24,7 @@ const GeoAnalytics = () => {
         setLoading(true);
         setError(null);
         
-        // Format dates for API call
-        const apiFilters = {
-          ...filters,
-          dateRange: {
-            ...filters.dateRange,
-            startDate: format(new Date(filters.dateRange.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-            endDate: format(new Date(filters.dateRange.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
-          }
-        };
-        
-        const data = await fetchGeoData(apiFilters);
+        const data = await fetchGeoData(filters);
         
         if (!data || !data.data) {
           throw new Error('Invalid data received from server');
@@ -81,11 +52,6 @@ const GeoAnalytics = () => {
   }, [filters]);
 
   const handleFilterChange = (newFilters) => {
-    // Ensure dates are proper Date objects
-    if (newFilters.dateRange) {
-      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate).toISOString();
-      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate).toISOString();
-    }
     setFilters(newFilters);
   };
 

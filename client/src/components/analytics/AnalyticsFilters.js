@@ -1,8 +1,4 @@
 import React from 'react';
-import { DateRangePicker } from 'react-date-range';
-import 'react-date-range/dist/styles.css';
-import 'react-date-range/dist/theme/default.css';
-import { format, startOfDay, endOfDay } from 'date-fns';
 import './AnalyticsFilters.css';
 
 export const AnalyticsFilters = ({ 
@@ -11,18 +7,6 @@ export const AnalyticsFilters = ({
   availableOptions,
   pageType = 'dashboard' // 'dashboard', 'traffic', 'geo', 'retention'
 }) => {
-  const handleDateRangeChange = (ranges) => {
-    const { startDate, endDate } = ranges.selection;
-    onFilterChange({
-      ...filters,
-      dateRange: {
-        startDate: startOfDay(new Date(startDate)).toISOString(),
-        endDate: endOfDay(new Date(endDate)).toISOString(),
-        key: 'selection'
-      }
-    });
-  };
-
   const handleTimeframeChange = (e) => {
     onFilterChange({
       ...filters,
@@ -105,59 +89,8 @@ export const AnalyticsFilters = ({
     </div>
   );
 
-  // Ensure we have valid date objects
-  const getValidDate = (dateString) => {
-    if (!dateString) return new Date();
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? new Date() : date;
-  };
-
-  // Get the initial date range
-  const getInitialDateRange = () => {
-    const startDate = getValidDate(filters.dateRange?.startDate);
-    const endDate = getValidDate(filters.dateRange?.endDate);
-    return {
-      startDate,
-      endDate,
-      key: 'selection'
-    };
-  };
-
   return (
     <div className="analytics-filters">
-      <div className="filter-section">
-        <h3>Date Range</h3>
-        <DateRangePicker
-          ranges={[getInitialDateRange()]}
-          onChange={handleDateRangeChange}
-          months={1}
-          direction="horizontal"
-          showSelectionPreview={true}
-          moveRangeOnFirstSelection={false}
-          showDateDisplay={true}
-          rangeColors={['#3ecf8e']}
-          showMonthAndYearPickers={true}
-          editableDateInputs={true}
-          locale={{
-            format: 'MM/DD/YYYY',
-            separator: ' - ',
-            applyLabel: 'Apply',
-            cancelLabel: 'Cancel',
-            fromLabel: 'From',
-            toLabel: 'To',
-            customRangeLabel: 'Custom',
-            weekLabel: 'W',
-            daysOfWeek: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
-            monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-            firstDay: 0
-          }}
-          staticRanges={[]}
-          inputRanges={[]}
-          minDate={new Date(2020, 0, 1)}
-          maxDate={new Date()}
-        />
-      </div>
-
       <div className="filter-section">
         <h3>Timeframe</h3>
         <select
@@ -244,12 +177,6 @@ export const AnalyticsFilters = ({
           </select>
         </div>
       )}
-
-      {pageType !== 'retention' && renderFilterSection('User Types', 'userTypes', ['Unique Visitors', 'Returning Visitors', 'Web3 Users'])}
-      
-      {pageType === 'retention' && renderFilterSection('Cohort Type', 'cohortType', ['Daily', 'Weekly', 'Monthly'], false)}
-      
-      {pageType === 'retention' && renderFilterSection('Metric', 'metric', ['DAU', 'WAU', 'MAU'], false)}
     </div>
   );
 };
