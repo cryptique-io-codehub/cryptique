@@ -28,7 +28,15 @@ const TestAnalytics = () => {
       
       const data = await response.json();
       console.log('Received data:', data);
-      setChartData(data);
+      
+      // Transform data for the chart
+      const transformedData = data.map(item => ({
+        timestamp: item.timestamp,
+        visitors: item.visitors,
+        pageViews: item.pageViews
+      }));
+      
+      setChartData(transformedData);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.message);
@@ -37,12 +45,16 @@ const TestAnalytics = () => {
     }
   };
 
+  // Fetch data initially and then every 15 seconds
   useEffect(() => {
     fetchChartData();
+    const interval = setInterval(fetchChartData, 15000);
+    return () => clearInterval(interval);
   }, [timeframe]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+  if (chartData.length === 0) return <div className="p-4">No data available</div>;
 
   return (
     <div className="p-4">
@@ -71,11 +83,12 @@ const TestAnalytics = () => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="timestamp" 
-              tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+              tickFormatter={(timestamp) => new Date(timestamp).toLocaleTimeString()}
             />
             <YAxis />
             <Tooltip 
               labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+              formatter={(value, name) => [value, name === 'visitors' ? 'Visitors' : 'Page Views']}
             />
             <Area 
               type="monotone" 
@@ -83,6 +96,7 @@ const TestAnalytics = () => {
               stackId="1" 
               stroke="#8884d8" 
               fill="#8884d8" 
+              name="Visitors"
             />
             <Area 
               type="monotone" 
@@ -90,6 +104,7 @@ const TestAnalytics = () => {
               stackId="1" 
               stroke="#82ca9d" 
               fill="#82ca9d" 
+              name="Page Views"
             />
           </AreaChart>
         </ResponsiveContainer>
