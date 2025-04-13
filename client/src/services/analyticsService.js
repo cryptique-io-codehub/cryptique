@@ -111,72 +111,40 @@ export const fetchTrafficData = async (filters = {}) => {
   }
 };
 
-export const fetchGeoData = async (filters = {}) => {
+export const fetchGeoData = async (filters) => {
   try {
-    // Validate date range
-    if (filters.dateRange) {
-      const { startDate, endDate } = filters.dateRange;
-      if (new Date(startDate) > new Date(endDate)) {
-        throw new Error('Invalid date range: start date is after end date');
-      }
-    }
-
-    // Format parameters for API call
-    const params = new URLSearchParams();
-    if (filters.dateRange) {
-      params.append('dateRange[startDate]', filters.dateRange.startDate);
-      params.append('dateRange[endDate]', filters.dateRange.endDate);
-      params.append('dateRange[key]', filters.dateRange.key);
-    }
-    if (filters.timeframe) {
-      params.append('timeframe', filters.timeframe);
-    }
-    if (filters.countries?.length) {
-      filters.countries.forEach(country => params.append('countries[]', country));
-    }
-    if (filters.sources?.length) {
-      filters.sources.forEach(source => params.append('sources[]', source));
-    }
-    if (filters.chains?.length) {
-      filters.chains.forEach(chain => params.append('chains[]', chain));
-    }
-    if (filters.regions?.length) {
-      filters.regions.forEach(region => params.append('regions[]', region));
-    }
-
-    const response = await api.get('/api/analytics/geo', {
-      params,
-      validateStatus: function (status) {
-        return status < 500;
+    const response = await axios.get(`${API_BASE_URL}/api/analytics/geo`, {
+      params: filters,
+      headers: {
+        'Content-Type': 'application/json',
       }
     });
 
-    if (response.status === 404) {
-      console.warn('Geo analytics endpoint not found, returning empty data structure');
-      return {
-        countries: [],
-        sources: [],
-        chains: [],
-        regions: [],
-        data: [],
-        metrics: {
-          totalVisitors: 0,
-          uniqueVisitors: 0,
-          web3Users: 0,
-          averageSessionDuration: 0
-        }
-      };
+    if (!response.data) {
+      throw new Error('No data received from server');
     }
 
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching geo data:', error);
     return {
+      data: response.data.data || [],
+      countries: response.data.countries || [],
+      sources: response.data.sources || [],
+      chains: response.data.chains || [],
+      regions: response.data.regions || [],
+      metrics: response.data.metrics || {
+        totalVisitors: 0,
+        uniqueVisitors: 0,
+        web3Users: 0,
+        averageSessionDuration: 0
+      }
+    };
+  } catch (error) {
+    console.error('Geo analytics endpoint not found, returning empty data structure');
+    return {
+      data: [],
       countries: [],
       sources: [],
       chains: [],
       regions: [],
-      data: [],
       metrics: {
         totalVisitors: 0,
         uniqueVisitors: 0,

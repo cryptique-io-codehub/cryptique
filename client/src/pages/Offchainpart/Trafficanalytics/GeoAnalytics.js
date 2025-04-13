@@ -14,42 +14,26 @@ import {
 } from 'date-fns';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
-import AnalyticsFilters from '../../../components/analytics/AnalyticsFilters';
+import { AnalyticsFilters } from '../../../components/analytics/AnalyticsFilters';
+import { getAvailableOptions } from '../../../utils/analyticsFilters';
 import './GeoAnalytics.css';
 
 const GeoAnalytics = () => {
-  const [analyticsData, setAnalyticsData] = useState({
-    countries: [],
-    sources: [],
-    chains: [],
-    regions: [],
-    data: [],
-    metrics: {
-      totalVisitors: 0,
-      uniqueVisitors: 0,
-      web3Users: 0,
-      averageSessionDuration: 0
-    }
-  });
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Initialize with proper Date objects
-  const today = new Date();
-  const thirtyDaysAgo = subDays(today, 30);
-  
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: thirtyDaysAgo,
-      endDate: today,
+      startDate: subMonths(new Date(), 1),
+      endDate: new Date(),
       key: 'selection'
     },
     timeframe: 'Monthly',
-    countries: [],
-    sources: [],
-    chains: [],
-    regions: []
+    country: 'All',
+    source: 'All',
+    chain: 'All',
+    region: 'All'
   });
 
   useEffect(() => {
@@ -69,6 +53,11 @@ const GeoAnalytics = () => {
         };
         
         const data = await fetchGeoData(apiFilters);
+        
+        if (!data || !data.data) {
+          throw new Error('Invalid data received from server');
+        }
+        
         setAnalyticsData(data);
         
         // Only filter if we have actual data
@@ -81,6 +70,7 @@ const GeoAnalytics = () => {
       } catch (error) {
         console.error('Error loading geo data:', error);
         setError('Failed to load geo data. The analytics service is currently unavailable.');
+        setFilteredData([]);
       } finally {
         setLoading(false);
       }
@@ -90,77 +80,74 @@ const GeoAnalytics = () => {
   }, [filters]);
 
   const handleFilterChange = (newFilters) => {
-    // Ensure dates are proper Date objects
-    if (newFilters.dateRange) {
-      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate);
-      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate);
-    }
     setFilters(newFilters);
   };
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading">Loading analytics data...</div>
+      <div className="geo-insights">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading geo insights...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <div className="error">
-          <h3>Service Unavailable</h3>
+      <div className="geo-insights">
+        <div className="error-container">
+          <h2>Error</h2>
           <p>{error}</p>
-          <p>Please try again later or contact support if the issue persists.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="geo-analytics">
-      <h1>Geo Analytics</h1>
-      <AnalyticsFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        availableOptions={{
-          countries: analyticsData.countries || [],
-          sources: analyticsData.sources || [],
-          chains: analyticsData.chains || [],
-          regions: analyticsData.regions || []
-        }}
-        pageType="geo"
-      />
+    <div className="geo-insights">
+      <h2>Geo Insights</h2>
       <div className="analytics-content">
-        {filteredData.length === 0 ? (
-          <div className="no-data">
-            <h3>No Data Available</h3>
-            <p>There is no analytics data available for the selected time period.</p>
-            <p>Please try adjusting your filters or try again later.</p>
+        <AnalyticsFilters
+          filters={filters}
+          availableOptions={getAvailableOptions(analyticsData?.data || [])}
+          onFilterChange={handleFilterChange}
+        />
+        
+        {filteredData.length > 0 ? (
+          <div className="analytics-grid">
+            <div className="map-container">
+              {/* Map component will go here */}
+              <p>Map visualization coming soon</p>
+            </div>
+            
+            <div className="country-list">
+              {filteredData.map((country) => (
+                <div key={country.country} className="country-card">
+                  <h3>{country.country}</h3>
+                  <div className="country-metrics">
+                    <div className="metric">
+                      <span className="label">Visitors</span>
+                      <span className="value">{country.visitors}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Sessions</span>
+                      <span className="value">{country.sessions}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Avg. Duration</span>
+                      <span className="value">{country.avgDuration}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <>
-            <div className="metrics-grid">
-              <div className="metric-card">
-                <h3>Total Visitors</h3>
-                <p>{analyticsData.metrics.totalVisitors}</p>
-              </div>
-              <div className="metric-card">
-                <h3>Unique Visitors</h3>
-                <p>{analyticsData.metrics.uniqueVisitors}</p>
-              </div>
-              <div className="metric-card">
-                <h3>Web3 Users</h3>
-                <p>{analyticsData.metrics.web3Users}</p>
-              </div>
-              <div className="metric-card">
-                <h3>Avg. Session Duration</h3>
-                <p>{analyticsData.metrics.averageSessionDuration}s</p>
-              </div>
-            </div>
-            {/* Add your charts and tables here */}
-          </>
+          <div className="no-data">
+            <p>No geo data available for the selected filters</p>
+          </div>
         )}
       </div>
     </div>

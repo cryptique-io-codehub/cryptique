@@ -1,104 +1,137 @@
-.geo-analytics {
+.geo-insights {
   padding: 20px;
+  min-height: 100vh;
+  background-color: #f5f5f5;
 }
 
-.geo-analytics h1 {
+.geo-insights h2 {
   margin-bottom: 20px;
   color: #333;
 }
 
-.loading-container,
-.error-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 200px;
-  padding: 20px;
-}
-
-.loading {
-  text-align: center;
-  color: #666;
-  font-size: 1.1em;
-}
-
-.error {
-  text-align: center;
-  color: #dc3545;
-  padding: 20px;
-  background-color: #f8d7da;
+.analytics-content {
+  background: white;
   border-radius: 8px;
-  max-width: 600px;
-  margin: 0 auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
 }
 
-.error h3 {
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
   margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  text-align: center;
+  padding: 20px;
   color: #721c24;
+  background-color: #f8d7da;
+  border-radius: 4px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.map-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.country-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.country-card {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.country-card h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.country-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metric .label {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.metric .value {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #333;
 }
 
 .no-data {
   text-align: center;
   padding: 40px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  margin: 20px 0;
-}
-
-.no-data h3 {
-  color: #6c757d;
-  margin-bottom: 10px;
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin: 20px 0;
-}
-
-.metric-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.metric-card h3 {
-  color: #6c757d;
-  font-size: 0.9em;
-  margin-bottom: 10px;
-}
-
-.metric-card p {
-  color: #333;
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 0;
+  color: #666;
 }
 
 @media (max-width: 768px) {
-  .geo-analytics {
+  .geo-insights {
     padding: 10px;
   }
 
-  .metrics-grid {
-    grid-template-columns: 1fr;
+  .analytics-content {
+    padding: 15px;
   }
 
-  .metric-card {
-    padding: 15px;
+  .country-list {
+    grid-template-columns: 1fr;
   }
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
-  .geo-analytics {
+  .geo-insights {
     padding: 0.5rem;
   }
 
-  .geo-analytics h1 {
+  .geo-insights h2 {
     font-size: 1.25rem;
   }
 }
