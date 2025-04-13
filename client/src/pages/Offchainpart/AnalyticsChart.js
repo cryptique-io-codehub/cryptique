@@ -18,6 +18,25 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     }
   }, [analytics, timeframe, selectedDateRange]);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    switch (timeframe) {
+      case 'hourly':
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case 'daily':
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case 'weekly':
+        return `Week ${Math.ceil(date.getDate() / 7)}`;
+      case 'monthly':
+        return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+      default:
+        return date.toLocaleTimeString();
+    }
+  };
+
   const fetchChartData = async () => {
     try {
       if (!analytics?.siteId) {
@@ -38,7 +57,19 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         throw new Error(response.data.error);
       }
 
-      setChartData(response.data);
+      // Format the data properly
+      const formattedData = {
+        labels: response.data.labels.map(label => formatDate(label)),
+        datasets: response.data.datasets.map(dataset => ({
+          ...dataset,
+          data: dataset.data.map((value, index) => ({
+            x: formatDate(response.data.labels[index]),
+            y: value
+          }))
+        }))
+      };
+
+      setChartData(formattedData);
     } catch (error) {
       console.error('Error fetching chart data:', error);
       setChartData(null);
@@ -65,88 +96,57 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     );
   }
 
-  return (
-    <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Analytics</h2>
-        <div className="flex space-x-4">
-          <select 
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
-            value={timeframe}
-            onChange={(e) => setTimeframe(e.target.value)}
-          >
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-yellow-300 mr-2"></div>
-              <span className="text-xs">Visitors</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-purple-600 mr-2"></div>
-              <span className="text-xs">Wallets</span>
-            </div>
-          </div>
+  if (!chartData || !chartData.labels.length) {
+    return (
+      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+        <div className="h-64 flex items-center justify-center">
+          <div className="text-gray-500">No data available</div>
         </div>
       </div>
+    );
+  }
 
-      {chartData ? (
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData.datasets[0].data.map((value, index) => ({
-                time: chartData.labels[index],
-                visitors: value,
-                wallets: chartData.datasets[1].data[index]
-              }))}
-              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="time" 
-                tick={{ fontSize: '0.75rem' }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                tick={{ fontSize: '0.75rem' }}
-                tickFormatter={(value) => value.toLocaleString()}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.75rem'
-                }}
-                formatter={(value) => [value.toLocaleString(), '']}
-                labelStyle={{ fontWeight: 'bold' }}
-              />
-              <Legend />
+  return (
+    <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Analytics Overview</h3>
+        <select
+          value={timeframe}
+          onChange={(e) => setTimeframe(e.target.value)}
+          className="px-3 py-1 border rounded-md"
+        >
+          <option value="hourly">Hourly</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData.datasets[0].data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="x" 
+              tick={{ fontSize: 12 }}
+              interval="preserveStartEnd"
+            />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {chartData.datasets.map((dataset, index) => (
               <Area
+                key={index}
                 type="monotone"
-                dataKey="visitors"
-                stackId="1"
-                stroke="#fcd34d"
-                fill="rgba(252, 211, 77, 0.5)"
+                dataKey="y"
+                name={dataset.label}
+                stackId={index}
+                stroke={dataset.borderColor}
+                fill={dataset.backgroundColor}
               />
-              <Area
-                type="monotone"
-                dataKey="wallets"
-                stackId="1"
-                stroke="#8b5cf6"
-                fill="rgba(139, 92, 246, 0.7)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      ) : (
-        <div className="h-64 flex items-center justify-center text-gray-500">
-          No data available
-        </div>
-      )}
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

@@ -88,6 +88,10 @@ class AnalyticsProcessor {
 
       if (!stats) return this.getEmptyChartData();
 
+      // Get current time for comparison
+      const now = new Date();
+      const currentTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+
       const filteredSnapshots = stats.analyticsSnapshot
         .filter(snapshot => {
           if (!startDate && !endDate) return true;
@@ -97,19 +101,29 @@ class AnalyticsProcessor {
         })
         .sort((a, b) => a.timestamp - b.timestamp);
 
+      // If no snapshots, return empty data
+      if (filteredSnapshots.length === 0) {
+        return this.getEmptyChartData();
+      }
+
+      // Format the data
+      const labels = filteredSnapshots.map(s => s.timestamp.toISOString());
+      const visitorsData = filteredSnapshots.map(s => s.visitors || 0);
+      const walletsData = filteredSnapshots.map(s => s.wallets || 0);
+
       return {
-        labels: filteredSnapshots.map(s => this.formatTimestamp(s.timestamp, timeframe)),
+        labels,
         datasets: [
           {
             label: 'Visitors',
-            data: filteredSnapshots.map(s => s.visitors),
+            data: visitorsData,
             backgroundColor: 'rgba(252, 211, 77, 0.5)',
             borderColor: '#fcd34d',
             borderWidth: 1
           },
           {
             label: 'Wallets',
-            data: filteredSnapshots.map(s => s.wallets),
+            data: walletsData,
             backgroundColor: 'rgba(139, 92, 246, 0.7)',
             borderColor: '#8b5cf6',
             borderWidth: 1
