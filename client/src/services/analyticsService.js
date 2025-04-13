@@ -1,10 +1,41 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://cryptique-backend.vercel.app';
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true
+});
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Error response:', error.response.data);
+      console.error('Error status:', error.response.status);
+      console.error('Error headers:', error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Error request:', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error message:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const fetchAnalyticsData = async (filters = {}) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/analytics`, {
+    const response = await api.get('/api/analytics', {
       params: filters
     });
     return response.data;
@@ -16,7 +47,7 @@ export const fetchAnalyticsData = async (filters = {}) => {
 
 export const fetchTrafficData = async (filters = {}) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/analytics/traffic`, {
+    const response = await api.get('/api/analytics/traffic', {
       params: filters
     });
     return response.data;
@@ -28,7 +59,7 @@ export const fetchTrafficData = async (filters = {}) => {
 
 export const fetchGeoData = async (filters = {}) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/analytics/geo`, {
+    const response = await api.get('/api/analytics/geo', {
       params: filters
     });
     return response.data;
@@ -40,7 +71,7 @@ export const fetchGeoData = async (filters = {}) => {
 
 export const fetchRetentionData = async (filters = {}) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/analytics/retention`, {
+    const response = await api.get('/api/analytics/retention', {
       params: filters
     });
     return response.data;
