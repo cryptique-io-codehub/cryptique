@@ -59,18 +59,33 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       24 * 60 * 60 * 1000
     ));
 
-    // For daily view, create buckets for every 30 minutes
-    if (timeframe === 'daily') {
-      let currentDate = new Date(startDate);
-      while (currentDate <= now) {
-        const timeKey = formatTimeKey(currentDate, timeframe);
-        finalData[timeKey] = {
-          timestamp: currentDate.getTime(),
-          time: timeKey,
-          visitors: 0,
-          walletConnects: 0
-        };
-        currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000); // Add 30 minutes
+    // Create buckets for all time slots based on timeframe
+    let currentDate = new Date(startDate);
+    while (currentDate <= now) {
+      const timeKey = formatTimeKey(currentDate, timeframe);
+      finalData[timeKey] = {
+        timestamp: currentDate.getTime(),
+        time: timeKey,
+        visitors: 0,
+        walletConnects: 0
+      };
+
+      // Increment date based on timeframe
+      switch (timeframe) {
+        case 'daily':
+          currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000); // 30 minutes
+          break;
+        case 'weekly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        case 'monthly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        case 'yearly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        default:
+          currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000);
       }
     }
 
@@ -79,15 +94,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       const date = new Date(session.startTime);
       const timeKey = formatTimeKey(date, timeframe);
       
-      if (!finalData[timeKey]) {
-        finalData[timeKey] = {
-          timestamp: date.getTime(),
-          time: timeKey,
-          visitors: 0,
-          walletConnects: 0
-        };
+      if (finalData[timeKey]) {
+        finalData[timeKey].visitors++;
       }
-      finalData[timeKey].visitors++;
     });
 
     // Process wallet connects data - only count when there's a valid wallet address
@@ -96,15 +105,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
         
-        if (!finalData[timeKey]) {
-          finalData[timeKey] = {
-            timestamp: date.getTime(),
-            time: timeKey,
-            visitors: 0,
-            walletConnects: 0
-          };
+        if (finalData[timeKey]) {
+          finalData[timeKey].walletConnects++;
         }
-        finalData[timeKey].walletConnects++;
       }
     });
 
