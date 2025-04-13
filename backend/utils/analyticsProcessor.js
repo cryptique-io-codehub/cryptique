@@ -82,11 +82,17 @@ class AnalyticsProcessor {
 
   async getChartData(timeframe = 'hourly', startDate, endDate) {
     try {
+      console.log('Getting chart data for siteId:', this.siteId);
       const StatsModel = this.getStatsModel(timeframe);
       const stats = await StatsModel.findOne({ siteId: this.siteId })
         .populate('analyticsSnapshot.analyticsId');
 
-      if (!stats) return this.getEmptyChartData();
+      console.log('Found stats:', stats);
+
+      if (!stats) {
+        console.log('No stats found, returning empty data');
+        return this.getEmptyChartData();
+      }
 
       // Get current time for comparison
       const now = new Date();
@@ -101,8 +107,11 @@ class AnalyticsProcessor {
         })
         .sort((a, b) => a.timestamp - b.timestamp);
 
+      console.log('Filtered snapshots:', filteredSnapshots);
+
       // If no snapshots, return empty data
       if (filteredSnapshots.length === 0) {
+        console.log('No snapshots found, returning empty data');
         return this.getEmptyChartData();
       }
 
@@ -111,7 +120,7 @@ class AnalyticsProcessor {
       const visitorsData = filteredSnapshots.map(s => s.visitors || 0);
       const walletsData = filteredSnapshots.map(s => s.wallets || 0);
 
-      return {
+      const chartData = {
         labels,
         datasets: [
           {
@@ -130,6 +139,9 @@ class AnalyticsProcessor {
           }
         ]
       };
+
+      console.log('Returning chart data:', chartData);
+      return chartData;
     } catch (error) {
       console.error('Error getting chart data:', error);
       return this.getEmptyChartData();
