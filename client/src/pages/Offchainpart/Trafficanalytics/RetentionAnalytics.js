@@ -426,7 +426,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             }
 
             cohortData.push({
-              date: formatLabel(periods - i - 1, lastSessionDate),
+              date: formatLabel(periods - i - 1, periodEnd),
               initialUsers,
               retentionByDay
             });
