@@ -26,19 +26,19 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     switch (timeframe) {
       case 'daily':
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
+        startDate = new Date(now - 24 * 60 * 60 * 1000); // 24 hours ago
         interval = 30 * 60 * 1000; // 30 minutes
         break;
       case 'weekly':
-        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days ago
         interval = 24 * 60 * 60 * 1000; // 1 day
         break;
       case 'monthly':
-        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000); // 30 days ago
         interval = 24 * 60 * 60 * 1000; // 1 day
         break;
       case 'yearly':
-        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000); // 365 days ago
         interval = 24 * 60 * 60 * 1000; // 1 day
         break;
       default:
@@ -223,12 +223,34 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
               dataKey="x" 
               tick={{ fontSize: 12 }}
               interval="preserveStartEnd"
+              domain={['dataMin', 'dataMax']}
+              tickFormatter={(value) => {
+                switch (timeframe) {
+                  case 'daily':
+                    return value;
+                  case 'weekly':
+                  case 'monthly':
+                  case 'yearly':
+                    return value.split(',')[0];
+                  default:
+                    return value;
+                }
+              }}
             />
             <YAxis 
               domain={[0, 'dataMax']}
               allowDataOverflow={false}
             />
-            <Tooltip />
+            <Tooltip 
+              labelFormatter={(value) => {
+                switch (timeframe) {
+                  case 'daily':
+                    return `Time: ${value}`;
+                  default:
+                    return `Date: ${value}`;
+                }
+              }}
+            />
             <Legend />
             <Area
               type="monotone"
