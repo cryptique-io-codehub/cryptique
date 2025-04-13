@@ -23,27 +23,33 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     const now = new Date();
     let startDate;
     let interval;
+    let maxPoints;
 
     switch (timeframe) {
       case 'daily':
         startDate = new Date(now - 24 * 60 * 60 * 1000);
         interval = 30 * 60 * 1000; // 30 minutes
+        maxPoints = 48; // 48 30-minute intervals
         break;
       case 'weekly':
         startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000; // 1 day
+        maxPoints = 7; // 7 days
         break;
       case 'monthly':
         startDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000; // 1 day
+        maxPoints = 30; // 30 days
         break;
       case 'yearly':
         startDate = new Date(now - 365 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000; // 1 day
+        maxPoints = 365; // 365 days
         break;
       default:
         startDate = new Date(now - 24 * 60 * 60 * 1000);
         interval = 30 * 60 * 1000;
+        maxPoints = 48;
     }
 
     // Filter sessions based on timeframe
@@ -55,8 +61,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     // Generate empty buckets for the selected timeframe
     const emptyBuckets = {};
     let currentDate = new Date(startDate);
+    let pointCount = 0;
 
-    while (currentDate <= now) {
+    while (currentDate <= now && pointCount < maxPoints) {
       let timeKey;
       switch (timeframe) {
         case 'daily':
@@ -75,11 +82,15 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           break;
       }
 
-      emptyBuckets[timeKey] = {
-        visitors: 0,
-        wallets: 0,
-        timestamp: currentDate.getTime()
-      };
+      // Only add if we haven't seen this timeKey before
+      if (!emptyBuckets[timeKey]) {
+        emptyBuckets[timeKey] = {
+          visitors: 0,
+          wallets: 0,
+          timestamp: currentDate.getTime()
+        };
+        pointCount++;
+      }
 
       currentDate = new Date(currentDate.getTime() + interval);
     }
@@ -139,7 +150,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         time,
         ...data
       }))
-      .sort((a, b) => a.timestamp - b.timestamp);
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-maxPoints); // Only take the last maxPoints entries
 
     const formattedData = {
       labels: sortedData.map(item => item.time),
