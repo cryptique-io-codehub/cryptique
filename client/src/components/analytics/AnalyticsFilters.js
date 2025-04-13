@@ -124,6 +124,19 @@ export const AnalyticsFilters = ({
           rangeColors={['#3ecf8e']}
           showMonthAndYearPickers={true}
           editableDateInputs={true}
+          locale={{
+            format: 'MM/DD/YYYY',
+            separator: ' - ',
+            applyLabel: 'Apply',
+            cancelLabel: 'Cancel',
+            fromLabel: 'From',
+            toLabel: 'To',
+            customRangeLabel: 'Custom',
+            weekLabel: 'W',
+            daysOfWeek: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+            monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+            firstDay: 0
+          }}
         />
       </div>
 
