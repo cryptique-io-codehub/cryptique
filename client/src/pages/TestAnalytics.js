@@ -33,7 +33,8 @@ const TestAnalytics = () => {
       const transformedData = data.map(item => ({
         timestamp: item.timestamp,
         visitors: item.visitors,
-        pageViews: item.pageViews
+        pageViews: item.pageViews,
+        wallets: item.wallets
       }));
       
       setChartData(transformedData);
@@ -88,7 +89,7 @@ const TestAnalytics = () => {
             <YAxis />
             <Tooltip 
               labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
-              formatter={(value, name) => [value, name === 'visitors' ? 'Visitors' : 'Page Views']}
+              formatter={(value, name) => [value, name === 'visitors' ? 'Visitors' : (name === 'pageViews' ? 'Page Views' : 'Wallets')]}
             />
             <Area 
               type="monotone" 
@@ -105,6 +106,14 @@ const TestAnalytics = () => {
               stroke="#82ca9d" 
               fill="#82ca9d" 
               name="Page Views"
+            />
+            <Area 
+              type="monotone" 
+              dataKey="wallets" 
+              stackId="1" 
+              stroke="#ffc658" 
+              fill="#ffc658" 
+              name="Wallets"
             />
           </AreaChart>
         </ResponsiveContainer>

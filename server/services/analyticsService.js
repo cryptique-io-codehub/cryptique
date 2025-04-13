@@ -14,35 +14,47 @@ const roundToNearest15Minutes = (date) => {
 // Store real-time data
 let realTimeData = new Map();
 
+// Process SDK analytics data
+const processSDKData = (sdkData) => {
+  const timestamp = new Date();
+  const roundedTime = roundToNearest15Minutes(new Date(timestamp));
+  const timeKey = roundedTime.toISOString();
+  
+  // Initialize or update interval data
+  if (!realTimeData.has(timeKey)) {
+    realTimeData.set(timeKey, {
+      timestamp: timeKey,
+      visitors: 0,
+      pageViews: 0,
+      wallets: 0,
+      rawPoints: []
+    });
+  }
+  
+  const interval = realTimeData.get(timeKey);
+  
+  // Add new data point
+  const newPoint = {
+    timestamp: timestamp.toISOString(),
+    visitors: sdkData.newVisitors || 0,
+    pageViews: sdkData.totalPageViews || 0,
+    wallets: sdkData.walletsConnected || 0
+  };
+  
+  interval.rawPoints.push(newPoint);
+  
+  // Update aggregated values
+  interval.visitors = interval.rawPoints.reduce((sum, point) => sum + point.visitors, 0);
+  interval.pageViews = interval.rawPoints.reduce((sum, point) => sum + point.pageViews, 0);
+  interval.wallets = interval.rawPoints.reduce((sum, point) => sum + point.wallets, 0);
+  
+  return interval;
+};
+
 // Generate analytics data with real-time updates
 const generateAnalyticsData = (rawData) => {
-  // Process new data points
-  rawData.forEach(entry => {
-    const timestamp = new Date(entry.timestamp);
-    const roundedTime = roundToNearest15Minutes(new Date(timestamp));
-    const timeKey = roundedTime.toISOString();
-    
-    // Initialize or update interval data
-    if (!realTimeData.has(timeKey)) {
-      realTimeData.set(timeKey, {
-        timestamp: timeKey,
-        visitors: 0,
-        pageViews: 0,
-        rawPoints: [] // Store individual data points
-      });
-    }
-    
-    const interval = realTimeData.get(timeKey);
-    interval.rawPoints.push({
-      timestamp: timestamp.toISOString(),
-      visitors: entry.visitors || 1,
-      pageViews: entry.pageViews || getRandomInt(1, 3)
-    });
-    
-    // Update aggregated values
-    interval.visitors = interval.rawPoints.reduce((sum, point) => sum + point.visitors, 0);
-    interval.pageViews = interval.rawPoints.reduce((sum, point) => sum + point.pageViews, 0);
-  });
+  // Process the SDK data
+  const newInterval = processSDKData(rawData);
   
   // Get current time and calculate cutoff (last 24 hours)
   const now = new Date();
