@@ -49,6 +49,31 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     console.log('Sessions:', analytics.sessions);
     console.log('Wallets:', analytics.wallets);
 
+    // Generate empty buckets for all time slots in the selected timeframe
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (
+      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
+      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
+      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
+      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
+      24 * 60 * 60 * 1000
+    ));
+
+    // For daily view, create buckets for every 30 minutes
+    if (timeframe === 'daily') {
+      let currentDate = new Date(startDate);
+      while (currentDate <= now) {
+        const timeKey = formatTimeKey(currentDate, timeframe);
+        finalData[timeKey] = {
+          timestamp: currentDate.getTime(),
+          time: timeKey,
+          visitors: 0,
+          walletConnects: 0
+        };
+        currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000); // Add 30 minutes
+      }
+    }
+
     // Process sessions data
     analytics.sessions.forEach(session => {
       const date = new Date(session.startTime);
@@ -95,47 +120,14 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     console.log('Sorted Data:', sortedData);
 
-    // Get current date and set appropriate start date based on timeframe
-    const chartCurrentDate = new Date();
-    const chartStartDate = new Date(chartCurrentDate.getTime() - (
-      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
-      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
-      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
-      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
-      24 * 60 * 60 * 1000
-    ));
-
-    // Filter data to only include dates within the correct range
-    const filteredData = sortedData.filter(item => {
-      const itemDate = new Date(item.timestamp);
-      return itemDate >= chartStartDate && itemDate <= chartCurrentDate;
-    });
-
-    console.log('Filtered Data:', filteredData);
-
-    // Remove duplicates and ensure proper ordering
-    const uniqueData = filteredData.reduce((acc, current) => {
-      const existingIndex = acc.findIndex(item => item.time === current.time);
-      if (existingIndex === -1) {
-        acc.push(current);
-      } else {
-        // Merge data for duplicate time keys
-        acc[existingIndex].visitors += current.visitors;
-        acc[existingIndex].walletConnects += current.walletConnects;
-      }
-      return acc;
-    }, []);
-
-    console.log('Unique Data:', uniqueData);
-
     const formattedData = {
-      labels: uniqueData.map(item => item.time),
+      labels: sortedData.map(item => item.time),
       datasets: [
         {
           label: 'Visitors',
-          data: uniqueData.map(item => ({
+          data: sortedData.map(item => ({
             x: item.time,
-            y: item.visitors || 0
+            y: item.visitors
           })),
           backgroundColor: 'rgba(252, 211, 77, 0.5)',
           borderColor: '#fcd34d',
@@ -143,9 +135,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         },
         {
           label: 'Wallets',
-          data: uniqueData.map(item => ({
+          data: sortedData.map(item => ({
             x: item.time,
-            y: item.walletConnects || 0
+            y: item.walletConnects
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
