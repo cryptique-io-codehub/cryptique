@@ -109,50 +109,62 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         // Generate 48 30-minute intervals for the last 24 hours
         for (let i = 47; i >= 0; i--) {
           const date = new Date(now - i * 30 * 60 * 1000);
-          const hour = date.getHours();
-          const minute = Math.floor(date.getMinutes() / 30) * 30;
-          const timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          emptyBuckets[timeKey] = {
-            visitors: 0,
-            wallets: 0,
-            timestamp: date.getTime()
-          };
+          // Only add if the date is in the past
+          if (date <= now) {
+            const hour = date.getHours();
+            const minute = Math.floor(date.getMinutes() / 30) * 30;
+            const timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            emptyBuckets[timeKey] = {
+              visitors: 0,
+              wallets: 0,
+              timestamp: date.getTime()
+            };
+          }
         }
         break;
       case 'weekly':
         // Generate last 7 days
         for (let i = 6; i >= 0; i--) {
           const date = new Date(now - i * 24 * 60 * 60 * 1000);
-          const timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-          emptyBuckets[timeKey] = {
-            visitors: 0,
-            wallets: 0,
-            timestamp: date.getTime()
-          };
+          // Only add if the date is in the past
+          if (date <= now) {
+            const timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+            emptyBuckets[timeKey] = {
+              visitors: 0,
+              wallets: 0,
+              timestamp: date.getTime()
+            };
+          }
         }
         break;
       case 'monthly':
         // Generate last 30 days
         for (let i = 29; i >= 0; i--) {
           const date = new Date(now - i * 24 * 60 * 60 * 1000);
-          const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          emptyBuckets[timeKey] = {
-            visitors: 0,
-            wallets: 0,
-            timestamp: date.getTime()
-          };
+          // Only add if the date is in the past
+          if (date <= now) {
+            const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            emptyBuckets[timeKey] = {
+              visitors: 0,
+              wallets: 0,
+              timestamp: date.getTime()
+            };
+          }
         }
         break;
       case 'yearly':
         // Generate last 365 days
         for (let i = 364; i >= 0; i--) {
           const date = new Date(now - i * 24 * 60 * 60 * 1000);
-          const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          emptyBuckets[timeKey] = {
-            visitors: 0,
-            wallets: 0,
-            timestamp: date.getTime()
-          };
+          // Only add if the date is in the past
+          if (date <= now) {
+            const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            emptyBuckets[timeKey] = {
+              visitors: 0,
+              wallets: 0,
+              timestamp: date.getTime()
+            };
+          }
         }
         break;
     }
@@ -170,12 +182,22 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       // Filter out future dates
       .filter(item => item.timestamp <= now.getTime());
 
+    // Ensure we only have the correct number of data points
+    const maxPoints = {
+      daily: 48,    // 48 30-minute intervals
+      weekly: 7,    // 7 days
+      monthly: 30,  // 30 days
+      yearly: 365   // 365 days
+    };
+
+    const trimmedData = sortedData.slice(-maxPoints[timeframe]);
+
     const formattedData = {
-      labels: sortedData.map(item => item.time),
+      labels: trimmedData.map(item => item.time),
       datasets: [
         {
           label: 'Visitors',
-          data: sortedData.map(item => ({
+          data: trimmedData.map(item => ({
             x: item.time,
             y: item.visitors
           })),
@@ -185,7 +207,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         },
         {
           label: 'Wallets',
-          data: sortedData.map(item => ({
+          data: trimmedData.map(item => ({
             x: item.time,
             y: item.wallets
           })),
