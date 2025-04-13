@@ -8,26 +8,24 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true
+  withCredentials: true,
+  timeout: 10000 // 10 second timeout
 });
 
 // Add response interceptor for error handling
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('API Error:', error);
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('Error response:', error.response.data);
-      console.error('Error status:', error.response.status);
-      console.error('Error headers:', error.response.headers);
+      console.error('API Error:', error.response.status, error.response.data);
     } else if (error.request) {
       // The request was made but no response was received
-      console.error('Error request:', error.request);
+      console.error('Network Error:', error.request);
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error('Error message:', error.message);
+      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
@@ -59,13 +57,43 @@ export const fetchTrafficData = async (filters = {}) => {
 
 export const fetchGeoData = async (filters = {}) => {
   try {
+    // Validate date range
+    if (filters.dateRange) {
+      const { startDate, endDate } = filters.dateRange;
+      if (new Date(startDate) > new Date(endDate)) {
+        throw new Error('Invalid date range: start date is after end date');
+      }
+    }
+
     const response = await api.get('/api/analytics/geo', {
-      params: filters
+      params: filters,
+      validateStatus: function (status) {
+        return status < 500; // Resolve only if the status code is less than 500
+      }
     });
+
+    if (response.status === 404) {
+      console.warn('Geo analytics endpoint not found, returning empty data structure');
+      return {
+        countries: [],
+        sources: [],
+        chains: [],
+        regions: [],
+        data: []
+      };
+    }
+
     return response.data;
   } catch (error) {
     console.error('Error fetching geo data:', error);
-    throw error;
+    // Return empty data structure instead of throwing error
+    return {
+      countries: [],
+      sources: [],
+      chains: [],
+      regions: [],
+      data: []
+    };
   }
 };
 
