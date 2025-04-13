@@ -44,6 +44,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         return;
       }
 
+      console.log('Fetching chart data for siteId:', analytics.siteId);
       const response = await axiosInstance.get(`/analytics/chart`, {
         params: {
           siteId: analytics.siteId,
@@ -52,6 +53,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           end: selectedDateRange.end
         }
       });
+      
+      console.log('Chart data response:', response.data);
       
       if (response.data.error) {
         throw new Error(response.data.error);
@@ -69,6 +72,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         }))
       };
 
+      console.log('Formatted chart data:', formattedData);
       setChartData(formattedData);
     } catch (error) {
       console.error('Error fetching chart data:', error);
