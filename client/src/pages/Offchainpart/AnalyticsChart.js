@@ -37,59 +37,118 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return;
     }
 
-    console.log('Raw Analytics Data:', analytics);
-    console.log('Sessions Data:', analytics.sessions);
-    console.log('Wallet Connects Data:', analytics.walletConnects);
-
-    const finalData = {};
     const now = new Date();
-    const startDate = new Date(now.getTime() - (
-      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
-      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
-      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
-      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
-      24 * 60 * 60 * 1000
-    ));
+    let startDate;
+    let interval;
 
-    // Process sessions data
-    if (analytics.sessions) {
-      analytics.sessions.forEach(session => {
-        const sessionDate = new Date(session.startTime);
-        if (sessionDate >= startDate && sessionDate <= now) {
-          const timeKey = sessionDate.toISOString().split('T')[0];
-          if (!finalData[timeKey]) {
-            finalData[timeKey] = {
-              timestamp: sessionDate.getTime(),
-              time: timeKey,
-              visitors: 0,
-              walletConnects: 0
-            };
-          }
-          finalData[timeKey].visitors++;
-        }
-      });
+    switch (timeframe) {
+      case 'daily':
+        startDate = new Date(now - 24 * 60 * 60 * 1000); // 24 hours ago
+        interval = 30 * 60 * 1000; // 30 minutes
+        break;
+      case 'weekly':
+        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+        interval = 24 * 60 * 60 * 1000; // 1 day
+        break;
+      case 'monthly':
+        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+        interval = 24 * 60 * 60 * 1000; // 1 day
+        break;
+      case 'yearly':
+        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000); // 365 days ago
+        interval = 24 * 60 * 60 * 1000; // 1 day
+        break;
+      default:
+        startDate = new Date(now - 24 * 60 * 60 * 1000);
+        interval = 30 * 60 * 1000;
     }
 
-    // Process wallet connects data
-    if (analytics.walletConnects) {
-      analytics.walletConnects.forEach(connect => {
-        const connectDate = new Date(connect.timestamp);
-        if (connectDate >= startDate && connectDate <= now) {
-          const timeKey = connectDate.toISOString().split('T')[0];
-          if (!finalData[timeKey]) {
-            finalData[timeKey] = {
-              timestamp: connectDate.getTime(),
-              time: timeKey,
-              visitors: 0,
-              walletConnects: 0
-            };
-          }
-          finalData[timeKey].walletConnects++;
-        }
-      });
+    // Filter sessions based on timeframe
+    const filteredSessions = analytics.sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      return sessionDate >= startDate && sessionDate <= now;
+    });
+
+    // Generate empty buckets for the selected timeframe
+    const emptyBuckets = {};
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= now) {
+      let timeKey;
+      switch (timeframe) {
+        case 'daily':
+          const hour = currentDate.getHours();
+          const minute = Math.floor(currentDate.getMinutes() / 30) * 30;
+          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          break;
+        case 'weekly':
+          timeKey = currentDate.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+          break;
+        case 'monthly':
+          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+        case 'yearly':
+          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+      }
+
+      emptyBuckets[timeKey] = {
+        visitors: 0,
+        wallets: 0,
+        timestamp: currentDate.getTime()
+      };
+
+      currentDate = new Date(currentDate.getTime() + interval);
     }
 
-    console.log('Processed Final Data:', finalData);
+    // Group sessions by time interval
+    const groupedData = filteredSessions.reduce((acc, session) => {
+      const date = new Date(session.startTime);
+      let timeKey;
+
+      switch (timeframe) {
+        case 'daily':
+          const hour = date.getHours();
+          const minute = Math.floor(date.getMinutes() / 30) * 30;
+          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          break;
+        case 'weekly':
+          timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+          break;
+        case 'monthly':
+          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+        case 'yearly':
+          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+      }
+
+      if (!acc[timeKey]) {
+        acc[timeKey] = {
+          visitors: 0,
+          wallets: 0,
+          timestamp: date.getTime()
+        };
+      }
+
+      acc[timeKey].visitors++;
+
+      // Only count as wallet if walletAddress exists and is not empty
+      const hasWallet = session.wallet && 
+                       session.wallet.walletAddress && 
+                       session.wallet.walletAddress.trim() !== '' &&
+                       session.wallet.walletAddress !== 'undefined' &&
+                       session.wallet.walletAddress !== 'null';
+
+      if (hasWallet) {
+        acc[timeKey].wallets++;
+      }
+
+      return acc;
+    }, {});
+
+    // Merge actual data with empty buckets
+    const finalData = { ...emptyBuckets, ...groupedData };
 
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(finalData)
@@ -98,8 +157,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         ...data
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
-
-    console.log('Sorted Data:', sortedData);
 
     // Get current date and set appropriate start date based on timeframe
     const chartCurrentDate = new Date();
@@ -117,8 +174,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return itemDate >= chartStartDate && itemDate <= chartCurrentDate;
     });
 
-    console.log('Filtered Data:', filteredData);
-
     // Remove duplicates and ensure proper ordering
     const uniqueData = filteredData.reduce((acc, current) => {
       const existingIndex = acc.findIndex(item => item.time === current.time);
@@ -127,8 +182,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
       return acc;
     }, []);
-
-    console.log('Unique Data:', uniqueData);
 
     const formattedData = {
       labels: uniqueData.map(item => item.time),
@@ -147,7 +200,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Wallets',
           data: uniqueData.map(item => ({
             x: item.time,
-            y: item.walletConnects || 0
+            y: item.walletConnects || 0 // Changed from wallets to walletConnects
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -156,7 +209,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
-    console.log('Formatted Chart Data:', formattedData);
     setChartData(formattedData);
   };
 
@@ -274,6 +326,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                 return null;
               }}
             />
+            <Legend />
             <Area
               type="monotone"
               dataKey="y"
