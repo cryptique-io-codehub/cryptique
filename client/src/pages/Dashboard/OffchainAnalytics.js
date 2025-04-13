@@ -302,72 +302,34 @@ function formatDuration(seconds) {
   const handleDataPointClick = (dataPoint, index) => {
     setSelectedDataPoint(dataPoint);
     
-    // Update Web3 data based on the selected data point
-    const visitorsPercent = (40 + (dataPoint.visitors / 10)).toFixed(2);
-    const visitorsIncreasePercent = ((dataPoint.visitors / 100) * 3).toFixed(1);
-    const walletsIncreasePercent = ((dataPoint.wallets / 100) * 5).toFixed(1);
+    // Calculate percentages based on actual data
+    const totalVisitors = analytics?.uniqueVisitors || 1;
+    const totalWallets = analytics?.walletsConnected || 1;
+    
+    const visitorsPercent = ((dataPoint.visitors / totalVisitors) * 100).toFixed(2);
+    const visitorsIncreasePercent = ((dataPoint.visitors / totalVisitors) * 100).toFixed(1);
+    const walletsIncreasePercent = ((dataPoint.wallets / totalWallets) * 100).toFixed(1);
     
     setWeb3Data({
       visitorsPercentage: `${visitorsPercent}%`,
       visitorsIncrease: `${visitorsIncreasePercent}% Increase`,
-      walletsConnected: dataPoint.wallets * 10,
+      walletsConnected: dataPoint.wallets,
       walletsIncrease: `${walletsIncreasePercent}% Increase`
     });
     
-   
-    
-    // Update traffic sources based on the data point
+    // Update traffic sources based on actual data
     const updatedSources = trafficSources.map(source => {
-      // Create variation factors based on source
-      let visitorFactor = 0;
-      let walletFactor = 0;
-      let wallets_sectionFactor=0;
+      // Calculate factors based on actual data
+      const totalSourceVisitors = trafficSources.reduce((sum, s) => sum + s.visitors, 0) || 1;
+      const totalSourceWallets = trafficSources.reduce((sum, s) => sum + s.wallets, 0) || 1;
       
-      switch(source.source) {
-        case 'Twitter':
-          visitorFactor = 0.24;
-          walletFactor = 0.09;
-          wallets_sectionFactor=0.04;
-          break;
-        case 'Linkedin':
-          visitorFactor = 0.05;
-          walletFactor = 0.14;
-          wallets_sectionFactor=0.23;
-          break;
-        case 'Instagram':
-          visitorFactor = 0.07;
-          walletFactor = 0.21;
-          wallets_sectionFactor=0.31;
-          break;
-        case 'Dribbble':
-          visitorFactor = 0.05;
-          walletFactor = 0.16;
-          wallets_sectionFactor=0.14;
-          break;
-        case 'Behance':
-          visitorFactor = 0.03;
-          walletFactor = 0.22;
-          wallets_sectionFactor=0.34;
-          break;
-        case 'Pinterest':
-          visitorFactor = 0.01;
-          walletFactor = 0.06;
-          wallets_sectionFactor=0.09;
-          break;
-        default:
-          visitorFactor = 0.02;
-          walletFactor = 0.05;
-          wallets_sectionFactor=0.06;
-      }
-      
-      // Calculate visitors and wallets based on the data point and factor
-      const visitors = Math.round(dataPoint.visitors * visitorFactor * 1000);
-      const wallets = Math.round(dataPoint.wallets * walletFactor * 1000);
+      const visitorFactor = source.visitors / totalSourceVisitors;
+      const walletFactor = source.wallets / totalSourceWallets;
       
       return {
         ...source,
-        visitors,
-        wallets
+        visitors: Math.round(dataPoint.visitors * visitorFactor),
+        wallets: Math.round(dataPoint.wallets * walletFactor)
       };
     });
     
@@ -486,36 +448,31 @@ return (
                       setidy={setidy}
                     />
                     {verifyload ? (
-                   <div className="flex justify-center">
-                   <button
-                     type="button"
-                     disabled
-                     className="flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md cursor-not-allowed"
-                   >
-                     <svg
-                       className="animate-spin h-5 w-5 mr-2 text-white"
-                       xmlns="http://www.w3.org/2000/svg"
-                       fill="none"
-                       viewBox="0 0 24 24"
-                     >
-                       <circle
-                         className="opacity-25"
-                         cx="12"
-                         cy="12"
-                         r="10"
-                         stroke="currentColor"
-                         strokeWidth="4"
-                       />
-                       <path
-                         className="opacity-75"
-                         fill="currentColor"
-                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                       />
-                     </svg>
-                     Loading...
-                   </button>
-                 </div>
-                 
+                   <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+                     <div className="flex flex-col items-center">
+                       <svg
+                         className="animate-spin h-8 w-8 text-blue-600 mb-4"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                       >
+                         <circle
+                           className="opacity-25"
+                           cx="12"
+                           cy="12"
+                           r="10"
+                           stroke="currentColor"
+                           strokeWidth="4"
+                         />
+                         <path
+                           className="opacity-75"
+                           fill="currentColor"
+                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                         />
+                       </svg>
+                       <span className="text-sm text-gray-600">Loading analytics data...</span>
+                     </div>
+                   </div>
                   ):
                   (<>
                     {/* MODIFICATION: Analytics cards in full width single row */}
