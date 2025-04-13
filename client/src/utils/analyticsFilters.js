@@ -1,4 +1,4 @@
-import { subDays, subMonths, subYears, addYears, isWithinInterval } from 'date-fns';
+import { subDays, subMonths, subYears, isWithinInterval, addDays, addMonths, addYears } from 'date-fns';
 
 export const filterAnalyticsData = (data, filters) => {
   if (!data || !filters) return data;
