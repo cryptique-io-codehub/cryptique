@@ -259,8 +259,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                   return (
                     <div className="bg-white p-3 border rounded-lg shadow-lg">
                       <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0].value}</p>
-                      <p className="text-purple-500">Wallets: {payload[1].value}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0]?.payload?.visitors || 0}</p>
+                      <p className="text-purple-500">Wallets: {payload[0]?.payload?.wallets || 0}</p>
                     </div>
                   );
                 }
