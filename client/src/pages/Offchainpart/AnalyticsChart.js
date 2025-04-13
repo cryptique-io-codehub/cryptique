@@ -23,16 +23,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     // Get current date for filtering
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today - 24 * 60 * 60 * 1000);
 
     // Filter sessions based on timeframe
     const filteredSessions = analytics.sessions.filter(session => {
       const sessionDate = new Date(session.startTime);
-      const timeDiff = now - sessionDate;
-      const hoursDiff = timeDiff / (1000 * 60 * 60);
-
+      
       switch (timeframe) {
         case 'hourly':
-          return hoursDiff <= 24;
+          // Show last 24 hours
+          return sessionDate >= yesterday && sessionDate <= now;
         case 'daily':
           return sessionDate >= today;
         case 'weekly':
@@ -51,6 +51,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
       switch (timeframe) {
         case 'hourly':
+          // Format as HH:MM
           timeKey = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           break;
         case 'daily':
@@ -76,18 +77,43 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
       acc[timeKey].visitors++;
       
-      // Only count as wallet if walletAddress exists and is not empty
-      // and walletType is not 'No Wallet Detected'
+      // Only count as wallet if:
+      // 1. wallet object exists
+      // 2. walletAddress exists and is not empty
+      // 3. walletType is not 'No Wallet Detected'
+      // 4. chainName is not 'No Wallet Detected'
+      // 5. walletAddress is not 'undefined'
       if (session.wallet && 
           session.wallet.walletAddress && 
           session.wallet.walletAddress.trim() !== '' &&
+          session.wallet.walletAddress !== 'undefined' &&
+          session.wallet.walletType && 
           session.wallet.walletType !== 'No Wallet Detected' &&
+          session.wallet.chainName && 
           session.wallet.chainName !== 'No Wallet Detected') {
         acc[timeKey].wallets++;
       }
 
       return acc;
     }, {});
+
+    // For hourly view, ensure we have all 24 hours
+    if (timeframe === 'hourly') {
+      const hours = Array.from({ length: 24 }, (_, i) => {
+        const hour = new Date(now - (23 - i) * 60 * 60 * 1000);
+        return hour.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      });
+
+      hours.forEach(hour => {
+        if (!groupedData[hour]) {
+          groupedData[hour] = {
+            visitors: 0,
+            wallets: 0,
+            timestamp: new Date(now - (23 - hours.indexOf(hour)) * 60 * 60 * 1000).getTime()
+          };
+        }
+      });
+    }
 
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(groupedData)
