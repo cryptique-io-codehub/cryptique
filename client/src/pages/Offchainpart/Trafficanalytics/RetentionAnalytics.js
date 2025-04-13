@@ -184,67 +184,67 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           
           switch (timeFrame) {
             case 'Last 7 days':
-          // Process data for past 7 days
-          for (let i = 6; i >= 0; i--) {
-            const currentDate = new Date(today);
-            currentDate.setDate(today.getDate() - i);
-            
+              // Process data for past 7 days
+              for (let i = 6; i >= 0; i--) {
+                const currentDate = new Date(today);
+                currentDate.setDate(today.getDate() - i);
+                
                 // Format the date for display
-            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
-            
+                const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
+                
                 // Filter sessions for this day
-            const dayStart = new Date(currentDate);
-            dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(currentDate);
-            dayEnd.setHours(23, 59, 59, 999);
-            
+                const dayStart = new Date(currentDate);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(currentDate);
+                dayEnd.setHours(23, 59, 59, 999);
+                
                 const daySessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= dayStart && sessionDate <= dayEnd;
-            });
-            
+                  const sessionDate = new Date(session.startTime);
+                  return sessionDate >= dayStart && sessionDate <= dayEnd;
+                });
+                
                 const dayUserIds = new Set(daySessions.map(session => session.userId).filter(Boolean));
                 const initialUsers = dayUserIds.size;
                 
-            const retentionByDay = [];
-            retentionByDay.push({ day: 0, value: initialUsers });
-            
+                const retentionByDay = [];
+                retentionByDay.push({ day: 0, value: initialUsers });
+                
                 // Calculate retention for next 7 days
-            for (let j = 1; j <= 7; j++) {
+                for (let j = 1; j <= 7; j++) {
                   const retentionDate = new Date(currentDate);
                   retentionDate.setDate(currentDate.getDate() + j);
                   
                   if (retentionDate > today) {
-                retentionByDay.push({ day: j, value: null });
-                continue;
-              }
-              
-              const retentionDayStart = new Date(retentionDate);
-              retentionDayStart.setHours(0, 0, 0, 0);
-              const retentionDayEnd = new Date(retentionDate);
-              retentionDayEnd.setHours(23, 59, 59, 999);
-              
+                    retentionByDay.push({ day: j, value: null });
+                    continue;
+                  }
+                  
+                  const retentionDayStart = new Date(retentionDate);
+                  retentionDayStart.setHours(0, 0, 0, 0);
+                  const retentionDayEnd = new Date(retentionDate);
+                  retentionDayEnd.setHours(23, 59, 59, 999);
+                  
                   const retentionSessions = allSessions.filter(session => {
-                const sessionDate = new Date(session.startTime);
-                return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
-              });
-              
+                    const sessionDate = new Date(session.startTime);
+                    return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
+                  });
+                  
                   const retentionUserIds = new Set(retentionSessions.map(session => session.userId).filter(Boolean));
                   const returningUsers = [...dayUserIds].filter(id => retentionUserIds.has(id)).length;
-              
-              retentionByDay.push({ 
-                day: j, 
+                  
+                  retentionByDay.push({ 
+                    day: j, 
                     value: returningUsers,
                     percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
-              });
-            }
-            
-            cohortData.push({
-              date: formattedDate,
-              initialUsers: initialUsers,
-              retentionByDay: retentionByDay
-            });
-          }
+                  });
+                }
+                
+                cohortData.push({
+                  date: formattedDate,
+                  initialUsers: initialUsers,
+                  retentionByDay: retentionByDay
+                });
+              }
               break;
               
             case 'Last Month':
@@ -418,8 +418,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                     percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
                   });
                 }
-            
-            cohortData.push({
+                
+                cohortData.push({
                   date: `Month ${12 - i}`,
                   initialUsers: initialUsers,
                   retentionByMonth: retentionByMonth
@@ -591,9 +591,9 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   </th>
                   {timeFrame === 'Last 7 days' ? (
                     Array.from({ length: 8 }, (_, i) => (
-                    <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {i === 0 ? 'Initial' : `Day ${i}`}
-                    </th>
+                      <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {i === 0 ? 'Initial' : `Day ${i}`}
+                      </th>
                     ))
                   ) : timeFrame === 'Last Month' ? (
                     Array.from({ length: 6 }, (_, i) => (
@@ -625,12 +625,12 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                     </td>
                     {timeFrame === 'Last 7 days' ? (
                       (cohort.retentionByDay || []).map((day, dayIndex) => (
-                      <td 
-                        key={dayIndex} 
-                        className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
-                      >
-                        {formatRetentionValue(day.value, day.percentage)}
-                      </td>
+                        <td 
+                          key={dayIndex} 
+                          className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
+                        >
+                          {formatRetentionValue(day.value, day.percentage)}
+                        </td>
                       ))
                     ) : timeFrame === 'Last Month' ? (
                       (cohort.retentionByWeek || []).map((week, weekIndex) => (
