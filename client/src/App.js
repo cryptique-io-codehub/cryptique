@@ -20,6 +20,7 @@ import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
+import TestAnalytics from './pages/TestAnalytics';
 const RouteListener = () => {
   const location = useLocation();
 
@@ -89,6 +90,8 @@ function App() {
           <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
           
         </Route>
+
+        <Route path="/test-analytics" element={<TestAnalytics />} />
 
       </Routes>
     </BrowserRouter>

@@ -11,34 +11,64 @@ const roundToNearest15Minutes = (date) => {
   return date;
 };
 
-// Generate analytics data with 15-minute intervals
+// Store real-time data
+let realTimeData = new Map();
+
+// Generate analytics data with real-time updates
 const generateAnalyticsData = (rawData) => {
-  const intervalMap = new Map();
-  
-  // Process each raw data point
+  // Process new data points
   rawData.forEach(entry => {
     const timestamp = new Date(entry.timestamp);
     const roundedTime = roundToNearest15Minutes(new Date(timestamp));
     const timeKey = roundedTime.toISOString();
     
     // Initialize or update interval data
-    if (!intervalMap.has(timeKey)) {
-      intervalMap.set(timeKey, {
+    if (!realTimeData.has(timeKey)) {
+      realTimeData.set(timeKey, {
         timestamp: timeKey,
         visitors: 0,
-        pageViews: 0
+        pageViews: 0,
+        rawPoints: [] // Store individual data points
       });
     }
     
-    const interval = intervalMap.get(timeKey);
-    interval.visitors += entry.visitors || 1;
-    interval.pageViews += entry.pageViews || getRandomInt(1, 3);
+    const interval = realTimeData.get(timeKey);
+    interval.rawPoints.push({
+      timestamp: timestamp.toISOString(),
+      visitors: entry.visitors || 1,
+      pageViews: entry.pageViews || getRandomInt(1, 3)
+    });
+    
+    // Update aggregated values
+    interval.visitors = interval.rawPoints.reduce((sum, point) => sum + point.visitors, 0);
+    interval.pageViews = interval.rawPoints.reduce((sum, point) => sum + point.pageViews, 0);
   });
   
-  // Convert map to sorted array
-  return Array.from(intervalMap.values())
+  // Get current time and calculate cutoff (last 24 hours)
+  const now = new Date();
+  const cutoffTime = new Date(now);
+  cutoffTime.setHours(cutoffTime.getHours() - 24);
+  
+  // Filter and sort data
+  const filteredData = Array.from(realTimeData.values())
+    .filter(entry => new Date(entry.timestamp) >= cutoffTime)
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  
+  return filteredData;
 };
+
+// Clear old data periodically
+setInterval(() => {
+  const now = new Date();
+  const cutoffTime = new Date(now);
+  cutoffTime.setHours(cutoffTime.getHours() - 24);
+  
+  for (const [key, value] of realTimeData.entries()) {
+    if (new Date(key) < cutoffTime) {
+      realTimeData.delete(key);
+    }
+  }
+}, 3600000); // Run every hour
 
 module.exports = {
   generateAnalyticsData
