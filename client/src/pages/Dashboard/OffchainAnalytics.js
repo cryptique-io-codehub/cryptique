@@ -154,75 +154,95 @@ function formatDuration(seconds) {
   // Fetch analytics data from server when filters change
   useEffect(() => {
     const fetchData = async () => {
-    
-    
-    setIsLoading(true);
-    setError(null);
+      setIsLoading(true);
+      setError(null);
       
       try {
-        // This would be your actual API calls
-        // const chartResponse = await fetch(`/api/analytics/chart?website=${selectedWebsite}&date=${selectedDate}&filters=${selectedFilters}`);
-        // const chartData = await chartResponse.json();
-        
-        // Using mock data for demonstration
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Helper function for random values
-        const getRandomValue = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-        
-        // Mock chart data
-        const mockChartData = {
-          timeLabels: ['11:30', '12:30', '1:30', '2:30', '3:30', '4:30', '5:30', '6:30', '7:30','8:30','9:30','10:30','11:30'],
-          datasets: {
-            visitors: [12, 15, 28, 38, 29, 42, 45, 56, 65],
-            wallets: [9, 12, 15, 18, 12, 24, 28, 33, 41]
-          },
-          dataPoints: [
-            { time: 'Jul 07, 11:30', visitors: 124, wallets: 9 },
-            { time: 'Jul 07, 12:30', visitors: 15, wallets: 12 },
-            { time: 'Jul 07, 1:30', visitors: 28, wallets: 15 },
-            { time: 'Jul 07, 2:30', visitors: 38, wallets: 18 },
-            { time: 'Jul 07, 3:30', visitors: 29, wallets: 12 },
-            { time: 'Jul 07, 4:30', visitors: 42, wallets: 24 },
-            { time: 'Jul 07, 5:30', visitors: 45, wallets: 28 },
-            { time: 'Jul 07, 6:30', visitors: 56, wallets: 63 },
-            { time: 'Jul 07, 7:30', visitors: 65, wallets: 41 },
-            { time: 'Jul 07, 8:30', visitors: 70, wallets: 9 },
-            { time: 'Jul 07, 9:30', visitors: 52, wallets: 9 },
-            { time: 'Jul 07, 10:30', visitors: 81, wallets: 9 },
+        // Get date range from selectedDate
+        let startDate, endDate;
+        if (selectedDate === 'today') {
+          const today = new Date();
+          startDate = today.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'yesterday') {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = yesterday.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'last7days') {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        } else if (selectedDate === 'last30days') {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - 30);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        } else {
+          // Custom date range
+          startDate = selectedDate;
+          endDate = selectedDate;
+        }
+
+        // Fetch chart data from API with date range
+        const chartResponse = await axiosInstance.get(`/api/analytics/chart`, {
+          params: {
+            siteId: idy,
+            timeframe: 'hourly',
+            start: startDate,
+            end: endDate
+          }
+        });
+
+        if (chartResponse.data.error) {
+          throw new Error(chartResponse.data.error);
+        }
+
+        // Transform the data to match the expected format
+        const transformedChartData = {
+          labels: chartResponse.data.labels || [],
+          datasets: [
+            {
+              label: 'Visitors',
+              data: chartResponse.data.visitors || []
+            },
+            {
+              label: 'Wallets',
+              data: chartResponse.data.wallets || []
+            }
           ]
         };
-        
-        // Generate random Web3 data based on selected filters
-        const visitorsPercent = (40 + getRandomValue(0, 20)).toFixed(2);
-        const visitorsIncreasePercent = (5 + getRandomValue(0, 10)).toFixed(1);
-        const walletsCount = getRandomValue(400, 700);
-        const walletsIncreasePercent = (4 + getRandomValue(0, 8)).toFixed(1);
-        
-        const mockWeb3Data = {
-          visitorsPercentage: `${visitorsPercent}%`,
-          visitorsIncrease: `${visitorsIncreasePercent}% Increase`,
-          walletsConnected: walletsCount,
-          walletsIncrease: `${walletsIncreasePercent}% Increase`
+
+        setChartData(transformedChartData);
+
+        // Fetch traffic sources data for the date range
+        const trafficResponse = await axiosInstance.get(`/api/analytics/traffic-sources`, {
+          params: {
+            siteId: idy,
+            start: startDate,
+            end: endDate
+          }
+        });
+
+        if (trafficResponse.data.error) {
+          throw new Error(trafficResponse.data.error);
+        }
+
+        setTrafficSources(trafficResponse.data.sources || []);
+
+        // Update Web3 data based on the date range
+        const web3Data = {
+          visitorsPercentage: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(2)}%`,
+          visitorsIncrease: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`,
+          walletsConnected: analytics?.walletsConnected || 0,
+          walletsIncrease: `${((analytics?.walletsConnected / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`
         };
-        
-        
-        // Generate traffic sources data
-        const mockTrafficSources = [
-          { source: 'Twitter', icon: 'twitter', visitors: 0, wallets: 0,wallets_section:0},
-          { source: 'Linkedin', icon: 'linkedin', visitors: 0, wallets: 0,wallets_section:0 },
-          { source: 'Instagram', icon: 'instagram', visitors:0, wallets: 0,wallets_section:0 },
-          { source: 'Dribbble', icon: 'dribbble', visitors: 0, wallets: 0,wallets_section:0 },
-          { source: 'Behance', icon: 'behance', visitors: 0, wallets: 0,wallets_section:0 },
-          { source: 'Pinterest', icon: 'pinterest', visitors: 0, wallets: 0,wallets_section:0 }
-        ];
-        
-        setChartData(mockChartData);
-        setWeb3Data(mockWeb3Data);
-        // setAnalyticsData(mockAnalyticsData);
-        setTrafficSources(mockTrafficSources);
-        // Set the first data point as selected by default
-        setSelectedDataPoint(mockChartData.dataPoints[0]);
+
+        setWeb3Data(web3Data);
+
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load analytics data. Please try again later.');
@@ -231,8 +251,10 @@ function formatDuration(seconds) {
       }
     };
 
-    fetchData();
-  }, [selectedDate, selectedFilters, activeSection]);
+    if (idy) {
+      fetchData();
+    }
+  }, [idy, selectedDate, selectedFilters, activeSection]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {
