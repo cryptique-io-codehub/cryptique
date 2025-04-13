@@ -36,34 +36,41 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           ? analytics.monthlyStats.analyticsSnapshot 
           : [];
         
-        // Calculate DAU - Users active in the last 24 hours
+        // Calculate DAU - Users active in the current calendar day
         const dailyActiveUserIds = new Set();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        
         allSessions.forEach(session => {
           const sessionDate = new Date(session.startTime);
-          if (sessionDate >= oneDayAgo && session.userId) {
+          if (sessionDate >= todayStart && sessionDate <= todayEnd && session.userId) {
             dailyActiveUserIds.add(session.userId);
           }
         });
         const dailyActiveUsers = dailyActiveUserIds.size;
         
-        // Calculate WAU - Users active in the last 7 days
+        // Calculate WAU - Users active in the last 7 calendar days
         const weeklyActiveUserIds = new Set();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 6);
+        
         allSessions.forEach(session => {
           const sessionDate = new Date(session.startTime);
-          if (sessionDate >= sevenDaysAgo && session.userId) {
+          if (sessionDate >= weekStart && sessionDate <= todayEnd && session.userId) {
             weeklyActiveUserIds.add(session.userId);
           }
         });
         const weeklyActiveUsers = weeklyActiveUserIds.size;
         
-        // Calculate MAU - Users active in the last 30 days
+        // Calculate MAU - Users active in the last 30 calendar days
         const monthlyActiveUserIds = new Set();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const monthStart = new Date(todayStart);
+        monthStart.setDate(monthStart.getDate() - 29);
+        
         allSessions.forEach(session => {
           const sessionDate = new Date(session.startTime);
-          if (sessionDate >= thirtyDaysAgo && session.userId) {
+          if (sessionDate >= monthStart && sessionDate <= todayEnd && session.userId) {
             monthlyActiveUserIds.add(session.userId);
           }
         });
