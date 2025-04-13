@@ -139,17 +139,44 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         time,
         ...data
       }))
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .filter((item, index, self) => 
-        index === self.findIndex((t) => t.time === item.time)
-      );
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    // Filter out duplicates and ensure proper date range
+    const uniqueData = sortedData.reduce((acc, current) => {
+      const existingIndex = acc.findIndex(item => item.time === current.time);
+      if (existingIndex === -1) {
+        acc.push(current);
+      }
+      return acc;
+    }, []);
+
+    // Ensure we only have data points for the selected timeframe
+    const timeframeData = uniqueData.filter(item => {
+      const itemDate = new Date(item.timestamp);
+      const now = new Date();
+      const diffTime = Math.abs(now - itemDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      switch (timeframe) {
+        case 'daily':
+          return diffDays <= 1;
+        case 'weekly':
+          return diffDays <= 7;
+        case 'monthly':
+          return diffDays <= 30;
+        case 'yearly':
+          return diffDays <= 365;
+        default:
+          return true;
+      }
+    });
 
     const formattedData = {
-      labels: sortedData.map(item => item.time),
+      labels: timeframeData.map(item => item.time),
       datasets: [
         {
           label: 'Visitors',
-          data: sortedData.map(item => ({
+          data: timeframeData.map(item => ({
             x: item.time,
             y: item.visitors
           })),
@@ -159,7 +186,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         },
         {
           label: 'Wallets',
-          data: sortedData.map(item => ({
+          data: timeframeData.map(item => ({
             x: item.time,
             y: item.wallets
           })),
