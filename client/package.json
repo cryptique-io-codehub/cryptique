@@ -10,7 +10,7 @@
     "axios": "^1.8.4",
     "chart.js": "^4.4.8",
     "client": "file:",
-    "date-fns": "^2.30.0",
+    "date-fns": "^4.1.0",
     "firebase": "^11.5.0",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
