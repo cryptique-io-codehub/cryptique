@@ -252,16 +252,13 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index, baseDate) => {
-                const date = new Date(baseDate);
-                date.setDate(date.getDate() - index);
+              formatLabel: (date) => {
                 return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
               },
-              getPeriodStart: (baseDate, offset) => {
-                const date = new Date(baseDate);
-                date.setDate(date.getDate() - offset);
-                date.setHours(0, 0, 0, 0);
-                return date;
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setDate(next.getDate() + 1);
+                return next;
               }
             },
             'Last Month': {
@@ -283,18 +280,16 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index, baseDate) => {
-                const date = new Date(baseDate);
-                date.setDate(date.getDate() - (index * 7));
+              formatLabel: (date) => {
                 const startDate = new Date(date);
-                startDate.setDate(startDate.getDate() - 6);
-                return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                const endDate = new Date(date);
+                endDate.setDate(endDate.getDate() + 6);
+                return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
               },
-              getPeriodStart: (baseDate, offset) => {
-                const date = new Date(baseDate);
-                date.setDate(date.getDate() - (offset * 7));
-                date.setHours(0, 0, 0, 0);
-                return date;
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setDate(next.getDate() + 7);
+                return next;
               }
             },
             'Last 3 Months': {
@@ -313,17 +308,14 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index, baseDate) => {
-                const date = new Date(baseDate);
-                date.setMonth(date.getMonth() - index);
+              formatLabel: (date) => {
                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               },
-              getPeriodStart: (baseDate, offset) => {
-                const date = new Date(baseDate);
-                date.setMonth(date.getMonth() - offset);
-                date.setDate(1);
-                date.setHours(0, 0, 0, 0);
-                return date;
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setMonth(next.getMonth() + 1);
+                next.setDate(1);
+                return next;
               }
             },
             'Last Year': {
@@ -342,94 +334,88 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index, baseDate) => {
-                const date = new Date(baseDate);
-                date.setMonth(date.getMonth() - index);
+              formatLabel: (date) => {
                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               },
-              getPeriodStart: (baseDate, offset) => {
-                const date = new Date(baseDate);
-                date.setMonth(date.getMonth() - offset);
-                date.setDate(1);
-                date.setHours(0, 0, 0, 0);
-                return date;
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setMonth(next.getMonth() + 1);
+                next.setDate(1);
+                return next;
               }
             }
           };
 
           const config = timeFrameConfig[timeFrame] || timeFrameConfig['Last 7 Days'];
-          const { periods, periodType, getStart, getEnd, formatLabel, getPeriodStart } = config;
+          const { periods, periodType, getStart, getEnd, formatLabel, getNextPeriod } = config;
 
-          // Process data for each period, starting from the last session date
-          for (let i = periods - 1; i >= 0; i--) {
-            const periodStart = getPeriodStart(lastSessionDate, i);
-            const periodEnd = getEnd(periodStart);
-
-            // Skip if period is before first session
-            if (periodEnd < firstSessionDate) continue;
-
+          // Start from the first session date
+          let currentPeriodStart = getStart(firstSessionDate);
+          let currentPeriodEnd = getEnd(currentPeriodStart);
+          
+          // Process data for each period
+          while (currentPeriodStart <= lastSessionDate) {
             // Get sessions for this period
             const periodSessions = allSessions.filter(session => {
               const sessionDate = new Date(session.startTime);
-              return sessionDate >= periodStart && sessionDate <= periodEnd;
+              return sessionDate >= currentPeriodStart && sessionDate <= currentPeriodEnd;
             });
 
             // Get unique users for this period
             const uniqueUserIds = [...new Set(periodSessions.map(session => session.userId))];
             const initialUsers = uniqueUserIds.length;
 
-            if (initialUsers === 0) continue;
+            if (initialUsers > 0) {
+              // Calculate retention for subsequent periods
+              const retentionByDay = [];
+              retentionByDay.push({ day: 0, value: initialUsers, percentage: '100.0' });
 
-            // Calculate retention for subsequent periods
-            const retentionByDay = [];
-            retentionByDay.push({ day: 0, value: initialUsers, percentage: '100.0' });
+              // Calculate retention for each subsequent period
+              let nextRetentionStart = getNextPeriod(currentPeriodStart);
+              let nextRetentionEnd = getEnd(nextRetentionStart);
+              let dayIndex = 1;
 
-            // Calculate retention for each subsequent period
-            for (let j = 1; j < periods - i; j++) {
-              const retentionStart = getPeriodStart(lastSessionDate, i - j);
-              const retentionEnd = getEnd(retentionStart);
+              while (dayIndex < periods && nextRetentionStart <= lastSessionDate) {
+                const retentionSessions = allSessions.filter(session => {
+                  const sessionDate = new Date(session.startTime);
+                  return sessionDate >= nextRetentionStart && sessionDate <= nextRetentionEnd;
+                });
 
-              // Skip if retention period is before first session
-              if (retentionEnd < firstSessionDate) {
+                const retentionUserIds = [...new Set(retentionSessions.map(session => session.userId))];
+                const returningUsers = uniqueUserIds.filter(userId => retentionUserIds.includes(userId));
+                const retentionValue = returningUsers.length;
+                const retentionPercentage = ((retentionValue / initialUsers) * 100).toFixed(1);
+
                 retentionByDay.push({
-                  day: j,
+                  day: dayIndex,
+                  value: retentionValue,
+                  percentage: retentionPercentage
+                });
+
+                nextRetentionStart = getNextPeriod(nextRetentionStart);
+                nextRetentionEnd = getEnd(nextRetentionStart);
+                dayIndex++;
+              }
+
+              // Fill remaining periods with null values
+              while (retentionByDay.length < periods) {
+                retentionByDay.push({
+                  day: retentionByDay.length,
                   value: null,
                   percentage: null
                 });
-                continue;
               }
 
-              const retentionSessions = allSessions.filter(session => {
-                const sessionDate = new Date(session.startTime);
-                return sessionDate >= retentionStart && sessionDate <= retentionEnd;
-              });
-
-              const retentionUserIds = [...new Set(retentionSessions.map(session => session.userId))];
-              const returningUsers = uniqueUserIds.filter(userId => retentionUserIds.includes(userId));
-              const retentionValue = returningUsers.length;
-              const retentionPercentage = ((retentionValue / initialUsers) * 100).toFixed(1);
-
-              retentionByDay.push({
-                day: j,
-                value: retentionValue,
-                percentage: retentionPercentage
+              cohortData.push({
+                date: formatLabel(currentPeriodStart),
+                initialUsers,
+                retentionByDay
               });
             }
 
-            // Fill remaining periods with null values
-            while (retentionByDay.length < periods) {
-              retentionByDay.push({
-                day: retentionByDay.length,
-                value: null,
-                percentage: null
-              });
-            }
-
-            cohortData.push({
-              date: formatLabel(periods - i - 1, periodEnd),
-              initialUsers,
-              retentionByDay
-            });
+            // Move to next period
+            currentPeriodStart = getNextPeriod(currentPeriodStart);
+            currentPeriodEnd = getEnd(currentPeriodStart);
           }
 
           return cohortData;
