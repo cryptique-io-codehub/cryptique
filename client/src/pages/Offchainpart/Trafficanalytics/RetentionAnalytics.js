@@ -2,187 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const RetentionAnalytics = ({analytics, setanalytics}) => {
-  const [timeFrame, setTimeFrame] = useState('This Month');
+  const [timeFrame, setTimeFrame] = useState('daily');
   const [retentionData, setRetentionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Process the actual analytics data
     const processAnalyticsData = async () => {
       setIsLoading(true);
       
       try {
         const now = new Date();
-        
-        // Extract sessions from the new data structure
         const allSessions = analytics.sessions || [];
         
-        // Calculate DAU (last 24 hours)
-        const dauStartDate = new Date(now - 24 * 60 * 60 * 1000);
-        const dauSessions = allSessions.filter(session => {
-          const sessionDate = new Date(session.startTime);
-          return sessionDate >= dauStartDate && sessionDate <= now;
-        });
-        const dailyActiveUserIds = new Set(dauSessions.map(session => session.userId).filter(Boolean));
-        const dailyActiveUsers = dailyActiveUserIds.size;
+        // Calculate retention periods based on timeframe
+        let retentionPeriod;
+        let maxDays;
+        switch (timeFrame) {
+          case 'daily':
+            retentionPeriod = 24 * 60 * 60 * 1000; // 24 hours
+            maxDays = 1;
+            break;
+          case 'weekly':
+            retentionPeriod = 7 * 24 * 60 * 60 * 1000; // 7 days
+            maxDays = 7;
+            break;
+          case 'monthly':
+            retentionPeriod = 30 * 24 * 60 * 60 * 1000; // 30 days
+            maxDays = 30;
+            break;
+          case 'yearly':
+            retentionPeriod = 365 * 24 * 60 * 60 * 1000; // 365 days
+            maxDays = 365;
+            break;
+          default:
+            retentionPeriod = 7 * 24 * 60 * 60 * 1000;
+            maxDays = 7;
+        }
+
+        const startDate = new Date(now - retentionPeriod);
         
-        // Calculate WAU (last 7 days)
-        const wauStartDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
-        const wauSessions = allSessions.filter(session => {
-          const sessionDate = new Date(session.startTime);
-          return sessionDate >= wauStartDate && sessionDate <= now;
-        });
-        const weeklyActiveUserIds = new Set(wauSessions.map(session => session.userId).filter(Boolean));
-        const weeklyActiveUsers = weeklyActiveUserIds.size;
-        
-        // Calculate MAU (last 30 days)
-        const mauStartDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
-        const mauSessions = allSessions.filter(session => {
-          const sessionDate = new Date(session.startTime);
-          return sessionDate >= mauStartDate && sessionDate <= now;
-        });
-        const monthlyActiveUserIds = new Set(mauSessions.map(session => session.userId).filter(Boolean));
-        const monthlyActiveUsers = monthlyActiveUserIds.size;
-        
-        // Determine top country for each time period by counting userIds by country
-        const getTopCountry = (userIds, sessions) => {
-          const countryUserCounts = {};
-          
-          // Filter sessions to only include those from the provided userIds
-          const relevantSessions = sessions.filter(session => 
-            userIds.has(session.userId)
-          );
-          
-          // Count distinct userIds per country
-          relevantSessions.forEach(session => {
-            // Use the actual country from the session if available
-            const country = session.country || 'Unknown';
-            
-            if (!countryUserCounts[country]) {
-              countryUserCounts[country] = new Set();
-            }
-            countryUserCounts[country].add(session.userId);
-          });
-          
-          // Find country with most distinct users
-          let maxCount = 0;
-          let topCountry = 'Unknown';
-          
-          Object.entries(countryUserCounts).forEach(([country, userIdSet]) => {
-            const count = userIdSet.size;
-            if (count > maxCount) {
-              maxCount = count;
-              topCountry = country;
-            }
-          });
-          
-          // Map of country codes to country names and flags
-          const countryMap = {
-            'IN': { name: 'India', flag: '🇮🇳' },
-            'US': { name: 'United States', flag: '🇺🇸' },
-            'GB': { name: 'United Kingdom', flag: '🇬🇧' },
-            'CA': { name: 'Canada', flag: '🇨🇦' },
-            'DE': { name: 'Germany', flag: '🇩🇪' },
-            'AU': { name: 'Australia', flag: '🇦🇺' },
-            'FR': { name: 'France', flag: '🇫🇷' },
-            'JP': { name: 'Japan', flag: '🇯🇵' },
-            'CN': { name: 'China', flag: '🇨🇳' },
-            'BR': { name: 'Brazil', flag: '🇧🇷' },
-            'Unknown': { name: 'Unknown', flag: '🌍' }
-          };
-          
-          const countryInfo = countryMap[topCountry] || { name: topCountry, flag: '🌍' };
-          
-          return { 
-            name: countryInfo.name, 
-            flag: countryInfo.flag
-          };
-        };
-        
-        // Get top countries for each time period
-        const dailyTopCountry = getTopCountry(dailyActiveUserIds, allSessions);
-        const weeklyTopCountry = getTopCountry(weeklyActiveUserIds, allSessions);
-        const monthlyTopCountry = getTopCountry(monthlyActiveUserIds, allSessions);
-        
-        // Calculate growth percentage (placeholder - would need historical data)
-        const calculateGrowth = (value) => {
-          // In a real app, you'd compare to previous period
-          // For now we'll just return random reasonable values
-          return `${(Math.random() * 5 + 1).toFixed(1)}% Increase`;
-        };
-        
-        // Process chart data
-        const processChartData = () => {
-          const chartData = [];
-          const today = new Date();
-          
-          // Generate data points for the last 30 days
-          for (let i = 29; i >= 0; i--) {
-            const currentDate = new Date(today);
-            currentDate.setDate(today.getDate() - i);
-            
-            // Format the date for display
-            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
-            
-            // Calculate DAU for this day
-            const dayStart = new Date(currentDate);
-            dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(currentDate);
-            dayEnd.setHours(23, 59, 59, 999);
-            
-            const daySessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= dayStart && sessionDate <= dayEnd;
-            });
-            const dayUserIds = new Set(daySessions.map(session => session.userId).filter(Boolean));
-            
-            // Calculate WAU for this day (last 7 days including this day)
-            const weekStart = new Date(currentDate - 6 * 24 * 60 * 60 * 1000);
-            const weekSessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= weekStart && sessionDate <= dayEnd;
-            });
-            const weekUserIds = new Set(weekSessions.map(session => session.userId).filter(Boolean));
-            
-            // Calculate MAU for this day (last 30 days including this day)
-            const monthStart = new Date(currentDate - 29 * 24 * 60 * 60 * 1000);
-            const monthSessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= monthStart && sessionDate <= dayEnd;
-            });
-            const monthUserIds = new Set(monthSessions.map(session => session.userId).filter(Boolean));
-            
-            chartData.push({
-              month: formattedDate,
-              DAU: dayUserIds.size,
-              WAU: weekUserIds.size,
-              MAU: monthUserIds.size
-            });
-          }
-          
-          return chartData;
-        };
-        
-        // Get the chart data
-        const chartData = processChartData();
-        
-        // Process cohort data for the past 7 days
+        // Process cohort data
         const processCohortData = () => {
           const cohortData = [];
           const today = new Date();
           
-          // Process data for past 7 days
-          for (let i = 6; i >= 0; i--) {
+          // Process data for the retention period
+          for (let i = maxDays - 1; i >= 0; i--) {
             const currentDate = new Date(today);
             currentDate.setDate(today.getDate() - i);
             
-            // Format the date for display in dd/mm format
-            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
+            // Format the date for display
+            const formattedDate = currentDate.toLocaleDateString([], { 
+              month: 'short', 
+              day: 'numeric' 
+            });
             
-            // Filter sessions for this day to get initial user count
+            // Filter sessions for this day
             const dayStart = new Date(currentDate);
             dayStart.setHours(0, 0, 0, 0);
-            
             const dayEnd = new Date(currentDate);
             dayEnd.setHours(23, 59, 59, 999);
             
@@ -191,34 +68,37 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               return sessionDate >= dayStart && sessionDate <= dayEnd;
             });
             
-            // Get unique user IDs for this day (initial users)
-            const dayUniqueUserIds = [...new Set(daysSessions.map(session => session.userId))];
+            // Get unique user IDs for this day
+            const dayUniqueUserIds = [...new Set(daysSessions.map(session => session.userId).filter(Boolean))];
             const initialUsers = dayUniqueUserIds.length;
             
             if (initialUsers === 0) {
-              continue; // Skip days with no users
+              continue;
             }
             
             // Calculate retention for subsequent days
             const retentionByDay = [];
             
-            // Day 0 is not showing 100% as requested
-            retentionByDay.push({ day: 0, value: initialUsers });
+            // Day 0 (initial users)
+            retentionByDay.push({ 
+              day: 0, 
+              value: initialUsers,
+              percentage: '100.0'
+            });
             
             // Calculate retention for each subsequent day
-            for (let j = 1; j <= 7; j++) {
-              // Skip if we're looking beyond today
-              if (i - j < 0) {
-                retentionByDay.push({ day: j, value: null });
-                continue;
-              }
-              
+            for (let j = 1; j <= maxDays; j++) {
               const retentionDate = new Date(currentDate);
               retentionDate.setDate(currentDate.getDate() + j);
               
+              // Skip if we're looking beyond today
+              if (retentionDate > today) {
+                retentionByDay.push({ day: j, value: null, percentage: null });
+                continue;
+              }
+              
               const retentionDayStart = new Date(retentionDate);
               retentionDayStart.setHours(0, 0, 0, 0);
-              
               const retentionDayEnd = new Date(retentionDate);
               retentionDayEnd.setHours(23, 59, 59, 999);
               
@@ -229,29 +109,26 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               });
               
               // Get unique user IDs for retention day
-              const retentionDayUserIds = [...new Set(retentionDaySessions.map(session => session.userId))];
+              const retentionDayUserIds = [...new Set(retentionDaySessions.map(session => session.userId).filter(Boolean))];
               
-              // Find returning users (intersection of day 0 and current day)
+              // Find returning users
               const returningUserIds = dayUniqueUserIds.filter(userId => 
                 retentionDayUserIds.includes(userId)
               );
               
-              // Calculate retention value - number of returning users
+              // Calculate retention value and percentage
               const retentionValue = returningUserIds.length;
-              
-              // Calculate retention percentage
               const retentionPercentage = initialUsers > 0 
-                ? (retentionValue / initialUsers) * 100 
-                : 0;
+                ? ((retentionValue / initialUsers) * 100).toFixed(1)
+                : '0.0';
               
               retentionByDay.push({ 
                 day: j, 
-                value: retentionValue, 
-                percentage: retentionPercentage.toFixed(1)
+                value: retentionValue,
+                percentage: retentionPercentage
               });
             }
             
-            // Add cohort data for this day
             cohortData.push({
               date: formattedDate,
               initialUsers: initialUsers,
@@ -259,48 +136,10 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             });
           }
           
-          // If no cohort data was generated, create a single entry for today
-          if (cohortData.length === 0 && analytics.userId && analytics.userId.length > 0) {
-            const today = new Date();
-            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
-            
-            cohortData.push({
-              date: formattedDate,
-              initialUsers: analytics.userId.length,
-              retentionByDay: Array.from({ length: 8 }, (_, i) => ({
-                day: i,
-                value: i === 0 ? analytics.userId.length : 0,
-                percentage: i === 0 ? '100.0' : '0.0'
-              }))
-            });
-          }
-          
           return cohortData;
         };
         
-        // Create the data object
         const processedData = {
-          summaryCards: [
-            { 
-              title: 'Daily Active Users', 
-              value: dailyActiveUsers.toLocaleString(),
-              country: dailyTopCountry.name,
-              flag: dailyTopCountry.flag
-            },
-            { 
-              title: 'Weekly Active Users', 
-              value: weeklyActiveUsers.toLocaleString(),
-              country: weeklyTopCountry.name,
-              flag: weeklyTopCountry.flag
-            },
-            { 
-              title: 'Monthly Active Users', 
-              value: monthlyActiveUsers.toLocaleString(),
-              country: monthlyTopCountry.name,
-              flag: monthlyTopCountry.flag
-            }
-          ],
-          retentionChart: chartData,
           cohortData: processCohortData()
         };
         
@@ -318,26 +157,22 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
   }, [analytics, timeFrame]);
 
   // Get intensity color for cohort cell based on percentage
-  const getCellColor = (value, initialUsers) => {
-    if (value === null || value === undefined) return 'bg-gray-100';
-    if (value === initialUsers) return 'bg-gray-100';
+  const getCellColor = (percentage) => {
+    if (percentage === null || percentage === undefined) return 'bg-gray-100';
     
-    // Calculate percentage for color intensity
-    const percentage = initialUsers > 0 ? (value / initialUsers) * 100 : 0;
-    
-    // Create a color gradient from light green to dark green
-    if (percentage >= 50.0) return 'bg-green-500 text-white';
-    if (percentage >= 30.0) return 'bg-green-400 text-white';
-    if (percentage >= 20.0) return 'bg-green-300';
-    if (percentage >= 10.0) return 'bg-green-200';
-    if (percentage > 0) return 'bg-green-100';
+    const value = parseFloat(percentage);
+    if (value >= 80.0) return 'bg-green-600 text-white';
+    if (value >= 60.0) return 'bg-green-500 text-white';
+    if (value >= 40.0) return 'bg-green-400';
+    if (value >= 20.0) return 'bg-green-300';
+    if (value > 0) return 'bg-green-200';
     return 'bg-gray-100';
   };
 
-  // Format the retention value to show returning users count
+  // Format the retention value
   const formatRetentionValue = (value, percentage) => {
     if (value === null || value === undefined) return '-';
-    if (percentage !== undefined) {
+    if (percentage !== null && percentage !== undefined) {
       return `${value} (${percentage}%)`;
     }
     return value.toString();
@@ -353,104 +188,68 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
 
   return (
     <div className="w-full px-4 md:px-6 py-6">
-      <h1 className="text-xl md:text-2xl font-bold mb-4">Retention</h1>
-      
-      {/* Active Users Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {retentionData.summaryCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-lg p-4 shadow">
-            <h3 className="text-center text-sm md:text-lg font-semibold mb-2">{card.title}</h3>
-            <p className="text-center text-xl md:text-2xl font-bold">{card.value}</p>
-            <p className="text-center text-green-500 text-xs md:text-sm">{card.increase}</p>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span>{card.flag}</span>
-              <span className="text-xs text-gray-500 truncate">{card.country}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      {/* Retention Chart */}
-      <div className="bg-white rounded-lg p-4 shadow mb-6">
-        <h3 className="text-md md:text-lg font-semibold mb-4">Active Users Over Time</h3>
-        <div className="h-60 md:h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={retentionData.retentionChart}
-              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: '0.75rem' }} />
-              <YAxis tick={{ fontSize: '0.75rem' }} />
-              <Tooltip contentStyle={{ fontSize: '0.75rem' }} />
-              <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-              <Line type="monotone" dataKey="DAU" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="WAU" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="MAU" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      
-      {/* Visitors Retention Section */}
-      <div className="bg-white rounded-lg p-4 shadow">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-          <div>
-            <h3 className="text-md md:text-lg font-semibold">Visitors retention</h3>
-            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site on subsequent days</p>
-          </div>
-          
-          <div className="self-start sm:self-center">
-            <select 
-              className="border border-gray-300 rounded px-2 py-1 text-xs md:text-sm"
-              value={timeFrame}
-              onChange={(e) => setTimeFrame(e.target.value)}
-            >
-              <option>This Month</option>
-              <option>Last Month</option>
-              <option>Last 3 Months</option>
-            </select>
-          </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <div>
+          <h3 className="text-md md:text-lg font-semibold">Visitors Retention</h3>
+          <p className="text-xs md:text-sm text-gray-500">
+            Shows how many unique users return to your site over time
+          </p>
         </div>
         
-        {/* Retention Cohort Table */}
-        <div className="overflow-x-auto -mx-4 px-4 pb-4">
-          <div className="min-w-max">
-            <table className="min-w-full border-collapse text-xs md:text-sm">
-              <thead>
-                <tr>
-                  <th className="p-1 md:p-2 bg-gray-50 border text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10">Day</th>
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {i === 0 ? 'Initial' : `Day ${i}`}
-                    </th>
+        <div className="self-start sm:self-center">
+          <select 
+            className="border border-gray-300 rounded px-2 py-1 text-xs md:text-sm"
+            value={timeFrame}
+            onChange={(e) => setTimeFrame(e.target.value)}
+          >
+            <option value="daily">Last 24 Hours</option>
+            <option value="weekly">Last 7 Days</option>
+            <option value="monthly">Last 30 Days</option>
+            <option value="yearly">Last 365 Days</option>
+          </select>
+        </div>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <div className="min-w-max">
+          <table className="min-w-full border-collapse text-xs md:text-sm">
+            <thead>
+              <tr>
+                <th className="p-1 md:p-2 bg-gray-50 border text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10">
+                  Date
+                </th>
+                <th className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Initial Users
+                </th>
+                {Array.from({ length: retentionData.cohortData[0]?.retentionByDay.length || 0 }, (_, i) => (
+                  <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {i === 0 ? 'Day 0' : `Day ${i}`}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {retentionData.cohortData.map((cohort, index) => (
+                <tr key={index}>
+                  <td className="p-1 md:p-2 border bg-gray-50 sticky left-0 z-10">
+                    <div className="font-medium text-xs md:text-sm">{cohort.date}</div>
+                    <div className="text-xs text-gray-500">Users: {cohort.initialUsers}</div>
+                  </td>
+                  <td className="p-1 md:p-2 border text-center bg-gray-100">
+                    {cohort.initialUsers}
+                  </td>
+                  {cohort.retentionByDay.map((day, dayIndex) => (
+                    <td 
+                      key={dayIndex} 
+                      className={`p-1 md:p-2 border text-center ${getCellColor(day.percentage)}`}
+                    >
+                      {formatRetentionValue(day.value, day.percentage)}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {retentionData.cohortData.map((cohort, index) => (
-                  <tr key={index}>
-                    <td className="p-1 md:p-2 border bg-gray-50 sticky left-0 z-10">
-                      <div className="font-medium text-xs md:text-sm">{cohort.date}</div>
-                      <div className="text-xs text-gray-500">Users: {cohort.initialUsers}</div>
-                    </td>
-                    {cohort.retentionByDay.slice(0, 8).map((day, dayIndex) => (
-                      <td 
-                        key={dayIndex} 
-                        className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
-                      >
-                        {formatRetentionValue(day.value, day.percentage)}
-                      </td>
-                    ))}
-                    {/* Fill the remaining cells if less than 8 days of data */}
-                    {Array.from({ length: 8 - cohort.retentionByDay.length }, (_, i) => (
-                      <td key={`empty-${i}`} className="p-1 md:p-2 border text-center bg-gray-100">-</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
