@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AnalyticsFilters } from '../../../components/analytics/AnalyticsFilters';
 import { filterAnalyticsData, getAvailableOptions } from '../../../utils/analyticsFilters';
 import { fetchAnalyticsData } from '../../../services/analyticsService';
-import './RetentionAnalytics.css';
+import './GeoInsights.css';
 
-const RetentionAnalytics = () => {
+const GeoInsights = () => {
   const [analyticsData, setAnalyticsData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       endDate: new Date(),
       key: 'selection'
     },
     timeframe: 'Daily',
-    cohortType: 'Daily',
-    metric: 'DAU'
+    countries: [],
+    sources: [],
+    chains: [],
+    regions: []
   });
 
   useEffect(() => {
@@ -53,14 +54,14 @@ const RetentionAnalytics = () => {
   }
 
   return (
-    <div className="retention-analytics">
-      <h1>Retention Analytics</h1>
+    <div className="geo-insights">
+      <h1>Geo Insights</h1>
       
       <AnalyticsFilters
         filters={filters}
         onFilterChange={handleFilterChange}
         availableOptions={availableOptions}
-        pageType="retention"
+        pageType="geo"
       />
 
       <div className="analytics-content">
@@ -71,4 +72,4 @@ const RetentionAnalytics = () => {
   );
 };
 
-export default RetentionAnalytics;
+export default GeoInsights; 
