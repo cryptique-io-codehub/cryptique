@@ -119,6 +119,7 @@ const GeoAnalytics = () => {
           filters={filters}
           availableOptions={getAvailableOptions(analyticsData?.data || [])}
           onFilterChange={handleFilterChange}
+          pageType="geo"
         />
         
         {filteredData.length > 0 ? (
