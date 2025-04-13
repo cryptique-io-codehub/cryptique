@@ -3,20 +3,37 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 import axiosInstance from '../../axiosInstance';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
-  const [chartData, setChartData] = useState(null);
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: []
+  });
   const [timeframe, setTimeframe] = useState('daily');
+
+  // Calculate interval for x-axis labels based on data length
+  const getLabelInterval = (dataLength) => {
+    if (dataLength <= 7) return 0; // Show all labels for small datasets
+    if (dataLength <= 14) return 1; // Show every other label
+    if (dataLength <= 30) return 2; // Show every third label
+    return Math.ceil(dataLength / 10); // Show approximately 10 labels
+  };
 
   useEffect(() => {
     if (analytics && analytics.siteId) {
       generateChartData();
     } else {
-      setChartData(null);
+      setChartData({
+        labels: [],
+        datasets: []
+      });
     }
   }, [analytics, timeframe]);
 
   const generateChartData = () => {
     if (!analytics || !analytics.sessions) {
-      setChartData(null);
+      setChartData({
+        labels: [],
+        datasets: []
+      });
       return;
     }
 
@@ -173,7 +190,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Visitors',
           data: uniqueData.map(item => ({
             x: item.time,
-            y: item.visitors
+            y: item.visitors || 0
           })),
           backgroundColor: 'rgba(252, 211, 77, 0.5)',
           borderColor: '#fcd34d',
@@ -183,7 +200,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Wallets',
           data: uniqueData.map(item => ({
             x: item.time,
-            y: item.wallets
+            y: item.walletConnects || 0 // Changed from wallets to walletConnects
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -279,7 +296,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <XAxis 
               dataKey="x" 
               tick={{ fontSize: 12 }}
-              interval={0}
+              interval={getLabelInterval(chartData.labels.length)}
               domain={['dataMin', 'dataMax']}
               tickFormatter={(value) => {
                 switch (timeframe) {
