@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import axiosInstance from '../../axiosInstance';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState(null);
@@ -19,14 +20,25 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   const fetchChartData = async () => {
     try {
-      const response = await fetch(`/api/analytics/chart?siteId=${analytics.siteId}&timeframe=${timeframe}&start=${selectedDateRange.start}&end=${selectedDateRange.end}`);
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
+      if (!analytics?.siteId) {
+        console.error('No siteId available');
+        return;
       }
 
-      setChartData(data);
+      const response = await axiosInstance.get(`/analytics/chart`, {
+        params: {
+          siteId: analytics.siteId,
+          timeframe,
+          start: selectedDateRange.start,
+          end: selectedDateRange.end
+        }
+      });
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+
+      setChartData(response.data);
     } catch (error) {
       console.error('Error fetching chart data:', error);
       setChartData(null);
