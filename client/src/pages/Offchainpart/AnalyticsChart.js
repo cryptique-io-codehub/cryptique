@@ -130,7 +130,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Visitors',
           data: sortedData.map(item => ({
             x: item.time,
-            y: item.visitors
+            visitors: item.visitors
           })),
           backgroundColor: 'rgba(252, 211, 77, 0.5)',
           borderColor: '#fcd34d',
@@ -140,7 +140,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Wallets',
           data: sortedData.map(item => ({
             x: item.time,
-            y: item.walletConnects
+            wallets: item.walletConnects
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -270,18 +270,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <Legend />
             <Area
               type="monotone"
-              dataKey="y"
+              dataKey="visitors"
               name="Visitors"
-              stackId="1"
               stroke="#fcd34d"
               fill="#fcd34d"
               fillOpacity={0.3}
             />
             <Area
               type="monotone"
-              dataKey="y"
+              dataKey="wallets"
               name="Wallets"
-              stackId="2"
               stroke="#8b5cf6"
               fill="#8b5cf6"
               fillOpacity={0.3}
