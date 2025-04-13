@@ -42,7 +42,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     // Group sessions by date and count wallets only where wallet address exists
     const groupedData = analytics.sessions.reduce((acc, session) => {
-      const date = new Date(session.timestamp);
+      const date = new Date(session.startTime);
       const dateStr = date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'numeric',
@@ -61,10 +61,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       acc[dateStr].visitors++;
 
       // Only increment wallet count if wallet address exists
-      if (session.walletAddress) {
+      const hasWallet = session.wallet && 
+                       session.wallet.walletAddress && 
+                       session.wallet.walletAddress.trim() !== '' &&
+                       session.wallet.walletAddress !== 'undefined' &&
+                       session.wallet.walletAddress !== 'null';
+
+      if (hasWallet) {
         console.log('Wallet connected session:', {
           date: dateStr,
-          walletAddress: session.walletAddress
+          walletAddress: session.wallet.walletAddress
         });
         acc[dateStr].walletConnects++;
       }
