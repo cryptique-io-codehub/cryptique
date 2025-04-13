@@ -16,8 +16,8 @@ export const AnalyticsFilters = ({
     onFilterChange({
       ...filters,
       dateRange: {
-        startDate: startOfDay(startDate).toISOString(),
-        endDate: endOfDay(endDate).toISOString(),
+        startDate: startOfDay(new Date(startDate)).toISOString(),
+        endDate: endOfDay(new Date(endDate)).toISOString(),
         key: 'selection'
       }
     });
@@ -111,11 +111,19 @@ export const AnalyticsFilters = ({
         <h3>Date Range</h3>
         <DateRangePicker
           ranges={[{
-            startDate: new Date(filters.dateRange?.startDate || new Date()),
-            endDate: new Date(filters.dateRange?.endDate || new Date()),
+            startDate: filters.dateRange?.startDate ? new Date(filters.dateRange.startDate) : new Date(),
+            endDate: filters.dateRange?.endDate ? new Date(filters.dateRange.endDate) : new Date(),
             key: 'selection'
           }]}
           onChange={handleDateRangeChange}
+          months={1}
+          direction="horizontal"
+          showSelectionPreview={true}
+          moveRangeOnFirstSelection={false}
+          showDateDisplay={true}
+          rangeColors={['#3ecf8e']}
+          showMonthAndYearPickers={true}
+          editableDateInputs={true}
         />
       </div>
 
@@ -124,13 +132,13 @@ export const AnalyticsFilters = ({
         <select
           value={filters.timeframe || ''}
           onChange={handleTimeframeChange}
+          className="filter-select"
         >
           <option value="">Select Timeframe</option>
-          {availableOptions.timeframes?.map(timeframe => (
-            <option key={timeframe} value={timeframe}>
-              {timeframe}
-            </option>
-          ))}
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Yearly">Yearly</option>
         </select>
       </div>
 
@@ -141,6 +149,7 @@ export const AnalyticsFilters = ({
             multiple
             value={filters.countries || []}
             onChange={handleCountriesChange}
+            className="filter-select"
           >
             {availableOptions.countries.map(country => (
               <option key={country} value={country}>
@@ -158,6 +167,7 @@ export const AnalyticsFilters = ({
             multiple
             value={filters.sources || []}
             onChange={handleSourcesChange}
+            className="filter-select"
           >
             {availableOptions.sources.map(source => (
               <option key={source} value={source}>
@@ -175,6 +185,7 @@ export const AnalyticsFilters = ({
             multiple
             value={filters.chains || []}
             onChange={handleChainsChange}
+            className="filter-select"
           >
             {availableOptions.chains.map(chain => (
               <option key={chain} value={chain}>
@@ -192,6 +203,7 @@ export const AnalyticsFilters = ({
             multiple
             value={filters.regions || []}
             onChange={handleRegionsChange}
+            className="filter-select"
           >
             {availableOptions.regions.map(region => (
               <option key={region} value={region}>

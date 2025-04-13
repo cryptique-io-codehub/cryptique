@@ -26,8 +26,8 @@ const GeoAnalytics = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: subMonths(new Date(), 1),
-      endDate: new Date(),
+      startDate: subMonths(new Date(), 1).toISOString(),
+      endDate: new Date().toISOString(),
       key: 'selection'
     },
     timeframe: 'Monthly',
@@ -43,13 +43,13 @@ const GeoAnalytics = () => {
         setLoading(true);
         setError(null);
         
-        // Format dates for API call without locale
+        // Format dates for API call
         const apiFilters = {
           ...filters,
           dateRange: {
             ...filters.dateRange,
-            startDate: format(filters.dateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-            endDate: format(filters.dateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
+            startDate: format(new Date(filters.dateRange.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            endDate: format(new Date(filters.dateRange.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
           }
         };
         
@@ -83,8 +83,8 @@ const GeoAnalytics = () => {
   const handleFilterChange = (newFilters) => {
     // Ensure dates are proper Date objects
     if (newFilters.dateRange) {
-      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate);
-      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate);
+      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate).toISOString();
+      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate).toISOString();
     }
     setFilters(newFilters);
   };
