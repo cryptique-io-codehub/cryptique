@@ -77,15 +77,30 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
       acc[timeKey].visitors++;
       
+      // Debug logging for wallet data
+      console.log('Session wallet data:', {
+        timeKey,
+        wallet: session.wallet,
+        walletAddress: session.wallet?.walletAddress,
+        walletType: session.wallet?.walletType,
+        chainName: session.wallet?.chainName
+      });
+
       // Only count as wallet if walletAddress exists and is not empty
-      if (session.wallet && 
-          session.wallet.walletAddress && 
-          session.wallet.walletAddress.trim() !== '') {
+      const hasWallet = session.wallet && 
+                       session.wallet.walletAddress && 
+                       session.wallet.walletAddress.trim() !== '';
+
+      if (hasWallet) {
+        console.log('Counting wallet for time:', timeKey);
         acc[timeKey].wallets++;
       }
 
       return acc;
     }, {});
+
+    // Debug logging for grouped data
+    console.log('Grouped data before formatting:', groupedData);
 
     // For hourly view, ensure we have all 24 hours
     if (timeframe === 'hourly') {
@@ -113,6 +128,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
 
+    // Debug logging for final data
+    console.log('Final sorted data:', sortedData);
+
     const formattedData = {
       labels: sortedData.map(item => item.time),
       datasets: [
@@ -139,7 +157,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
-    console.log('Formatted chart data:', formattedData);
+    console.log('Final formatted chart data:', formattedData);
     setChartData(formattedData);
   };
 
