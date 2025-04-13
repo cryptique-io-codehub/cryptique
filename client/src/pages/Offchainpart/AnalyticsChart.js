@@ -148,38 +148,14 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     const sortedData = Object.entries(finalData)
       .map(([time, data]) => ({
         time,
-        ...data
+        visitors: data.visitors,
+        wallets: data.wallets,
+        timestamp: data.timestamp
       }))
       .sort((a, b) => a.timestamp - b.timestamp)
       .slice(-maxPoints); // Only take the last maxPoints entries
 
-    const formattedData = {
-      labels: sortedData.map(item => item.time),
-      datasets: [
-        {
-          label: 'Visitors',
-          data: sortedData.map(item => ({
-            x: item.time,
-            y: item.visitors
-          })),
-          backgroundColor: 'rgba(252, 211, 77, 0.5)',
-          borderColor: '#fcd34d',
-          borderWidth: 1
-        },
-        {
-          label: 'Wallets',
-          data: sortedData.map(item => ({
-            x: item.time,
-            y: item.wallets
-          })),
-          backgroundColor: 'rgba(139, 92, 246, 0.7)',
-          borderColor: '#8b5cf6',
-          borderWidth: 1
-        }
-      ]
-    };
-
-    setChartData(formattedData);
+    setChartData(sortedData);
   };
 
   if (isLoading) {
@@ -202,7 +178,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     );
   }
 
-  if (!chartData || !chartData.labels.length) {
+  if (!chartData || !chartData.length) {
     return (
       <div className="bg-white p-4 rounded-2xl mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
@@ -229,10 +205,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.datasets[0].data}>
+          <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="x" 
+              dataKey="time" 
               tick={{ fontSize: 12 }}
               interval="preserveStartEnd"
             />
@@ -244,18 +220,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <Legend />
             <Area
               type="monotone"
-              dataKey="y"
+              dataKey="visitors"
               name="Visitors"
-              data={chartData.datasets[0].data}
               stroke="#fcd34d"
               fill="rgba(252, 211, 77, 0.5)"
               fillOpacity={0.5}
             />
             <Area
               type="monotone"
-              dataKey="y"
+              dataKey="wallets"
               name="Wallets"
-              data={chartData.datasets[1].data}
               stroke="#8b5cf6"
               fill="rgba(139, 92, 246, 0.7)"
               fillOpacity={0.5}
