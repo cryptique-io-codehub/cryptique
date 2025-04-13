@@ -22,7 +22,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     // Get current date for filtering
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let startDate;
 
     switch (timeframe) {
@@ -72,7 +71,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
           break;
         case 'yearly':
-          timeKey = date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
           break;
         default:
           timeKey = date.toLocaleTimeString();
@@ -104,7 +103,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     // Generate empty buckets for the selected timeframe
     const emptyBuckets = {};
-    const currentDate = new Date();
 
     switch (timeframe) {
       case 'daily':
@@ -168,7 +166,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         time,
         ...data
       }))
-      .sort((a, b) => a.timestamp - b.timestamp);
+      .sort((a, b) => a.timestamp - b.timestamp)
+      // Filter out future dates
+      .filter(item => item.timestamp <= now.getTime());
 
     const formattedData = {
       labels: sortedData.map(item => item.time),
