@@ -9,6 +9,24 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   });
   const [timeframe, setTimeframe] = useState('daily');
 
+  // Format time key based on timeframe
+  const formatTimeKey = (date, timeframe) => {
+    switch (timeframe) {
+      case 'daily':
+        const hour = date.getHours();
+        const minute = Math.floor(date.getMinutes() / 30) * 30;
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      case 'weekly':
+        return date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+      case 'monthly':
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case 'yearly':
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      default:
+        return date.toLocaleTimeString();
+    }
+  };
+
   // Calculate interval for x-axis labels based on data length
   const getLabelInterval = (dataLength) => {
     if (dataLength <= 7) return 0; // Show all labels for small datasets
