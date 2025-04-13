@@ -162,7 +162,12 @@ function formatDuration(seconds) {
         
         // Get date range from selectedDate
         let startDate, endDate;
-        if (selectedDate === 'today') {
+        if (selectedDate === 'Select Date') {
+          // If no date is selected, use today's date
+          const today = new Date();
+          startDate = today.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'today') {
           const today = new Date();
           startDate = today.toISOString().split('T')[0];
           endDate = startDate;
