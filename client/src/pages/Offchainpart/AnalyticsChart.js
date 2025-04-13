@@ -6,8 +6,6 @@ import ReactApexChart from 'react-apexcharts';
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [timeRange, setTimeRange] = useState('daily');
   const [chartData, setChartData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const getTimeRange = () => {
     const now = new Date();
@@ -28,7 +26,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true);
         const response = await axiosInstance.get('/sessions');
         const sessions = response.data;
 
@@ -65,11 +62,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         });
 
         setChartData(finalData);
-        setIsLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load analytics data');
-        setIsLoading(false);
       }
     };
 
