@@ -10,7 +10,15 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors("*"));
+// Configure CORS with specific options
+const corsOptions = {
+  origin: ['https://app.cryptique.io', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
