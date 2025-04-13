@@ -197,7 +197,7 @@ function formatDuration(seconds) {
         });
 
         // Fetch chart data from API
-        const chartResponse = await axiosInstance.get(`/api/analytics/chart`, {
+        const chartResponse = await axiosInstance.get(`/analytics/chart`, {
           params: {
             siteId: idy,
             timeframe: 'hourly',
