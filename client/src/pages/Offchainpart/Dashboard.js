@@ -9,8 +9,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     dateRange: null,
+    timeframe: 'Daily',
     countries: [],
-    userTypes: [],
     sources: [],
     chains: []
   });
@@ -55,6 +55,7 @@ const Dashboard = () => {
         filters={filters}
         onFilterChange={handleFilterChange}
         availableOptions={availableOptions}
+        pageType="dashboard"
       />
 
       <div className="dashboard-content">

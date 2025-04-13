@@ -4,7 +4,12 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import './AnalyticsFilters.css';
 
-const AnalyticsFilters = ({ filters, onFilterChange, availableOptions }) => {
+const AnalyticsFilters = ({ 
+  filters, 
+  onFilterChange, 
+  availableOptions,
+  pageType = 'dashboard' // 'dashboard', 'traffic', 'geo', 'retention'
+}) => {
   const handleDateRangeChange = (ranges) => {
     onFilterChange({
       ...filters,
@@ -12,12 +17,48 @@ const AnalyticsFilters = ({ filters, onFilterChange, availableOptions }) => {
     });
   };
 
-  const handleMultiSelectChange = (field, value) => {
+  const handleSelectChange = (field, value) => {
     onFilterChange({
       ...filters,
       [field]: value
     });
   };
+
+  const handleMultiSelectChange = (field, value) => {
+    onFilterChange({
+      ...filters,
+      [field]: Array.from(value)
+    });
+  };
+
+  const renderFilterSection = (title, field, options, isMulti = true) => (
+    <div className="filter-section">
+      <h3>{title}</h3>
+      {isMulti ? (
+        <select
+          multiple
+          value={filters[field] || []}
+          onChange={(e) => handleMultiSelectChange(field, e.target.selectedOptions)}
+          className="filter-select"
+        >
+          {options.map(option => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      ) : (
+        <select
+          value={filters[field] || ''}
+          onChange={(e) => handleSelectChange(field, e.target.value)}
+          className="filter-select"
+        >
+          <option value="">All</option>
+          {options.map(option => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
 
   return (
     <div className="analytics-filters">
@@ -30,60 +71,25 @@ const AnalyticsFilters = ({ filters, onFilterChange, availableOptions }) => {
             key: 'selection'
           }]}
           onChange={handleDateRangeChange}
+          className="date-range-picker"
         />
       </div>
 
-      <div className="filter-section">
-        <h3>Countries</h3>
-        <select
-          multiple
-          value={filters.countries}
-          onChange={(e) => handleMultiSelectChange('countries', Array.from(e.target.selectedOptions, option => option.value))}
-        >
-          {availableOptions.countries.map(country => (
-            <option key={country} value={country}>{country}</option>
-          ))}
-        </select>
-      </div>
+      {renderFilterSection('Timeframe', 'timeframe', ['Daily', 'Weekly', 'Monthly', 'Yearly'], false)}
 
-      <div className="filter-section">
-        <h3>User Types</h3>
-        <select
-          multiple
-          value={filters.userTypes}
-          onChange={(e) => handleMultiSelectChange('userTypes', Array.from(e.target.selectedOptions, option => option.value))}
-        >
-          {availableOptions.userTypes.map(type => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-section">
-        <h3>Sources</h3>
-        <select
-          multiple
-          value={filters.sources}
-          onChange={(e) => handleMultiSelectChange('sources', Array.from(e.target.selectedOptions, option => option.value))}
-        >
-          {availableOptions.sources.map(source => (
-            <option key={source} value={source}>{source}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-section">
-        <h3>Chains</h3>
-        <select
-          multiple
-          value={filters.chains}
-          onChange={(e) => handleMultiSelectChange('chains', Array.from(e.target.selectedOptions, option => option.value))}
-        >
-          {availableOptions.chains.map(chain => (
-            <option key={chain} value={chain}>{chain}</option>
-          ))}
-        </select>
-      </div>
+      {pageType !== 'retention' && renderFilterSection('Countries', 'countries', availableOptions.countries)}
+      
+      {pageType !== 'retention' && renderFilterSection('Sources', 'sources', availableOptions.sources)}
+      
+      {pageType !== 'retention' && renderFilterSection('Chains', 'chains', availableOptions.chains)}
+      
+      {pageType === 'traffic' && renderFilterSection('User Types', 'userTypes', ['Unique Visitors', 'Returning Visitors', 'Web3 Users'])}
+      
+      {pageType === 'geo' && renderFilterSection('Regions', 'regions', availableOptions.regions)}
+      
+      {pageType === 'retention' && renderFilterSection('Cohort Type', 'cohortType', ['Daily', 'Weekly', 'Monthly'], false)}
+      
+      {pageType === 'retention' && renderFilterSection('Metric', 'metric', ['DAU', 'WAU', 'MAU'], false)}
     </div>
   );
 };
