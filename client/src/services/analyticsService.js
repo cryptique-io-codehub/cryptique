@@ -165,19 +165,22 @@ export const fetchGeoData = async (filters) => {
       };
     }
 
-    return {
-      data: response.data?.data || [],
-      countries: response.data?.countries || [],
-      sources: response.data?.sources || [],
-      chains: response.data?.chains || [],
-      regions: response.data?.regions || [],
-      metrics: response.data?.metrics || {
-        totalVisitors: 0,
-        uniqueVisitors: 0,
-        web3Users: 0,
-        averageSessionDuration: 0
+    // Process the response data
+    const processedData = {
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
+      countries: Array.isArray(response.data?.countries) ? response.data.countries : [],
+      sources: Array.isArray(response.data?.sources) ? response.data.sources : [],
+      chains: Array.isArray(response.data?.chains) ? response.data.chains : [],
+      regions: Array.isArray(response.data?.regions) ? response.data.regions : [],
+      metrics: {
+        totalVisitors: response.data?.metrics?.totalVisitors || 0,
+        uniqueVisitors: response.data?.metrics?.uniqueVisitors || 0,
+        web3Users: response.data?.metrics?.web3Users || 0,
+        averageSessionDuration: response.data?.metrics?.averageSessionDuration || 0
       }
     };
+
+    return processedData;
   } catch (error) {
     console.error('Error fetching geo data:', error);
     return {

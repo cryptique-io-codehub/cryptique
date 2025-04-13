@@ -43,13 +43,13 @@ const GeoAnalytics = () => {
         setLoading(true);
         setError(null);
         
-        // Format dates for API call
+        // Format dates for API call without locale
         const apiFilters = {
           ...filters,
           dateRange: {
             ...filters.dateRange,
-            startDate: format(filters.dateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS }),
-            endDate: format(filters.dateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS })
+            startDate: format(filters.dateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            endDate: format(filters.dateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
           }
         };
         

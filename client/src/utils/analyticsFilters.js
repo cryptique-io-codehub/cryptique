@@ -26,6 +26,7 @@ export const filterAnalyticsData = (data, filters) => {
     const endDate = endOfDay(new Date(dateRange.endDate));
     
     filteredData = filteredData.filter(item => {
+      if (!item || !item.timestamp) return false;
       const itemDate = new Date(item.timestamp);
       return isWithinInterval(itemDate, { start: startDate, end: endDate });
     });
@@ -55,6 +56,7 @@ export const filterAnalyticsData = (data, filters) => {
 
     if (startDate) {
       filteredData = filteredData.filter(item => {
+        if (!item || !item.timestamp) return false;
         const itemDate = new Date(item.timestamp);
         return isWithinInterval(itemDate, { start: startDate, end: now });
       });
@@ -62,40 +64,30 @@ export const filterAnalyticsData = (data, filters) => {
   }
 
   // Filter by countries
-  if (countries && countries.length > 0) {
+  if (countries && countries.length > 0 && countries[0] !== 'All') {
     filteredData = filteredData.filter(item => 
-      countries.includes(item.country)
+      item && item.country && countries.includes(item.country)
     );
   }
 
   // Filter by sources
-  if (sources && sources.length > 0) {
+  if (sources && sources.length > 0 && sources[0] !== 'All') {
     filteredData = filteredData.filter(item => 
-      sources.includes(item.source)
+      item && item.source && sources.includes(item.source)
     );
   }
 
   // Filter by chains
-  if (chains && chains.length > 0) {
+  if (chains && chains.length > 0 && chains[0] !== 'All') {
     filteredData = filteredData.filter(item => 
-      chains.includes(item.chain)
+      item && item.chain && chains.includes(item.chain)
     );
   }
 
-  // Filter by user types
-  if (filters.userTypes && filters.userTypes.length > 0) {
-    filteredData = filteredData.filter(item => {
-      if (filters.userTypes.includes('Unique Visitors') && item.isUniqueVisitor) return true;
-      if (filters.userTypes.includes('Returning Visitors') && !item.isUniqueVisitor) return true;
-      if (filters.userTypes.includes('Web3 Users') && item.isWeb3User) return true;
-      return false;
-    });
-  }
-
   // Filter by regions
-  if (regions && regions.length > 0) {
+  if (regions && regions.length > 0 && regions[0] !== 'All') {
     filteredData = filteredData.filter(item => 
-      regions.includes(item.region)
+      item && item.region && regions.includes(item.region)
     );
   }
 
