@@ -9,9 +9,10 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Access-Control-Allow-Origin': '*',
   },
-  withCredentials: true,
-  timeout: 10000 // 10 second timeout
+  withCredentials: true
 });
 
 // Add response interceptor for error handling
@@ -35,7 +36,7 @@ api.interceptors.response.use(
 
 export const fetchAnalyticsData = async (filters = {}) => {
   try {
-    const response = await api.get('/api/analytics/data', {
+    const response = await api.get('/api/sdk/analytics/b84b5f10-9603-4ecf-99fc-aa3b34a5cd91', {
       params: filters,
       validateStatus: function (status) {
         return status < 500;
