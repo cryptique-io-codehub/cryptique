@@ -226,20 +226,30 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
               tick={{ fontSize: 12 }}
               interval="preserveStartEnd"
             />
-            <YAxis />
+            <YAxis 
+              domain={[0, 'dataMax']}
+              allowDataOverflow={false}
+            />
             <Tooltip />
             <Legend />
-            {chartData.datasets.map((dataset, index) => (
-              <Area
-                key={index}
-                type="monotone"
-                dataKey="y"
-                name={dataset.label}
-                stackId={index}
-                stroke={dataset.borderColor}
-                fill={dataset.backgroundColor}
-              />
-            ))}
+            <Area
+              type="monotone"
+              dataKey="y"
+              name="Visitors"
+              data={chartData.datasets[0].data}
+              stroke="#fcd34d"
+              fill="rgba(252, 211, 77, 0.5)"
+              fillOpacity={0.5}
+            />
+            <Area
+              type="monotone"
+              dataKey="y"
+              name="Wallets"
+              data={chartData.datasets[1].data}
+              stroke="#8b5cf6"
+              fill="rgba(139, 92, 246, 0.7)"
+              fillOpacity={0.5}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>
