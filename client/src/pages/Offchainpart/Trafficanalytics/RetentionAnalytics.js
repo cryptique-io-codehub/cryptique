@@ -111,7 +111,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           return `${(Math.random() * 5 + 1).toFixed(1)}% Increase`;
         };
         
-        // Process chart data
+        // Process chart data for DAU, WAU, MAU
         const processChartData = () => {
           const chartData = [];
           const today = new Date();
@@ -134,36 +134,47 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               const sessionDate = new Date(session.startTime);
               return sessionDate >= dayStart && sessionDate <= dayEnd;
             });
+            
             const dayUserIds = new Set(daySessions.map(session => session.userId).filter(Boolean));
+            const dau = dayUserIds.size;
             
-            // Calculate WAU for this day (last 7 days including this day)
-            const weekStart = new Date(currentDate - 6 * 24 * 60 * 60 * 1000);
-            const weekSessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= weekStart && sessionDate <= dayEnd;
-            });
-            const weekUserIds = new Set(weekSessions.map(session => session.userId).filter(Boolean));
+            // Calculate WAU for the 7 days ending on this day
+            const wauStart = new Date(currentDate);
+            wauStart.setDate(currentDate.getDate() - 6);
+            wauStart.setHours(0, 0, 0, 0);
             
-            // Calculate MAU for this day (last 30 days including this day)
-            const monthStart = new Date(currentDate - 29 * 24 * 60 * 60 * 1000);
-            const monthSessions = allSessions.filter(session => {
+            const wauSessions = allSessions.filter(session => {
               const sessionDate = new Date(session.startTime);
-              return sessionDate >= monthStart && sessionDate <= dayEnd;
+              return sessionDate >= wauStart && sessionDate <= dayEnd;
             });
-            const monthUserIds = new Set(monthSessions.map(session => session.userId).filter(Boolean));
+            
+            const wauUserIds = new Set(wauSessions.map(session => session.userId).filter(Boolean));
+            const wau = wauUserIds.size;
+            
+            // Calculate MAU for the 30 days ending on this day
+            const mauStart = new Date(currentDate);
+            mauStart.setDate(currentDate.getDate() - 29);
+            mauStart.setHours(0, 0, 0, 0);
+            
+            const mauSessions = allSessions.filter(session => {
+              const sessionDate = new Date(session.startTime);
+              return sessionDate >= mauStart && sessionDate <= dayEnd;
+            });
+            
+            const mauUserIds = new Set(mauSessions.map(session => session.userId).filter(Boolean));
+            const mau = mauUserIds.size;
             
             chartData.push({
-              month: formattedDate,
-              DAU: dayUserIds.size,
-              WAU: weekUserIds.size,
-              MAU: monthUserIds.size
+              date: formattedDate,
+              dau: dau,
+              wau: wau,
+              mau: mau
             });
           }
           
           return chartData;
         };
         
-        // Get the chart data
         const chartData = processChartData();
         
         // Process cohort data based on selected timeframe
@@ -195,8 +206,6 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 const dayUserIds = new Set(daySessions.map(session => session.userId).filter(Boolean));
                 const initialUsers = dayUserIds.size;
                 
-                if (initialUsers === 0) continue;
-                
                 const retentionByDay = [];
                 retentionByDay.push({ day: 0, value: initialUsers });
                 
@@ -226,7 +235,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   retentionByDay.push({ 
                     day: j, 
                     value: returningUsers,
-                    percentage: ((returningUsers / initialUsers) * 100).toFixed(1)
+                    percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
                   });
                 }
                 
@@ -257,8 +266,6 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 const weekUserIds = new Set(weekSessions.map(session => session.userId).filter(Boolean));
                 const initialUsers = weekUserIds.size;
                 
-                if (initialUsers === 0) continue;
-                
                 const retentionByWeek = [];
                 retentionByWeek.push({ week: 0, value: initialUsers });
                 
@@ -286,7 +293,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   retentionByWeek.push({ 
                     week: j, 
                     value: returningUsers,
-                    percentage: ((returningUsers / initialUsers) * 100).toFixed(1)
+                    percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
                   });
                 }
                 
@@ -319,8 +326,6 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 const monthUserIds = new Set(monthSessions.map(session => session.userId).filter(Boolean));
                 const initialUsers = monthUserIds.size;
                 
-                if (initialUsers === 0) continue;
-                
                 const retentionByMonth = [];
                 retentionByMonth.push({ month: 0, value: initialUsers });
                 
@@ -349,7 +354,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   retentionByMonth.push({ 
                     month: j, 
                     value: returningUsers,
-                    percentage: ((returningUsers / initialUsers) * 100).toFixed(1)
+                    percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
                   });
                 }
                 
@@ -382,8 +387,6 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 const monthUserIds = new Set(monthSessions.map(session => session.userId).filter(Boolean));
                 const initialUsers = monthUserIds.size;
                 
-                if (initialUsers === 0) continue;
-                
                 const retentionByMonth = [];
                 retentionByMonth.push({ month: 0, value: initialUsers });
                 
@@ -412,7 +415,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                   retentionByMonth.push({ 
                     month: j, 
                     value: returningUsers,
-                    percentage: ((returningUsers / initialUsers) * 100).toFixed(1)
+                    percentage: initialUsers > 0 ? ((returningUsers / initialUsers) * 100).toFixed(1) : '0.0'
                   });
                 }
                 
@@ -427,6 +430,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           
           return cohortData;
         };
+        
+        const cohortData = processCohortData();
         
         // Create the data object
         const processedData = {
@@ -451,12 +456,22 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             }
           ],
           retentionChart: chartData,
-          cohortData: processCohortData()
+          cohortData: cohortData
         };
         
         setRetentionData(processedData);
       } catch (error) {
         console.error("Error processing analytics data:", error);
+        // Set default data structure to prevent blank screen
+        setRetentionData({
+          summaryCards: [
+            { title: 'Daily Active Users', value: '0', country: 'N/A', flag: '' },
+            { title: 'Weekly Active Users', value: '0', country: 'N/A', flag: '' },
+            { title: 'Monthly Active Users', value: '0', country: 'N/A', flag: '' }
+          ],
+          retentionChart: [],
+          cohortData: []
+        });
       } finally {
         setIsLoading(false);
       }
@@ -530,13 +545,13 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: '0.75rem' }} />
+              <XAxis dataKey="date" tick={{ fontSize: '0.75rem' }} />
               <YAxis tick={{ fontSize: '0.75rem' }} />
               <Tooltip contentStyle={{ fontSize: '0.75rem' }} />
               <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-              <Line type="monotone" dataKey="DAU" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="WAU" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="MAU" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="dau" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="wau" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="mau" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
