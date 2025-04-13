@@ -5,7 +5,67 @@ import Web3UsersByMedium from './Web3UsersByMedium';
 // ... existing code ...
 
 const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficSources }) => {
-// ... existing code ...
+  // State for metrics
+  const [metrics, setMetrics] = useState({
+    bestSource: '',
+    totalSessions: 0,
+    web3Users: 0,
+    walletsConnected: 0,
+    leastEffectiveSource: '',
+    avgConversion: '0%',
+    avgBounceRate: '0%',
+    bestSourceByWeb3: '',
+    bestSourceByWallets: '',
+  });
+
+  // State for traffic quality data
+  const [trafficQualityData, setTrafficQualityData] = useState([]);
+
+  // Helper function to format numbers (K, M)
+  const formatNumber = (num) => {
+    return num >= 1000000 
+      ? `${(num / 1000000).toFixed(1)}M` 
+      : num >= 1000 
+        ? `${(num / 1000).toFixed(1)}K` 
+        : num;
+  };
+
+  // MetricCard component for displaying metrics
+  const MetricCard = ({ title, value, source }) => (
+    <div className="bg-white rounded-lg shadow p-2 md:p-4">
+      <div className="text-xs md:text-sm text-gray-500 mb-1">{title}</div>
+      <div className="flex items-center justify-center h-12 md:h-24">
+        <span className="text-lg md:text-xl font-bold">{value}</span>
+      </div>
+      {source && <div className="text-xs text-center text-gray-500">From {source}</div>}
+    </div>
+  );
+
+  // Custom tooltip for the scatter plot
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
+          <p className="font-semibold">{data.source}</p>
+          <p>Engagement: {data.engagement} mins</p>
+          <p>Conversion: {data.conversion}%</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!analytics || !analytics.sessions || analytics.sessions.length === 0) return;
+    
+    // Process analytics data for traffic quality
+    const processTrafficQualityData = () => {
+      // ... existing traffic quality data processing ...
+    };
+
+    processTrafficQualityData();
+  }, [analytics]);
 
   return (
     <div className="p-2 md:p-4 max-w-full overflow-hidden">
