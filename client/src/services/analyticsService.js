@@ -29,6 +29,26 @@ api.interceptors.response.use(
   }
 );
 
+export const fetchWebsites = async () => {
+  try {
+    const response = await api.post('/api/website/getWebsites', {}, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!response.data) {
+      throw new Error('No data received from server');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching websites:', error);
+    return [];
+  }
+};
+
 export const fetchAnalyticsData = async (filters = {}) => {
   try {
     const response = await api.get('/api/sdk/analytics/b84b5f10-9603-4ecf-99fc-aa3b34a5cd91', {
