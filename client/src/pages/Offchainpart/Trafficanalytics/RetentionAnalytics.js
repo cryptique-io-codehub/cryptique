@@ -230,9 +230,12 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         // Process cohort data for the past 7 days
         const processCohortData = (timeFrame, allSessions) => {
           const cohortData = [];
-          const today = new Date();
-          today.setHours(23, 59, 59, 999);
-
+          
+          // Get the first and last session dates
+          const sessionDates = allSessions.map(session => new Date(session.startTime));
+          const firstSessionDate = new Date(Math.min(...sessionDates));
+          const lastSessionDate = new Date(Math.max(...sessionDates));
+          
           // Configure time periods based on selected timeframe
           const timeFrameConfig = {
             'Last 7 Days': {
@@ -249,8 +252,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => {
-                const date = new Date();
+              formatLabel: (index, baseDate) => {
+                const date = new Date(baseDate);
                 date.setDate(date.getDate() - index);
                 return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
               },
@@ -280,8 +283,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => {
-                const date = new Date();
+              formatLabel: (index, baseDate) => {
+                const date = new Date(baseDate);
                 date.setDate(date.getDate() - (index * 7));
                 const startDate = new Date(date);
                 startDate.setDate(startDate.getDate() - 6);
@@ -310,8 +313,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => {
-                const date = new Date();
+              formatLabel: (index, baseDate) => {
+                const date = new Date(baseDate);
                 date.setMonth(date.getMonth() - index);
                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               },
@@ -339,8 +342,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => {
-                const date = new Date();
+              formatLabel: (index, baseDate) => {
+                const date = new Date(baseDate);
                 date.setMonth(date.getMonth() - index);
                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               },
@@ -357,10 +360,13 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           const config = timeFrameConfig[timeFrame] || timeFrameConfig['Last 7 Days'];
           const { periods, periodType, getStart, getEnd, formatLabel, getPeriodStart } = config;
 
-          // Process data for each period
+          // Process data for each period, starting from the last session date
           for (let i = periods - 1; i >= 0; i--) {
-            const periodStart = getPeriodStart(today, i);
+            const periodStart = getPeriodStart(lastSessionDate, i);
             const periodEnd = getEnd(periodStart);
+
+            // Skip if period is before first session
+            if (periodEnd < firstSessionDate) continue;
 
             // Get sessions for this period
             const periodSessions = allSessions.filter(session => {
@@ -380,8 +386,18 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
 
             // Calculate retention for each subsequent period
             for (let j = 1; j < periods - i; j++) {
-              const retentionStart = getPeriodStart(today, i - j);
+              const retentionStart = getPeriodStart(lastSessionDate, i - j);
               const retentionEnd = getEnd(retentionStart);
+
+              // Skip if retention period is before first session
+              if (retentionEnd < firstSessionDate) {
+                retentionByDay.push({
+                  day: j,
+                  value: null,
+                  percentage: null
+                });
+                continue;
+              }
 
               const retentionSessions = allSessions.filter(session => {
                 const sessionDate = new Date(session.startTime);
@@ -410,7 +426,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             }
 
             cohortData.push({
-              date: formatLabel(periods - i - 1),
+              date: formatLabel(periods - i - 1, lastSessionDate),
               initialUsers,
               retentionByDay
             });
