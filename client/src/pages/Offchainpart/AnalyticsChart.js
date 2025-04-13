@@ -93,6 +93,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
 
+    console.log('Sorted Data:', sortedData);
+
     // Get current date and set appropriate start date based on timeframe
     const chartCurrentDate = new Date();
     const chartStartDate = new Date(chartCurrentDate.getTime() - (
@@ -109,14 +111,22 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return itemDate >= chartStartDate && itemDate <= chartCurrentDate;
     });
 
+    console.log('Filtered Data:', filteredData);
+
     // Remove duplicates and ensure proper ordering
     const uniqueData = filteredData.reduce((acc, current) => {
       const existingIndex = acc.findIndex(item => item.time === current.time);
       if (existingIndex === -1) {
         acc.push(current);
+      } else {
+        // Merge data for duplicate time keys
+        acc[existingIndex].visitors += current.visitors;
+        acc[existingIndex].walletConnects += current.walletConnects;
       }
       return acc;
     }, []);
+
+    console.log('Unique Data:', uniqueData);
 
     const formattedData = {
       labels: uniqueData.map(item => item.time),
@@ -135,7 +145,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Wallets',
           data: uniqueData.map(item => ({
             x: item.time,
-            y: item.walletConnects || 0 // Changed from wallets to walletConnects
+            y: item.walletConnects || 0
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -144,6 +154,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
+    console.log('Formatted Chart Data:', formattedData);
     setChartData(formattedData);
   }, [analytics, timeframe]);
 
