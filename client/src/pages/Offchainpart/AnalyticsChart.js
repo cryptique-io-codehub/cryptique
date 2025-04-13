@@ -37,118 +37,53 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return;
     }
 
-    const now = new Date();
-    let startDate;
-    let interval;
+    // Log sessions data for debugging
+    console.log('All Sessions:', analytics.sessions);
 
-    switch (timeframe) {
-      case 'daily':
-        startDate = new Date(now - 24 * 60 * 60 * 1000); // 24 hours ago
-        interval = 30 * 60 * 1000; // 30 minutes
-        break;
-      case 'weekly':
-        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        break;
-      case 'monthly':
-        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        break;
-      case 'yearly':
-        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000); // 365 days ago
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        break;
-      default:
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
-        interval = 30 * 60 * 1000;
-    }
+    // Group sessions by date and count wallets only where wallet address exists
+    const groupedData = analytics.sessions.reduce((acc, session) => {
+      const date = new Date(session.timestamp);
+      const dateStr = date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'numeric',
+        day: 'numeric'
+      });
 
-    // Filter sessions based on timeframe
-    const filteredSessions = analytics.sessions.filter(session => {
-      const sessionDate = new Date(session.startTime);
-      return sessionDate >= startDate && sessionDate <= now;
-    });
-
-    // Generate empty buckets for the selected timeframe
-    const emptyBuckets = {};
-    let currentDate = new Date(startDate);
-
-    while (currentDate <= now) {
-      let timeKey;
-      switch (timeframe) {
-        case 'daily':
-          const hour = currentDate.getHours();
-          const minute = Math.floor(currentDate.getMinutes() / 30) * 30;
-          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          break;
-        case 'weekly':
-          timeKey = currentDate.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-          break;
-        case 'monthly':
-          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-        case 'yearly':
-          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-      }
-
-      emptyBuckets[timeKey] = {
-        visitors: 0,
-        wallets: 0,
-        timestamp: currentDate.getTime()
-      };
-
-      currentDate = new Date(currentDate.getTime() + interval);
-    }
-
-    // Group sessions by time interval
-    const groupedData = filteredSessions.reduce((acc, session) => {
-      const date = new Date(session.startTime);
-      let timeKey;
-
-      switch (timeframe) {
-        case 'daily':
-          const hour = date.getHours();
-          const minute = Math.floor(date.getMinutes() / 30) * 30;
-          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          break;
-        case 'weekly':
-          timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-          break;
-        case 'monthly':
-          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-        case 'yearly':
-          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-      }
-
-      if (!acc[timeKey]) {
-        acc[timeKey] = {
+      if (!acc[dateStr]) {
+        acc[dateStr] = {
           visitors: 0,
-          wallets: 0,
+          walletConnects: 0,
           timestamp: date.getTime()
         };
       }
 
-      acc[timeKey].visitors++;
+      // Increment visitors count
+      acc[dateStr].visitors++;
 
-      // Only count as wallet if walletAddress exists and is not empty
-      const hasWallet = session.wallet && 
-                       session.wallet.walletAddress && 
-                       session.wallet.walletAddress.trim() !== '' &&
-                       session.wallet.walletAddress !== 'undefined' &&
-                       session.wallet.walletAddress !== 'null';
-
-      if (hasWallet) {
-        acc[timeKey].wallets++;
+      // Only increment wallet count if wallet address exists
+      if (session.walletAddress) {
+        console.log('Wallet connected session:', {
+          date: dateStr,
+          walletAddress: session.walletAddress
+        });
+        acc[dateStr].walletConnects++;
       }
 
       return acc;
     }, {});
 
-    // Merge actual data with empty buckets
-    const finalData = { ...emptyBuckets, ...groupedData };
+    console.log('Grouped Data:', groupedData);
+
+    const finalData = {};
+    Object.entries(groupedData).forEach(([date, data]) => {
+      finalData[date] = {
+        visitors: data.visitors,
+        walletConnects: data.walletConnects,
+        timestamp: data.timestamp
+      };
+    });
+
+    console.log('Final Data:', finalData);
 
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(finalData)
@@ -183,6 +118,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return acc;
     }, []);
 
+    console.log('Unique Data:', uniqueData);
+
     const formattedData = {
       labels: uniqueData.map(item => item.time),
       datasets: [
@@ -197,10 +134,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           borderWidth: 1
         },
         {
-          label: 'Wallets',
+          label: 'Wallets Connected',
           data: uniqueData.map(item => ({
             x: item.time,
-            y: item.walletConnects || 0 // Changed from wallets to walletConnects
+            y: item.walletConnects || 0
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -209,6 +146,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
+    console.log('Formatted Chart Data:', formattedData);
     setChartData(formattedData);
   };
 
