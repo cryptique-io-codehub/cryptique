@@ -249,7 +249,11 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => `Day ${index + 1}`,
+              formatLabel: (index) => {
+                const date = new Date();
+                date.setDate(date.getDate() - index);
+                return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              },
               getPeriodStart: (baseDate, offset) => {
                 const date = new Date(baseDate);
                 date.setDate(date.getDate() - offset);
@@ -266,7 +270,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 start.setHours(0, 0, 0, 0);
                 // Align to week start (Monday)
                 const day = start.getDay();
-                start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+                const diff = day === 0 ? 6 : day - 1;
+                start.setDate(start.getDate() - diff);
                 return start;
               },
               getEnd: (date) => {
@@ -275,7 +280,13 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => `Week ${index + 1}`,
+              formatLabel: (index) => {
+                const date = new Date();
+                date.setDate(date.getDate() - (index * 7));
+                const startDate = new Date(date);
+                startDate.setDate(startDate.getDate() - 6);
+                return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+              },
               getPeriodStart: (baseDate, offset) => {
                 const date = new Date(baseDate);
                 date.setDate(date.getDate() - (offset * 7));
@@ -299,7 +310,11 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => `Month ${index + 1}`,
+              formatLabel: (index) => {
+                const date = new Date();
+                date.setMonth(date.getMonth() - index);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              },
               getPeriodStart: (baseDate, offset) => {
                 const date = new Date(baseDate);
                 date.setMonth(date.getMonth() - offset);
@@ -324,7 +339,11 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 end.setHours(23, 59, 59, 999);
                 return end;
               },
-              formatLabel: (index) => `Month ${index + 1}`,
+              formatLabel: (index) => {
+                const date = new Date();
+                date.setMonth(date.getMonth() - index);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              },
               getPeriodStart: (baseDate, offset) => {
                 const date = new Date(baseDate);
                 date.setMonth(date.getMonth() - offset);

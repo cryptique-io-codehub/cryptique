@@ -99,21 +99,25 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
-    // Process wallet connects data - track unique wallets per time slot
-    analytics.wallets.forEach(wallet => {
+    // Process wallet connects data - track cumulative unique wallets
+    const connectedWallets = new Set();
+    const sortedWallets = [...analytics.wallets].sort((a, b) => 
+      (a.timestamp || 0) - (b.timestamp || 0)
+    );
+
+    sortedWallets.forEach(wallet => {
       if (wallet.walletAddress && wallet.walletAddress !== '') {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
         
         if (finalData[timeKey]) {
-          // Initialize uniqueWallets Set if it doesn't exist
-          if (!finalData[timeKey].uniqueWallets) {
-            finalData[timeKey].uniqueWallets = new Set();
-          }
-          // Add wallet to this time slot's unique wallets
-          finalData[timeKey].uniqueWallets.add(wallet.walletAddress);
-          // Update the count
-          finalData[timeKey].walletConnects = finalData[timeKey].uniqueWallets.size;
+          connectedWallets.add(wallet.walletAddress);
+          // Update all time slots from this point forward with the current count
+          Object.keys(finalData)
+            .filter(key => finalData[key].timestamp >= date.getTime())
+            .forEach(key => {
+              finalData[key].walletConnects = connectedWallets.size;
+            });
         }
       }
     });
@@ -270,8 +274,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                   return (
                     <div className="bg-white p-3 border rounded-lg shadow-lg">
                       <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0].value}</p>
-                      <p className="text-purple-500">Wallets: {payload[1].value}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
+                      <p className="text-purple-500">Wallets Connected: {payload[1]?.value || 0}</p>
                     </div>
                   );
                 }
