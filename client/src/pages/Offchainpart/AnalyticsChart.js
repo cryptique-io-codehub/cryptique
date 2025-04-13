@@ -130,7 +130,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Visitors',
           data: sortedData.map(item => ({
             x: item.time,
-            visitors: item.visitors
+            y: item.visitors || 0
           })),
           backgroundColor: 'rgba(252, 211, 77, 0.5)',
           borderColor: '#fcd34d',
@@ -140,7 +140,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           label: 'Wallets',
           data: sortedData.map(item => ({
             x: item.time,
-            wallets: item.walletConnects
+            y: item.walletConnects || 0
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -232,16 +232,12 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       </div>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={sortedData.map(item => ({
-            time: item.time,
-            visitors: item.visitors || 0,
-            wallets: item.walletConnects || 0
-          }))}>
+          <AreaChart data={chartData.datasets[0].data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="time" 
+              dataKey="x" 
               tick={{ fontSize: 12 }}
-              interval={getLabelInterval(sortedData.length)}
+              interval={getLabelInterval(chartData.labels.length)}
               domain={['dataMin', 'dataMax']}
               tickFormatter={(value) => {
                 switch (timeframe) {
@@ -260,11 +256,13 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <Tooltip 
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
+                  const visitors = payload[0]?.value || 0;
+                  const wallets = payload[1]?.value || 0;
                   return (
                     <div className="bg-white p-3 border rounded-lg shadow-lg">
                       <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
-                      <p className="text-purple-500">Wallets: {payload[1]?.value || 0}</p>
+                      <p className="text-yellow-500">Visitors: {visitors}</p>
+                      <p className="text-purple-500">Wallets: {wallets}</p>
                     </div>
                   );
                 }
@@ -274,16 +272,18 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <Legend />
             <Area
               type="monotone"
-              dataKey="visitors"
+              dataKey="y"
               name="Visitors"
+              stackId="1"
               stroke="#fcd34d"
               fill="#fcd34d"
               fillOpacity={0.3}
             />
             <Area
               type="monotone"
-              dataKey="wallets"
+              dataKey="y"
               name="Wallets"
+              stackId="2"
               stroke="#8b5cf6"
               fill="#8b5cf6"
               fillOpacity={0.3}
