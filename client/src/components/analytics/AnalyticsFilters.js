@@ -4,7 +4,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import './AnalyticsFilters.css';
 
-const AnalyticsFilters = ({ 
+export const AnalyticsFilters = ({ 
   filters, 
   onFilterChange, 
   availableOptions,
