@@ -1,3 +1,5 @@
+import { subDays, subMonths, subYears, isWithinInterval } from 'date-fns';
+
 export const filterAnalyticsData = (data, filters) => {
   if (!data || !filters) return data;
 
@@ -8,7 +10,7 @@ export const filterAnalyticsData = (data, filters) => {
     const { startDate, endDate } = filters.dateRange;
     filteredData = filteredData.filter(item => {
       const itemDate = new Date(item.timestamp);
-      return itemDate >= startDate && itemDate <= endDate;
+      return isWithinInterval(itemDate, { start: new Date(startDate), end: new Date(endDate) });
     });
   }
 
@@ -19,16 +21,16 @@ export const filterAnalyticsData = (data, filters) => {
     
     switch (filters.timeframe) {
       case 'Daily':
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
+        startDate = subDays(now, 1);
         break;
       case 'Weekly':
-        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+        startDate = subDays(now, 7);
         break;
       case 'Monthly':
-        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
+        startDate = subMonths(now, 1);
         break;
       case 'Yearly':
-        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000);
+        startDate = subYears(now, 1);
         break;
       default:
         break;
@@ -37,7 +39,7 @@ export const filterAnalyticsData = (data, filters) => {
     if (startDate) {
       filteredData = filteredData.filter(item => {
         const itemDate = new Date(item.timestamp);
-        return itemDate >= startDate;
+        return isWithinInterval(itemDate, { start: startDate, end: now });
       });
     }
   }
