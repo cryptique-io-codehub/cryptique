@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const RetentionAnalytics = ({analytics, setanalytics}) => {
-  const [timeFrame, setTimeFrame] = useState('This Month');
+  const [timeFrame, setTimeFrame] = useState('Last 7 Days');
   const [retentionData, setRetentionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -228,119 +228,127 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         const chartData = processChartData();
         
         // Process cohort data for the past 7 days
-        const processCohortData = () => {
+        const processCohortData = (timeFrame, allSessions) => {
           const cohortData = [];
           const today = new Date();
-          
-          // Process data for past 7 days
-          for (let i = 6; i >= 0; i--) {
+
+          let periods;
+          let periodType;
+          let periodLength;
+
+          switch (timeFrame) {
+            case 'Last 7 Days':
+              periods = 7;
+              periodType = 'day';
+              periodLength = 1; // 1 day
+              break;
+            case 'Last Month':
+              periods = 4;
+              periodType = 'week';
+              periodLength = 7; // 7 days
+              break;
+            case 'Last 3 Months':
+              periods = 3;
+              periodType = 'month';
+              periodLength = 30; // 30 days
+              break;
+            case 'Last Year':
+              periods = 12;
+              periodType = 'month';
+              periodLength = 30; // 30 days
+              break;
+            default:
+              periods = 7;
+              periodType = 'day';
+              periodLength = 1;
+          }
+
+          // Process data for the selected time frame
+          for (let i = periods - 1; i >= 0; i--) {
             const currentDate = new Date(today);
-            currentDate.setDate(today.getDate() - i);
-            
-            // Format the date for display in dd/mm format
-            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
-            
-            // Filter sessions for this day to get initial user count
-            const dayStart = new Date(currentDate);
-            dayStart.setHours(0, 0, 0, 0);
-            
-            const dayEnd = new Date(currentDate);
-            dayEnd.setHours(23, 59, 59, 999);
-            
-            const daysSessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= dayStart && sessionDate <= dayEnd;
-            });
-            
-            // Get unique user IDs for this day (initial users)
-            const dayUniqueUserIds = [...new Set(daysSessions.map(session => session.userId))];
-            const initialUsers = dayUniqueUserIds.length;
-            
-            if (initialUsers === 0) {
-              continue; // Skip days with no users
+            const daysToSubtract = i * periodLength;
+            currentDate.setDate(today.getDate() - daysToSubtract);
+
+            // Format the date based on period type
+            let formattedDate;
+            switch (periodType) {
+              case 'day':
+                formattedDate = `Day ${periods - i}`;
+                break;
+              case 'week':
+                formattedDate = `Week ${periods - i}`;
+                break;
+              case 'month':
+                formattedDate = `Month ${periods - i}`;
+                break;
             }
-            
-            // Calculate retention for subsequent days
+
+            // Calculate period boundaries
+            const periodStart = new Date(currentDate);
+            periodStart.setHours(0, 0, 0, 0);
+            const periodEnd = new Date(currentDate);
+            periodEnd.setDate(periodEnd.getDate() + periodLength - 1);
+            periodEnd.setHours(23, 59, 59, 999);
+
+            // Get sessions for this period
+            const periodSessions = allSessions.filter(session => {
+              const sessionDate = new Date(session.startTime);
+              return sessionDate >= periodStart && sessionDate <= periodEnd;
+            });
+
+            // Get unique users for this period
+            const uniqueUserIds = [...new Set(periodSessions.map(session => session.userId))];
+            const initialUsers = uniqueUserIds.length;
+
+            if (initialUsers === 0) {
+              continue;
+            }
+
+            // Calculate retention for subsequent periods
             const retentionByDay = [];
-            
-            // Day 0 is not showing 100% as requested
-            retentionByDay.push({ day: 0, value: initialUsers });
-            
-            // Calculate retention for each subsequent day
-            for (let j = 1; j <= 7; j++) {
-              // Skip if we're looking beyond today
+            retentionByDay.push({ day: 0, value: initialUsers, percentage: '100.0' });
+
+            for (let j = 1; j <= periods; j++) {
               if (i - j < 0) {
                 retentionByDay.push({ day: j, value: null });
                 continue;
               }
-              
-              const retentionDate = new Date(currentDate);
-              retentionDate.setDate(currentDate.getDate() + j);
-              
-              const retentionDayStart = new Date(retentionDate);
-              retentionDayStart.setHours(0, 0, 0, 0);
-              
-              const retentionDayEnd = new Date(retentionDate);
-              retentionDayEnd.setHours(23, 59, 59, 999);
-              
-              // Get sessions for the retention day
-              const retentionDaySessions = allSessions.filter(session => {
+
+              const retentionStart = new Date(periodStart);
+              retentionStart.setDate(retentionStart.getDate() + (j * periodLength));
+              const retentionEnd = new Date(retentionStart);
+              retentionEnd.setDate(retentionEnd.getDate() + periodLength - 1);
+              retentionEnd.setHours(23, 59, 59, 999);
+
+              const retentionSessions = allSessions.filter(session => {
                 const sessionDate = new Date(session.startTime);
-                return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
+                return sessionDate >= retentionStart && sessionDate <= retentionEnd;
               });
-              
-              // Get unique user IDs for retention day
-              const retentionDayUserIds = [...new Set(retentionDaySessions.map(session => session.userId))];
-              
-              // Find returning users (intersection of day 0 and current day)
-              const returningUserIds = dayUniqueUserIds.filter(userId => 
-                retentionDayUserIds.includes(userId)
-              );
-              
-              // Calculate retention value - number of returning users
-              const retentionValue = returningUserIds.length;
-              
-              // Calculate retention percentage
-              const retentionPercentage = initialUsers > 0 
-                ? (retentionValue / initialUsers) * 100 
-                : 0;
-              
-              retentionByDay.push({ 
-                day: j, 
-                value: retentionValue, 
-                percentage: retentionPercentage.toFixed(1)
+
+              const retentionUserIds = [...new Set(retentionSessions.map(session => session.userId))];
+              const returningUsers = uniqueUserIds.filter(userId => retentionUserIds.includes(userId));
+              const retentionValue = returningUsers.length;
+              const retentionPercentage = ((retentionValue / initialUsers) * 100).toFixed(1);
+
+              retentionByDay.push({
+                day: j,
+                value: retentionValue,
+                percentage: retentionPercentage
               });
             }
-            
-            // Add cohort data for this day
+
             cohortData.push({
               date: formattedDate,
-              initialUsers: initialUsers,
-              retentionByDay: retentionByDay
+              initialUsers,
+              retentionByDay
             });
           }
-          
-          // If no cohort data was generated, create a single entry for today
-          if (cohortData.length === 0 && analytics.userId && analytics.userId.length > 0) {
-            const today = new Date();
-            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
-            
-            cohortData.push({
-              date: formattedDate,
-              initialUsers: analytics.userId.length,
-              retentionByDay: Array.from({ length: 8 }, (_, i) => ({
-                day: i,
-                value: i === 0 ? analytics.userId.length : 0,
-                percentage: i === 0 ? '100.0' : '0.0'
-              }))
-            });
-          }
-          
+
           return cohortData;
         };
         
         // Get cohort data
-        const cohortData = processCohortData();
+        const cohortData = processCohortData(timeFrame, allSessions);
         
         // If we don't have any chart data, use a placeholder
         const finalChartData = chartData.length > 0 ? chartData : [
@@ -486,7 +494,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
           <div>
             <h3 className="text-md md:text-lg font-semibold">Visitors retention</h3>
-            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site on subsequent days</p>
+            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site in subsequent periods</p>
           </div>
           
           <div className="self-start sm:self-center">
@@ -495,9 +503,10 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
             >
-              <option>This Month</option>
+              <option>Last 7 Days</option>
               <option>Last Month</option>
               <option>Last 3 Months</option>
+              <option>Last Year</option>
             </select>
           </div>
         </div>
