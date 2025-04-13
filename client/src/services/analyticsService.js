@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { format } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://cryptique-backend.vercel.app';
 
@@ -113,8 +115,18 @@ export const fetchTrafficData = async (filters = {}) => {
 
 export const fetchGeoData = async (filters) => {
   try {
+    // Format the filters for the API call
+    const formattedFilters = {
+      ...filters,
+      dateRange: filters.dateRange ? {
+        ...filters.dateRange,
+        startDate: format(new Date(filters.dateRange.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS }),
+        endDate: format(new Date(filters.dateRange.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS })
+      } : undefined
+    };
+
     const response = await axios.get(`${API_BASE_URL}/api/analytics/geo`, {
-      params: filters,
+      params: formattedFilters,
       headers: {
         'Content-Type': 'application/json',
       }

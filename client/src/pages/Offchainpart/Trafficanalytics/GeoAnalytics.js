@@ -12,6 +12,7 @@ import {
   startOfDay,
   endOfDay
 } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
 import { AnalyticsFilters } from '../../../components/analytics/AnalyticsFilters';
@@ -47,8 +48,8 @@ const GeoAnalytics = () => {
           ...filters,
           dateRange: {
             ...filters.dateRange,
-            startDate: new Date(filters.dateRange.startDate).toISOString(),
-            endDate: new Date(filters.dateRange.endDate).toISOString()
+            startDate: format(filters.dateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS }),
+            endDate: format(filters.dateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS })
           }
         };
         
@@ -80,6 +81,11 @@ const GeoAnalytics = () => {
   }, [filters]);
 
   const handleFilterChange = (newFilters) => {
+    // Ensure dates are proper Date objects
+    if (newFilters.dateRange) {
+      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate);
+      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate);
+    }
     setFilters(newFilters);
   };
 
