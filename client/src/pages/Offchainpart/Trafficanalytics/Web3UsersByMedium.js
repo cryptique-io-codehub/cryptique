@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Web3UsersByMedium = ({ analytics }) => {
   const [timeFrame, setTimeFrame] = useState('24h');
   const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
-    if (!analytics || !analytics.sessions) return;
+    if (!analytics?.sessions?.length) {
+      setChartData([]);
+      return;
+    }
 
     const processData = () => {
       const now = new Date();
@@ -35,10 +38,12 @@ const Web3UsersByMedium = ({ analytics }) => {
 
       // Process sessions within the timeframe
       analytics.sessions.forEach(session => {
+        if (!session.startTime) return;
+        
         const sessionDate = new Date(session.startTime);
         if (sessionDate < startDate) return;
 
-        // Get medium from UTM data
+        // Get medium from UTM data or default to 'direct'
         const medium = session.utmData?.medium || 'direct';
         
         // Initialize medium if not exists
@@ -49,15 +54,16 @@ const Web3UsersByMedium = ({ analytics }) => {
           };
         }
 
-        // Add user to total users
+        // Add user to total users if userId exists
         if (session.userId) {
           mediumData[medium].totalUsers.add(session.userId);
         }
 
-        // Check if user is a Web3 user
+        // Check if user is a Web3 user (has wallet or chain info)
         const isWeb3User = session.wallet && (
           (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') ||
-          (session.wallet.chainName && session.wallet.chainName !== 'No Wallet Detected')
+          (session.wallet.chainName && session.wallet.chainName !== 'No Wallet Detected') ||
+          (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '')
         );
 
         if (isWeb3User && session.userId) {
@@ -66,14 +72,16 @@ const Web3UsersByMedium = ({ analytics }) => {
       });
 
       // Convert to chart data format
-      const data = Object.entries(mediumData).map(([medium, data]) => ({
-        medium: medium.charAt(0).toUpperCase() + medium.slice(1),
-        web3Users: data.web3Users.size,
-        totalUsers: data.totalUsers.size,
-        conversion: data.totalUsers.size > 0 
-          ? ((data.web3Users.size / data.totalUsers.size) * 100).toFixed(1)
-          : 0
-      }));
+      const data = Object.entries(mediumData)
+        .filter(([_, data]) => data.totalUsers.size > 0) // Only include mediums with users
+        .map(([medium, data]) => ({
+          medium: medium.charAt(0).toUpperCase() + medium.slice(1),
+          web3Users: data.web3Users.size,
+          totalUsers: data.totalUsers.size,
+          conversion: data.totalUsers.size > 0 
+            ? ((data.web3Users.size / data.totalUsers.size) * 100).toFixed(1)
+            : 0
+        }));
 
       // Sort by number of Web3 users
       data.sort((a, b) => b.web3Users - a.web3Users);
@@ -101,46 +109,62 @@ const Web3UsersByMedium = ({ analytics }) => {
       </div>
 
       {chartData.length > 0 ? (
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="medium" />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name) => {
-                  if (name === 'conversion') {
-                    return [`${value}%`, 'Conversion Rate'];
-                  }
-                  return [value, name === 'web3Users' ? 'Web3 Users' : 'Total Users'];
-                }}
-              />
-              <Legend />
-              <Bar dataKey="web3Users" name="Web3 Users" fill="#8884d8" />
-              <Bar dataKey="totalUsers" name="Total Users" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={chartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="medium" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === 'conversion') {
+                      return [`${value}%`, 'Conversion Rate'];
+                    }
+                    return [value, name === 'web3Users' ? 'Web3 Users' : 'Total Users'];
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="web3Users" 
+                  name="Web3 Users" 
+                  stroke="#8884d8" 
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="totalUsers" 
+                  name="Total Users" 
+                  stroke="#82ca9d" 
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold mb-2">Conversion Rates by Medium</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {chartData.map((item) => (
+                <div key={item.medium} className="bg-gray-50 p-2 rounded">
+                  <div className="text-sm font-medium">{item.medium}</div>
+                  <div className="text-lg font-bold">{item.conversion}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       ) : (
         <div className="h-64 flex items-center justify-center text-gray-500">
           No data available for the selected period
-        </div>
-      )}
-
-      {chartData.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-sm font-semibold mb-2">Conversion Rates by Medium</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {chartData.map((item) => (
-              <div key={item.medium} className="bg-gray-50 p-2 rounded">
-                <div className="text-sm font-medium">{item.medium}</div>
-                <div className="text-lg font-bold">{item.conversion}%</div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
