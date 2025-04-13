@@ -158,6 +158,8 @@ function formatDuration(seconds) {
       setError(null);
       
       try {
+        console.log('Fetching data for siteId:', idy);
+        
         // Get date range from selectedDate
         let startDate, endDate;
         if (selectedDate === 'today') {
@@ -187,7 +189,14 @@ function formatDuration(seconds) {
           endDate = selectedDate;
         }
 
-        // Fetch chart data from API with date range
+        console.log('Fetching chart data with params:', {
+          siteId: idy,
+          timeframe: 'hourly',
+          start: startDate,
+          end: endDate
+        });
+
+        // Fetch chart data from API
         const chartResponse = await axiosInstance.get(`/api/analytics/chart`, {
           params: {
             siteId: idy,
@@ -195,11 +204,20 @@ function formatDuration(seconds) {
             start: startDate,
             end: endDate
           }
+        }).catch(error => {
+          console.error('Chart API Error:', error.response?.data || error.message);
+          throw new Error(error.response?.data?.message || 'Failed to fetch chart data');
         });
+
+        if (!chartResponse?.data) {
+          throw new Error('No data received from chart API');
+        }
 
         if (chartResponse.data.error) {
           throw new Error(chartResponse.data.error);
         }
+
+        console.log('Chart API Response:', chartResponse.data);
 
         // Transform the data to match the expected format
         const transformedChartData = {
@@ -218,22 +236,37 @@ function formatDuration(seconds) {
 
         setChartData(transformedChartData);
 
-        // Fetch traffic sources data for the date range
+        // Fetch traffic sources data
+        console.log('Fetching traffic sources with params:', {
+          siteId: idy,
+          start: startDate,
+          end: endDate
+        });
+
         const trafficResponse = await axiosInstance.get(`/api/analytics/traffic-sources`, {
           params: {
             siteId: idy,
             start: startDate,
             end: endDate
           }
+        }).catch(error => {
+          console.error('Traffic Sources API Error:', error.response?.data || error.message);
+          throw new Error(error.response?.data?.message || 'Failed to fetch traffic sources data');
         });
+
+        if (!trafficResponse?.data) {
+          throw new Error('No data received from traffic sources API');
+        }
 
         if (trafficResponse.data.error) {
           throw new Error(trafficResponse.data.error);
         }
 
+        console.log('Traffic Sources API Response:', trafficResponse.data);
+
         setTrafficSources(trafficResponse.data.sources || []);
 
-        // Update Web3 data based on the date range
+        // Update Web3 data
         const web3Data = {
           visitorsPercentage: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(2)}%`,
           visitorsIncrease: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`,
@@ -244,15 +277,19 @@ function formatDuration(seconds) {
         setWeb3Data(web3Data);
 
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load analytics data. Please try again later.');
+        console.error('Error in fetchData:', err);
+        setError(err.message || 'Failed to load analytics data. Please try again later.');
       } finally {
         setIsLoading(false);
       }
     };
 
     if (idy) {
+      console.log('Starting data fetch with idy:', idy);
       fetchData();
+    } else {
+      console.log('No idy available, skipping data fetch');
+      setError('No website selected. Please select a website to view analytics.');
     }
   }, [idy, selectedDate, selectedFilters, activeSection]);
 
