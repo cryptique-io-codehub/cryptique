@@ -79,20 +79,32 @@ export const fetchGeoData = async (filters = {}) => {
         sources: [],
         chains: [],
         regions: [],
-        data: []
+        data: [],
+        metrics: {
+          totalVisitors: 0,
+          uniqueVisitors: 0,
+          web3Users: 0,
+          averageSessionDuration: 0
+        }
       };
     }
 
     return response.data;
   } catch (error) {
     console.error('Error fetching geo data:', error);
-    // Return empty data structure instead of throwing error
+    // Return properly structured empty data
     return {
       countries: [],
       sources: [],
       chains: [],
       regions: [],
-      data: []
+      data: [],
+      metrics: {
+        totalVisitors: 0,
+        uniqueVisitors: 0,
+        web3Users: 0,
+        averageSessionDuration: 0
+      }
     };
   }
 };

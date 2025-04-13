@@ -16,8 +16,20 @@ import AnalyticsFilters from '../../../components/analytics/AnalyticsFilters';
 import './GeoAnalytics.css';
 
 const GeoAnalytics = () => {
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [filteredData, setFilteredData] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState({
+    countries: [],
+    sources: [],
+    chains: [],
+    regions: [],
+    data: [],
+    metrics: {
+      totalVisitors: 0,
+      uniqueVisitors: 0,
+      web3Users: 0,
+      averageSessionDuration: 0
+    }
+  });
+  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -40,20 +52,17 @@ const GeoAnalytics = () => {
         setError(null);
         const data = await fetchGeoData(filters);
         setAnalyticsData(data);
-        const filtered = filterAnalyticsData(data, filters);
-        setFilteredData(filtered);
+        
+        // Only filter if we have actual data
+        if (data.data && data.data.length > 0) {
+          const filtered = filterAnalyticsData(data.data, filters);
+          setFilteredData(filtered);
+        } else {
+          setFilteredData([]);
+        }
       } catch (error) {
         console.error('Error loading geo data:', error);
         setError('Failed to load geo data. The analytics service is currently unavailable.');
-        // Set default data structure when API is not available
-        setAnalyticsData({
-          countries: [],
-          sources: [],
-          chains: [],
-          regions: [],
-          data: []
-        });
-        setFilteredData([]);
       } finally {
         setLoading(false);
       }
@@ -67,20 +76,23 @@ const GeoAnalytics = () => {
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
-
-  if (error) {
     return (
-      <div className="error">
-        <p>{error}</p>
-        <p>Please try again later or contact support if the issue persists.</p>
+      <div className="loading-container">
+        <div className="loading">Loading analytics data...</div>
       </div>
     );
   }
 
-  if (!filteredData) {
-    return <div className="error">No data available</div>;
+  if (error) {
+    return (
+      <div className="error-container">
+        <div className="error">
+          <h3>Service Unavailable</h3>
+          <p>{error}</p>
+          <p>Please try again later or contact support if the issue persists.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -90,15 +102,43 @@ const GeoAnalytics = () => {
         filters={filters}
         onFilterChange={handleFilterChange}
         availableOptions={{
-          countries: analyticsData?.countries || [],
-          sources: analyticsData?.sources || [],
-          chains: analyticsData?.chains || [],
-          regions: analyticsData?.regions || []
+          countries: analyticsData.countries || [],
+          sources: analyticsData.sources || [],
+          chains: analyticsData.chains || [],
+          regions: analyticsData.regions || []
         }}
         pageType="geo"
       />
       <div className="analytics-content">
-        {/* Add your analytics content here */}
+        {filteredData.length === 0 ? (
+          <div className="no-data">
+            <h3>No Data Available</h3>
+            <p>There is no analytics data available for the selected time period.</p>
+            <p>Please try adjusting your filters or try again later.</p>
+          </div>
+        ) : (
+          <>
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <h3>Total Visitors</h3>
+                <p>{analyticsData.metrics.totalVisitors}</p>
+              </div>
+              <div className="metric-card">
+                <h3>Unique Visitors</h3>
+                <p>{analyticsData.metrics.uniqueVisitors}</p>
+              </div>
+              <div className="metric-card">
+                <h3>Web3 Users</h3>
+                <p>{analyticsData.metrics.web3Users}</p>
+              </div>
+              <div className="metric-card">
+                <h3>Avg. Session Duration</h3>
+                <p>{analyticsData.metrics.averageSessionDuration}s</p>
+              </div>
+            </div>
+            {/* Add your charts and tables here */}
+          </>
+        )}
       </div>
     </div>
   );
