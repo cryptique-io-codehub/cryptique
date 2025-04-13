@@ -247,63 +247,52 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           </button>
         </div>
       </div>
-      <div className="h-80">
+      <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.datasets[0].data}>
+          <AreaChart
+            data={chartData.datasets[0].data.map((item, index) => ({
+              time: item.x,
+              visitors: item.y,
+              wallets: chartData.datasets[1].data[index].y
+            }))}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="x" 
-              tick={{ fontSize: 12 }}
+            <XAxis
+              dataKey="time"
               interval={getLabelInterval(chartData.labels.length)}
-              domain={['dataMin', 'dataMax']}
-              tickFormatter={(value) => {
-                switch (timeframe) {
-                  case 'daily':
-                    return value;
-                  case 'weekly':
-                  case 'monthly':
-                  case 'yearly':
-                    return value.split(',')[0];
-                  default:
-                    return value;
-                }
-              }}
+              tick={{ fill: '#6B7280', fontSize: 12 }}
             />
-            <YAxis />
-            <Tooltip 
+            <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} />
+            <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
-                  const visitors = payload[0]?.value || 0;
-                  const wallets = payload[1]?.value || 0;
                   return (
                     <div className="bg-white p-3 border rounded-lg shadow-lg">
                       <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {visitors}</p>
-                      <p className="text-purple-500">Wallets: {wallets}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0].value}</p>
+                      <p className="text-purple-500">Wallets: {payload[1].value}</p>
                     </div>
                   );
                 }
                 return null;
               }}
             />
-            <Legend />
             <Area
               type="monotone"
-              dataKey="y"
-              name="Visitors"
+              dataKey="visitors"
               stackId="1"
               stroke="#fcd34d"
-              fill="#fcd34d"
-              fillOpacity={0.3}
+              fill="rgba(252, 211, 77, 0.5)"
+              isAnimationActive={false}
             />
             <Area
               type="monotone"
-              dataKey="y"
-              name="Wallets"
+              dataKey="wallets"
               stackId="2"
               stroke="#8b5cf6"
-              fill="#8b5cf6"
-              fillOpacity={0.3}
+              fill="rgba(139, 92, 246, 0.7)"
+              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
