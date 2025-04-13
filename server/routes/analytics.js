@@ -2,6 +2,30 @@ const express = require('express');
 const router = express.Router();
 const { generateAnalyticsData } = require('../services/analyticsService');
 
+// SDK track endpoint
+router.post('/sdk/track', (req, res) => {
+  try {
+    const { event, data } = req.body;
+    
+    // Log the incoming data
+    console.log('SDK Track Event:', { event, data });
+    
+    // Process the tracking data
+    // TODO: Implement proper tracking data processing
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Event tracked successfully' 
+    });
+  } catch (error) {
+    console.error('Error tracking event:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to track event' 
+    });
+  }
+});
+
 // Get chart data
 router.get('/chart', (req, res) => {
   const { siteId = 'test-site-1', timeframe = 'daily' } = req.query;
