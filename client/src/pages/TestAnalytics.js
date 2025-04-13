@@ -59,13 +59,13 @@ const TestAnalytics = () => {
     return () => clearInterval(interval);
   }, [timeframe]);
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (loading) return <div className="p-4">Loading analytics data...</div>;
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
-  if (chartData.length === 0) return <div className="p-4">No data available</div>;
+  if (chartData.length === 0) return <div className="p-4">No analytics data available</div>;
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Analytics Test</h1>
+      <h1 className="text-2xl font-bold mb-4 text-blue-600">Analytics Test - Deployment Check</h1>
       
       <div className="mb-4">
         <label className="mr-2">Timeframe:</label>
