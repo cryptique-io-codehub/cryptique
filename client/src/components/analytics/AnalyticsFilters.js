@@ -107,8 +107,20 @@ export const AnalyticsFilters = ({
 
   // Ensure we have valid date objects
   const getValidDate = (dateString) => {
+    if (!dateString) return new Date();
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? new Date() : date;
+  };
+
+  // Get the initial date range
+  const getInitialDateRange = () => {
+    const startDate = getValidDate(filters.dateRange?.startDate);
+    const endDate = getValidDate(filters.dateRange?.endDate);
+    return {
+      startDate,
+      endDate,
+      key: 'selection'
+    };
   };
 
   return (
@@ -116,11 +128,7 @@ export const AnalyticsFilters = ({
       <div className="filter-section">
         <h3>Date Range</h3>
         <DateRangePicker
-          ranges={[{
-            startDate: getValidDate(filters.dateRange?.startDate),
-            endDate: getValidDate(filters.dateRange?.endDate),
-            key: 'selection'
-          }]}
+          ranges={[getInitialDateRange()]}
           onChange={handleDateRangeChange}
           months={1}
           direction="horizontal"
@@ -145,6 +153,8 @@ export const AnalyticsFilters = ({
           }}
           staticRanges={[]}
           inputRanges={[]}
+          minDate={new Date(2020, 0, 1)}
+          maxDate={new Date()}
         />
       </div>
 
