@@ -118,6 +118,13 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
+    // Ensure all time slots have walletConnects initialized
+    Object.keys(finalData).forEach(key => {
+      if (!finalData[key].walletConnects) {
+        finalData[key].walletConnects = 0;
+      }
+    });
+
     console.log('Processed Final Data:', finalData);
 
     // Convert to array and sort by timestamp
@@ -156,7 +163,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
-    console.log('Formatted Chart Data:', formattedData);
+    // Debug log to verify the data
+    console.log('Formatted Chart Data - Visitors:', formattedData.datasets[0].data);
+    console.log('Formatted Chart Data - Wallets:', formattedData.datasets[1].data);
+
     setChartData(formattedData);
   }, [analytics, timeframe]);
 
