@@ -10,7 +10,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Access-Control-Allow-Origin': '*',
   },
   withCredentials: true
 });
@@ -20,14 +19,10 @@ api.interceptors.response.use(
   response => response,
   error => {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.error('API Error:', error.response.status, error.response.data);
     } else if (error.request) {
-      // The request was made but no response was received
       console.error('Network Error:', error.request);
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.error('Error:', error.message);
     }
     return Promise.reject(error);
@@ -126,24 +121,37 @@ export const fetchGeoData = async (filters) => {
       } : undefined
     };
 
-    const response = await axios.get(`${API_BASE_URL}/api/analytics/geo`, {
+    const response = await api.get('/api/analytics/geo', {
       params: formattedFilters,
-      headers: {
-        'Content-Type': 'application/json',
+      validateStatus: function (status) {
+        return status < 500;
       }
     });
 
-    if (!response.data) {
-      throw new Error('No data received from server');
+    if (response.status === 404) {
+      console.warn('Geo analytics endpoint not found, returning empty data structure');
+      return {
+        data: [],
+        countries: [],
+        sources: [],
+        chains: [],
+        regions: [],
+        metrics: {
+          totalVisitors: 0,
+          uniqueVisitors: 0,
+          web3Users: 0,
+          averageSessionDuration: 0
+        }
+      };
     }
 
     return {
-      data: response.data.data || [],
-      countries: response.data.countries || [],
-      sources: response.data.sources || [],
-      chains: response.data.chains || [],
-      regions: response.data.regions || [],
-      metrics: response.data.metrics || {
+      data: response.data?.data || [],
+      countries: response.data?.countries || [],
+      sources: response.data?.sources || [],
+      chains: response.data?.chains || [],
+      regions: response.data?.regions || [],
+      metrics: response.data?.metrics || {
         totalVisitors: 0,
         uniqueVisitors: 0,
         web3Users: 0,
@@ -151,7 +159,7 @@ export const fetchGeoData = async (filters) => {
       }
     };
   } catch (error) {
-    console.error('Geo analytics endpoint not found, returning empty data structure');
+    console.error('Error fetching geo data:', error);
     return {
       data: [],
       countries: [],
