@@ -4,158 +4,76 @@ import axiosInstance from '../../axiosInstance';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState(null);
-  const [timeframe, setTimeframe] = useState('daily');
+  const [timeframe, setTimeframe] = useState('hourly');
+  const [selectedDateRange, setSelectedDateRange] = useState({
+    start: null,
+    end: null
+  });
 
   useEffect(() => {
     if (analytics && analytics.siteId) {
-      generateChartData();
+      fetchChartData();
     } else {
       setChartData(null);
     }
-  }, [analytics, timeframe]);
+  }, [analytics, timeframe, selectedDateRange]);
 
-  const generateChartData = () => {
-    if (!analytics || !analytics.sessions) {
-      setChartData(null);
-      return;
-    }
-
-    const now = new Date();
-    let startDate;
-    let interval;
-    let maxPoints;
-
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
     switch (timeframe) {
+      case 'hourly':
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       case 'daily':
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
-        interval = 30 * 60 * 1000; // 30 minutes
-        maxPoints = 48; // 48 30-minute intervals
-        break;
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
       case 'weekly':
-        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        maxPoints = 7; // 7 days
-        break;
+        return `Week ${Math.ceil(date.getDate() / 7)}`;
       case 'monthly':
-        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        maxPoints = 30; // 30 days
-        break;
-      case 'yearly':
-        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000);
-        interval = 24 * 60 * 60 * 1000; // 1 day
-        maxPoints = 365; // 365 days
-        break;
+        return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
       default:
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
-        interval = 30 * 60 * 1000;
-        maxPoints = 48;
+        return date.toLocaleTimeString();
     }
+  };
 
-    // Filter sessions based on timeframe
-    const filteredSessions = analytics.sessions.filter(session => {
-      const sessionDate = new Date(session.startTime);
-      return sessionDate >= startDate && sessionDate <= now;
-    });
-
-    // Generate empty buckets for the selected timeframe
-    const emptyBuckets = {};
-    let currentDate = new Date(startDate);
-    let pointCount = 0;
-
-    while (currentDate <= now && pointCount < maxPoints) {
-      let timeKey;
-      switch (timeframe) {
-        case 'daily':
-          const hour = currentDate.getHours();
-          const minute = Math.floor(currentDate.getMinutes() / 30) * 30;
-          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          break;
-        case 'weekly':
-          timeKey = currentDate.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-          break;
-        case 'monthly':
-          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-        case 'yearly':
-          timeKey = currentDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
+  const fetchChartData = async () => {
+    try {
+      if (!analytics?.siteId) {
+        console.error('No siteId available');
+        return;
       }
 
-      // Only add if we haven't seen this timeKey before
-      if (!emptyBuckets[timeKey]) {
-        emptyBuckets[timeKey] = {
-          visitors: 0,
-          wallets: 0,
-          timestamp: currentDate.getTime()
-        };
-        pointCount++;
+      const response = await axiosInstance.get(`/analytics/chart`, {
+        params: {
+          siteId: analytics.siteId,
+          timeframe,
+          start: selectedDateRange.start,
+          end: selectedDateRange.end
+        }
+      });
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
 
-      currentDate = new Date(currentDate.getTime() + interval);
+      // Format the data properly
+      const formattedData = {
+        labels: response.data.labels.map(label => formatDate(label)),
+        datasets: response.data.datasets.map(dataset => ({
+          ...dataset,
+          data: dataset.data.map((value, index) => ({
+            x: formatDate(response.data.labels[index]),
+            y: value
+          }))
+        }))
+      };
+
+      setChartData(formattedData);
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      setChartData(null);
     }
-
-    // Group sessions by time interval
-    const groupedData = filteredSessions.reduce((acc, session) => {
-      const date = new Date(session.startTime);
-      let timeKey;
-
-      switch (timeframe) {
-        case 'daily':
-          const hour = date.getHours();
-          const minute = Math.floor(date.getMinutes() / 30) * 30;
-          timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          break;
-        case 'weekly':
-          timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-          break;
-        case 'monthly':
-          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-        case 'yearly':
-          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          break;
-      }
-
-      if (!acc[timeKey]) {
-        acc[timeKey] = {
-          visitors: 0,
-          wallets: 0,
-          timestamp: date.getTime()
-        };
-      }
-
-      acc[timeKey].visitors++;
-
-      // Only count as wallet if walletAddress exists and is not empty
-      const hasWallet = session.wallet && 
-                       session.wallet.walletAddress && 
-                       session.wallet.walletAddress.trim() !== '' &&
-                       session.wallet.walletAddress !== 'undefined' &&
-                       session.wallet.walletAddress !== 'null';
-
-      if (hasWallet) {
-        acc[timeKey].wallets++;
-      }
-
-      return acc;
-    }, {});
-
-    // Merge actual data with empty buckets
-    const finalData = { ...emptyBuckets, ...groupedData };
-
-    // Convert to array and sort by timestamp
-    const sortedData = Object.entries(finalData)
-      .map(([time, data]) => ({
-        time,
-        visitors: data.visitors,
-        wallets: data.wallets,
-        timestamp: data.timestamp
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-maxPoints); // Only take the last maxPoints entries
-
-    setChartData(sortedData);
   };
 
   if (isLoading) {
@@ -178,7 +96,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     );
   }
 
-  if (!chartData || !chartData.length) {
+  if (!chartData || !chartData.labels.length) {
     return (
       <div className="bg-white p-4 rounded-2xl mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
@@ -197,43 +115,35 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           onChange={(e) => setTimeframe(e.target.value)}
           className="px-3 py-1 border rounded-md"
         >
+          <option value="hourly">Hourly</option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
-          <option value="yearly">Yearly</option>
         </select>
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData}>
+          <AreaChart data={chartData.datasets[0].data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="time" 
+              dataKey="x" 
               tick={{ fontSize: 12 }}
               interval="preserveStartEnd"
             />
-            <YAxis 
-              domain={[0, 'dataMax']}
-              allowDataOverflow={false}
-            />
+            <YAxis />
             <Tooltip />
             <Legend />
-            <Area
-              type="monotone"
-              dataKey="visitors"
-              name="Visitors"
-              stroke="#fcd34d"
-              fill="rgba(252, 211, 77, 0.5)"
-              fillOpacity={0.5}
-            />
-            <Area
-              type="monotone"
-              dataKey="wallets"
-              name="Wallets"
-              stroke="#8b5cf6"
-              fill="rgba(139, 92, 246, 0.7)"
-              fillOpacity={0.5}
-            />
+            {chartData.datasets.map((dataset, index) => (
+              <Area
+                key={index}
+                type="monotone"
+                dataKey="y"
+                name={dataset.label}
+                stackId={index}
+                stroke={dataset.borderColor}
+                fill={dataset.backgroundColor}
+              />
+            ))}
           </AreaChart>
         </ResponsiveContainer>
       </div>

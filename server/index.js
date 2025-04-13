@@ -9,39 +9,12 @@ dotenv.config();
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: true, // This allows all origins
-  credentials: true,
+app.use(cors({
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
-  maxAge: 86400 // 24 hours
-};
-
-// Apply CORS middleware before any routes
-app.use(cors(corsOptions));
-
-// Global middleware to handle CORS preflight
-app.use((req, res, next) => {
-  // Allow any origin for SDK endpoints
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  
-  next();
-});
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
 // Middleware
 app.use(express.json());
@@ -56,7 +29,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 
 // Routes
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/sdk', require('./routes/sdk'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

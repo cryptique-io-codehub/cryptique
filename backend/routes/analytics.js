@@ -2,19 +2,6 @@ const express = require('express');
 const router = express.Router();
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
 
-// Handle OPTIONS requests for CORS preflight
-router.options('/chart', (req, res) => {
-  res.status(200).end();
-});
-
-router.options('/traffic-sources', (req, res) => {
-  res.status(200).end();
-});
-
-router.options('/update', (req, res) => {
-  res.status(200).end();
-});
-
 // Get chart data
 router.get('/chart', async (req, res) => {
   try {
