@@ -27,19 +27,23 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     switch (timeframe) {
       case 'daily':
-        startDate = new Date(today);
+        // Last 24 hours from now
+        startDate = new Date(now - 24 * 60 * 60 * 1000);
         break;
       case 'weekly':
-        startDate = new Date(today - 7 * 24 * 60 * 60 * 1000);
+        // Last 7 days from now
+        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
         break;
       case 'monthly':
-        startDate = new Date(today - 30 * 24 * 60 * 60 * 1000);
+        // Last 30 days from now
+        startDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
         break;
       case 'yearly':
-        startDate = new Date(today - 365 * 24 * 60 * 60 * 1000);
+        // Last 365 days from now
+        startDate = new Date(now - 365 * 24 * 60 * 60 * 1000);
         break;
       default:
-        startDate = today;
+        startDate = new Date(now - 24 * 60 * 60 * 1000);
     }
 
     // Filter sessions based on timeframe
@@ -104,22 +108,23 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
     switch (timeframe) {
       case 'daily':
-        // Generate 48 30-minute intervals for the day
-        for (let hour = 0; hour < 24; hour++) {
-          for (let minute = 0; minute < 60; minute += 30) {
-            const timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-            emptyBuckets[timeKey] = {
-              visitors: 0,
-              wallets: 0,
-              timestamp: new Date(currentDate.setHours(hour, minute, 0, 0)).getTime()
-            };
-          }
+        // Generate 48 30-minute intervals for the last 24 hours
+        for (let i = 47; i >= 0; i--) {
+          const date = new Date(now - i * 30 * 60 * 1000);
+          const hour = date.getHours();
+          const minute = Math.floor(date.getMinutes() / 30) * 30;
+          const timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          emptyBuckets[timeKey] = {
+            visitors: 0,
+            wallets: 0,
+            timestamp: date.getTime()
+          };
         }
         break;
       case 'weekly':
         // Generate last 7 days
         for (let i = 6; i >= 0; i--) {
-          const date = new Date(today - i * 24 * 60 * 60 * 1000);
+          const date = new Date(now - i * 24 * 60 * 60 * 1000);
           const timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
           emptyBuckets[timeKey] = {
             visitors: 0,
@@ -131,7 +136,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       case 'monthly':
         // Generate last 30 days
         for (let i = 29; i >= 0; i--) {
-          const date = new Date(today - i * 24 * 60 * 60 * 1000);
+          const date = new Date(now - i * 24 * 60 * 60 * 1000);
           const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
           emptyBuckets[timeKey] = {
             visitors: 0,
@@ -141,10 +146,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         }
         break;
       case 'yearly':
-        // Generate last 12 months
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-          const timeKey = date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+        // Generate last 365 days
+        for (let i = 364; i >= 0; i--) {
+          const date = new Date(now - i * 24 * 60 * 60 * 1000);
+          const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
           emptyBuckets[timeKey] = {
             visitors: 0,
             wallets: 0,
