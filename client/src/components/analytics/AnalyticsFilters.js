@@ -2,6 +2,7 @@ import React from 'react';
 import { DateRangePicker } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import './AnalyticsFilters.css';
 
 export const AnalyticsFilters = ({ 
@@ -11,9 +12,53 @@ export const AnalyticsFilters = ({
   pageType = 'dashboard' // 'dashboard', 'traffic', 'geo', 'retention'
 }) => {
   const handleDateRangeChange = (ranges) => {
+    const { startDate, endDate } = ranges.selection;
     onFilterChange({
       ...filters,
-      dateRange: ranges.selection
+      dateRange: {
+        startDate: startOfDay(startDate).toISOString(),
+        endDate: endOfDay(endDate).toISOString(),
+        key: 'selection'
+      }
+    });
+  };
+
+  const handleTimeframeChange = (e) => {
+    onFilterChange({
+      ...filters,
+      timeframe: e.target.value
+    });
+  };
+
+  const handleCountriesChange = (e) => {
+    const selectedCountries = Array.from(e.target.selectedOptions, option => option.value);
+    onFilterChange({
+      ...filters,
+      countries: selectedCountries
+    });
+  };
+
+  const handleSourcesChange = (e) => {
+    const selectedSources = Array.from(e.target.selectedOptions, option => option.value);
+    onFilterChange({
+      ...filters,
+      sources: selectedSources
+    });
+  };
+
+  const handleChainsChange = (e) => {
+    const selectedChains = Array.from(e.target.selectedOptions, option => option.value);
+    onFilterChange({
+      ...filters,
+      chains: selectedChains
+    });
+  };
+
+  const handleRegionsChange = (e) => {
+    const selectedRegions = Array.from(e.target.selectedOptions, option => option.value);
+    onFilterChange({
+      ...filters,
+      regions: selectedRegions
     });
   };
 
@@ -65,27 +110,99 @@ export const AnalyticsFilters = ({
       <div className="filter-section">
         <h3>Date Range</h3>
         <DateRangePicker
-          ranges={[filters.dateRange || {
-            startDate: new Date(),
-            endDate: new Date(),
+          ranges={[{
+            startDate: new Date(filters.dateRange?.startDate || new Date()),
+            endDate: new Date(filters.dateRange?.endDate || new Date()),
             key: 'selection'
           }]}
           onChange={handleDateRangeChange}
-          className="date-range-picker"
         />
       </div>
 
-      {renderFilterSection('Timeframe', 'timeframe', ['Daily', 'Weekly', 'Monthly', 'Yearly'], false)}
+      <div className="filter-section">
+        <h3>Timeframe</h3>
+        <select
+          value={filters.timeframe || ''}
+          onChange={handleTimeframeChange}
+        >
+          <option value="">Select Timeframe</option>
+          {availableOptions.timeframes?.map(timeframe => (
+            <option key={timeframe} value={timeframe}>
+              {timeframe}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {pageType !== 'retention' && renderFilterSection('Countries', 'countries', availableOptions.countries)}
-      
-      {pageType !== 'retention' && renderFilterSection('Sources', 'sources', availableOptions.sources)}
-      
-      {pageType !== 'retention' && renderFilterSection('Chains', 'chains', availableOptions.chains)}
-      
-      {pageType === 'traffic' && renderFilterSection('User Types', 'userTypes', ['Unique Visitors', 'Returning Visitors', 'Web3 Users'])}
-      
-      {pageType === 'geo' && renderFilterSection('Regions', 'regions', availableOptions.regions)}
+      {availableOptions.countries?.length > 0 && (
+        <div className="filter-section">
+          <h3>Countries</h3>
+          <select
+            multiple
+            value={filters.countries || []}
+            onChange={handleCountriesChange}
+          >
+            {availableOptions.countries.map(country => (
+              <option key={country} value={country}>
+                {country}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {availableOptions.sources?.length > 0 && (
+        <div className="filter-section">
+          <h3>Sources</h3>
+          <select
+            multiple
+            value={filters.sources || []}
+            onChange={handleSourcesChange}
+          >
+            {availableOptions.sources.map(source => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {availableOptions.chains?.length > 0 && (
+        <div className="filter-section">
+          <h3>Chains</h3>
+          <select
+            multiple
+            value={filters.chains || []}
+            onChange={handleChainsChange}
+          >
+            {availableOptions.chains.map(chain => (
+              <option key={chain} value={chain}>
+                {chain}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {availableOptions.regions?.length > 0 && (
+        <div className="filter-section">
+          <h3>Regions</h3>
+          <select
+            multiple
+            value={filters.regions || []}
+            onChange={handleRegionsChange}
+          >
+            {availableOptions.regions.map(region => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {pageType !== 'retention' && renderFilterSection('User Types', 'userTypes', ['Unique Visitors', 'Returning Visitors', 'Web3 Users'])}
       
       {pageType === 'retention' && renderFilterSection('Cohort Type', 'cohortType', ['Daily', 'Weekly', 'Monthly'], false)}
       

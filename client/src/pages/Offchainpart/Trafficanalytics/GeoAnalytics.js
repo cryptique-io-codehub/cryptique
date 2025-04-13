@@ -10,7 +10,8 @@ import {
   subYears,
   parseISO,
   startOfDay,
-  endOfDay
+  endOfDay,
+  toISOString
 } from 'date-fns';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
@@ -41,8 +42,8 @@ const GeoAnalytics = () => {
   
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: startOfDay(thirtyDaysAgo),
-      endDate: endOfDay(today),
+      startDate: thirtyDaysAgo,
+      endDate: today,
       key: 'selection'
     },
     timeframe: 'Monthly',
@@ -57,7 +58,18 @@ const GeoAnalytics = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchGeoData(filters);
+        
+        // Format dates for API call
+        const apiFilters = {
+          ...filters,
+          dateRange: {
+            ...filters.dateRange,
+            startDate: toISOString(filters.dateRange.startDate),
+            endDate: toISOString(filters.dateRange.endDate)
+          }
+        };
+        
+        const data = await fetchGeoData(apiFilters);
         setAnalyticsData(data);
         
         // Only filter if we have actual data
@@ -81,8 +93,8 @@ const GeoAnalytics = () => {
   const handleFilterChange = (newFilters) => {
     // Ensure dates are proper Date objects
     if (newFilters.dateRange) {
-      newFilters.dateRange.startDate = parseISO(newFilters.dateRange.startDate);
-      newFilters.dateRange.endDate = parseISO(newFilters.dateRange.endDate);
+      newFilters.dateRange.startDate = new Date(newFilters.dateRange.startDate);
+      newFilters.dateRange.endDate = new Date(newFilters.dateRange.endDate);
     }
     setFilters(newFilters);
   };

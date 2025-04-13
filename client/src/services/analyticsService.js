@@ -116,13 +116,36 @@ export const fetchGeoData = async (filters = {}) => {
     // Validate date range
     if (filters.dateRange) {
       const { startDate, endDate } = filters.dateRange;
-      if (startDate > endDate) {
+      if (new Date(startDate) > new Date(endDate)) {
         throw new Error('Invalid date range: start date is after end date');
       }
     }
 
+    // Format parameters for API call
+    const params = new URLSearchParams();
+    if (filters.dateRange) {
+      params.append('dateRange[startDate]', filters.dateRange.startDate);
+      params.append('dateRange[endDate]', filters.dateRange.endDate);
+      params.append('dateRange[key]', filters.dateRange.key);
+    }
+    if (filters.timeframe) {
+      params.append('timeframe', filters.timeframe);
+    }
+    if (filters.countries?.length) {
+      filters.countries.forEach(country => params.append('countries[]', country));
+    }
+    if (filters.sources?.length) {
+      filters.sources.forEach(source => params.append('sources[]', source));
+    }
+    if (filters.chains?.length) {
+      filters.chains.forEach(chain => params.append('chains[]', chain));
+    }
+    if (filters.regions?.length) {
+      filters.regions.forEach(region => params.append('regions[]', region));
+    }
+
     const response = await api.get('/api/analytics/geo', {
-      params: filters,
+      params,
       validateStatus: function (status) {
         return status < 500;
       }
