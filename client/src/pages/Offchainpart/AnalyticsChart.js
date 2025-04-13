@@ -141,8 +141,24 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
 
-    // Filter out duplicates and ensure proper date range
-    const uniqueData = sortedData.reduce((acc, current) => {
+    // Get current date and set appropriate start date based on timeframe
+    const chartCurrentDate = new Date();
+    const chartStartDate = new Date(chartCurrentDate.getTime() - (
+      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
+      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
+      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
+      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
+      24 * 60 * 60 * 1000
+    ));
+
+    // Filter data to only include dates within the correct range
+    const filteredData = sortedData.filter(item => {
+      const itemDate = new Date(item.timestamp);
+      return itemDate >= chartStartDate && itemDate <= chartCurrentDate;
+    });
+
+    // Remove duplicates and ensure proper ordering
+    const uniqueData = filteredData.reduce((acc, current) => {
       const existingIndex = acc.findIndex(item => item.time === current.time);
       if (existingIndex === -1) {
         acc.push(current);
@@ -150,33 +166,12 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return acc;
     }, []);
 
-    // Ensure we only have data points for the selected timeframe
-    const timeframeData = uniqueData.filter(item => {
-      const itemDate = new Date(item.timestamp);
-      const now = new Date();
-      const diffTime = Math.abs(now - itemDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      switch (timeframe) {
-        case 'daily':
-          return diffDays <= 1;
-        case 'weekly':
-          return diffDays <= 7;
-        case 'monthly':
-          return diffDays <= 30;
-        case 'yearly':
-          return diffDays <= 365;
-        default:
-          return true;
-      }
-    });
-
     const formattedData = {
-      labels: timeframeData.map(item => item.time),
+      labels: uniqueData.map(item => item.time),
       datasets: [
         {
           label: 'Visitors',
-          data: timeframeData.map(item => ({
+          data: uniqueData.map(item => ({
             x: item.time,
             y: item.visitors
           })),
@@ -186,7 +181,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         },
         {
           label: 'Wallets',
-          data: timeframeData.map(item => ({
+          data: uniqueData.map(item => ({
             x: item.time,
             y: item.wallets
           })),
@@ -231,21 +226,53 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   }
 
   return (
-    <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Analytics Overview</h3>
-        <select
-          value={timeframe}
-          onChange={(e) => setTimeframe(e.target.value)}
-          className="px-3 py-1 border rounded-md"
-        >
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="yearly">Yearly</option>
-        </select>
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-gray-800">Analytics Overview</h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setTimeframe('daily')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'daily'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Daily
+          </button>
+          <button
+            onClick={() => setTimeframe('weekly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'weekly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Weekly
+          </button>
+          <button
+            onClick={() => setTimeframe('monthly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'monthly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setTimeframe('yearly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'yearly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Yearly
+          </button>
+        </div>
       </div>
-      <div className="h-64">
+      <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData.datasets[0].data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -267,38 +294,38 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                 }
               }}
             />
-            <YAxis 
-              domain={[0, 'dataMax']}
-              allowDataOverflow={false}
-            />
+            <YAxis />
             <Tooltip 
-              labelFormatter={(value) => {
-                switch (timeframe) {
-                  case 'daily':
-                    return `Time: ${value}`;
-                  default:
-                    return `Date: ${value}`;
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="bg-white p-3 border rounded-lg shadow-lg">
+                      <p className="font-semibold">{label}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0].value}</p>
+                      <p className="text-purple-500">Wallets: {payload[1].value}</p>
+                    </div>
+                  );
                 }
+                return null;
               }}
             />
-            <Legend />
             <Area
               type="monotone"
               dataKey="y"
               name="Visitors"
-              data={chartData.datasets[0].data}
+              stackId="1"
               stroke="#fcd34d"
-              fill="rgba(252, 211, 77, 0.5)"
-              fillOpacity={0.5}
+              fill="#fcd34d"
+              fillOpacity={0.3}
             />
             <Area
               type="monotone"
               dataKey="y"
               name="Wallets"
-              data={chartData.datasets[1].data}
+              stackId="2"
               stroke="#8b5cf6"
-              fill="rgba(139, 92, 246, 0.7)"
-              fillOpacity={0.5}
+              fill="#8b5cf6"
+              fillOpacity={0.3}
             />
           </AreaChart>
         </ResponsiveContainer>
