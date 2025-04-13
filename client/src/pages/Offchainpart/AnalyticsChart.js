@@ -19,7 +19,21 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   const fetchChartData = async () => {
     try {
-      const response = await fetch(`/api/analytics/chart?siteId=${analytics.siteId}&timeframe=${timeframe}&start=${selectedDateRange.start}&end=${selectedDateRange.end}`);
+      const response = await fetch(`/analytics/chart?siteId=${analytics.siteId}&timeframe=${timeframe}&start=${selectedDateRange.start}&end=${selectedDateRange.end}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Chart API Error:', errorText);
+        throw new Error(`Failed to fetch chart data: ${response.status} ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Received non-JSON response:', text);
+        throw new Error('Server returned non-JSON response');
+      }
+      
       const data = await response.json();
       
       if (data.error) {

@@ -248,7 +248,7 @@ function formatDuration(seconds) {
           end: endDate
         });
 
-        const trafficResponse = await axiosInstance.get(`/api/analytics/traffic-sources`, {
+        const trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
           params: {
             siteId: idy,
             start: startDate,
