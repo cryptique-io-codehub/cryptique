@@ -1,296 +1,177 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import axiosInstance from '../../axiosInstance';
+import ReactApexChart from 'react-apexcharts';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
-  const [chartData, setChartData] = useState({
-    labels: [],
-    datasets: []
-  });
-  const [timeframe, setTimeframe] = useState('daily');
+  const [timeRange, setTimeRange] = useState('daily');
+  const [chartData, setChartData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Calculate interval for x-axis labels based on data length
-  const getLabelInterval = (dataLength) => {
-    if (dataLength <= 7) return 0; // Show all labels for small datasets
-    if (dataLength <= 14) return 1; // Show every other label
-    if (dataLength <= 30) return 2; // Show every third label
-    return Math.ceil(dataLength / 10); // Show approximately 10 labels
+  const getTimeRange = () => {
+    const now = new Date();
+    switch (timeRange) {
+      case 'daily':
+        return new Date(now.getTime() - 24 * 60 * 60 * 1000); // Last 24 hours
+      case 'weekly':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
+      case 'monthly':
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+      case 'yearly':
+        return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); // Last 365 days
+      default:
+        return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
   };
 
   useEffect(() => {
-    if (analytics && analytics.siteId) {
-      generateChartData();
-    } else {
-      setChartData({
-        labels: [],
-        datasets: []
-      });
-    }
-  }, [analytics, timeframe]);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axiosInstance.get('/sessions');
+        const sessions = response.data;
 
-  const generateChartData = () => {
-    if (!analytics || !analytics.sessions) {
-      setChartData({
-        labels: [],
-        datasets: []
-      });
-      return;
-    }
-
-    // Log sessions data for debugging
-    console.log('All Sessions:', analytics.sessions);
-
-    // Group sessions by date and count wallets only where wallet address exists
-    const groupedData = analytics.sessions.reduce((acc, session) => {
-      const date = new Date(session.startTime);
-      const dateStr = date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'numeric',
-        day: 'numeric'
-      });
-
-      if (!acc[dateStr]) {
-        acc[dateStr] = {
-          visitors: 0,
-          walletConnects: 0,
-          timestamp: date.getTime()
-        };
-      }
-
-      // Increment visitors count
-      acc[dateStr].visitors++;
-
-      // Only increment wallet count if wallet address exists
-      const hasWallet = session.wallet && 
-                       session.wallet.walletAddress && 
-                       session.wallet.walletAddress.trim() !== '' &&
-                       session.wallet.walletAddress !== 'undefined' &&
-                       session.wallet.walletAddress !== 'null';
-
-      if (hasWallet) {
-        console.log('Wallet connected session:', {
-          date: dateStr,
-          walletAddress: session.wallet.walletAddress
+        const startDate = getTimeRange();
+        const filteredSessions = sessions.filter(session => {
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= startDate;
         });
-        acc[dateStr].walletConnects++;
+
+        const groupedData = filteredSessions.reduce((acc, session) => {
+          const date = new Date(session.startTime).toLocaleDateString();
+          if (!acc[date]) {
+            acc[date] = {
+              visitors: 0,
+              walletConnections: 0,
+              date: date
+            };
+          }
+          acc[date].visitors++;
+          
+          // Check if wallet address exists and is valid
+          if (session.wallet && 
+              session.wallet.walletAddress && 
+              session.wallet.walletAddress.trim() !== '' && 
+              session.wallet.walletAddress !== 'undefined' && 
+              session.wallet.walletAddress !== 'null') {
+            acc[date].walletConnections++;
+          }
+          return acc;
+        }, {});
+
+        const finalData = Object.values(groupedData).sort((a, b) => {
+          return new Date(a.date) - new Date(b.date);
+        });
+
+        setChartData(finalData);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load analytics data');
+        setIsLoading(false);
       }
-
-      return acc;
-    }, {});
-
-    console.log('Grouped Data:', groupedData);
-
-    const finalData = {};
-    Object.entries(groupedData).forEach(([date, data]) => {
-      finalData[date] = {
-        visitors: data.visitors,
-        walletConnects: data.walletConnects,
-        timestamp: data.timestamp
-      };
-    });
-
-    console.log('Final Data:', finalData);
-
-    // Convert to array and sort by timestamp
-    const sortedData = Object.entries(finalData)
-      .map(([time, data]) => ({
-        time,
-        ...data
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    // Get current date and set appropriate start date based on timeframe
-    const chartCurrentDate = new Date();
-    const chartStartDate = new Date(chartCurrentDate.getTime() - (
-      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
-      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
-      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
-      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
-      24 * 60 * 60 * 1000
-    ));
-
-    // Filter data to only include dates within the correct range
-    const filteredData = sortedData.filter(item => {
-      const itemDate = new Date(item.timestamp);
-      return itemDate >= chartStartDate && itemDate <= chartCurrentDate;
-    });
-
-    // Remove duplicates and ensure proper ordering
-    const uniqueData = filteredData.reduce((acc, current) => {
-      const existingIndex = acc.findIndex(item => item.time === current.time);
-      if (existingIndex === -1) {
-        acc.push(current);
-      }
-      return acc;
-    }, []);
-
-    console.log('Unique Data:', uniqueData);
-
-    const formattedData = {
-      labels: uniqueData.map(item => item.time),
-      datasets: [
-        {
-          label: 'Visitors',
-          data: uniqueData.map(item => ({
-            x: item.time,
-            y: item.visitors || 0
-          })),
-          backgroundColor: 'rgba(252, 211, 77, 0.5)',
-          borderColor: '#fcd34d',
-          borderWidth: 1
-        },
-        {
-          label: 'Wallets Connected',
-          data: uniqueData.map(item => ({
-            x: item.time,
-            y: item.walletConnects || 0
-          })),
-          backgroundColor: 'rgba(139, 92, 246, 0.7)',
-          borderColor: '#8b5cf6',
-          borderWidth: 1
-        }
-      ]
     };
 
-    console.log('Formatted Chart Data:', formattedData);
-    setChartData(formattedData);
+    fetchData();
+  }, [timeRange]);
+
+  const chartOptions = {
+    chart: {
+      type: 'area',
+      height: 350,
+      toolbar: {
+        show: false
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 2
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3,
+        stops: [0, 90, 100]
+      }
+    },
+    xaxis: {
+      type: 'datetime',
+      categories: chartData.map(item => new Date(item.date).getTime()),
+      labels: {
+        format: 'MMM dd'
+      }
+    },
+    yaxis: [
+      {
+        title: {
+          text: 'Visitors'
+        }
+      },
+      {
+        opposite: true,
+        title: {
+          text: 'Wallet Connections'
+        }
+      }
+    ],
+    tooltip: {
+      x: {
+        format: 'MMM dd, yyyy'
+      }
+    },
+    series: [
+      {
+        name: 'Visitors',
+        data: chartData.map(item => item.visitors)
+      },
+      {
+        name: 'Wallet Connections',
+        data: chartData.map(item => item.walletConnections)
+      }
+    ]
   };
-
-  if (isLoading) {
-    return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-red-500">{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!chartData || !chartData.labels.length) {
-    return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-gray-500">No data available</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Analytics Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Analytics Overview</h2>
         <div className="flex space-x-2">
-          <button
-            onClick={() => setTimeframe('daily')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'daily'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Daily
-          </button>
-          <button
-            onClick={() => setTimeframe('weekly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'weekly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setTimeframe('monthly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'monthly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setTimeframe('yearly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'yearly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Yearly
-          </button>
+          {['daily', 'weekly', 'monthly', 'yearly'].map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-4 py-2 rounded-md ${
+                timeRange === range
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {range.charAt(0).toUpperCase() + range.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.datasets[0].data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="x" 
-              tick={{ fontSize: 12 }}
-              interval={getLabelInterval(chartData.labels.length)}
-              domain={['dataMin', 'dataMax']}
-              tickFormatter={(value) => {
-                switch (timeframe) {
-                  case 'daily':
-                    return value;
-                  case 'weekly':
-                  case 'monthly':
-                  case 'yearly':
-                    return value.split(',')[0];
-                  default:
-                    return value;
-                }
-              }}
-            />
-            <YAxis />
-            <Tooltip 
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="bg-white p-3 border rounded-lg shadow-lg">
-                      <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0].value}</p>
-                      <p className="text-purple-500">Wallets: {payload[1].value}</p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="y"
-              name="Visitors"
-              stackId="1"
-              stroke="#fcd34d"
-              fill="#fcd34d"
-              fillOpacity={0.3}
-            />
-            <Area
-              type="monotone"
-              dataKey="y"
-              name="Wallets"
-              stackId="2"
-              stroke="#8b5cf6"
-              fill="#8b5cf6"
-              fillOpacity={0.3}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : error ? (
+        <div className="text-red-500 text-center p-4">{error}</div>
+      ) : (
+        <ReactApexChart
+          options={chartOptions}
+          series={chartOptions.series}
+          type="area"
+          height={350}
+        />
+      )}
     </div>
   );
 };
