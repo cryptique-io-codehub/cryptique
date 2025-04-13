@@ -456,7 +456,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             }
           ],
           retentionChart: chartData,
-          cohortData: cohortData
+          cohortData: cohortData || []
         };
         
         setRetentionData(processedData);
@@ -617,14 +617,14 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 </tr>
               </thead>
               <tbody>
-                {retentionData?.cohortData.map((cohort, index) => (
+                {(retentionData?.cohortData || []).map((cohort, index) => (
                   <tr key={index}>
                     <td className="p-1 md:p-2 border bg-gray-50 sticky left-0 z-10">
                       <div className="font-medium text-xs md:text-sm">{cohort.date}</div>
                       <div className="text-xs text-gray-500">Users: {cohort.initialUsers}</div>
                     </td>
                     {timeFrame === 'Last 7 days' ? (
-                      cohort.retentionByDay.map((day, dayIndex) => (
+                      (cohort.retentionByDay || []).map((day, dayIndex) => (
                         <td 
                           key={dayIndex} 
                           className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
@@ -633,7 +633,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                         </td>
                       ))
                     ) : timeFrame === 'Last Month' ? (
-                      cohort.retentionByWeek.map((week, weekIndex) => (
+                      (cohort.retentionByWeek || []).map((week, weekIndex) => (
                         <td 
                           key={weekIndex} 
                           className={`p-1 md:p-2 border text-center ${getCellColor(week.value, cohort.initialUsers)}`}
@@ -642,7 +642,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                         </td>
                       ))
                     ) : (
-                      cohort.retentionByMonth.map((month, monthIndex) => (
+                      (cohort.retentionByMonth || []).map((month, monthIndex) => (
                         <td 
                           key={monthIndex} 
                           className={`p-1 md:p-2 border text-center ${getCellColor(month.value, cohort.initialUsers)}`}
