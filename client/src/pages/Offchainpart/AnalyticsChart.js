@@ -5,79 +5,73 @@ import axiosInstance from '../../axiosInstance';
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState(null);
   const [timeframe, setTimeframe] = useState('hourly');
-  const [selectedDateRange, setSelectedDateRange] = useState({
-    start: null,
-    end: null
-  });
 
   useEffect(() => {
     if (analytics && analytics.siteId) {
-      fetchChartData();
+      generateChartData();
     } else {
       setChartData(null);
     }
-  }, [analytics, timeframe, selectedDateRange]);
+  }, [analytics, timeframe]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    
-    switch (timeframe) {
-      case 'hourly':
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      case 'daily':
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      case 'weekly':
-        return `Week ${Math.ceil(date.getDate() / 7)}`;
-      case 'monthly':
-        return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
-      default:
-        return date.toLocaleTimeString();
-    }
-  };
-
-  const fetchChartData = async () => {
-    try {
-      if (!analytics?.siteId) {
-        console.error('No siteId available');
-        return;
-      }
-
-      console.log('Fetching chart data for siteId:', analytics.siteId);
-      const response = await axiosInstance.get(`/analytics/chart`, {
-        params: {
-          siteId: analytics.siteId,
-          timeframe,
-          start: selectedDateRange.start,
-          end: selectedDateRange.end
-        }
-      });
-      
-      console.log('Chart data response:', response.data);
-      
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-
-      // Format the data properly
-      const formattedData = {
-        labels: response.data.labels.map(label => formatDate(label)),
-        datasets: response.data.datasets.map(dataset => ({
-          ...dataset,
-          data: dataset.data.map((value, index) => ({
-            x: formatDate(response.data.labels[index]),
-            y: value
-          }))
-        }))
-      };
-
-      console.log('Formatted chart data:', formattedData);
-      setChartData(formattedData);
-    } catch (error) {
-      console.error('Error fetching chart data:', error);
+  const generateChartData = () => {
+    if (!analytics || !analytics.sessions) {
       setChartData(null);
+      return;
     }
+
+    // Group sessions by hour
+    const sessionsByHour = analytics.sessions.reduce((acc, session) => {
+      const date = new Date(session.startTime);
+      const hour = date.toISOString().split('T')[1].substring(0, 5); // HH:MM format
+      
+      if (!acc[hour]) {
+        acc[hour] = {
+          visitors: 0,
+          wallets: 0
+        };
+      }
+      
+      acc[hour].visitors++;
+      if (session.wallet && session.wallet.walletAddress) {
+        acc[hour].wallets++;
+      }
+      
+      return acc;
+    }, {});
+
+    // Convert to chart data format
+    const labels = Object.keys(sessionsByHour).sort();
+    const visitorsData = labels.map(hour => sessionsByHour[hour].visitors);
+    const walletsData = labels.map(hour => sessionsByHour[hour].wallets);
+
+    const formattedData = {
+      labels,
+      datasets: [
+        {
+          label: 'Visitors',
+          data: labels.map((hour, index) => ({
+            x: hour,
+            y: visitorsData[index]
+          })),
+          backgroundColor: 'rgba(252, 211, 77, 0.5)',
+          borderColor: '#fcd34d',
+          borderWidth: 1
+        },
+        {
+          label: 'Wallets',
+          data: labels.map((hour, index) => ({
+            x: hour,
+            y: walletsData[index]
+          })),
+          backgroundColor: 'rgba(139, 92, 246, 0.7)',
+          borderColor: '#8b5cf6',
+          borderWidth: 1
+        }
+      ]
+    };
+
+    setChartData(formattedData);
   };
 
   if (isLoading) {
