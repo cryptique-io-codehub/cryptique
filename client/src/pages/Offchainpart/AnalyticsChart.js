@@ -86,14 +86,25 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         chainName: session.wallet?.chainName
       });
 
-      // Only count as wallet if walletAddress exists and is not empty
+      // Only count as wallet if:
+      // 1. wallet object exists
+      // 2. walletAddress exists and is not empty
+      // 3. walletAddress is not just whitespace
       const hasWallet = session.wallet && 
                        session.wallet.walletAddress && 
-                       session.wallet.walletAddress.trim() !== '';
+                       session.wallet.walletAddress.trim() !== '' &&
+                       session.wallet.walletAddress !== 'undefined' &&
+                       session.wallet.walletAddress !== 'null';
 
       if (hasWallet) {
-        console.log('Counting wallet for time:', timeKey);
+        console.log('Counting wallet for time:', timeKey, 'with address:', session.wallet.walletAddress);
         acc[timeKey].wallets++;
+      } else {
+        console.log('Not counting wallet for time:', timeKey, 'because:', {
+          hasWalletObject: !!session.wallet,
+          hasWalletAddress: !!session.wallet?.walletAddress,
+          walletAddress: session.wallet?.walletAddress
+        });
       }
 
       return acc;
