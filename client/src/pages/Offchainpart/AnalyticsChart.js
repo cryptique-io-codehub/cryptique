@@ -20,39 +20,84 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       return;
     }
 
-    // Group sessions by hour
-    const sessionsByHour = analytics.sessions.reduce((acc, session) => {
+    // Get current date for filtering
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Filter sessions based on timeframe
+    const filteredSessions = analytics.sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      const timeDiff = now - sessionDate;
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+      switch (timeframe) {
+        case 'hourly':
+          return hoursDiff <= 24;
+        case 'daily':
+          return sessionDate >= today;
+        case 'weekly':
+          return sessionDate >= new Date(today - 7 * 24 * 60 * 60 * 1000);
+        case 'monthly':
+          return sessionDate >= new Date(today.getFullYear(), today.getMonth(), 1);
+        default:
+          return true;
+      }
+    });
+
+    // Group sessions by time interval
+    const groupedData = filteredSessions.reduce((acc, session) => {
       const date = new Date(session.startTime);
-      const hour = date.toISOString().split('T')[1].substring(0, 5); // HH:MM format
-      
-      if (!acc[hour]) {
-        acc[hour] = {
+      let timeKey;
+
+      switch (timeframe) {
+        case 'hourly':
+          timeKey = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          break;
+        case 'daily':
+          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+        case 'weekly':
+          timeKey = `Week ${Math.ceil(date.getDate() / 7)}`;
+          break;
+        case 'monthly':
+          timeKey = date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+          break;
+        default:
+          timeKey = date.toLocaleTimeString();
+      }
+
+      if (!acc[timeKey]) {
+        acc[timeKey] = {
           visitors: 0,
-          wallets: 0
+          wallets: 0,
+          timestamp: date.getTime()
         };
       }
-      
-      acc[hour].visitors++;
-      if (session.wallet && session.wallet.walletAddress) {
-        acc[hour].wallets++;
+
+      acc[timeKey].visitors++;
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+        acc[timeKey].wallets++;
       }
-      
+
       return acc;
     }, {});
 
-    // Convert to chart data format
-    const labels = Object.keys(sessionsByHour).sort();
-    const visitorsData = labels.map(hour => sessionsByHour[hour].visitors);
-    const walletsData = labels.map(hour => sessionsByHour[hour].wallets);
+    // Convert to array and sort by timestamp
+    const sortedData = Object.entries(groupedData)
+      .map(([time, data]) => ({
+        time,
+        ...data
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
 
     const formattedData = {
-      labels,
+      labels: sortedData.map(item => item.time),
       datasets: [
         {
           label: 'Visitors',
-          data: labels.map((hour, index) => ({
-            x: hour,
-            y: visitorsData[index]
+          data: sortedData.map(item => ({
+            x: item.time,
+            y: item.visitors
           })),
           backgroundColor: 'rgba(252, 211, 77, 0.5)',
           borderColor: '#fcd34d',
@@ -60,9 +105,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         },
         {
           label: 'Wallets',
-          data: labels.map((hour, index) => ({
-            x: hour,
-            y: walletsData[index]
+          data: sortedData.map(item => ({
+            x: item.time,
+            y: item.wallets
           })),
           backgroundColor: 'rgba(139, 92, 246, 0.7)',
           borderColor: '#8b5cf6',
@@ -71,6 +116,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
+    console.log('Formatted chart data:', formattedData);
     setChartData(formattedData);
   };
 
