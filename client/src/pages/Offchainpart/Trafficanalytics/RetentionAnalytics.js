@@ -231,64 +231,117 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         const processCohortData = (timeFrame, allSessions) => {
           const cohortData = [];
           const today = new Date();
+          today.setHours(23, 59, 59, 999);
 
-          let periods;
-          let periodType;
-          let periodLength;
-
-          switch (timeFrame) {
-            case 'Last 7 Days':
-              periods = 7;
-              periodType = 'day';
-              periodLength = 1; // 1 day
-              break;
-            case 'Last Month':
-              periods = 4;
-              periodType = 'week';
-              periodLength = 7; // 7 days
-              break;
-            case 'Last 3 Months':
-              periods = 3;
-              periodType = 'month';
-              periodLength = 30; // 30 days
-              break;
-            case 'Last Year':
-              periods = 12;
-              periodType = 'month';
-              periodLength = 30; // 30 days
-              break;
-            default:
-              periods = 7;
-              periodType = 'day';
-              periodLength = 1;
-          }
-
-          // Process data for the selected time frame
-          for (let i = periods - 1; i >= 0; i--) {
-            const currentDate = new Date(today);
-            const daysToSubtract = i * periodLength;
-            currentDate.setDate(today.getDate() - daysToSubtract);
-
-            // Format the date based on period type
-            let formattedDate;
-            switch (periodType) {
-              case 'day':
-                formattedDate = `Day ${periods - i}`;
-                break;
-              case 'week':
-                formattedDate = `Week ${periods - i}`;
-                break;
-              case 'month':
-                formattedDate = `Month ${periods - i}`;
-                break;
+          // Configure time periods based on selected timeframe
+          const timeFrameConfig = {
+            'Last 7 Days': {
+              periods: 7,
+              periodType: 'day',
+              periodLength: 1,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (index) => `Day ${index + 1}`,
+              getPeriodStart: (baseDate, offset) => {
+                const date = new Date(baseDate);
+                date.setDate(date.getDate() - offset);
+                date.setHours(0, 0, 0, 0);
+                return date;
+              }
+            },
+            'Last Month': {
+              periods: 4,
+              periodType: 'week',
+              periodLength: 7,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setHours(0, 0, 0, 0);
+                // Align to week start (Monday)
+                const day = start.getDay();
+                start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setDate(end.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (index) => `Week ${index + 1}`,
+              getPeriodStart: (baseDate, offset) => {
+                const date = new Date(baseDate);
+                date.setDate(date.getDate() - (offset * 7));
+                date.setHours(0, 0, 0, 0);
+                return date;
+              }
+            },
+            'Last 3 Months': {
+              periods: 3,
+              periodType: 'month',
+              periodLength: 30,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setMonth(end.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (index) => `Month ${index + 1}`,
+              getPeriodStart: (baseDate, offset) => {
+                const date = new Date(baseDate);
+                date.setMonth(date.getMonth() - offset);
+                date.setDate(1);
+                date.setHours(0, 0, 0, 0);
+                return date;
+              }
+            },
+            'Last Year': {
+              periods: 12,
+              periodType: 'month',
+              periodLength: 30,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setMonth(end.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (index) => `Month ${index + 1}`,
+              getPeriodStart: (baseDate, offset) => {
+                const date = new Date(baseDate);
+                date.setMonth(date.getMonth() - offset);
+                date.setDate(1);
+                date.setHours(0, 0, 0, 0);
+                return date;
+              }
             }
+          };
 
-            // Calculate period boundaries
-            const periodStart = new Date(currentDate);
-            periodStart.setHours(0, 0, 0, 0);
-            const periodEnd = new Date(currentDate);
-            periodEnd.setDate(periodEnd.getDate() + periodLength - 1);
-            periodEnd.setHours(23, 59, 59, 999);
+          const config = timeFrameConfig[timeFrame] || timeFrameConfig['Last 7 Days'];
+          const { periods, periodType, getStart, getEnd, formatLabel, getPeriodStart } = config;
+
+          // Process data for each period
+          for (let i = periods - 1; i >= 0; i--) {
+            const periodStart = getPeriodStart(today, i);
+            const periodEnd = getEnd(periodStart);
 
             // Get sessions for this period
             const periodSessions = allSessions.filter(session => {
@@ -300,25 +353,16 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             const uniqueUserIds = [...new Set(periodSessions.map(session => session.userId))];
             const initialUsers = uniqueUserIds.length;
 
-            if (initialUsers === 0) {
-              continue;
-            }
+            if (initialUsers === 0) continue;
 
             // Calculate retention for subsequent periods
             const retentionByDay = [];
             retentionByDay.push({ day: 0, value: initialUsers, percentage: '100.0' });
 
-            for (let j = 1; j <= periods; j++) {
-              if (i - j < 0) {
-                retentionByDay.push({ day: j, value: null });
-                continue;
-              }
-
-              const retentionStart = new Date(periodStart);
-              retentionStart.setDate(retentionStart.getDate() + (j * periodLength));
-              const retentionEnd = new Date(retentionStart);
-              retentionEnd.setDate(retentionEnd.getDate() + periodLength - 1);
-              retentionEnd.setHours(23, 59, 59, 999);
+            // Calculate retention for each subsequent period
+            for (let j = 1; j < periods - i; j++) {
+              const retentionStart = getPeriodStart(today, i - j);
+              const retentionEnd = getEnd(retentionStart);
 
               const retentionSessions = allSessions.filter(session => {
                 const sessionDate = new Date(session.startTime);
@@ -337,8 +381,17 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               });
             }
 
+            // Fill remaining periods with null values
+            while (retentionByDay.length < periods) {
+              retentionByDay.push({
+                day: retentionByDay.length,
+                value: null,
+                percentage: null
+              });
+            }
+
             cohortData.push({
-              date: formattedDate,
+              date: formatLabel(periods - i - 1),
               initialUsers,
               retentionByDay
             });
