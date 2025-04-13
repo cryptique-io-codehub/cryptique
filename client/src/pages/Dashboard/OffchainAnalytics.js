@@ -7,7 +7,7 @@ import TrafficSourcesComponent from '../Offchainpart/TrafficSourcesComponent';
 import Filters from '../Offchainpart/Filters';
 import GeoAnalyticsMap from '../Offchainpart/GeoAnalyticsMap';
 import TrafficAnalytics from '../Offchainpart/Trafficanalytics/TrafficAnalytics ';
-import GeoAnalyticss from '../Offchainpart/Trafficanalytics/GeoAnalyticss';
+import GeoAnalytics from '../Offchainpart/Trafficanalytics/GeoAnalytics';
 import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalytics';
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
@@ -712,7 +712,7 @@ return (
                       setidy={setidy}
                     />
                      {analytics && Object.keys(analytics).length > 0 ?
-                    <GeoAnalyticss analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                    <GeoAnalytics analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
                     
                     :(
                       <div className="flex h-screen">
