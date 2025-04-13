@@ -232,12 +232,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       </div>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.datasets[0].data}>
+          <AreaChart data={sortedData.map(item => ({
+            time: item.time,
+            visitors: item.visitors || 0,
+            wallets: item.walletConnects || 0
+          }))}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="x" 
+              dataKey="time" 
               tick={{ fontSize: 12 }}
-              interval={getLabelInterval(chartData.labels.length)}
+              interval={getLabelInterval(sortedData.length)}
               domain={['dataMin', 'dataMax']}
               tickFormatter={(value) => {
                 switch (timeframe) {
@@ -259,8 +263,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                   return (
                     <div className="bg-white p-3 border rounded-lg shadow-lg">
                       <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0]?.payload?.visitors || 0}</p>
-                      <p className="text-purple-500">Wallets: {payload[0]?.payload?.wallets || 0}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
+                      <p className="text-purple-500">Wallets: {payload[1]?.value || 0}</p>
                     </div>
                   );
                 }
