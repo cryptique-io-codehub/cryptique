@@ -169,6 +169,78 @@ class AnalyticsProcessor {
       ]
     };
   }
+
+  async getTrafficSources(startDate, endDate) {
+    try {
+      const StatsModel = this.getStatsModel('daily');
+      const stats = await StatsModel.findOne({ siteId: this.siteId })
+        .populate('analyticsSnapshot.analyticsId');
+
+      if (!stats) return [];
+
+      const filteredSnapshots = stats.analyticsSnapshot
+        .filter(snapshot => {
+          if (!startDate && !endDate) return true;
+          const timestamp = snapshot.timestamp;
+          return (!startDate || timestamp >= startDate) && 
+                 (!endDate || timestamp <= endDate);
+        });
+
+      // Process traffic sources data
+      const sources = new Map();
+      
+      filteredSnapshots.forEach(snapshot => {
+        if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
+          snapshot.analyticsId.sessions.forEach(session => {
+            let source = 'Direct';
+            
+            // Determine source from UTM data or referrer
+            if (session.utmData && session.utmData.source) {
+              source = session.utmData.source;
+            } else if (session.referrer) {
+              source = this.normalizeReferrer(session.referrer);
+            }
+            
+            // Initialize source data if not exists
+            if (!sources.has(source)) {
+              sources.set(source, {
+                visitors: 0,
+                wallets: 0
+              });
+            }
+            
+            // Update metrics
+            const sourceData = sources.get(source);
+            sourceData.visitors++;
+            
+            // Count wallets if connected
+            if (session.wallet && session.wallet.walletAddress) {
+              sourceData.wallets++;
+            }
+          });
+        }
+      });
+
+      // Convert to array format
+      return Array.from(sources.entries()).map(([source, data]) => ({
+        source,
+        visitors: data.visitors,
+        wallets: data.wallets
+      }));
+    } catch (error) {
+      console.error('Error getting traffic sources:', error);
+      return [];
+    }
+  }
+
+  normalizeReferrer(referrer) {
+    try {
+      const url = new URL(referrer);
+      return url.hostname.replace('www.', '');
+    } catch (e) {
+      return 'Direct';
+    }
+  }
 }
 
 module.exports = AnalyticsProcessor; 
