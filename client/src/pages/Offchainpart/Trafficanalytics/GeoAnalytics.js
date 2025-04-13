@@ -10,8 +10,7 @@ import {
   subYears,
   parseISO,
   startOfDay,
-  endOfDay,
-  toISOString
+  endOfDay
 } from 'date-fns';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
@@ -64,8 +63,8 @@ const GeoAnalytics = () => {
           ...filters,
           dateRange: {
             ...filters.dateRange,
-            startDate: toISOString(filters.dateRange.startDate),
-            endDate: toISOString(filters.dateRange.endDate)
+            startDate: new Date(filters.dateRange.startDate).toISOString(),
+            endDate: new Date(filters.dateRange.endDate).toISOString()
           }
         };
         

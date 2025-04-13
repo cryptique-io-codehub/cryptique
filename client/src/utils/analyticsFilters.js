@@ -1,38 +1,42 @@
 import { 
-  subDays, 
-  subMonths, 
-  subYears, 
+  format, 
   isWithinInterval, 
   addDays, 
+  subDays, 
   addMonths, 
-  addYears,
-  format,
-  parseISO
+  subMonths, 
+  addYears, 
+  subYears,
+  parseISO,
+  startOfDay,
+  endOfDay
 } from 'date-fns';
 
 export const filterAnalyticsData = (data, filters) => {
-  if (!data || !filters) return data;
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
 
+  const { dateRange, timeframe, countries, sources, chains, regions } = filters;
   let filteredData = [...data];
 
-  // Filter by date range
-  if (filters.dateRange) {
-    const { startDate, endDate } = filters.dateRange;
+  // Apply date range filter
+  if (dateRange && dateRange.startDate && dateRange.endDate) {
+    const startDate = startOfDay(new Date(dateRange.startDate));
+    const endDate = endOfDay(new Date(dateRange.endDate));
+    
     filteredData = filteredData.filter(item => {
-      const itemDate = parseISO(item.timestamp);
-      return isWithinInterval(itemDate, { 
-        start: parseISO(startDate), 
-        end: parseISO(endDate) 
-      });
+      const itemDate = new Date(item.timestamp);
+      return isWithinInterval(itemDate, { start: startDate, end: endDate });
     });
   }
 
   // Filter by timeframe
-  if (filters.timeframe) {
+  if (timeframe) {
     const now = new Date();
     let startDate;
     
-    switch (filters.timeframe) {
+    switch (timeframe) {
       case 'Daily':
         startDate = subDays(now, 1);
         break;
@@ -51,30 +55,30 @@ export const filterAnalyticsData = (data, filters) => {
 
     if (startDate) {
       filteredData = filteredData.filter(item => {
-        const itemDate = parseISO(item.timestamp);
+        const itemDate = new Date(item.timestamp);
         return isWithinInterval(itemDate, { start: startDate, end: now });
       });
     }
   }
 
   // Filter by countries
-  if (filters.countries && filters.countries.length > 0) {
+  if (countries && countries.length > 0) {
     filteredData = filteredData.filter(item => 
-      filters.countries.includes(item.country)
+      countries.includes(item.country)
     );
   }
 
   // Filter by sources
-  if (filters.sources && filters.sources.length > 0) {
+  if (sources && sources.length > 0) {
     filteredData = filteredData.filter(item => 
-      filters.sources.includes(item.source)
+      sources.includes(item.source)
     );
   }
 
   // Filter by chains
-  if (filters.chains && filters.chains.length > 0) {
+  if (chains && chains.length > 0) {
     filteredData = filteredData.filter(item => 
-      filters.chains.includes(item.chain)
+      chains.includes(item.chain)
     );
   }
 
@@ -89,9 +93,9 @@ export const filterAnalyticsData = (data, filters) => {
   }
 
   // Filter by regions
-  if (filters.regions && filters.regions.length > 0) {
+  if (regions && regions.length > 0) {
     filteredData = filteredData.filter(item => 
-      filters.regions.includes(item.region)
+      regions.includes(item.region)
     );
   }
 
