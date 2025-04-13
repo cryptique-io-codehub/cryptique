@@ -4,7 +4,7 @@ import axiosInstance from '../../axiosInstance';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState(null);
-  const [timeframe, setTimeframe] = useState('hourly');
+  const [timeframe, setTimeframe] = useState('daily');
 
   useEffect(() => {
     if (analytics && analytics.siteId) {
@@ -23,25 +23,29 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     // Get current date for filtering
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today - 24 * 60 * 60 * 1000);
+    let startDate;
+
+    switch (timeframe) {
+      case 'daily':
+        startDate = new Date(today);
+        break;
+      case 'weekly':
+        startDate = new Date(today - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        startDate = new Date(today - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'yearly':
+        startDate = new Date(today - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = today;
+    }
 
     // Filter sessions based on timeframe
     const filteredSessions = analytics.sessions.filter(session => {
       const sessionDate = new Date(session.startTime);
-      
-      switch (timeframe) {
-        case 'hourly':
-          // Show last 24 hours
-          return sessionDate >= yesterday && sessionDate <= now;
-        case 'daily':
-          return sessionDate >= today;
-        case 'weekly':
-          return sessionDate >= new Date(today - 7 * 24 * 60 * 60 * 1000);
-        case 'monthly':
-          return sessionDate >= new Date(today.getFullYear(), today.getMonth(), 1);
-        default:
-          return true;
-      }
+      return sessionDate >= startDate && sessionDate <= now;
     });
 
     // Group sessions by time interval
@@ -50,17 +54,20 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       let timeKey;
 
       switch (timeframe) {
-        case 'hourly':
-          // Format as HH:MM
-          timeKey = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          break;
         case 'daily':
-          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          // Group by 30-minute intervals
+          const minutes = date.getMinutes();
+          const roundedMinutes = Math.floor(minutes / 30) * 30;
+          const hour = date.getHours();
+          timeKey = `${hour.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`;
           break;
         case 'weekly':
-          timeKey = `Week ${Math.ceil(date.getDate() / 7)}`;
+          timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
           break;
         case 'monthly':
+          timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          break;
+        case 'yearly':
           timeKey = date.toLocaleDateString([], { month: 'short', year: 'numeric' });
           break;
         default:
@@ -77,19 +84,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
       acc[timeKey].visitors++;
       
-      // Debug logging for wallet data
-      console.log('Session wallet data:', {
-        timeKey,
-        wallet: session.wallet,
-        walletAddress: session.wallet?.walletAddress,
-        walletType: session.wallet?.walletType,
-        chainName: session.wallet?.chainName
-      });
-
-      // Only count as wallet if:
-      // 1. wallet object exists
-      // 2. walletAddress exists and is not empty
-      // 3. walletAddress is not just whitespace
+      // Only count as wallet if walletAddress exists and is not empty
       const hasWallet = session.wallet && 
                        session.wallet.walletAddress && 
                        session.wallet.walletAddress.trim() !== '' &&
@@ -97,50 +92,78 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
                        session.wallet.walletAddress !== 'null';
 
       if (hasWallet) {
-        console.log('Counting wallet for time:', timeKey, 'with address:', session.wallet.walletAddress);
         acc[timeKey].wallets++;
-      } else {
-        console.log('Not counting wallet for time:', timeKey, 'because:', {
-          hasWalletObject: !!session.wallet,
-          hasWalletAddress: !!session.wallet?.walletAddress,
-          walletAddress: session.wallet?.walletAddress
-        });
       }
 
       return acc;
     }, {});
 
-    // Debug logging for grouped data
-    console.log('Grouped data before formatting:', groupedData);
+    // Generate empty buckets for the selected timeframe
+    const emptyBuckets = {};
+    const currentDate = new Date();
 
-    // For hourly view, ensure we have all 24 hours
-    if (timeframe === 'hourly') {
-      const hours = Array.from({ length: 24 }, (_, i) => {
-        const hour = new Date(now - (23 - i) * 60 * 60 * 1000);
-        return hour.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      });
-
-      hours.forEach(hour => {
-        if (!groupedData[hour]) {
-          groupedData[hour] = {
+    switch (timeframe) {
+      case 'daily':
+        // Generate 48 30-minute intervals for the day
+        for (let hour = 0; hour < 24; hour++) {
+          for (let minute = 0; minute < 60; minute += 30) {
+            const timeKey = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            emptyBuckets[timeKey] = {
+              visitors: 0,
+              wallets: 0,
+              timestamp: new Date(currentDate.setHours(hour, minute, 0, 0)).getTime()
+            };
+          }
+        }
+        break;
+      case 'weekly':
+        // Generate last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today - i * 24 * 60 * 60 * 1000);
+          const timeKey = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+          emptyBuckets[timeKey] = {
             visitors: 0,
             wallets: 0,
-            timestamp: new Date(now - (23 - hours.indexOf(hour)) * 60 * 60 * 1000).getTime()
+            timestamp: date.getTime()
           };
         }
-      });
+        break;
+      case 'monthly':
+        // Generate last 30 days
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(today - i * 24 * 60 * 60 * 1000);
+          const timeKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          emptyBuckets[timeKey] = {
+            visitors: 0,
+            wallets: 0,
+            timestamp: date.getTime()
+          };
+        }
+        break;
+      case 'yearly':
+        // Generate last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const timeKey = date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+          emptyBuckets[timeKey] = {
+            visitors: 0,
+            wallets: 0,
+            timestamp: date.getTime()
+          };
+        }
+        break;
     }
 
+    // Merge actual data with empty buckets
+    const finalData = { ...emptyBuckets, ...groupedData };
+
     // Convert to array and sort by timestamp
-    const sortedData = Object.entries(groupedData)
+    const sortedData = Object.entries(finalData)
       .map(([time, data]) => ({
         time,
         ...data
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
-
-    // Debug logging for final data
-    console.log('Final sorted data:', sortedData);
 
     const formattedData = {
       labels: sortedData.map(item => item.time),
@@ -168,7 +191,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
-    console.log('Final formatted chart data:', formattedData);
     setChartData(formattedData);
   };
 
@@ -211,10 +233,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           onChange={(e) => setTimeframe(e.target.value)}
           className="px-3 py-1 border rounded-md"
         >
-          <option value="hourly">Hourly</option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
         </select>
       </div>
       <div className="h-64">
