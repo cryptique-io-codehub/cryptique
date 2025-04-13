@@ -136,12 +136,12 @@ export const fetchGeoData = async (filters) => {
       ...filters,
       dateRange: filters.dateRange ? {
         ...filters.dateRange,
-        startDate: format(new Date(filters.dateRange.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS }),
-        endDate: format(new Date(filters.dateRange.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", { locale: enUS })
+        startDate: format(new Date(filters.dateRange.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+        endDate: format(new Date(filters.dateRange.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
       } : undefined
     };
 
-    const response = await api.get('/api/analytics/geo', {
+    const response = await api.get('/api/sdk/analytics/geo', {
       params: formattedFilters,
       validateStatus: function (status) {
         return status < 500;

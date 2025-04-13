@@ -103,12 +103,14 @@ export const filterAnalyticsData = (data, filters) => {
 };
 
 export const getAvailableOptions = (data) => {
-  if (!data) return {
-    countries: [],
-    sources: [],
-    chains: [],
-    regions: []
-  };
+  if (!data || !Array.isArray(data)) {
+    return {
+      countries: [],
+      sources: [],
+      chains: [],
+      regions: []
+    };
+  }
 
   const countries = new Set();
   const sources = new Set();
@@ -116,10 +118,12 @@ export const getAvailableOptions = (data) => {
   const regions = new Set();
 
   data.forEach(item => {
-    if (item.country) countries.add(item.country);
-    if (item.source) sources.add(item.source);
-    if (item.chain) chains.add(item.chain);
-    if (item.region) regions.add(item.region);
+    if (item && typeof item === 'object') {
+      if (item.country) countries.add(item.country);
+      if (item.source) sources.add(item.source);
+      if (item.chain) chains.add(item.chain);
+      if (item.region) regions.add(item.region);
+    }
   });
 
   return {

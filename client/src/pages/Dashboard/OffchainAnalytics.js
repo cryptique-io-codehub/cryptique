@@ -6,7 +6,7 @@ import AnalyticsChart from '../Offchainpart/AnalyticsChart';
 import TrafficSourcesComponent from '../Offchainpart/TrafficSourcesComponent';
 import Filters from '../Offchainpart/Filters';
 import GeoAnalyticsMap from '../Offchainpart/GeoAnalyticsMap';
-import TrafficAnalytics from '../Offchainpart/Trafficanalytics/TrafficAnalytics ';
+import TrafficAnalytics from '../Offchainpart/Trafficanalytics/TrafficAnalytics';
 import GeoAnalytics from '../Offchainpart/Trafficanalytics/GeoAnalytics';
 import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalytics';
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
