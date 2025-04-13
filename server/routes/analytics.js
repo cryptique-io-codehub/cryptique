@@ -13,12 +13,6 @@ router.post('/sdk/track', (req, res) => {
     // Process the tracking data
     // TODO: Implement proper tracking data processing
     
-    // Set CORS headers explicitly
-    res.header('Access-Control-Allow-Origin', 'https://cashtrek.org');
-    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
     res.status(200).json({ 
       success: true, 
       message: 'Event tracked successfully' 
@@ -30,15 +24,6 @@ router.post('/sdk/track', (req, res) => {
       error: 'Failed to track event' 
     });
   }
-});
-
-// Handle OPTIONS request for SDK track endpoint
-router.options('/sdk/track', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://cashtrek.org');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.status(204).end();
 });
 
 // Get chart data
