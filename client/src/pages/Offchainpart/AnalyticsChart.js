@@ -75,7 +75,14 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
 
       acc[timeKey].visitors++;
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+      
+      // Only count as wallet if walletAddress exists and is not empty
+      // and walletType is not 'No Wallet Detected'
+      if (session.wallet && 
+          session.wallet.walletAddress && 
+          session.wallet.walletAddress.trim() !== '' &&
+          session.wallet.walletType !== 'No Wallet Detected' &&
+          session.wallet.chainName !== 'No Wallet Detected') {
         acc[timeKey].wallets++;
       }
 
