@@ -139,7 +139,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         time,
         ...data
       }))
-      .sort((a, b) => a.timestamp - b.timestamp);
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .filter((item, index, self) => 
+        index === self.findIndex((t) => t.time === item.time)
+      );
 
     const formattedData = {
       labels: sortedData.map(item => item.time),
@@ -222,7 +225,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <XAxis 
               dataKey="x" 
               tick={{ fontSize: 12 }}
-              interval="preserveStartEnd"
+              interval={0}
               domain={['dataMin', 'dataMax']}
               tickFormatter={(value) => {
                 switch (timeframe) {
