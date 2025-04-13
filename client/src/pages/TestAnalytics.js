@@ -29,12 +29,18 @@ const TestAnalytics = () => {
       const data = await response.json();
       console.log('Received data:', data);
       
+      if (!Array.isArray(data) || data.length === 0) {
+        console.log('No data available yet');
+        setChartData([]);
+        return;
+      }
+      
       // Transform data for the chart
       const transformedData = data.map(item => ({
         timestamp: item.timestamp,
-        visitors: item.visitors,
-        pageViews: item.pageViews,
-        wallets: item.wallets
+        visitors: item.visitors || 0,
+        pageViews: item.pageViews || 0,
+        wallets: item.wallets || 0
       }));
       
       setChartData(transformedData);
@@ -59,7 +65,7 @@ const TestAnalytics = () => {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Analytics Test Page</h1>
+      <h1 className="text-2xl font-bold mb-4">Analytics Test</h1>
       
       <div className="mb-4">
         <label className="mr-2">Timeframe:</label>
