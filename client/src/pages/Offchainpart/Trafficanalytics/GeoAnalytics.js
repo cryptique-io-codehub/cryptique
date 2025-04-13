@@ -8,7 +8,9 @@ import {
   subMonths, 
   addYears, 
   subYears,
-  parseISO
+  parseISO,
+  startOfDay,
+  endOfDay
 } from 'date-fns';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
@@ -32,10 +34,15 @@ const GeoAnalytics = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Initialize with proper Date objects
+  const today = new Date();
+  const thirtyDaysAgo = subDays(today, 30);
+  
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-      endDate: format(new Date(), 'yyyy-MM-dd'),
+      startDate: startOfDay(thirtyDaysAgo),
+      endDate: endOfDay(today),
       key: 'selection'
     },
     timeframe: 'Monthly',
@@ -72,6 +79,11 @@ const GeoAnalytics = () => {
   }, [filters]);
 
   const handleFilterChange = (newFilters) => {
+    // Ensure dates are proper Date objects
+    if (newFilters.dateRange) {
+      newFilters.dateRange.startDate = parseISO(newFilters.dateRange.startDate);
+      newFilters.dateRange.endDate = parseISO(newFilters.dateRange.endDate);
+    }
     setFilters(newFilters);
   };
 

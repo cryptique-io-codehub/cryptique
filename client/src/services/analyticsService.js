@@ -33,25 +33,81 @@ api.interceptors.response.use(
 
 export const fetchAnalyticsData = async (filters = {}) => {
   try {
-    const response = await api.get('/api/analytics', {
-      params: filters
+    const response = await api.get('/api/analytics/data', {
+      params: filters,
+      validateStatus: function (status) {
+        return status < 500;
+      }
     });
+
+    if (response.status === 404) {
+      console.warn('Analytics endpoint not found, returning empty data structure');
+      return {
+        sessions: [],
+        users: [],
+        pageViews: [],
+        metrics: {
+          totalSessions: 0,
+          totalUsers: 0,
+          totalPageViews: 0,
+          averageSessionDuration: 0,
+          bounceRate: 0
+        }
+      };
+    }
+
     return response.data;
   } catch (error) {
     console.error('Error fetching analytics data:', error);
-    throw error;
+    return {
+      sessions: [],
+      users: [],
+      pageViews: [],
+      metrics: {
+        totalSessions: 0,
+        totalUsers: 0,
+        totalPageViews: 0,
+        averageSessionDuration: 0,
+        bounceRate: 0
+      }
+    };
   }
 };
 
 export const fetchTrafficData = async (filters = {}) => {
   try {
     const response = await api.get('/api/analytics/traffic', {
-      params: filters
+      params: filters,
+      validateStatus: function (status) {
+        return status < 500;
+      }
     });
+
+    if (response.status === 404) {
+      console.warn('Traffic analytics endpoint not found, returning empty data structure');
+      return {
+        data: [],
+        metrics: {
+          totalVisitors: 0,
+          uniqueVisitors: 0,
+          pageViews: 0,
+          averageSessionDuration: 0
+        }
+      };
+    }
+
     return response.data;
   } catch (error) {
     console.error('Error fetching traffic data:', error);
-    throw error;
+    return {
+      data: [],
+      metrics: {
+        totalVisitors: 0,
+        uniqueVisitors: 0,
+        pageViews: 0,
+        averageSessionDuration: 0
+      }
+    };
   }
 };
 
@@ -60,7 +116,7 @@ export const fetchGeoData = async (filters = {}) => {
     // Validate date range
     if (filters.dateRange) {
       const { startDate, endDate } = filters.dateRange;
-      if (new Date(startDate) > new Date(endDate)) {
+      if (startDate > endDate) {
         throw new Error('Invalid date range: start date is after end date');
       }
     }
@@ -68,7 +124,7 @@ export const fetchGeoData = async (filters = {}) => {
     const response = await api.get('/api/analytics/geo', {
       params: filters,
       validateStatus: function (status) {
-        return status < 500; // Resolve only if the status code is less than 500
+        return status < 500;
       }
     });
 
@@ -92,7 +148,6 @@ export const fetchGeoData = async (filters = {}) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching geo data:', error);
-    // Return properly structured empty data
     return {
       countries: [],
       sources: [],
@@ -112,12 +167,37 @@ export const fetchGeoData = async (filters = {}) => {
 export const fetchRetentionData = async (filters = {}) => {
   try {
     const response = await api.get('/api/analytics/retention', {
-      params: filters
+      params: filters,
+      validateStatus: function (status) {
+        return status < 500;
+      }
     });
+
+    if (response.status === 404) {
+      console.warn('Retention analytics endpoint not found, returning empty data structure');
+      return {
+        data: [],
+        metrics: {
+          dailyActiveUsers: 0,
+          weeklyActiveUsers: 0,
+          monthlyActiveUsers: 0,
+          retentionRate: 0
+        }
+      };
+    }
+
     return response.data;
   } catch (error) {
     console.error('Error fetching retention data:', error);
-    throw error;
+    return {
+      data: [],
+      metrics: {
+        dailyActiveUsers: 0,
+        weeklyActiveUsers: 0,
+        monthlyActiveUsers: 0,
+        retentionRate: 0
+      }
+    };
   }
 };
 
