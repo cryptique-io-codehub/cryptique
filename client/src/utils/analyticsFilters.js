@@ -1,4 +1,14 @@
-import { subDays, subMonths, subYears, isWithinInterval, addDays, addMonths, addYears } from 'date-fns';
+import { 
+  subDays, 
+  subMonths, 
+  subYears, 
+  isWithinInterval, 
+  addDays, 
+  addMonths, 
+  addYears,
+  format,
+  parseISO
+} from 'date-fns';
 
 export const filterAnalyticsData = (data, filters) => {
   if (!data || !filters) return data;
@@ -9,8 +19,11 @@ export const filterAnalyticsData = (data, filters) => {
   if (filters.dateRange) {
     const { startDate, endDate } = filters.dateRange;
     filteredData = filteredData.filter(item => {
-      const itemDate = new Date(item.timestamp);
-      return isWithinInterval(itemDate, { start: new Date(startDate), end: new Date(endDate) });
+      const itemDate = parseISO(item.timestamp);
+      return isWithinInterval(itemDate, { 
+        start: parseISO(startDate), 
+        end: parseISO(endDate) 
+      });
     });
   }
 
@@ -38,7 +51,7 @@ export const filterAnalyticsData = (data, filters) => {
 
     if (startDate) {
       filteredData = filteredData.filter(item => {
-        const itemDate = new Date(item.timestamp);
+        const itemDate = parseISO(item.timestamp);
         return isWithinInterval(itemDate, { start: startDate, end: now });
       });
     }

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { format, isWithinInterval, addDays, subDays, addMonths, subMonths, addYears, subYears } from 'date-fns';
+import { 
+  format, 
+  isWithinInterval, 
+  addDays, 
+  subDays, 
+  addMonths, 
+  subMonths, 
+  addYears, 
+  subYears,
+  parseISO
+} from 'date-fns';
 import { fetchGeoData } from '../../../services/analyticsService';
 import { filterAnalyticsData } from '../../../utils/analyticsFilters';
 import AnalyticsFilters from '../../../components/analytics/AnalyticsFilters';
@@ -11,8 +21,8 @@ const GeoAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     dateRange: {
-      startDate: subDays(new Date(), 30),
-      endDate: new Date(),
+      startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+      endDate: format(new Date(), 'yyyy-MM-dd'),
       key: 'selection'
     },
     timeframe: 'Monthly',
