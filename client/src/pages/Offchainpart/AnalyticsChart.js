@@ -105,19 +105,28 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       (a.timestamp || 0) - (b.timestamp || 0)
     );
 
+    // Initialize wallet counts for all time slots
+    Object.keys(finalData).forEach(key => {
+      finalData[key].walletConnects = 0;
+    });
+
+    // Process each wallet connection
     sortedWallets.forEach(wallet => {
       if (wallet.walletAddress && wallet.walletAddress !== '') {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
         
         if (finalData[timeKey]) {
-          connectedWallets.add(wallet.walletAddress);
-          // Update all time slots from this point forward with the current count
-          Object.keys(finalData)
-            .filter(key => finalData[key].timestamp >= date.getTime())
-            .forEach(key => {
-              finalData[key].walletConnects = connectedWallets.size;
-            });
+          // Only count this wallet if it hasn't been counted before
+          if (!connectedWallets.has(wallet.walletAddress)) {
+            connectedWallets.add(wallet.walletAddress);
+            // Update all time slots from this point forward with the current count
+            Object.keys(finalData)
+              .filter(key => finalData[key].timestamp >= date.getTime())
+              .forEach(key => {
+                finalData[key].walletConnects = connectedWallets.size;
+              });
+          }
         }
       }
     });
