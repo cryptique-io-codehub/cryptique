@@ -181,10 +181,11 @@ function trackPageView() {
         // Update last activity time
         userSession.lastActivity = currentTime;
         
-        // Check if this is a new page view
+        // Check if this is a new page view and not the initial page load
         const isNewPage = !userSession.visitedPages.some(page => page.path === currentPage);
+        const isInitialLoad = userSession.visitedPages.length === 0;
         
-        if (isNewPage) {
+        if (isNewPage && !isInitialLoad) {
             // Add new page to visited pages
             userSession.visitedPages.push({
                 path: currentPage,
@@ -204,7 +205,7 @@ function trackPageView() {
                 userSession.endTime = currentTime;
             }
             
-            // Update bounce status
+            // Update bounce status based on duration only
             userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
             
             // Save session data
@@ -228,6 +229,9 @@ function updatePageDuration() {
             const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
             userSession.duration = Math.floor((currentTime - firstPageTime) / 1000);
             userSession.endTime = currentTime.toISOString();
+            
+            // Update bounce status based on duration only
+            userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
             
             saveSessionData();
         }

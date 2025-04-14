@@ -22,14 +22,15 @@ const sessionSchema = new mongoose.Schema({
     pagesViewed: { type: Number, default: 0 },
     duration: { type: Number, default: 0 },
     isBounce: { type: Boolean, default: true },
-    lastActivity: { type: Date, default: Date.now },
+    lastActivity: { type: Date },
     country: { type: String },
     browser: {
         name: { type: String },
         version: { type: String },
     },
     device: {
-        type: { type: Object },
+        type: { type: String },
+        os: { type: String },
     },
     // Track visited pages
     visitedPages: [{
@@ -37,12 +38,26 @@ const sessionSchema = new mongoose.Schema({
         timestamp: { type: Date },
         duration: { type: Number }
     }]
-});
+}, { timestamps: true });
 
-// Add index for faster lookups
-sessionSchema.index({ sessionId: 1 });
-sessionSchema.index({ userId: 1 });
-sessionSchema.index({ lastActivity: 1 });
+// Add index for sessionId and userId
+sessionSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
+
+// Pre-save middleware to update session data
+sessionSchema.pre('save', function(next) {
+    // Update duration if endTime is set
+    if (this.endTime) {
+        this.duration = Math.floor((this.endTime - this.startTime) / 1000);
+    }
+    
+    // Update pagesViewed based on visitedPages length
+    this.pagesViewed = this.visitedPages.length;
+    
+    // Update isBounce based on duration only
+    this.isBounce = this.duration < 30; // 30 seconds threshold
+    
+    next();
+});
 
 // Method to update session activity
 sessionSchema.methods.updateActivity = async function() {
