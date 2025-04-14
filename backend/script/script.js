@@ -186,7 +186,7 @@ function trackPageView(pageUrl, referrer, utmData) {
     if (existingSession) {
         const lastActivity = new Date(existingSession.lastActivity);
         if (shouldContinueSession(lastActivity, currentTime)) {
-            // Only count as new page view if it's a different page or first page
+            // Only count as new page view if it's a different page
             const lastPage = existingSession.visitedPages[existingSession.visitedPages.length - 1];
             const isNewPage = !lastPage || lastPage.path !== pageUrl;
             
@@ -214,7 +214,7 @@ function trackPageView(pageUrl, referrer, utmData) {
         }
     }
 
-    // Create new session
+    // Create new session only if no existing session or session expired
     const newSession = {
         sessionId,
         userId,
@@ -395,17 +395,6 @@ function initCryptiqueAnalytics() {
 initCryptiqueAnalytics();
 
 // Function to check if session should continue
-function shouldContinueSession() {
-    if (!userSession.lastActivity) return true;
-    
-    const lastActivityTime = new Date(userSession.lastActivity);
-    const currentTime = new Date();
-    const timeSinceLastActivity = currentTime - lastActivityTime;
-    
-    // Only create new session if time since last activity exceeds timeout
-    return timeSinceLastActivity < SESSION_TIMEOUT;
-}
-
 function shouldContinueSession(lastActivity, currentTime) {
     const sessionTimeout = 30 * 60 * 1000; // 30 minutes in milliseconds
     return currentTime - lastActivity < sessionTimeout;
@@ -425,7 +414,7 @@ function trackPageView(pageUrl, referrer, utmData) {
     if (existingSession) {
         const lastActivity = new Date(existingSession.lastActivity);
         if (shouldContinueSession(lastActivity, currentTime)) {
-            // Only count as new page view if it's a different page or first page
+            // Only count as new page view if it's a different page
             const lastPage = existingSession.visitedPages[existingSession.visitedPages.length - 1];
             const isNewPage = !lastPage || lastPage.path !== pageUrl;
             
@@ -453,7 +442,7 @@ function trackPageView(pageUrl, referrer, utmData) {
         }
     }
 
-    // Create new session
+    // Create new session only if no existing session or session expired
     const newSession = {
         sessionId,
         userId,
