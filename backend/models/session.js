@@ -48,6 +48,9 @@ sessionSchema.pre('save', function(next) {
     // Update duration if endTime is set
     if (this.endTime) {
         this.duration = Math.floor((this.endTime - this.startTime) / 1000);
+    } else if (this.lastActivity) {
+        // If no endTime but lastActivity exists, use that for duration
+        this.duration = Math.floor((this.lastActivity - this.startTime) / 1000);
     }
     
     // Update pagesViewed based on visitedPages length
@@ -60,10 +63,12 @@ sessionSchema.pre('save', function(next) {
 });
 
 // Method to update session activity
-sessionSchema.methods.updateActivity = async function() {
+sessionSchema.methods.updateActivity = function() {
     this.lastActivity = new Date();
-    this.duration = Math.round((this.lastActivity - this.startTime) / 1000);
-    await this.save();
+    if (!this.endTime) {
+        this.endTime = this.lastActivity;
+    }
+    return this.save();
 };
 
 // Method to add a page view

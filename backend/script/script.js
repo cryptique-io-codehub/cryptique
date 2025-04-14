@@ -196,7 +196,7 @@ function trackPageView() {
             // Update pages viewed count
             userSession.pagesViewed = userSession.visitedPages.length;
             
-            // Update session duration
+            // Update session duration and times
             if (userSession.visitedPages.length > 0) {
                 const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
                 const lastPageTime = new Date(currentTime);
@@ -225,10 +225,11 @@ function updatePageDuration() {
             const pageStartTime = new Date(pageEntry.timestamp);
             pageEntry.duration = Math.floor((currentTime - pageStartTime) / 1000);
             
-            // Update session duration
+            // Update session duration and end time
             const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
             userSession.duration = Math.floor((currentTime - firstPageTime) / 1000);
             userSession.endTime = currentTime.toISOString();
+            userSession.lastActivity = currentTime.toISOString();
             
             // Update bounce status based on duration only
             userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
@@ -264,7 +265,17 @@ function startSessionTracking() {
         if (document.visibilityState === 'hidden') {
             updatePageDuration();
         } else if (document.visibilityState === 'visible') {
-            trackPageView();
+            if (shouldContinueSession()) {
+                trackPageView();
+            } else {
+                // Create new session if current one has expired
+                userSession.sessionId = getOrCreateSessionId();
+                userSession.sessionStart = getSessionStartTime();
+                userSession.visitedPages = [];
+                userSession.pagesViewed = 0;
+                userSession.isBounce = true;
+                trackPageView();
+            }
         }
     });
 
@@ -363,3 +374,14 @@ function initCryptiqueAnalytics() {
 
 // Start Analytics
 initCryptiqueAnalytics();
+
+// Function to check if session should continue
+function shouldContinueSession() {
+    if (!userSession.lastActivity) return true;
+    
+    const lastActivityTime = new Date(userSession.lastActivity);
+    const currentTime = new Date();
+    const timeSinceLastActivity = currentTime - lastActivityTime;
+    
+    return timeSinceLastActivity < SESSION_TIMEOUT;
+}
