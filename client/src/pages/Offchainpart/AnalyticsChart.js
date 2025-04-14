@@ -89,38 +89,21 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     }
 
-    // Process sessions data
+    // Process sessions data and wallet connections
+    const connectedWallets = new Set();
+    
     analytics.sessions.forEach(session => {
       const date = new Date(session.startTime);
       const timeKey = formatTimeKey(date, timeframe);
       
       if (finalData[timeKey]) {
         finalData[timeKey].visitors++;
-      }
-    });
-
-    // Process wallet connects data - track cumulative unique wallets
-    const connectedWallets = new Set();
-    const sortedWallets = [...analytics.wallets].sort((a, b) => 
-      (a.timestamp || 0) - (b.timestamp || 0)
-    );
-
-    // Initialize wallet counts for all time slots
-    Object.keys(finalData).forEach(key => {
-      finalData[key].walletConnects = 0;
-    });
-
-    // Process each wallet connection
-    sortedWallets.forEach(wallet => {
-      if (wallet.walletAddress && wallet.walletAddress !== '') {
-        const date = new Date(wallet.timestamp || Date.now());
-        const timeKey = formatTimeKey(date, timeframe);
         
-        if (finalData[timeKey]) {
-          // Only count this wallet if it hasn't been counted before
-          if (!connectedWallets.has(wallet.walletAddress)) {
-            connectedWallets.add(wallet.walletAddress);
-            // Update all time slots from this point forward with the current count
+        // Check if session has a wallet connection
+        if (session.wallet && session.wallet.walletAddress) {
+          if (!connectedWallets.has(session.wallet.walletAddress)) {
+            connectedWallets.add(session.wallet.walletAddress);
+            // Update all time slots from this point forward
             Object.keys(finalData)
               .filter(key => finalData[key].timestamp >= date.getTime())
               .forEach(key => {
@@ -131,9 +114,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
-    // Ensure all time slots have walletConnects initialized
+    // Initialize wallet counts for all time slots that haven't been set
     Object.keys(finalData).forEach(key => {
-      if (!finalData[key].walletConnects) {
+      if (finalData[key].walletConnects === undefined) {
         finalData[key].walletConnects = 0;
       }
     });
