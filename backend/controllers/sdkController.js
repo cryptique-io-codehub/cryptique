@@ -31,19 +31,44 @@ exports.postAnalytics = async (req, res) => {
 
       //if sessionid is same just update the session data
       if(!session) {
-        const newSession = new Session(sessionData);
+        const newSession = new Session({
+          ...sessionData,
+          pagesViewed: 1,
+          visitedPages: [{
+            path: sessionData.currentPage,
+            timestamp: new Date(),
+            duration: 0
+          }]
+        });
         await newSession.save();
         analytics.sessions.push(newSession._id); // Add session to the analytics
         await analytics.save();
       }
       else{
-        const updatedSession = await Session.findByIdAndUpdate(session._id, sessionData, { new: true });
-
-        if (updatedSession.duration > 30) {
-          updatedSession.isBounce = false;
-          await updatedSession.save();
+        // Update existing session
+        session.pagesViewed++;
+        session.isBounce = session.pagesViewed <= 1;
+        session.lastActivity = new Date();
+        session.duration = Math.round((session.lastActivity - session.startTime) / 1000);
+        
+        // Add current page to visited pages if it's not already there
+        const pageAlreadyVisited = session.visitedPages.some(
+          page => page.path === sessionData.currentPage
+        );
+        
+        if (!pageAlreadyVisited) {
+          session.visitedPages.push({
+            path: sessionData.currentPage,
+            timestamp: new Date(),
+            duration: 0
+          });
         }
-        console.log("updatedSession", updatedSession);  
+
+        if (sessionData.sessionEnd) {
+          session.endTime = new Date(sessionData.sessionEnd);
+        }
+
+        await session.save();
       }
       return res
         .status(200)
