@@ -6,11 +6,28 @@ const userRouter = require("./routes/userRouter");
 const bodyParser = require("body-parser");
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Connect to MongoDB
 connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors("*"));
+// Configure CORS with specific options
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow all origins for analytics tracking
+    callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
