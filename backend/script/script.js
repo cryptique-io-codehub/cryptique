@@ -166,12 +166,12 @@ function getWeekNumber(d) {
 
 // 📈 Page View and Event Tracking
 function trackPageView() {
+    // Get current page path
+    const currentPage = window.location.pathname;
+    
     // Increment page views
     userSession.pagesPerVisit++;
     userSession.isBounce = userSession.pagesPerVisit <= 1;
-    
-    // Get current page path
-    const currentPage = window.location.pathname;
     
     // Update session data
     const sessionData = {
@@ -216,7 +216,11 @@ function startSessionTracking() {
         if (document.visibilityState === 'hidden') {
             userSession.sessionEnd = Date.now();
             // Send session end data
-            sendSessionData();
+            sendSessionData({
+                ...userSession,
+                sessionEnd: userSession.sessionEnd,
+                pagesViewed: userSession.pagesPerVisit
+            });
         } else {
             // Check if session expired while tab was inactive
             const lastActivity = localStorage.getItem('mtm_last_activity');
@@ -226,6 +230,8 @@ function startSessionTracking() {
                     // Create new session
                     userSession.sessionId = getOrCreateSessionId();
                     userSession.sessionStart = getSessionStartTime();
+                    userSession.pagesPerVisit = 0;
+                    userSession.isBounce = true;
                 }
             }
         }
@@ -234,7 +240,11 @@ function startSessionTracking() {
     // Handle page unload
     window.addEventListener('beforeunload', () => {
         userSession.sessionEnd = Date.now();
-        sendSessionData();
+        sendSessionData({
+            ...userSession,
+            sessionEnd: userSession.sessionEnd,
+            pagesViewed: userSession.pagesPerVisit
+        });
     });
 }
 
@@ -244,10 +254,10 @@ function sendSessionData(sessionData) {
         sessionId: userSession.sessionId,
         userId: userSession.userId,
         startTime: new Date(userSession.sessionStart).toISOString(),
-        endTime: userSession.sessionEnd ? new Date(userSession.sessionEnd).toISOString() : null,
-        pagesViewed: userSession.pagesPerVisit,
-        duration: userSession.sessionEnd ? 
-            Math.round((userSession.sessionEnd - userSession.sessionStart) / 1000) : 
+        endTime: sessionData.sessionEnd ? new Date(sessionData.sessionEnd).toISOString() : null,
+        pagesViewed: sessionData.pagesViewed || userSession.pagesPerVisit,
+        duration: sessionData.sessionEnd ? 
+            Math.round((sessionData.sessionEnd - userSession.sessionStart) / 1000) : 
             Math.round((Date.now() - userSession.sessionStart) / 1000),
         isBounce: userSession.isBounce,
         country: userSession.country,

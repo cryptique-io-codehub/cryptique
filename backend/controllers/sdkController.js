@@ -58,6 +58,13 @@ exports.postAnalytics = async (req, res) => {
         );
         
         if (!pageAlreadyVisited) {
+          // Update duration of the last page
+          if (session.visitedPages.length > 0) {
+            const lastPage = session.visitedPages[session.visitedPages.length - 1];
+            lastPage.duration = Math.round((Date.now() - new Date(lastPage.timestamp)) / 1000);
+          }
+          
+          // Add new page
           session.visitedPages.push({
             path: currentPage,
             timestamp: new Date(),
@@ -65,16 +72,13 @@ exports.postAnalytics = async (req, res) => {
           });
         }
 
-        // Update existing page durations
-        if (session.visitedPages.length > 0) {
-          const lastPage = session.visitedPages[session.visitedPages.length - 1];
-          if (lastPage.path !== currentPage) {
-            lastPage.duration = Math.round((Date.now() - lastPage.timestamp) / 1000);
-          }
-        }
-
         if (sessionData.sessionEnd) {
           session.endTime = new Date(sessionData.sessionEnd);
+          // Update duration of the last page when session ends
+          if (session.visitedPages.length > 0) {
+            const lastPage = session.visitedPages[session.visitedPages.length - 1];
+            lastPage.duration = Math.round((sessionData.sessionEnd - new Date(lastPage.timestamp)) / 1000);
+          }
         }
 
         await session.save();
