@@ -27,7 +27,13 @@ let userSession = {
     browser: getBrowserAndDeviceInfo().browser,
     os: getBrowserAndDeviceInfo().device.os,
     device: getBrowserAndDeviceInfo().device,
-    country: null
+    country: null,
+    lastActivity: null,
+    visitedPages: [],
+    pagesViewed: 0,
+    duration: 0,
+    startTime: null,
+    endTime: null
 };
 
 // 🚀 Utility Functions
@@ -166,28 +172,65 @@ function getWeekNumber(d) {
 
 // 📈 Page View and Event Tracking
 function trackPageView() {
-    // Get current page path
     const currentPage = window.location.pathname;
-    
-    // Increment page views
-    userSession.pagesPerVisit++;
-    userSession.isBounce = userSession.pagesPerVisit <= 1;
+    const currentTime = new Date().toISOString();
     
     // Update session data
-    const sessionData = {
-        ...userSession,
-        currentPage: currentPage,
-        timestamp: Date.now(),
-        pagesViewed: userSession.pagesPerVisit,
-        visitedPages: [{
-            path: currentPage,
-            timestamp: Date.now(),
-            duration: 0
-        }]
-    };
+    if (userSession.sessionId) {
+        // Update last activity time
+        userSession.lastActivity = currentTime;
+        
+        // Check if this is a new page view
+        const isNewPage = !userSession.visitedPages.some(page => page.path === currentPage);
+        
+        if (isNewPage) {
+            // Add new page to visited pages
+            userSession.visitedPages.push({
+                path: currentPage,
+                timestamp: currentTime,
+                duration: 0 // Will be updated when user leaves the page
+            });
+            
+            // Update pages viewed count
+            userSession.pagesViewed = userSession.visitedPages.length;
+            
+            // Update session duration
+            if (userSession.visitedPages.length > 0) {
+                const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
+                const lastPageTime = new Date(currentTime);
+                userSession.duration = Math.floor((lastPageTime - firstPageTime) / 1000);
+                userSession.startTime = userSession.visitedPages[0].timestamp;
+                userSession.endTime = currentTime;
+            }
+            
+            // Update bounce status
+            userSession.isBounce = userSession.pagesViewed <= 1;
+            
+            // Save session data
+            saveSessionData();
+        }
+    }
+}
+
+function updatePageDuration() {
+    const currentPage = window.location.pathname;
+    const currentTime = new Date();
     
-    // Send session data
-    sendSessionData(sessionData);
+    if (userSession.sessionId) {
+        const pageIndex = userSession.visitedPages.findIndex(page => page.path === currentPage);
+        if (pageIndex !== -1) {
+            const pageEntry = userSession.visitedPages[pageIndex];
+            const pageStartTime = new Date(pageEntry.timestamp);
+            pageEntry.duration = Math.floor((currentTime - pageStartTime) / 1000);
+            
+            // Update session duration
+            const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
+            userSession.duration = Math.floor((currentTime - firstPageTime) / 1000);
+            userSession.endTime = currentTime.toISOString();
+            
+            saveSessionData();
+        }
+    }
 }
 
 function getCountryName() {
@@ -214,37 +257,15 @@ function startSessionTracking() {
     // Handle page visibility changes
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
-            userSession.sessionEnd = Date.now();
-            // Send session end data
-            sendSessionData({
-                ...userSession,
-                sessionEnd: userSession.sessionEnd,
-                pagesViewed: userSession.pagesPerVisit
-            });
-        } else {
-            // Check if session expired while tab was inactive
-            const lastActivity = localStorage.getItem('mtm_last_activity');
-            if (lastActivity) {
-                const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
-                if (timeSinceLastActivity >= SESSION_TIMEOUT) {
-                    // Create new session
-                    userSession.sessionId = getOrCreateSessionId();
-                    userSession.sessionStart = getSessionStartTime();
-                    userSession.pagesPerVisit = 0;
-                    userSession.isBounce = true;
-                }
-            }
+            updatePageDuration();
+        } else if (document.visibilityState === 'visible') {
+            trackPageView();
         }
     });
 
     // Handle page unload
     window.addEventListener('beforeunload', () => {
-        userSession.sessionEnd = Date.now();
-        sendSessionData({
-            ...userSession,
-            sessionEnd: userSession.sessionEnd,
-            pagesViewed: userSession.pagesPerVisit
-        });
+        updatePageDuration();
     });
 }
 
