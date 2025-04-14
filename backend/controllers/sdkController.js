@@ -128,26 +128,77 @@ exports.postAnalytics = async (req, res) => {
 
     // Handle session data
     if (sessionData) {
-      const existingSession = await Session.findOne({ sessionId: sessionData.sessionId });
-      
-      if (existingSession) {
-        // Update existing session
-        await existingSession.addPageView(sessionData.currentPage);
-        await existingSession.updateActivity();
+      // Find existing sessions for this user within the last 30 minutes
+      const recentSessions = await Session.find({
+        userId: sessionData.userId,
+        lastActivity: { 
+          $gte: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes
+        }
+      }).sort({ startTime: 1 });
+
+      if (recentSessions.length > 0) {
+        // Use the earliest session as the base
+        const baseSession = recentSessions[0];
         
-        // Update session end time if provided
+        // Update the base session
+        baseSession.pagesViewed++;
+        baseSession.isBounce = baseSession.pagesViewed <= 1;
+        baseSession.lastActivity = new Date();
+        baseSession.duration = Math.round((baseSession.lastActivity - baseSession.startTime) / 1000);
+        
+        // Add the current page to visited pages
+        baseSession.visitedPages.push({
+          path: sessionData.currentPage,
+          timestamp: new Date(),
+          duration: 0
+        });
+
+        // Update end time if this is the last activity
         if (sessionData.sessionEnd) {
-          existingSession.endTime = new Date(sessionData.sessionEnd);
-          await existingSession.save();
+          baseSession.endTime = new Date(sessionData.sessionEnd);
+        }
+
+        await baseSession.save();
+
+        // If there are other recent sessions, merge them into the base session
+        if (recentSessions.length > 1) {
+          for (let i = 1; i < recentSessions.length; i++) {
+            const sessionToMerge = recentSessions[i];
+            
+            // Update page views and visited pages
+            baseSession.pagesViewed += sessionToMerge.pagesViewed;
+            baseSession.visitedPages.push(...sessionToMerge.visitedPages);
+            
+            // Update end time if needed
+            if (sessionToMerge.endTime && (!baseSession.endTime || sessionToMerge.endTime > baseSession.endTime)) {
+              baseSession.endTime = sessionToMerge.endTime;
+            }
+            
+            // Remove the merged session
+            await Session.findByIdAndDelete(sessionToMerge._id);
+            
+            // Remove the session reference from analytics
+            const sessionIndex = analytics.sessions.indexOf(sessionToMerge._id);
+            if (sessionIndex > -1) {
+              analytics.sessions.splice(sessionIndex, 1);
+            }
+          }
+          
+          await baseSession.save();
         }
       } else {
-        // Create new session only if it doesn't exist
+        // Create new session if no recent sessions exist
         const newSession = new Session({
           ...sessionData,
           pagesViewed: 1,
           duration: 0,
           isBounce: true,
-          lastActivity: new Date()
+          lastActivity: new Date(),
+          visitedPages: [{
+            path: sessionData.currentPage,
+            timestamp: new Date(),
+            duration: 0
+          }]
         });
         await newSession.save();
         analytics.sessions.push(newSession._id);
