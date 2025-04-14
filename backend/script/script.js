@@ -172,58 +172,74 @@ function getWeekNumber(d) {
 }
 
 // 📈 Page View and Event Tracking
-function trackPageView() {
-    const currentPage = window.location.pathname;
-    const currentTime = new Date().toISOString();
-    
-    // Check if we should continue the current session
-    if (!shouldContinueSession()) {
-        // Create new session
-        userSession.sessionId = getOrCreateSessionId();
-        userSession.sessionStart = getSessionStartTime();
-        userSession.visitedPages = [];
-        userSession.pagesViewed = 0;
-        userSession.isBounce = true;
-        userSession.startTime = currentTime;
-        userSession.lastActivity = currentTime;
-        userSession.endTime = currentTime;
-    }
-    
-    // Update session data
-    if (userSession.sessionId) {
-        // Update last activity time
-        userSession.lastActivity = currentTime;
-        userSession.endTime = currentTime;
-        
-        // Check if this is a new page view and not the initial page load
-        const isNewPage = !userSession.visitedPages.some(page => page.path === currentPage);
-        const isInitialLoad = userSession.visitedPages.length === 0;
-        
-        if (isNewPage && !isInitialLoad) {
-            // Add new page to visited pages
-            userSession.visitedPages.push({
-                path: currentPage,
-                timestamp: currentTime,
-                duration: 0 // Will be updated when user leaves the page
-            });
+function trackPageView(pageUrl, referrer, utmData) {
+    const currentTime = new Date();
+    const sessionId = getSessionId();
+    const userId = getUserId();
+    const siteId = getSiteId();
+    const deviceInfo = getDeviceInfo();
+    const browserInfo = getBrowserInfo();
+    const country = getCountry();
+
+    // Check if we should continue an existing session
+    const existingSession = sessions.get(sessionId);
+    if (existingSession) {
+        const lastActivity = new Date(existingSession.lastActivity);
+        if (shouldContinueSession(lastActivity, currentTime)) {
+            // Only count as new page view if it's a different page or first page
+            const lastPage = existingSession.visitedPages[existingSession.visitedPages.length - 1];
+            const isNewPage = !lastPage || lastPage.path !== pageUrl;
             
-            // Update pages viewed count (excluding initial page load)
-            userSession.pagesViewed = userSession.visitedPages.length;
-            
-            // Update session duration based on first page to last activity
-            if (userSession.visitedPages.length > 0) {
-                const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
-                const lastActivityTime = new Date(userSession.lastActivity);
-                userSession.duration = Math.floor((lastActivityTime - firstPageTime) / 1000);
+            if (isNewPage) {
+                // Update existing session
+                existingSession.lastActivity = currentTime;
+                existingSession.pagesViewed++;
+                existingSession.visitedPages.push({
+                    path: pageUrl,
+                    timestamp: currentTime,
+                    duration: 0
+                });
+                existingSession.isBounce = false;
+                sessions.set(sessionId, existingSession);
             }
-            
-            // Update bounce status based on duration only
-            userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
-            
-            // Save session data
-            saveSessionData();
+            return;
+        } else {
+            // Session expired, finalize it
+            const startTime = new Date(existingSession.startTime);
+            existingSession.duration = Math.floor((lastActivity - startTime) / 1000);
+            existingSession.endTime = lastActivity;
+            existingSession.isBounce = existingSession.pagesViewed <= 1;
+            saveSessionToDatabase(existingSession);
+            sessions.delete(sessionId);
         }
     }
+
+    // Create new session
+    const newSession = {
+        sessionId,
+        userId,
+        siteId,
+        startTime: currentTime,
+        lastActivity: currentTime,
+        pagesViewed: 1,
+        visitedPages: [{
+            path: pageUrl,
+            timestamp: currentTime,
+            duration: 0
+        }],
+        referrer,
+        utmData,
+        device: deviceInfo,
+        browser: browserInfo,
+        country,
+        isBounce: true,
+        wallet: {
+            walletAddress: '',
+            walletType: 'No Wallet Detected',
+            chainName: 'No Wallet Detected'
+        }
+    };
+    sessions.set(sessionId, newSession);
 }
 
 function updatePageDuration() {
@@ -388,4 +404,135 @@ function shouldContinueSession() {
     
     // Only create new session if time since last activity exceeds timeout
     return timeSinceLastActivity < SESSION_TIMEOUT;
+}
+
+function shouldContinueSession(lastActivity, currentTime) {
+    const sessionTimeout = 30 * 60 * 1000; // 30 minutes in milliseconds
+    return currentTime - lastActivity < sessionTimeout;
+}
+
+function trackPageView(pageUrl, referrer, utmData) {
+    const currentTime = new Date();
+    const sessionId = getSessionId();
+    const userId = getUserId();
+    const siteId = getSiteId();
+    const deviceInfo = getDeviceInfo();
+    const browserInfo = getBrowserInfo();
+    const country = getCountry();
+
+    // Check if we should continue an existing session
+    const existingSession = sessions.get(sessionId);
+    if (existingSession) {
+        const lastActivity = new Date(existingSession.lastActivity);
+        if (shouldContinueSession(lastActivity, currentTime)) {
+            // Only count as new page view if it's a different page or first page
+            const lastPage = existingSession.visitedPages[existingSession.visitedPages.length - 1];
+            const isNewPage = !lastPage || lastPage.path !== pageUrl;
+            
+            if (isNewPage) {
+                // Update existing session
+                existingSession.lastActivity = currentTime;
+                existingSession.pagesViewed++;
+                existingSession.visitedPages.push({
+                    path: pageUrl,
+                    timestamp: currentTime,
+                    duration: 0
+                });
+                existingSession.isBounce = false;
+                sessions.set(sessionId, existingSession);
+            }
+            return;
+        } else {
+            // Session expired, finalize it
+            const startTime = new Date(existingSession.startTime);
+            existingSession.duration = Math.floor((lastActivity - startTime) / 1000);
+            existingSession.endTime = lastActivity;
+            existingSession.isBounce = existingSession.pagesViewed <= 1;
+            saveSessionToDatabase(existingSession);
+            sessions.delete(sessionId);
+        }
+    }
+
+    // Create new session
+    const newSession = {
+        sessionId,
+        userId,
+        siteId,
+        startTime: currentTime,
+        lastActivity: currentTime,
+        pagesViewed: 1,
+        visitedPages: [{
+            path: pageUrl,
+            timestamp: currentTime,
+            duration: 0
+        }],
+        referrer,
+        utmData,
+        device: deviceInfo,
+        browser: browserInfo,
+        country,
+        isBounce: true,
+        wallet: {
+            walletAddress: '',
+            walletType: 'No Wallet Detected',
+            chainName: 'No Wallet Detected'
+        }
+    };
+    sessions.set(sessionId, newSession);
+}
+
+function updateSessionData(sessionId, data) {
+    const session = sessions.get(sessionId);
+    if (!session) return;
+
+    const currentTime = new Date();
+    const lastActivity = new Date(session.lastActivity);
+    
+    // Only update if within session timeout
+    if (shouldContinueSession(lastActivity, currentTime)) {
+        // Update session data
+        Object.assign(session, data);
+        session.lastActivity = currentTime;
+        
+        // Calculate duration based on first page view and last activity
+        const startTime = new Date(session.startTime);
+        session.duration = Math.floor((currentTime - startTime) / 1000); // Duration in seconds
+        
+        // Update end time to match last activity
+        session.endTime = currentTime;
+        
+        // Update visited pages duration
+        if (session.visitedPages && session.visitedPages.length > 0) {
+            const lastPage = session.visitedPages[session.visitedPages.length - 1];
+            if (lastPage) {
+                const pageStartTime = new Date(lastPage.timestamp);
+                lastPage.duration = Math.floor((currentTime - pageStartTime) / 1000);
+            }
+        }
+        
+        // Update bounce status based on duration and page views
+        session.isBounce = session.pagesViewed <= 1 && session.duration < 30; // 30 seconds threshold
+        
+        sessions.set(sessionId, session);
+    }
+}
+
+function cleanupExpiredSessions() {
+    const currentTime = new Date();
+    for (const [sessionId, session] of sessions.entries()) {
+        const lastActivity = new Date(session.lastActivity);
+        if (!shouldContinueSession(lastActivity, currentTime)) {
+            // Finalize session data before removing
+            const startTime = new Date(session.startTime);
+            session.duration = Math.floor((lastActivity - startTime) / 1000);
+            session.endTime = lastActivity;
+            session.isBounce = session.pagesViewed <= 1 && session.duration < 30; // 30 seconds threshold
+            
+            // Save session to database
+            saveSessionToDatabase(session);
+            
+            // Remove from active sessions
+            sessions.delete(sessionId);
+        }
+    }
 }
