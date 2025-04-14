@@ -3,13 +3,15 @@ const VERSION = 'v0.11.21';
 const CONSENT_STORAGE_KEY = 'mtm_consent';
 const USER_ID_KEY = 'mtm_user_id';
 const SITE_ID = 'abck-1234-dfdfdf-dfd-f-acbkdfc';
+const SESSION_STORAGE_KEY = 'mtm_session_id';
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 // 💡 Initialize User Session Object
 let userSession = {
     siteId: SITE_ID,
-    sessionId: generateSessionId(),
+    sessionId: getOrCreateSessionId(),
     userId: getOrCreateUserId(),
-    sessionStart: Date.now(),
+    sessionStart: getSessionStartTime(),
     sessionEnd: null,
     pagesPerVisit: 0,
     isBounce: true,
@@ -25,11 +27,8 @@ let userSession = {
     browser: getBrowserAndDeviceInfo().browser,
     os: getBrowserAndDeviceInfo().device.os,
     device: getBrowserAndDeviceInfo().device,
-
-    country:null
+    country: null
 };
-//countryName
-
 
 // 🚀 Utility Functions
 function generateSessionId() {
@@ -68,6 +67,7 @@ function getUTMParameters() {
 function getStoredReferrer() {
     return localStorage.getItem('referrer') || document.referrer;
 }
+
 function getBrowserAndDeviceInfo() {
     const userAgent = navigator.userAgent;
     let deviceType = 'desktop';
@@ -89,6 +89,40 @@ function getBrowserAndDeviceInfo() {
             resolution: `${window.screen.width}x${window.screen.height}`
         }
     };
+}
+
+function getOrCreateSessionId() {
+    let sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    const lastActivity = localStorage.getItem('mtm_last_activity');
+    
+    // Check if session exists and is not expired
+    if (sessionId && lastActivity) {
+        const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
+        if (timeSinceLastActivity < SESSION_TIMEOUT) {
+            // Update last activity time
+            localStorage.setItem('mtm_last_activity', Date.now());
+            return sessionId;
+        }
+    }
+    
+    // Create new session
+    sessionId = generateSessionId();
+    localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+    localStorage.setItem('mtm_last_activity', Date.now());
+    return sessionId;
+}
+
+function getSessionStartTime() {
+    const storedStartTime = localStorage.getItem('mtm_session_start');
+    if (storedStartTime) {
+        const timeSinceStart = Date.now() - parseInt(storedStartTime);
+        if (timeSinceStart < SESSION_TIMEOUT) {
+            return parseInt(storedStartTime);
+        }
+    }
+    const startTime = Date.now();
+    localStorage.setItem('mtm_session_start', startTime);
+    return startTime;
 }
 
 // 🛠️ Activity Tracking Functions
@@ -133,71 +167,77 @@ function getWeekNumber(d) {
 // 📈 Page View and Event Tracking
 function trackPageView() {
     userSession.pagesPerVisit++;
-    if (userSession.pagesPerVisit > 1) userSession.isBounce = false;
-
-    trackEvent('PAGEVIEW', {
-        pageUrl: window.location.href,
-        pageTitle: document.title,
-        userActivity: {
-            dau: trackDailyActivity(),
-            wau: trackWeeklyActivity(),
-            mau: trackMonthlyActivity()
-        }
-    });
-}
-let sessionData = {
-    sessionId: generateSessionId(),
-    siteId: SITE_ID,
-    referrer: document.referrer || 'direct',
-    utmData: getUTMParameters(),
-    startTime: new Date().toISOString(),
-    endTime: null,
-    pagesViewed: 0,
-    duration: 0,
-    isBounce: true,
-    country: '', 
-    device:getBrowserAndDeviceInfo().device,
-    browser:getBrowserAndDeviceInfo().browser
+    userSession.isBounce = userSession.pagesPerVisit <= 1;
     
-};
-let timer;
-let countryName;
+    // Update session data
+    const sessionData = {
+        ...userSession,
+        currentPage: window.location.pathname,
+        timestamp: Date.now()
+    };
+    
+    // Send session data
+    sendSessionData(sessionData);
+}
+
 function getCountryName() {
     fetch('https://ipapi.co/json/')
     .then(res => res.json())
     .then(data => {
-        countryName = data.country_name;
-        sessionData.country = countryName;
+        userSession.country = data.country_name;
     })
     .catch(err => console.error('Error:', err));
-    return countryName;
+    return userSession.country;
 }
+
 function startSessionTracking() {
-    sessionData.pagesViewed++;
-    sessionData.country = countryName;
-    timer = setInterval(() => {
-        const currentTime = new Date();
-        sessionData.endTime = currentTime.toISOString();
-        sessionData.duration = Math.round((currentTime - new Date(sessionData.startTime)) / 1000);
-        sessionData.isBounce = sessionData.pagesViewed === 1;
-        fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({sessionData})
-        })
-        .then(res => res.json())
-        .then(res => console.log('Session sent:', res.message))
-        .catch(err => console.error('Error:', err));
-    }, 5000);  // Send data every 5 seconds
+    // Update last activity time on user interaction
+    const updateActivity = () => {
+        localStorage.setItem('mtm_last_activity', Date.now());
+    };
+
+    // Add event listeners for user activity
+    ['mousemove', 'keydown', 'click', 'scroll'].forEach(event => {
+        window.addEventListener(event, updateActivity);
+    });
+
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            userSession.sessionEnd = Date.now();
+            // Send session end data
+            sendSessionData();
+        } else {
+            // Check if session expired while tab was inactive
+            const lastActivity = localStorage.getItem('mtm_last_activity');
+            if (lastActivity) {
+                const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
+                if (timeSinceLastActivity >= SESSION_TIMEOUT) {
+                    // Create new session
+                    userSession.sessionId = getOrCreateSessionId();
+                    userSession.sessionStart = getSessionStartTime();
+                }
+            }
+        }
+    });
+
+    // Handle page unload
+    window.addEventListener('beforeunload', () => {
+        userSession.sessionEnd = Date.now();
+        sendSessionData();
+    });
 }
-window.addEventListener('beforeunload', () => {
-    sessionData.pagesViewed++;
-    sessionData.endTime = new Date().toISOString();
-    sessionData.duration = Math.round((new Date() - new Date(sessionData.startTime)) / 1000);
-    sessionData.isBounce = sessionData.pagesViewed === 1;
-    navigator.sendBeacon(API_URL, JSON.stringify(sessionData));
-    clearInterval(timer);  // Stop the timer
-});
+
+function sendSessionData(sessionData) {
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionData })
+    })
+    .then(res => res.json())
+    .then(result => console.log('API Response:', result))
+    .catch(error => console.error('Error:', error));
+}
 
 function trackEvent(eventType, eventData = {}) {
     userSession.country = getCountryName();
