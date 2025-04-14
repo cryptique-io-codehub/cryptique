@@ -45,12 +45,13 @@ sessionSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
 
 // Pre-save middleware to update session data
 sessionSchema.pre('save', function(next) {
-    // Update duration if endTime is set
-    if (this.endTime) {
-        this.duration = Math.floor((this.endTime - this.startTime) / 1000);
-    } else if (this.lastActivity) {
-        // If no endTime but lastActivity exists, use that for duration
+    // Always use lastActivity for duration calculation if available
+    if (this.lastActivity) {
         this.duration = Math.floor((this.lastActivity - this.startTime) / 1000);
+        // Ensure endTime matches lastActivity
+        this.endTime = this.lastActivity;
+    } else if (this.endTime) {
+        this.duration = Math.floor((this.endTime - this.startTime) / 1000);
     }
     
     // Update pagesViewed based on visitedPages length
@@ -64,10 +65,9 @@ sessionSchema.pre('save', function(next) {
 
 // Method to update session activity
 sessionSchema.methods.updateActivity = function() {
-    this.lastActivity = new Date();
-    if (!this.endTime) {
-        this.endTime = this.lastActivity;
-    }
+    const now = new Date();
+    this.lastActivity = now;
+    this.endTime = now;
     return this.save();
 };
 

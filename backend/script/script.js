@@ -176,10 +176,24 @@ function trackPageView() {
     const currentPage = window.location.pathname;
     const currentTime = new Date().toISOString();
     
+    // Check if we should continue the current session
+    if (!shouldContinueSession()) {
+        // Create new session
+        userSession.sessionId = getOrCreateSessionId();
+        userSession.sessionStart = getSessionStartTime();
+        userSession.visitedPages = [];
+        userSession.pagesViewed = 0;
+        userSession.isBounce = true;
+        userSession.startTime = currentTime;
+        userSession.lastActivity = currentTime;
+        userSession.endTime = currentTime;
+    }
+    
     // Update session data
     if (userSession.sessionId) {
         // Update last activity time
         userSession.lastActivity = currentTime;
+        userSession.endTime = currentTime;
         
         // Check if this is a new page view and not the initial page load
         const isNewPage = !userSession.visitedPages.some(page => page.path === currentPage);
@@ -193,16 +207,14 @@ function trackPageView() {
                 duration: 0 // Will be updated when user leaves the page
             });
             
-            // Update pages viewed count
+            // Update pages viewed count (excluding initial page load)
             userSession.pagesViewed = userSession.visitedPages.length;
             
-            // Update session duration and times
+            // Update session duration based on first page to last activity
             if (userSession.visitedPages.length > 0) {
                 const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
-                const lastPageTime = new Date(currentTime);
-                userSession.duration = Math.floor((lastPageTime - firstPageTime) / 1000);
-                userSession.startTime = userSession.visitedPages[0].timestamp;
-                userSession.endTime = currentTime;
+                const lastActivityTime = new Date(userSession.lastActivity);
+                userSession.duration = Math.floor((lastActivityTime - firstPageTime) / 1000);
             }
             
             // Update bounce status based on duration only
@@ -217,6 +229,7 @@ function trackPageView() {
 function updatePageDuration() {
     const currentPage = window.location.pathname;
     const currentTime = new Date();
+    const currentTimeISO = currentTime.toISOString();
     
     if (userSession.sessionId) {
         const pageIndex = userSession.visitedPages.findIndex(page => page.path === currentPage);
@@ -225,11 +238,11 @@ function updatePageDuration() {
             const pageStartTime = new Date(pageEntry.timestamp);
             pageEntry.duration = Math.floor((currentTime - pageStartTime) / 1000);
             
-            // Update session duration and end time
+            // Update session duration based on first page to last activity
             const firstPageTime = new Date(userSession.visitedPages[0].timestamp);
             userSession.duration = Math.floor((currentTime - firstPageTime) / 1000);
-            userSession.endTime = currentTime.toISOString();
-            userSession.lastActivity = currentTime.toISOString();
+            userSession.endTime = currentTimeISO;
+            userSession.lastActivity = currentTimeISO;
             
             // Update bounce status based on duration only
             userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
@@ -265,17 +278,7 @@ function startSessionTracking() {
         if (document.visibilityState === 'hidden') {
             updatePageDuration();
         } else if (document.visibilityState === 'visible') {
-            if (shouldContinueSession()) {
-                trackPageView();
-            } else {
-                // Create new session if current one has expired
-                userSession.sessionId = getOrCreateSessionId();
-                userSession.sessionStart = getSessionStartTime();
-                userSession.visitedPages = [];
-                userSession.pagesViewed = 0;
-                userSession.isBounce = true;
-                trackPageView();
-            }
+            trackPageView();
         }
     });
 
@@ -383,5 +386,6 @@ function shouldContinueSession() {
     const currentTime = new Date();
     const timeSinceLastActivity = currentTime - lastActivityTime;
     
+    // Only create new session if time since last activity exceeds timeout
     return timeSinceLastActivity < SESSION_TIMEOUT;
 }
