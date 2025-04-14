@@ -126,10 +126,35 @@ exports.postAnalytics = async (req, res) => {
     analytics.returningVisitors =
       analytics.totalVisitors - analytics.newVisitors;
 
-      const newSession = new Session(sessionData);
-      await newSession.save();
-      analytics.sessions.push(newSession._id); // Add session to the analytics
-      await analytics.save();
+    // Handle session data
+    if (sessionData) {
+      const existingSession = await Session.findOne({ sessionId: sessionData.sessionId });
+      
+      if (existingSession) {
+        // Update existing session
+        await existingSession.addPageView(sessionData.currentPage);
+        await existingSession.updateActivity();
+        
+        // Update session end time if provided
+        if (sessionData.sessionEnd) {
+          existingSession.endTime = new Date(sessionData.sessionEnd);
+          await existingSession.save();
+        }
+      } else {
+        // Create new session only if it doesn't exist
+        const newSession = new Session({
+          ...sessionData,
+          pagesViewed: 1,
+          duration: 0,
+          isBounce: true,
+          lastActivity: new Date()
+        });
+        await newSession.save();
+        analytics.sessions.push(newSession._id);
+      }
+    }
+
+    await analytics.save();
     return res
       .status(200)
       .json({ message: "Data Updated successfully", analytics });
