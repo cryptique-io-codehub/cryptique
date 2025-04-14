@@ -33,8 +33,8 @@ exports.postAnalytics = async (req, res) => {
       if(!session) {
         const newSession = new Session({
           ...sessionData,
-          pagesViewed: 1,
-          visitedPages: [{
+          pagesViewed: sessionData.pagesViewed || 1,
+          visitedPages: sessionData.visitedPages || [{
             path: sessionData.currentPage,
             timestamp: new Date(),
             duration: 0
@@ -46,22 +46,31 @@ exports.postAnalytics = async (req, res) => {
       }
       else{
         // Update existing session
-        session.pagesViewed++;
+        session.pagesViewed = sessionData.pagesViewed || session.pagesViewed + 1;
         session.isBounce = session.pagesViewed <= 1;
         session.lastActivity = new Date();
         session.duration = Math.round((session.lastActivity - session.startTime) / 1000);
         
         // Add current page to visited pages if it's not already there
+        const currentPage = sessionData.currentPage;
         const pageAlreadyVisited = session.visitedPages.some(
-          page => page.path === sessionData.currentPage
+          page => page.path === currentPage
         );
         
         if (!pageAlreadyVisited) {
           session.visitedPages.push({
-            path: sessionData.currentPage,
+            path: currentPage,
             timestamp: new Date(),
             duration: 0
           });
+        }
+
+        // Update existing page durations
+        if (session.visitedPages.length > 0) {
+          const lastPage = session.visitedPages[session.visitedPages.length - 1];
+          if (lastPage.path !== currentPage) {
+            lastPage.duration = Math.round((Date.now() - lastPage.timestamp) / 1000);
+          }
         }
 
         if (sessionData.sessionEnd) {

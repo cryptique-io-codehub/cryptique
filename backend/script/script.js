@@ -166,14 +166,24 @@ function getWeekNumber(d) {
 
 // 📈 Page View and Event Tracking
 function trackPageView() {
+    // Increment page views
     userSession.pagesPerVisit++;
     userSession.isBounce = userSession.pagesPerVisit <= 1;
+    
+    // Get current page path
+    const currentPage = window.location.pathname;
     
     // Update session data
     const sessionData = {
         ...userSession,
-        currentPage: window.location.pathname,
-        timestamp: Date.now()
+        currentPage: currentPage,
+        timestamp: Date.now(),
+        pagesViewed: userSession.pagesPerVisit,
+        visitedPages: [{
+            path: currentPage,
+            timestamp: Date.now(),
+            duration: 0
+        }]
     };
     
     // Send session data
@@ -245,10 +255,16 @@ function sendSessionData(sessionData) {
         browser: userSession.browser,
         referrer: userSession.referrer,
         utmData: userSession.utmData,
+        currentPage: sessionData?.currentPage || window.location.pathname,
+        visitedPages: sessionData?.visitedPages || [{
+            path: window.location.pathname,
+            timestamp: Date.now(),
+            duration: 0
+        }],
         wallet: {
             walletAddress: userSession.walletAddresses[0] || '',
             walletType: userSession.provider || 'No Wallet Detected',
-            chainName: userSession.chainId || 'No Wallet Detected'
+            chainName: userSession.chainId || 'No Chain Detected'
         }
     };
 
