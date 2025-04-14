@@ -229,10 +229,33 @@ function startSessionTracking() {
 }
 
 function sendSessionData(sessionData) {
+    const formattedSessionData = {
+        siteId: userSession.siteId,
+        sessionId: userSession.sessionId,
+        userId: userSession.userId,
+        startTime: new Date(userSession.sessionStart).toISOString(),
+        endTime: userSession.sessionEnd ? new Date(userSession.sessionEnd).toISOString() : null,
+        pagesViewed: userSession.pagesPerVisit,
+        duration: userSession.sessionEnd ? 
+            Math.round((userSession.sessionEnd - userSession.sessionStart) / 1000) : 
+            Math.round((Date.now() - userSession.sessionStart) / 1000),
+        isBounce: userSession.isBounce,
+        country: userSession.country,
+        device: userSession.device,
+        browser: userSession.browser,
+        referrer: userSession.referrer,
+        utmData: userSession.utmData,
+        wallet: {
+            walletAddress: userSession.walletAddresses[0] || '',
+            walletType: userSession.provider || 'No Wallet Detected',
+            chainName: userSession.chainId || 'No Wallet Detected'
+        }
+    };
+
     fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionData })
+        body: JSON.stringify({ sessionData: formattedSessionData })
     })
     .then(res => res.json())
     .then(result => console.log('API Response:', result))
