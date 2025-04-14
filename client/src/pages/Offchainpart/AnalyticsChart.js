@@ -103,12 +103,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         if (session.wallet && session.wallet.walletAddress) {
           if (!connectedWallets.has(session.wallet.walletAddress)) {
             connectedWallets.add(session.wallet.walletAddress);
-            // Update all time slots from this point forward
-            Object.keys(finalData)
-              .filter(key => finalData[key].timestamp >= date.getTime())
-              .forEach(key => {
-                finalData[key].walletConnects = connectedWallets.size;
-              });
+            finalData[timeKey].walletConnects++;
           }
         }
       }

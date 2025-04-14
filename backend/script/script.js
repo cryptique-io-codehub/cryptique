@@ -5,6 +5,7 @@ const USER_ID_KEY = 'mtm_user_id';
 const SITE_ID = 'abck-1234-dfdfdf-dfd-f-acbkdfc';
 const SESSION_STORAGE_KEY = 'mtm_session_id';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const BOUNCE_TIME_THRESHOLD = 30 * 1000; // 30 seconds
 
 // 💡 Initialize User Session Object
 let userSession = {
@@ -204,7 +205,7 @@ function trackPageView() {
             }
             
             // Update bounce status
-            userSession.isBounce = userSession.pagesViewed <= 1;
+            userSession.isBounce = userSession.duration < BOUNCE_TIME_THRESHOLD;
             
             // Save session data
             saveSessionData();
