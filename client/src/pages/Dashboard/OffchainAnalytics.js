@@ -182,8 +182,18 @@ function formatDuration(seconds) {
   ];
 
   const data = [
-    { name: "New", value: analytics?.newVisitors, color: "#3B82F6" }, // Blue
-    { name: "Returning", value: analytics?.returningVisitors, color: "#F59E0B" }, // Orange
+    { 
+      name: "New", 
+      value: analytics?.uniqueVisitors || 0, 
+      color: "#3B82F6",
+      percentage: totalSessions > 0 ? ((analytics?.uniqueVisitors || 0) / totalSessions * 100).toFixed(2) : "0.00"
+    },
+    { 
+      name: "Returning", 
+      value: totalSessions > 0 ? (totalSessions - (analytics?.uniqueVisitors || 0)) : 0, 
+      color: "#F59E0B",
+      percentage: totalSessions > 0 ? ((totalSessions - (analytics?.uniqueVisitors || 0)) / totalSessions * 100).toFixed(2) : "0.00"
+    }
   ];
   
   // Updated AnalyticsCard to be responsive
@@ -647,7 +657,7 @@ return (
                                         {item.name}
                                       </td>
                                       <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
-                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{(item.value/(analytics?.newVisitors + analytics?.returningVisitors)*100).toFixed(2)}</td>
+                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{item.percentage}%</td>
                                     </tr>
                                   ))}
                                 </tbody>
