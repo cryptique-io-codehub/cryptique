@@ -157,15 +157,8 @@ function LoginForm({ onSignupClick, toggleLoading }) {
     const provider = new GoogleAuthProvider();
     try {
       toggleLoading(true);
-      // Add popup window configuration
-      const result = await signInWithPopup(auth, provider, {
-        popupWindowAttributes: {
-          width: 500,
-          height: 600,
-          left: window.screen.width / 2 - 250,
-          top: window.screen.height / 2 - 300
-        }
-      });
+      // Use the correct Firebase Auth configuration
+      const result = await signInWithPopup(auth, provider);
       
       const user = result.user;
       const response = await axiosInstance.post('/auth/google-login', {
