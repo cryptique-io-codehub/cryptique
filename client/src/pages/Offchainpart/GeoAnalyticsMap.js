@@ -109,6 +109,17 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
+  // Function to get country flag emoji
+  const getCountryFlag = (countryCode) => {
+    // Convert country code to flag emoji
+    // Each flag emoji is made up of two regional indicator symbols
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map(char => 127397 + char.charCodeAt());
+    return String.fromCodePoint(...codePoints);
+  };
+
   return (
     <div className="w-full bg-white rounded-2xl p-6 mt-4">
       <div className="flex justify-between items-center mb-4">
@@ -144,15 +155,16 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
       {/* Top Countries List */}
       <div>
         <h3 className="text-lg font-medium mb-2">Top Countries</h3>
-        <ul className="space-y-1 text-sm text-gray-700">
+        <ul className="space-y-2 text-sm text-gray-700">
           {topCountries.map(({ country, value, web3Users, walletConnections }) => {
             const countryCode = country.toUpperCase();
             const countryName = countryCodeToName[countryCode] || countryCode;
+            const flagEmoji = getCountryFlag(countryCode);
             return (
-              <li key={country} className="flex justify-between items-center">
+              <li key={country} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
                 <span className="flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-                  {countryName}
+                  <span className="text-xl mr-2">{flagEmoji}</span>
+                  <span className="font-medium">{countryName}</span>
                 </span>
                 <div className="flex space-x-4">
                   <span className="font-semibold">{value} users</span>
