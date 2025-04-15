@@ -123,12 +123,15 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         email, 
         password 
       });
-      const aa=email.split('@')[0];
+      
       if (response.data.user) {
-        toggleLoading(false);
+        // Store user data and token
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('selectedTeam', aa);
-        navigate(`/dashboard`);
+        localStorage.setItem('User', JSON.stringify(response.data.user));
+        localStorage.setItem('selectedTeam', email.split('@')[0]);
+        
+        toggleLoading(false);
+        navigate('/dashboard');
       } else {
         toggleLoading(false);
         alert(response.data.message || 'Invalid credentials');
