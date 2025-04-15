@@ -99,25 +99,14 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
-    // Process wallet connects data - track cumulative unique wallets
-    const connectedWallets = new Set();
-    const sortedWallets = [...analytics.wallets].sort((a, b) => 
-      (a.timestamp || 0) - (b.timestamp || 0)
-    );
-
-    sortedWallets.forEach(wallet => {
+    // Process wallet connects data - track actual connections per time slot
+    analytics.wallets.forEach(wallet => {
       if (wallet.walletAddress && wallet.walletAddress !== '') {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
         
         if (finalData[timeKey]) {
-          connectedWallets.add(wallet.walletAddress);
-          // Update all time slots from this point forward with the current count
-          Object.keys(finalData)
-            .filter(key => finalData[key].timestamp >= date.getTime())
-            .forEach(key => {
-              finalData[key].walletConnects = connectedWallets.size;
-            });
+          finalData[timeKey].walletConnects += 1;
         }
       }
     });
