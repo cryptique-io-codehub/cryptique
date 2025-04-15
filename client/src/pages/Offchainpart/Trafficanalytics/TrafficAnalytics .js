@@ -881,6 +881,25 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     return null;
   };
 
+  // Custom tooltip for the scatter plot
+  const TrafficQualityTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
+          <p className="font-semibold">{data.source}</p>
+          <p>Engagement: {data.engagement} mins</p>
+          <p>Conversion: {data.conversion}%</p>
+          <p>Bounce Rate: {data.bounceRate}%</p>
+          <p>Unique Users: {data.uniqueUsers}</p>
+          <p>Web3 Users: {data.web3Users}</p>
+          <p>Wallets: {data.wallets}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="p-2 md:p-4 max-w-full overflow-hidden">
       {/* Page Title */}
@@ -951,7 +970,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
                   domain={[0, 'dataMax + 5']}
                   tick={{ fontSize: 10 }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<TrafficQualityTooltip />} />
                 <Legend 
                   layout="horizontal" 
                   verticalAlign="top" 
