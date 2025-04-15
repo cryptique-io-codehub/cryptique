@@ -187,29 +187,64 @@ exports.postAnalytics = async (req, res) => {
         await analytics.save();
       }
       
-      // Check if a session with this ID already exists
+      // Check if a session with this ID already exists before creating a new one
       if (sessionData && sessionId) {
         const existingSession = await Session.findOne({ sessionId: sessionId });
         
         if (existingSession) {
-          // Update existing session
+          // Update existing session instead of creating a new one
+          // Extract page visits from existing session
+          let combinedPageVisits = existingSession.pageVisits || [];
+          
+          // Add new page visit if it doesn't exist
+          if (sessionData.pageVisits && Array.isArray(sessionData.pageVisits)) {
+            sessionData.pageVisits.forEach(newVisit => {
+              const exists = combinedPageVisits.some(
+                existingVisit => existingVisit.url === newVisit.url
+              );
+              
+              if (!exists) {
+                combinedPageVisits.push(newVisit);
+              }
+            });
+          }
+          
+          // Update session with combined data
+          const updatedData = {
+            ...sessionData,
+            pageVisits: combinedPageVisits,
+            pagesViewed: combinedPageVisits.length,
+            isBounce: combinedPageVisits.length <= 1
+          };
+          
           const updatedSession = await Session.findByIdAndUpdate(
             existingSession._id,
-            sessionData,
+            updatedData,
             { new: true }
           );
-          return res.status(200).json({ message: "Data Updated successfully", analytics });
+          
+          return res.status(200).json({ 
+            message: "Session updated successfully", 
+            analytics 
+          });
         } else {
-          // Create new session
+          // Create new session if none exists
           const newSession = new Session(sessionData);
           await newSession.save();
           analytics.sessions.push(newSession._id);
           await analytics.save();
-          return res.status(200).json({ message: "Data Updated successfully", analytics });
+          
+          return res.status(200).json({ 
+            message: "New session created", 
+            analytics 
+          });
         }
-      } else {
-        return res.status(200).json({ message: "Data Updated successfully", analytics });
       }
+      
+      return res.status(200).json({ 
+        message: "Data processed successfully", 
+        analytics 
+      });
     }
     
     return res.status(400).json({ message: "Invalid request format" });
