@@ -2,10 +2,18 @@ import React from 'react';
 import { Box, Drawer, AppBar, Toolbar, Typography, List, ListItem, ListItemIcon, ListItemText, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import MenuIcon from '@mui/icons-material/Menu';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import GroupsIcon from '@mui/icons-material/Groups';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import TransformIcon from '@mui/icons-material/Transform';
+import AdsClickIcon from '@mui/icons-material/AdsClick';
+import HistoryIcon from '@mui/icons-material/History';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import LanguageIcon from '@mui/icons-material/Language';
 import { useState } from 'react';
 
 const drawerWidth = 240;
@@ -31,19 +39,59 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
 
 const menuItems = [
   {
-    text: 'Dashboard',
-    icon: <DashboardIcon />,
-    path: '/dashboard'
+    text: 'Off-Chain Analytics',
+    icon: <BarChartIcon />,
+    path: '/offchain'
+  },
+  {
+    text: 'On-Chain Explorer',
+    icon: <TimelineIcon />,
+    path: '/onchain'
+  },
+  {
+    text: 'KOL Intelligence',
+    icon: <GroupsIcon />,
+    path: '/kol'
+  },
+  {
+    text: 'Campaigns',
+    icon: <CampaignIcon />,
+    path: '/campaigns'
+  },
+  {
+    text: 'Conversion Events',
+    icon: <TransformIcon />,
+    path: '/conversion-events'
+  },
+  {
+    text: 'Advertise',
+    icon: <AdsClickIcon />,
+    path: '/advertise'
+  },
+  {
+    text: 'History',
+    icon: <HistoryIcon />,
+    path: '/history'
+  },
+  {
+    text: 'Import Users',
+    icon: <PersonAddIcon />,
+    path: '/importusers'
+  },
+  {
+    text: 'Manage Websites',
+    icon: <LanguageIcon />,
+    path: '/managewebsites'
   },
   {
     text: 'Custom Dashboard',
     icon: <DashboardCustomizeIcon />,
-    path: '/dashboard/custom'
+    path: '/custom-dashboard'
   },
   {
     text: 'CQ Intelligence',
     icon: <PsychologyIcon />,
-    path: '/dashboard/cq-intelligence'
+    path: '/cq-intelligence'
   }
 ];
 

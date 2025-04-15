@@ -112,28 +112,26 @@ function App() {
             
             {/* Protected Routes */}
             <Route
-              path="/dashboard"
               element={
                 <PrivateRoute>
                   <Layout />
                 </PrivateRoute>
               }
             >
-              <Route index element={<Dashboard />} />
-              <Route path="custom" element={<CustomDashboard />} />
-              <Route path="cq-intelligence" element={<CQIntelligence />} />
-              <Route path="offchain" element={<OffchainAnalytics />} />
-              <Route path="onchain" element={<OnchainExplorer />} />
-              <Route path="kol" element={<KOLIntelligence />} />
-              <Route path="campaigns" element={<Campaigns />} />
-              <Route path="conversion-events" element={<ConversionEvents />} />
-              <Route path="advertise" element={<Advertise />} />
-              <Route path="history" element={<History />} />
-              <Route path="importusers" element={<ImportUsers />} />
-              <Route path="managewebsites" element={<ManageWebsites />} />
+              <Route path="/offchain" element={<OffchainAnalytics />} />
+              <Route path="/onchain" element={<OnchainExplorer />} />
+              <Route path="/kol" element={<KOLIntelligence />} />
+              <Route path="/campaigns" element={<Campaigns />} />
+              <Route path="/conversion-events" element={<ConversionEvents />} />
+              <Route path="/advertise" element={<Advertise />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/importusers" element={<ImportUsers />} />
+              <Route path="/managewebsites" element={<ManageWebsites />} />
+              <Route path="/custom-dashboard" element={<CustomDashboard />} />
+              <Route path="/cq-intelligence" element={<CQIntelligence />} />
               
               {/* Settings Routes */}
-              <Route path="settings">
+              <Route path="/settings">
                 <Route index element={<Settings />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="members" element={<MembersSection />} />
