@@ -111,7 +111,7 @@ const CQIntelligence = () => {
         </Box>
       </Box>
 
-      <Paper 
+      <Paper
         elevation={0}
         sx={{ 
           flex: 1, 
@@ -260,7 +260,7 @@ const CQIntelligence = () => {
         </Alert>
       )}
 
-      <Paper 
+      <Paper
         elevation={0}
         sx={{ 
           p: 2,

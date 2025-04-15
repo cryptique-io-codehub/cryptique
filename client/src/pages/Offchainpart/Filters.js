@@ -111,11 +111,14 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   </script>`;
     setscriptcode(scriptHTML);
     setscriptmodel(true);
-    // localStorage.setItem("showInstallationPopup", "true");
     
     if (website.isVerified) {
       const new_response = await axiosInstance.get(`/sdk/analytics/${website.siteId}`);
-      setanalytics(new_response.data.analytics);
+      if (new_response.data && new_response.data.analytics) {
+        setanalytics(new_response.data.analytics);
+      } else {
+        setfalsemessage('No analytics data found for this website. Please verify the website first.');
+      }
     }
     
     setIsDropdownOpen(false);
@@ -176,38 +179,39 @@ const Filters = ({ websitearray, setWebsitearray, analytics, setanalytics, selec
   const handleVerify = async () => {
     try {
       setverifyload(true);
-      // console.log(selectedWebsite);
-    
+      
       const response = await axiosInstance.post('/website/verify', {
         Domain: selectedWebsite.Domain,
         siteId: selectedWebsite.siteId
       });
-  
+
       if (response.status === 200) {
-        selectedWebsite.isVerified=true;
+        selectedWebsite.isVerified = true;
         localStorage.setItem("idy", selectedWebsite.siteId);
-        localStorage.setItem("selectedWebsite",selectedWebsite.Domain);
+        localStorage.setItem("selectedWebsite", selectedWebsite.Domain);
         setscriptmodel(false);
-        // localStorage.removeItem("showInstallationPopup");
+        
         const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);
-        setanalytics(new_response.data.analytics);
-        console.log(analytics);
-        setidy(selectedWebsite.siteId);
+        if (new_response.data && new_response.data.analytics) {
+          setanalytics(new_response.data.analytics);
+          console.log(analytics);
+          setidy(selectedWebsite.siteId);
+        } else {
+          setfalsemessage('No analytics data found for this website. Please wait a few minutes for data to be collected.');
+        }
       } 
     } catch (error) {
       // Handle specific status codes
       if (error.response) {
         if (error.response.status === 404) {
           setfalsemessage("Cryptique analytics script not found on the page");
-        } else if(error.response.status === 403)
-        {
+        } else if(error.response.status === 403) {
           setfalsemessage("site-id does not match or is missing");
         }
       } else {
         setfalsemessage("Verification failed");
       }
-    }
-    finally {
+    } finally {
       setverifyload(false);
     }
   };
