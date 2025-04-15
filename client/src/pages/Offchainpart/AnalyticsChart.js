@@ -96,96 +96,20 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       
       if (finalData[timeKey]) {
         finalData[timeKey].visitors++;
-      }
-    });
-
-    // Process wallet connects data - track actual connections per time slot
-    console.log('Raw wallet data:', analytics.wallets);
-    
-    // Inspect the timestamp format in the wallet data
-    if (analytics.wallets && analytics.wallets.length > 0) {
-      console.log('First wallet timestamp:', analytics.wallets[0].timestamp);
-      console.log('Timestamp type:', typeof analytics.wallets[0].timestamp);
-      console.log('Timestamp as Date:', new Date(analytics.wallets[0].timestamp).toString());
-      console.log('Current timeframe:', timeframe);
-      console.log('Example time key:', formatTimeKey(new Date(analytics.wallets[0].timestamp), timeframe));
-    }
-    
-    // Create a cumulative wallet counter to have a more accurate representation
-    const walletConnections = {};
-    
-    // First, sort wallets by timestamp
-    const sortedWallets = [...analytics.wallets].sort((a, b) => {
-      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return timeA - timeB;
-    });
-    
-    console.log('Sorted wallets:', sortedWallets);
-    
-    // Reset all wallet connects counts to 0
-    Object.keys(finalData).forEach(key => {
-      finalData[key].walletConnects = 0;
-    });
-
-    // Process each wallet connection
-    sortedWallets.forEach(wallet => {
-      if (wallet.walletAddress && wallet.walletAddress !== '') {
-        // Ensure we have a valid timestamp (default to now if missing)
-        if (!wallet.timestamp) {
-          console.log('Missing timestamp for wallet:', wallet);
-          
-          // For wallets without timestamps, add them to current time
-          const now = new Date();
-          const timeKey = formatTimeKey(now, timeframe);
-          
-          if (finalData[timeKey]) {
-            finalData[timeKey].walletConnects += 1;
-          }
-          return;
-        }
         
-        // Convert timestamp to Date object
-        const date = new Date(wallet.timestamp);
-        
-        // Format the time key for this wallet's connection time
-        const timeKey = formatTimeKey(date, timeframe);
-        
-        console.log('Processing wallet connection:', {
-          address: wallet.walletAddress,
-          timestamp: wallet.timestamp,
-          date: date.toString(),
-          timeKey: timeKey
-        });
-        
-        // Find the time bucket for this wallet connection
-        if (finalData[timeKey]) {
-          finalData[timeKey].walletConnects += 1;
-          console.log(`Added wallet connection to time slot: ${timeKey}`);
-        } else {
-          console.log(`No matching time slot found for time key: ${timeKey}`);
-          
-          // Find closest time slot based on timestamp
-          let closestKey = null;
-          let closestDistance = Infinity;
-          
-          Object.keys(finalData).forEach(key => {
-            const distance = Math.abs(finalData[key].timestamp - date.getTime());
-            if (distance < closestDistance) {
-              closestDistance = distance;
-              closestKey = key;
-            }
+        // Check if this session has a wallet connection
+        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+          finalData[timeKey].walletConnects++;
+          console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
+            address: session.wallet.walletAddress,
+            sessionTime: date.toString()
           });
-          
-          if (closestKey) {
-            finalData[closestKey].walletConnects += 1;
-            console.log(`Added wallet connection to closest time slot: ${closestKey}`);
-          }
         }
       }
     });
-    
-    console.log('Final data after wallet processing:', finalData);
+
+    // Clear any previous wallet processing code
+    console.log('Sessions-based wallet connection data:', finalData);
     
     // Ensure all time slots have walletConnects initialized
     Object.keys(finalData).forEach(key => {
@@ -194,6 +118,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
     
+    console.log('Final data after wallet processing:', finalData);
+
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(finalData)
       .map(([time, data]) => ({
