@@ -39,11 +39,11 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
     if (!Array.isArray(sessions)) return {};
     const countryMetrics = new Map();
 
-    sessions.forEach(({ country, userId, isWeb3User, walletAddress }) => {
-      if (!country) return;
+    sessions.forEach((session) => {
+      if (!session.country) return;
 
       // Normalize country code to uppercase
-      const countryCode = country.toUpperCase();
+      const countryCode = session.country.toUpperCase();
       
       if (!countryMetrics.has(countryCode)) {
         countryMetrics.set(countryCode, {
@@ -57,18 +57,18 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
       const metrics = countryMetrics.get(countryCode);
       
       // Track unique users
-      if (userId) {
-        metrics.uniqueUsers.add(userId);
+      if (session.userId) {
+        metrics.uniqueUsers.add(session.userId);
       }
       
-      // Track web3 users
-      if (isWeb3User && userId) {
-        metrics.web3Users.add(userId);
+      // Track web3 users (users with wallet type and it's not "No Wallet Detected")
+      if (session.wallet && session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
+        metrics.web3Users.add(session.userId);
       }
       
-      // Track wallet connections
-      if (walletAddress) {
-        metrics.walletConnections.add(walletAddress);
+      // Track wallet connections (users with non-empty wallet address)
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+        metrics.walletConnections.add(session.userId);
       }
       
       metrics.totalSessions++;
