@@ -99,6 +99,13 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
           >
             <LineChart size={14} /> {showExpanded && "On-chain explorer"}
           </Link>
+          <Link 
+            to={`/${selectedTeam}/cq-intelligence`}
+            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("cq-intelligence")}
+          >
+            <BarChart size={14} /> {showExpanded && "CQ Intelligence"}
+          </Link>
           
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
