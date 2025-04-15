@@ -491,6 +491,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     avgBounceRate: '0%',
     bestSourceByWeb3: '',
     bestSourceByWallets: '',
+    bestSourceByConversion: '',
+    sourceWithHighestBounce: '',
   });
 
   // State for traffic quality data
@@ -626,12 +628,34 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
     });
     
-    // Calculate conversion rates for each source
+    // Calculate conversion rates and bounce rates for each source
     const conversionRates = {};
+    const bounceRates = {};
+    
     Object.entries(uniqueUserIdsBySource).forEach(([source, userIds]) => {
-      const totalUsers = userIds.size;
+      const totalVisitors = userIds.size;
       const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
-      conversionRates[source] = totalUsers > 0 ? (web3Users / totalUsers) * 100 : 0;
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      
+      // Calculate conversion rate (wallets connected / number of visitors)
+      conversionRates[source] = totalVisitors > 0 ? (wallets / totalVisitors) * 100 : 0;
+      
+      // Calculate bounce rate (100 - (wallets connected / web3 users))
+      bounceRates[source] = web3Users > 0 ? 100 - ((wallets / web3Users) * 100) : 100;
+    });
+    
+    // Find the source with the lowest conversion rate (least effective)
+    let lowestConversionSource = '';
+    let lowestConversionRate = 100;
+    let lowestConversionVisitors = 0;
+    
+    Object.entries(conversionRates).forEach(([source, rate]) => {
+      const visitors = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
+      if (rate < lowestConversionRate || (rate === lowestConversionRate && visitors > lowestConversionVisitors)) {
+        lowestConversionRate = rate;
+        lowestConversionSource = source;
+        lowestConversionVisitors = visitors;
+      }
     });
     
     // Find the source with the best conversion rate
@@ -645,14 +669,14 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
     });
     
-    // Find the source with the lowest conversion rate
-    let lowestConversionSource = '';
-    let lowestConversionRate = 100;
+    // Find the source with the highest bounce rate
+    let highestBounceSource = '';
+    let highestBounceRate = 0;
     
-    Object.entries(conversionRates).forEach(([source, rate]) => {
-      if (rate < lowestConversionRate) {
-        lowestConversionRate = rate;
-        lowestConversionSource = source;
+    Object.entries(bounceRates).forEach(([source, rate]) => {
+      if (rate > highestBounceRate) {
+        highestBounceRate = rate;
+        highestBounceSource = source;
       }
     });
     
@@ -696,25 +720,26 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     if (maxWalletSource === '') {
       maxWalletSource = 'Direct';
     }
+    if (highestBounceSource === '') {
+      highestBounceSource = 'Direct';
+    }
     
     // Get metrics for the best source by sessions
     const totalSessions = sourceCounts[maxSessionsSource] || 0;
     const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
     
-    // Calculate bounce rate for the best source
-    const bounces = sourceBounceCounts[maxSessionsSource] || 0;
-    const bounceRate = totalSessions > 0 ? (bounces / totalSessions) * 100 : 0;
-    
     setMetrics({
       bestSource: maxSessionsSource,
       totalSessions,
-      web3Users: maxWeb3Count,  // Number of unique web3 users from the best source
-      walletsConnected: maxWalletCount,  // Number of unique wallets from the best source
+      web3Users: maxWeb3Count,
+      walletsConnected: maxWalletCount,
       leastEffectiveSource: lowestConversionSource,
       avgConversion: `${bestConversionRate.toFixed(2)}%`,
-      avgBounceRate: `${bounceRate.toFixed(2)}%`,
+      avgBounceRate: `${highestBounceRate.toFixed(2)}%`,
       bestSourceByWeb3: maxWeb3Source,
       bestSourceByWallets: maxWalletSource,
+      bestSourceByConversion: bestConversionSource,
+      sourceWithHighestBounce: highestBounceSource
     });
 
     // Generate colors for sources
@@ -815,14 +840,9 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         <MetricCard title="Total Sessions" value={formatNumber(metrics.totalSessions)} source={metrics.bestSource} />
         <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSourceByWeb3} />
         <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSourceByWallets} />
-        <div className="col-span-2 md:col-span-1 bg-white rounded-lg shadow p-2 md:p-4">
-          <div className="text-xs md:text-sm text-gray-500 mb-1">Least effective source</div>
-          <div className="flex items-center justify-center h-12 md:h-24">
-            <span className="text-lg md:text-xl font-bold">{metrics.leastEffectiveSource}</span>
-          </div>
-        </div>
-        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSource} />
-        <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.bestSource} />
+        <MetricCard title="Least effective source" value={metrics.leastEffectiveSource} source={`${metrics.leastEffectiveSource}`} />
+        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSourceByConversion} />
+        <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.sourceWithHighestBounce} />
       </div>
 
       {/* Attribution Journey + Traffic Sources */}
