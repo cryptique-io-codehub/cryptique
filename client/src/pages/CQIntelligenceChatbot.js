@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Sparkles, Lock, Bot, Send, AlertTriangle } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Lock, Bot, Send, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const PIN_CODE = '29409071';
 const GEMINI_API_KEY = 'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
@@ -8,15 +8,29 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 const CQIntelligenceChatbot = () => {
   const { team } = useParams();
+  const navigate = useNavigate();
   const [pin, setPin] = useState('');
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('cqai_unlocked') === '1');
   const [selectedSite, setSelectedSite] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([
-    { from: 'bot', text: 'Welcome to CQ Intelligence! Select a website and ask anything about your blockchain data.' }
+    { 
+      from: 'bot', 
+      text: 'Welcome to CQ Intelligence! I\'m your AI assistant for blockchain analytics. How can I help you today?',
+      timestamp: new Date().toISOString()
+    }
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const messagesEndRef = useRef(null);
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // PIN lock logic
   const handleUnlock = (e) => {
@@ -25,7 +39,8 @@ const CQIntelligenceChatbot = () => {
       setUnlocked(true);
       sessionStorage.setItem('cqai_unlocked', '1');
     } else {
-      alert('Incorrect PIN');
+      setError('Incorrect PIN. Please try again.');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -40,30 +55,48 @@ const CQIntelligenceChatbot = () => {
     e.preventDefault();
     setError('');
     if (!input.trim()) return;
-    setMessages(msgs => [...msgs, { from: 'user', text: input }]);
+    
+    const userMessage = {
+      from: 'user',
+      text: input,
+      timestamp: new Date().toISOString()
+    };
+    
+    setMessages(msgs => [...msgs, userMessage]);
     setInput('');
     setLoading(true);
+
     try {
       const siteAnalytics = getSelectedSiteAnalytics();
-      // Compose prompt
       const prompt = `You are CQ Intelligence, a futuristic AI assistant for blockchain analytics.\nThe user is asking about their website: ${selectedSite}.\nHere is the analytics data (JSON):\n${JSON.stringify(siteAnalytics, null, 2)}\n\nUser question: ${input}\n\nRespond in a helpful, concise, and futuristic tone. If the data is missing, say so.`;
+      
       const body = {
-        contents: [
-          { parts: [{ text: prompt }] }
-        ]
+        contents: [{ parts: [{ text: prompt }] }]
       };
+
       const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      if (!response.ok) throw new Error('Gemini API error');
+
+      if (!response.ok) throw new Error('API error');
+      
       const data = await response.json();
-      const geminiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
-      setMessages(msgs => [...msgs, { from: 'bot', text: geminiText }]);
+      const geminiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from AI.';
+      
+      setMessages(msgs => [...msgs, {
+        from: 'bot',
+        text: geminiText,
+        timestamp: new Date().toISOString()
+      }]);
     } catch (err) {
-      setMessages(msgs => [...msgs, { from: 'bot', text: 'Sorry, there was an error contacting Gemini AI.' }]);
-      setError('Failed to get a response from Gemini.');
+      setError('Failed to get a response. Please try again.');
+      setMessages(msgs => [...msgs, {
+        from: 'bot',
+        text: 'I apologize, but I encountered an error while processing your request. Please try again.',
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setLoading(false);
     }
@@ -71,21 +104,35 @@ const CQIntelligenceChatbot = () => {
 
   if (!unlocked) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#0f2027] via-[#2c5364] to-[#232526]">
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-xl p-8 flex flex-col items-center">
-          <Lock size={40} className="text-blue-400 mb-2 animate-pulse" />
-          <h2 className="text-2xl font-bold text-white mb-2">CQ Intelligence</h2>
-          <p className="text-gray-200 mb-4">Experimental AI Chatbot<br/>Enter PIN to unlock</p>
-          <form onSubmit={handleUnlock} className="flex flex-col items-center gap-2">
-            <input
-              type="password"
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              className="rounded px-4 py-2 bg-gray-900 text-white border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter PIN"
-              autoFocus
-            />
-            <button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded font-semibold mt-2 transition">Unlock</button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex justify-center mb-6">
+            <div className="bg-blue-500 rounded-full p-3">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">CQ Intelligence</h2>
+          <p className="text-center text-gray-600 mb-6">Enter PIN to access the AI assistant</p>
+          <form onSubmit={handleUnlock} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={pin}
+                onChange={e => setPin(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter PIN"
+                autoFocus
+              />
+            </div>
+            {error && (
+              <div className="text-red-500 text-sm text-center">{error}</div>
+            )}
+            <button
+              type="submit"
+              className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-200"
+            >
+              Unlock Access
+            </button>
           </form>
         </div>
       </div>
@@ -93,63 +140,109 @@ const CQIntelligenceChatbot = () => {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">CQ Intelligence</h1>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-600">Welcome to CQ Intelligence for team: {team}</p>
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0f2027] via-[#2c5364] to-[#232526] p-4">
-          <div className="w-full max-w-2xl bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 flex flex-col relative">
-            <div className="flex items-center gap-3 mb-4">
-              <Bot size={32} className="text-blue-400 animate-pulse" />
-              <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-                CQ Intelligence <span className="bg-blue-900/60 text-blue-200 text-xs px-2 py-1 rounded-full ml-2 animate-pulse">Experimental AI</span>
-              </h2>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate(`/${team}/dashboard`)}
+                className="text-gray-500 hover:text-gray-700 mr-4"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="text-xl font-semibold text-gray-800">CQ Intelligence</h1>
             </div>
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-gray-200">Website:</span>
+            <div className="flex items-center space-x-4">
               <select
-                className="bg-gray-900 text-white border border-blue-400 rounded px-3 py-1 focus:outline-none"
+                className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={selectedSite}
                 onChange={e => setSelectedSite(e.target.value)}
               >
+                <option value="">Select Website</option>
                 {/* Add website options here */}
               </select>
             </div>
-            <div className="flex-1 overflow-y-auto mb-4 max-h-96 bg-black/30 rounded-lg p-4 border border-blue-900/40">
-              {messages.map((msg, i) => (
-                <div key={i} className={`mb-3 flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`rounded-xl px-4 py-2 max-w-[80%] ${msg.from === 'user' ? 'bg-blue-600 text-white' : 'bg-white/20 text-blue-100 border border-blue-400/30'}`}>{msg.text}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chat Container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 min-h-[600px] flex flex-col">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex items-start max-w-[70%] ${msg.from === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`flex-shrink-0 ${msg.from === 'user' ? 'ml-3' : 'mr-3'}`}>
+                    {msg.from === 'bot' ? (
+                      <div className="bg-blue-500 rounded-full p-2">
+                        <Bot className="w-5 h-5 text-white" />
+                      </div>
+                    ) : (
+                      <div className="bg-gray-200 rounded-full p-2">
+                        <div className="w-5 h-5 bg-gray-500 rounded-full" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className={`rounded-2xl px-4 py-2 ${
+                      msg.from === 'user' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {msg.text}
+                    </div>
+                    <div className={`text-xs text-gray-500 mt-1 ${
+                      msg.from === 'user' ? 'text-right' : 'text-left'
+                    }`}>
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
                 </div>
-              ))}
-              {loading && (
-                <div className="flex items-center gap-2 animate-pulse">
-                  <Sparkles size={18} className="text-blue-300 animate-spin" />
-                  <span className="text-blue-200 animate-pulse">CQ Intelligence is thinking...</span>
-                </div>
-              )}
-              {error && (
-                <div className="flex items-center gap-2 text-red-400 mt-2">
-                  <AlertTriangle size={16} />
-                  <span>{error}</span>
-                </div>
-              )}
-            </div>
-            <form onSubmit={handleSend} className="flex items-center gap-2 mt-2">
+              </div>
+            ))}
+            {loading && (
+              <div className="flex items-center space-x-2 text-gray-500">
+                <Sparkles className="w-5 h-5 animate-spin" />
+                <span>Thinking...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="border-t border-gray-200 p-4">
+            <form onSubmit={handleSend} className="flex space-x-4">
               <input
-                className="flex-1 rounded-lg px-4 py-2 bg-gray-900 text-white border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ask about your blockchain data..."
+                type="text"
                 value={input}
                 onChange={e => setInput(e.target.value)}
+                placeholder="Ask about your blockchain analytics..."
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               />
-              <button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-1 transition" disabled={loading || !input.trim()}>
-                <Send size={16} />
-                Send
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className={`px-6 py-2 rounded-lg flex items-center space-x-2 ${
+                  loading || !input.trim()
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                <span>Send</span>
               </button>
             </form>
-            <div className="text-xs text-gray-400 mt-4 text-center">
-              <span className="italic">Demo: Your question and selected website analytics are sent to Google Gemini. Do not share sensitive data.</span>
-            </div>
+            {error && (
+              <div className="mt-2 text-red-500 text-sm flex items-center space-x-1">
+                <AlertTriangle className="w-4 h-4" />
+                <span>{error}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
