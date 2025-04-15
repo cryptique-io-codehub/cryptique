@@ -1,63 +1,110 @@
 import React from 'react';
 import WorldMap from "react-svg-worldmap";
 
-// ISO Alpha-2 code to country name map (for display purposes)
+// Extended ISO Alpha-2 code to country name map
 const countryCodeToName = {
-  "IN": "India",
   "US": "United States",
+  "IN": "India",
   "DE": "Germany",
   "BR": "Brazil",
   "CA": "Canada",
   "FR": "France",
-  "CN": "China",
+  "GB": "United Kingdom",
   "AU": "Australia",
+  "JP": "Japan",
+  "KR": "South Korea",
+  "CN": "China",
+  "RU": "Russia",
+  "IT": "Italy",
+  "ES": "Spain",
+  "MX": "Mexico",
+  "ID": "Indonesia",
   "NG": "Nigeria",
   "PK": "Pakistan",
   "BD": "Bangladesh",
-  "MX": "Mexico",
-  "RU": "Russia",
-  "ID": "Indonesia",
-  // Add more mappings as required
+  "AR": "Argentina",
+  "CO": "Colombia",
+  "ZA": "South Africa",
+  "EG": "Egypt",
+  "TR": "Turkey",
+  "TH": "Thailand",
+  "VN": "Vietnam",
+  "PH": "Philippines",
+  "MY": "Malaysia",
+  "SG": "Singapore"
 };
 
 const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
-  const getUniqueUsersPerCountry = (sessions) => {
+  const getMetricsPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
-    const countryUserMap = new Map();
+    const countryMetrics = new Map();
 
-    sessions.forEach(({ country, userId }) => {
-      if (!country || !userId) return;
+    sessions.forEach(({ country, userId, isWeb3User, walletAddress }) => {
+      if (!country) return;
 
-      if (!countryUserMap.has(country)) {
-        countryUserMap.set(country, new Set());
+      // Normalize country code to uppercase
+      const countryCode = country.toUpperCase();
+      
+      if (!countryMetrics.has(countryCode)) {
+        countryMetrics.set(countryCode, {
+          uniqueUsers: new Set(),
+          web3Users: new Set(),
+          walletConnections: new Set(),
+          totalSessions: 0
+        });
       }
 
-      countryUserMap.get(country).add(userId);
+      const metrics = countryMetrics.get(countryCode);
+      
+      // Track unique users
+      if (userId) {
+        metrics.uniqueUsers.add(userId);
+      }
+      
+      // Track web3 users
+      if (isWeb3User && userId) {
+        metrics.web3Users.add(userId);
+      }
+      
+      // Track wallet connections
+      if (walletAddress) {
+        metrics.walletConnections.add(walletAddress);
+      }
+      
+      metrics.totalSessions++;
     });
 
     const result = {};
-    countryUserMap.forEach((userSet, country) => {
-      result[country] = userSet.size;
+    countryMetrics.forEach((metrics, countryCode) => {
+      result[countryCode] = {
+        uniqueUsers: metrics.uniqueUsers.size,
+        web3Users: metrics.web3Users.size,
+        walletConnections: metrics.walletConnections.size,
+        totalSessions: metrics.totalSessions
+      };
     });
 
     return result;
   };
 
-  const userCountsByCountry = getUniqueUsersPerCountry(analytics?.sessions || []);
-  console.log("userCountsByCountry:", userCountsByCountry);
-
-  // Convert to data for WorldMap component - assuming country codes are already in the sessions data
-  const mapData = Object.entries(userCountsByCountry)
-    .map(([countryCode, value]) => {
-      // Make sure the country code is valid
-      if (countryCode && countryCode.length === 2) {
-        return { country: countryCode.toLowerCase(), value };
-      }
-      return null;
+  const countryMetrics = getMetricsPerCountry(analytics?.sessions || []);
+  
+  // Convert to data for WorldMap component
+  const mapData = Object.entries(countryMetrics)
+    .map(([countryCode, metrics]) => {
+      if (!countryCode || countryCode.length !== 2) return null;
+      
+      return {
+        country: countryCode.toLowerCase(),
+        value: metrics.uniqueUsers,
+        web3Users: metrics.web3Users,
+        walletConnections: metrics.walletConnections,
+        totalSessions: metrics.totalSessions
+      };
     })
-    .filter(Boolean); // remove nulls
+    .filter(Boolean);
 
-  // Sort and get top 5 countries
+  // Sort and get top 5 countries by unique users
   const topCountries = [...mapData]
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
@@ -98,13 +145,20 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
       <div>
         <h3 className="text-lg font-medium mb-2">Top Countries</h3>
         <ul className="space-y-1 text-sm text-gray-700">
-          {topCountries.map(({ country, value }) => {
+          {topCountries.map(({ country, value, web3Users, walletConnections }) => {
             const countryCode = country.toUpperCase();
             const countryName = countryCodeToName[countryCode] || countryCode;
             return (
-              <li key={country} className="flex justify-between">
-                <span>{countryName}</span>
-                <span className="font-semibold">{value} users</span>
+              <li key={country} className="flex justify-between items-center">
+                <span className="flex items-center">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
+                  {countryName}
+                </span>
+                <div className="flex space-x-4">
+                  <span className="font-semibold">{value} users</span>
+                  <span className="text-purple-600">{web3Users} web3</span>
+                  <span className="text-green-600">{walletConnections} wallets</span>
+                </div>
               </li>
             );
           })}
