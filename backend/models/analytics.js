@@ -40,16 +40,16 @@ const analyticsSchema = new mongoose.Schema({
     default: 0,
   },
   pagesPerVisit: {
-    type: String,
-    default: "0.00",
+    type: Number,
+    default: 0,
   },
   avgSessionDuration: {
-    type: String,
-    default: "0",
+    type: Number,
+    default: 0,
   },
   bounceRate: {
-    type: String,
-    default: "0.00",
+    type: Number,
+    default: 0,
   },
   newVisitors: {
     type: Number,

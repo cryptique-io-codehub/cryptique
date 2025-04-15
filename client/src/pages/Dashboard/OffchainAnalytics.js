@@ -81,43 +81,50 @@ console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
   const pageViews_size = Object.keys(analytics?.pageViews ?? {}).length;
   const numberOfSessions = Array.isArray(analytics?.sessions) ? analytics.sessions.length : 1;
-  const pagepervisit = analytics?.pagesPerVisit || (numberOfSessions > 0 ? (totalPageViews / numberOfSessions).toFixed(2) : "0.00");
+
+  // For pages per visit, use the backend value if available, or calculate
+  const pagepervisit = typeof analytics?.pagesPerVisit === 'number' 
+    ? analytics.pagesPerVisit.toFixed(2) 
+    : (totalPageViews / numberOfSessions).toFixed(2);
+
   const calculateAverageDuration = (sessions) => {
-     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
     const totalDuration = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
     return totalDuration / sessions.length;
   };
 
   const calculateBounceRate = (sessions) => {
     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-  
     const bounceCount = sessions.reduce((count, session) => {
       return session.isBounce === true ? count + 1 : count;
     }, 0);
-  
     return bounceCount / sessions.length;
   };
 
-// Use the precalculated bounceRate from backend if available, otherwise calculate it
-const bounceRate = analytics?.bounceRate || (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+  // For bounce rate, use the backend value if available, or calculate
+  const bounceRate = typeof analytics?.bounceRate === 'number' 
+    ? analytics.bounceRate.toFixed(2) 
+    : (calculateBounceRate(analytics?.sessions) * 100).toFixed(2);
 
-// Use the precalculated avgSessionDuration from backend if available, otherwise calculate it
-const rawAvgDuration = analytics?.avgSessionDuration ? parseFloat(analytics.avgSessionDuration) : calculateAverageDuration(analytics?.sessions);
-const avgVisitDuration = formatDuration(rawAvgDuration);
+  // For average session duration, use the backend value if available, or calculate
+  const rawAvgDuration = typeof analytics?.avgSessionDuration === 'number'
+    ? analytics.avgSessionDuration
+    : calculateAverageDuration(analytics?.sessions);
+  const avgVisitDuration = formatDuration(rawAvgDuration);
 
-function formatDuration(seconds) {
-  if (seconds < 60) {
-    return `${seconds.toFixed(0)} sec`;
-  } else if (seconds < 3600) {
-    return `${(seconds / 60).toFixed(1)} min`;
-  } else if (seconds < 86400) {
-    return `${(seconds / 3600).toFixed(1)} hr`;
-  } else if (seconds < 31536000) {
-    return `${(seconds / 86400).toFixed(1)} days`;
-  } else {
-    return `${(seconds / 31536000).toFixed(1)} years`;
+  function formatDuration(seconds) {
+    if (seconds < 60) {
+      return `${seconds.toFixed(0)} sec`;
+    } else if (seconds < 3600) {
+      return `${(seconds / 60).toFixed(1)} min`;
+    } else if (seconds < 86400) {
+      return `${(seconds / 3600).toFixed(1)} hr`;
+    } else if (seconds < 31536000) {
+      return `${(seconds / 86400).toFixed(1)} days`;
+    } else {
+      return `${(seconds / 31536000).toFixed(1)} years`;
+    }
   }
-}
   
  
   
