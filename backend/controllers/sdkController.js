@@ -10,6 +10,12 @@ exports.postAnalytics = async (req, res) => {
       // console.log("sessionData", sessionData);
       const { siteId, wallet, sessionId, userId, pagesViewed, duration } = sessionData;
       const analytics = await Analytics.findOne({ siteId: siteId });
+      
+      if (!analytics) {
+        return res.status(404).json({ error: 'Analytics not found for this site ID' });
+      }
+      
+      // Check if session with this ID already exists
       const session = await Session.findOne({ sessionId: sessionId });
       
       // Handle wallet updates if present
@@ -26,23 +32,35 @@ exports.postAnalytics = async (req, res) => {
         if (!walletExists) {
           analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
           analytics.walletsConnected += 1; // Increment wallets connected
+          await analytics.save();
         }
-
-        await analytics.save();
       }
 
       // If session doesn't exist, create a new one
       if (!session) {
         const newSession = new Session(sessionData);
         await newSession.save();
-        analytics.sessions.push(newSession._id); // Add session to the analytics
-        await analytics.save();
+        
+        // Check if this session ID is already in analytics.sessions to avoid duplicates
+        const sessionExists = await Analytics.findOne({
+          siteId: siteId,
+          sessions: newSession._id
+        });
+        
+        if (!sessionExists) {
+          analytics.sessions.push(newSession._id); // Add session to the analytics
+          await analytics.save();
+        }
+        
         return res.status(200).json({ session: newSession });
       } 
       // If session exists, update it with the new data
       else {
         // Merge the session data - increment pages viewed
-        const updatedPagesViewed = Math.max(session.pagesViewed, pagesViewed);
+        const updatedPagesViewed = Math.max(session.pagesViewed || 0, pagesViewed || 0);
+        
+        // Combine page visits arrays without duplicates
+        const combinedPageVisits = sessionData.pageVisits || [];
         
         // Update session data
         const updatedData = {
@@ -69,94 +87,120 @@ exports.postAnalytics = async (req, res) => {
         return res.status(200).json({ session: updatedSession });
       }
     }
-    const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
-    const sanitizedPagePath = pagePath.replace(/\./g, "_");
-    const analytics = await Analytics.findOne({ siteId: siteId });
-    if (!analytics) {
-      const analytics = new Analytics({
-        siteId: siteId,
-        websiteUrl: websiteUrl,
-        userId: [userId], // Initialize userId as an array with the current userId
-        totalVisitors: 1,
-        uniqueVisitors: 1,
-        web3Visitors:  0,
-        walletsConnected: 0,
-        pageViews: { [sanitizedPagePath]: 1 },
-        sessions: [],
-      });
-      await analytics.save();
-      const statstoCreate = {
-        siteId: siteId,
-        analyticsSnapshot: [
-          {
-            analyticsId: analytics._id,
-            hour: new Date(),
-          }
-        ],
-        lastSnapshotAt: new Date(),
-      };
-      const newHourlyStats = new HourlyStats(statstoCreate);
-      await newHourlyStats.save();
-      const newDailyStats = new DailyStats(statstoCreate);
-      await newDailyStats.save();
-      const newWeeklyStats = new WeeklyStats(statstoCreate);
-      await newWeeklyStats.save();
-      const newMonthlyStats = new MonthlyStats(statstoCreate);
-      await newMonthlyStats.save();
-      analytics.hourlyStats = newHourlyStats._id; // Add the new stats reference to the analytics
-      analytics.dailyStats = newDailyStats._id; // Add the new stats reference to the analytics
-      analytics.weeklyStats = newWeeklyStats._id; // Add the new stats reference to the analytics
-      analytics.monthlyStats = newMonthlyStats._id; // Add the new stats reference to the analytics
-      await analytics.save(); // Save the updated analytics document
     
-    }
-    //update the wallet stuff if something updates
-    if (isWeb3User) {
-      const walletIndex = analytics.web3UserId.findIndex(
-        (wallet) => wallet === userId
-      );
-      if (walletIndex === -1) {
-        analytics.web3UserId.push(userId); // Add wallet address to the array if not already present
-        analytics.web3Visitors += 1; // Increment wallets connected
+    // Handle payload requests (new session creation with events)
+    if (payload) {
+      const { siteId, websiteUrl, userId, pagePath, isWeb3User, sessionId } = payload;
+      const sanitizedPagePath = pagePath.replace(/\./g, "_");
+      const analytics = await Analytics.findOne({ siteId: siteId });
+      
+      if (!analytics) {
+        // Create new analytics document
+        const analytics = new Analytics({
+          siteId: siteId,
+          websiteUrl: websiteUrl,
+          userId: [userId],
+          totalVisitors: 1,
+          uniqueVisitors: 1,
+          web3Visitors: 0,
+          walletsConnected: 0,
+          pageViews: { [sanitizedPagePath]: 1 },
+          sessions: [],
+        });
+        await analytics.save();
+        
+        // Create stats documents
+        const statstoCreate = {
+          siteId: siteId,
+          analyticsSnapshot: [
+            {
+              analyticsId: analytics._id,
+              hour: new Date(),
+            }
+          ],
+          lastSnapshotAt: new Date(),
+        };
+        const newHourlyStats = new HourlyStats(statstoCreate);
+        await newHourlyStats.save();
+        const newDailyStats = new DailyStats(statstoCreate);
+        await newDailyStats.save();
+        const newWeeklyStats = new WeeklyStats(statstoCreate);
+        await newWeeklyStats.save();
+        const newMonthlyStats = new MonthlyStats(statstoCreate);
+        await newMonthlyStats.save();
+        
+        analytics.hourlyStats = newHourlyStats._id;
+        analytics.dailyStats = newDailyStats._id;
+        analytics.weeklyStats = newWeeklyStats._id;
+        analytics.monthlyStats = newMonthlyStats._id;
+        await analytics.save();
+      } else {
+        // Update existing analytics document
+        if (isWeb3User) {
+          const walletIndex = analytics.web3UserId.findIndex(
+            (wallet) => wallet === userId
+          );
+          if (walletIndex === -1) {
+            analytics.web3UserId.push(userId);
+            analytics.web3Visitors += 1;
+          }
+        }
+
+        if (!analytics.userId.includes(userId)) {
+          analytics.userId.push(userId);
+          analytics.uniqueVisitors += 1;
+          analytics.totalVisitors += 1;
+          analytics.pageViews.set(
+            sanitizedPagePath,
+            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
+          );
+        } else {
+          analytics.totalVisitors += 1;
+          analytics.pageViews.set(
+            sanitizedPagePath,
+            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
+          );
+        }
+        
+        analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
+          (a, b) => a + b,
+          0
+        );
+        analytics.newVisitors = analytics.userId.length;
+        analytics.returningVisitors = analytics.totalVisitors - analytics.newVisitors;
+        
+        await analytics.save();
+      }
+      
+      // Check if a session with this ID already exists
+      if (sessionData && sessionId) {
+        const existingSession = await Session.findOne({ sessionId: sessionId });
+        
+        if (existingSession) {
+          // Update existing session
+          const updatedSession = await Session.findByIdAndUpdate(
+            existingSession._id,
+            sessionData,
+            { new: true }
+          );
+          return res.status(200).json({ message: "Data Updated successfully", analytics });
+        } else {
+          // Create new session
+          const newSession = new Session(sessionData);
+          await newSession.save();
+          analytics.sessions.push(newSession._id);
+          await analytics.save();
+          return res.status(200).json({ message: "Data Updated successfully", analytics });
+        }
+      } else {
+        return res.status(200).json({ message: "Data Updated successfully", analytics });
       }
     }
-
-    if (!analytics.userId.includes(userId)) {
-      analytics.userId.push(userId); // Add userId to the array if not already present
-      analytics.uniqueVisitors += 1; // Increment unique visitors
-      analytics.totalVisitors += 1; // Increment total visitors
-      analytics.pageViews.set(
-        sanitizedPagePath,
-        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
-      );
-    } else {
-      analytics.totalVisitors += 1; // Increment total visitors
-      analytics.pageViews.set(
-        sanitizedPagePath,
-        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
-      );
-    }
-    //sum all pageviews to get total pageviews
-    analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
-      (a, b) => a + b,
-      0
-    );
-    //calculate new visitors and returning visitors
-    analytics.newVisitors = analytics.userId.length;
-    analytics.returningVisitors =
-      analytics.totalVisitors - analytics.newVisitors;
-
-      const newSession = new Session(sessionData);
-      await newSession.save();
-      analytics.sessions.push(newSession._id); // Add session to the analytics
-      await analytics.save();
-    return res
-      .status(200)
-      .json({ message: "Data Updated successfully", analytics });
+    
+    return res.status(400).json({ message: "Invalid request data" });
   } catch (e) {
-    res
-      .status(500)
-      .json({ message: "Error while posting analyics name", error: e.message });
+    console.error("Error in postAnalytics:", e);
+    res.status(500).json({ message: "Error while processing analytics data", error: e.message });
   }
 };
 
