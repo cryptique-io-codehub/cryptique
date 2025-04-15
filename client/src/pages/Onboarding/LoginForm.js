@@ -157,25 +157,44 @@ function LoginForm({ onSignupClick, toggleLoading }) {
     const provider = new GoogleAuthProvider();
     try {
       toggleLoading(true);
-      const result = await signInWithPopup(auth, provider);
+      // Add popup window configuration
+      const result = await signInWithPopup(auth, provider, {
+        popupWindowAttributes: {
+          width: 500,
+          height: 600,
+          left: window.screen.width / 2 - 250,
+          top: window.screen.height / 2 - 300
+        }
+      });
+      
       const user = result.user;
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
       });
-      console.log(user.email);
-      const aa=user.email.split('@')[0];
+
       if (response.data.user) {
-        toggleLoading(false);
+        // Store all necessary data
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('selectedTeam', aa);
-        navigate(`/dashboard`);
+        localStorage.setItem('User', JSON.stringify(response.data.user));
+        localStorage.setItem('selectedTeam', user.email.split('@')[0]);
+        
+        toggleLoading(false);
+        navigate('/dashboard');
+      } else {
+        throw new Error('Failed to get user data from server');
       }
     } catch (error) {
       toggleLoading(false);
       console.error('Error during Google login:', error);
-      alert('Google login failed. Please try again.');
+      if (error.code === 'auth/popup-closed-by-user') {
+        alert('Login was cancelled');
+      } else if (error.code === 'auth/popup-blocked') {
+        alert('Please allow popups for this site to continue with Google login');
+      } else {
+        alert('Google login failed. Please try again.');
+      }
     }
   };
 
