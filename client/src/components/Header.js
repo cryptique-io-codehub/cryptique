@@ -1,33 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { Bell, ChevronDown, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import axiosInstance from "../axiosInstance";
-
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTeams = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        const response = await axiosInstance.get('/team/details');
+        const token = localStorage.getItem("token");
+        const response = await axiosInstance.get('/team/details',{
+          headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type':'application/json'
+          }
+        });
+        // console.log('a');
+        // console.log(response);
+        // console.log('b');
         const teams = response.data.team;
-        setCurTeams(teams || []);
+        setCurTeams(teams);
       } catch (error) {
         console.error("Error fetching teams:", error);
-        setError(error.message);
-        if (error.response?.status === 401) {
-          // Let the axios interceptor handle the redirect
-          return;
-        }
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -35,34 +33,17 @@ const TeamSelector = () => {
   }, [selectedTeam]);
 
   const handleTeamSelect = (teamss) => {
-    if (!teamss?.name) return;
-    
     localStorage.setItem('selectedTeam', teamss.name);
     setSelectedTeam(teamss.name);
+    // console.log(teamss);
     
     const currentPath = window.location.pathname;
     if (currentPath.includes('/settings')) {
-      navigate(`/${teamss.name}/settings`, { replace: true });
+        navigate(`/${teamss.name}/settings`, { replace: true });
     }
     
     setDropdownOpen(false);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center">
-        <span className="text-sm text-gray-500">Loading teams...</span>
-      </div>
-    );
-  }
-
-  if (error && error !== 'Request failed with status code 401') {
-    return (
-      <div className="flex items-center">
-        <span className="text-sm text-red-500">Error loading teams</span>
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
@@ -74,7 +55,7 @@ const TeamSelector = () => {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white"
           >
-            <span>{selectedTeam || 'Select Team'}</span>
+            <span>{selectedTeam}</span>
             <ChevronDown size={16} />
           </button>
 
@@ -121,6 +102,7 @@ const Header = () => {
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
+    // Fetch user details or get username from localStorage
     const storedUser = localStorage.getItem('User');
     if (storedUser) {
       try {
@@ -129,14 +111,18 @@ const Header = () => {
       } catch (error) {
         setUserName('User');
       }
-    } else {
-      // If no user info in localStorage, redirect to login
-      navigate('/login');
     }
-  }, [navigate]);
+  }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
+    // Clear the token from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('selectedTeam');
+    localStorage.removeItem('selectedWebsite');
+    localStorage.removeItem('User');
+    localStorage.removeItem('idy');
+    
+    // Navigate to login page
     navigate('/login');
   };
 
@@ -144,20 +130,9 @@ const Header = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileDropdownOpen && !event.target.closest('.profile-dropdown')) {
-        setProfileDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [profileDropdownOpen]);
-
   return (
     <header className="flex justify-between px-5 items-center py-1">
+      {/* Team Selector */}
       <TeamSelector />
       
       <div className="flex justify-center items-center relative">
@@ -165,15 +140,17 @@ const Header = () => {
           <Bell size={20} className="text-gray-600" />
         </div>
 
+        {/* Profile Icon with Dropdown */}
         <div 
-          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0 relative profile-dropdown"
+          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0 relative"
           onClick={toggleProfileDropdown}
         >
           <User size={20} className="text-gray-600" />
         </div>
 
+        {/* Profile Dropdown */}
         {profileDropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-50 profile-dropdown">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-50">
             <div className="px-4 py-3 border-b border-gray-200">
               <p className="text-sm font-medium text-gray-900">{userName}</p>
             </div>

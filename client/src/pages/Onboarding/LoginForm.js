@@ -123,15 +123,12 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         email, 
         password 
       });
-      
+      const aa=email.split('@')[0];
       if (response.data.user) {
-        // Store user data and token
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('User', JSON.stringify(response.data.user));
-        localStorage.setItem('selectedTeam', email.split('@')[0]);
-        
         toggleLoading(false);
-        navigate('/dashboard');
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('selectedTeam', aa);
+        navigate(`/dashboard`);
       } else {
         toggleLoading(false);
         alert(response.data.message || 'Invalid credentials');
@@ -157,37 +154,25 @@ function LoginForm({ onSignupClick, toggleLoading }) {
     const provider = new GoogleAuthProvider();
     try {
       toggleLoading(true);
-      // Use the correct Firebase Auth configuration
       const result = await signInWithPopup(auth, provider);
-      
       const user = result.user;
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
       });
-
+      console.log(user.email);
+      const aa=user.email.split('@')[0];
       if (response.data.user) {
-        // Store all necessary data
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('User', JSON.stringify(response.data.user));
-        localStorage.setItem('selectedTeam', user.email.split('@')[0]);
-        
         toggleLoading(false);
-        navigate('/dashboard');
-      } else {
-        throw new Error('Failed to get user data from server');
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('selectedTeam', aa);
+        navigate(`/dashboard`);
       }
     } catch (error) {
       toggleLoading(false);
       console.error('Error during Google login:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        alert('Login was cancelled');
-      } else if (error.code === 'auth/popup-blocked') {
-        alert('Please allow popups for this site to continue with Google login');
-      } else {
-        alert('Google login failed. Please try again.');
-      }
+      alert('Google login failed. Please try again.');
     }
   };
 

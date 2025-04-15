@@ -1,4 +1,4 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, LayoutDashboard } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
@@ -99,13 +99,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
           >
             <LineChart size={14} /> {showExpanded && "On-chain explorer"}
           </Link>
-          <Link 
-            to={`/${selectedTeam}/custom-dashboard`}
-            className={`${isActive("custom-dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
-            onClick={() => onNavigate && onNavigate("custom-dashboard")}
-          >
-            <LayoutDashboard size={14} /> {showExpanded && "Custom Dashboard"}
-          </Link>
+          
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
