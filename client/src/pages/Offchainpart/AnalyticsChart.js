@@ -100,7 +100,13 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     });
 
     // Process wallet connects data - track actual connections per time slot
-    analytics.wallets.forEach(wallet => {
+    const sortedWallets = [...analytics.wallets].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeA - timeB;
+    });
+
+    sortedWallets.forEach(wallet => {
       if (wallet.walletAddress && wallet.walletAddress !== '') {
         const date = new Date(wallet.timestamp || Date.now());
         const timeKey = formatTimeKey(date, timeframe);
