@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, IconButton, Paper, Typography } from '@mui/material';
 import { Delete, Settings } from '@mui/icons-material';
 import { 
@@ -9,6 +9,11 @@ import {
   Speed as SpeedIcon,
   Map as MapIcon 
 } from '@mui/icons-material';
+import WidgetToolbar from './WidgetToolbar';
+import WidgetConfigDialog from './WidgetConfigDialog';
+import ChartWidget from './widgets/ChartWidget';
+import TableWidget from './widgets/TableWidget';
+import MetricWidget from './widgets/MetricWidget';
 
 const getWidgetIcon = (type) => {
   switch (type) {
@@ -29,41 +34,75 @@ const getWidgetIcon = (type) => {
   }
 };
 
-const Widget = ({ widget, onRemove, onConfigure, isEditing }) => {
+const Widget = ({ 
+  id,
+  type,
+  title,
+  data,
+  config,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  isEditing
+}) => {
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+
+  const handleConfigSave = (newConfig) => {
+    onUpdate(id, { ...config, ...newConfig });
+    setIsConfigOpen(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(id);
+  };
+
+  const handleDuplicate = () => {
+    onDuplicate(id);
+  };
+
+  const renderWidgetContent = () => {
+    switch (type) {
+      case 'chart':
+        return <ChartWidget data={data} config={config} />;
+      case 'table':
+        return <TableWidget data={data} config={config} />;
+      case 'metric':
+        return <MetricWidget data={data} config={config} />;
+      default:
+        return (
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Typography color="textSecondary">
+              Unsupported widget type: {type}
+            </Typography>
+          </Box>
+        );
+    }
+  };
+
   return (
-    <Paper
-      elevation={2}
-      sx={{
-        p: 2,
+    <Paper 
+      elevation={2} 
+      sx={{ 
         height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
         position: 'relative',
+        overflow: 'hidden'
       }}
     >
-      {isEditing && (
-        <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 1 }}>
-          <IconButton size="small" onClick={() => onConfigure(widget)}>
-            <Settings fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={() => onRemove(widget.id)}>
-            <Delete fontSize="small" />
-          </IconButton>
-        </Box>
-      )}
+      <WidgetToolbar
+        onConfigure={() => setIsConfigOpen(true)}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+        isEditing={isEditing}
+      />
       
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        {getWidgetIcon(widget.type)}
-        <Typography variant="h6" sx={{ ml: 1 }}>
-          {widget.title || 'Widget'}
-        </Typography>
-      </Box>
+      {renderWidgetContent()}
 
-      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
-          {widget.type} content will be displayed here
-        </Typography>
-      </Box>
+      <WidgetConfigDialog
+        open={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+        onSave={handleConfigSave}
+        widget={{ type, title, config }}
+      />
     </Paper>
   );
 };

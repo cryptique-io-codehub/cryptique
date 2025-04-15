@@ -64,6 +64,7 @@ import {
   SessionData,
   OnChainData
 } from '../../utils/analyticsData';
+import Widget from './Widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -178,166 +179,83 @@ const DashboardGrid = ({
     setConfigDialog({ open: false, widget: null });
   };
 
-  const renderWidget = (widget) => {
-    const { id, type, title, dataSource, config } = widget;
-    let chartData = [];
+  const handleLayoutChange = (layout) => {
+    onLayoutChange(layout);
+  };
 
-    switch (dataSource) {
-      case 'trafficSources':
-        chartData = analyticsData.trafficSources;
-        break;
-      case 'userEngagement':
-        chartData = analyticsData.userEngagement;
-        break;
-      case 'walletActivity':
-        chartData = analyticsData.walletActivity;
-        break;
-      case 'conversionMetrics':
-        chartData = analyticsData.conversionMetrics;
-        break;
-      case 'sessionData':
-        chartData = analyticsData.sessionData;
-        break;
-      case 'onChainData':
-        chartData = analyticsData.onChainData;
-        break;
-      default:
-        chartData = [];
-    }
-
-    const renderChart = () => {
-      const commonProps = {
-        data: chartData,
-        margin: { top: 20, right: 30, left: 20, bottom: 5 }
-      };
-
-      switch (type) {
-        case 'bar':
-          return (
-            <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={config.xAxis} />
-              <YAxis />
-              <RechartsTooltip />
-              <Legend />
-              {config.series.map((series, index) => (
-                <Bar
-                  key={index}
-                  dataKey={series.dataKey}
-                  fill={series.color}
-                  name={series.name}
-                />
-              ))}
-            </BarChart>
-          );
-        case 'line':
-          return (
-            <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={config.xAxis} />
-              <YAxis />
-              <RechartsTooltip />
-              <Legend />
-              {config.series.map((series, index) => (
-                <Line
-                  key={index}
-                  type="monotone"
-                  dataKey={series.dataKey}
-                  stroke={series.color}
-                  name={series.name}
-                />
-              ))}
-            </LineChart>
-          );
-        case 'text':
-          return (
-            <Box sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                {config.title}
-              </Typography>
-              <Typography variant="body1">
-                {config.content}
-              </Typography>
-            </Box>
-          );
-        case 'table':
-          return (
-            <Box sx={{ overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {config.columns.map((col, index) => (
-                      <th key={index} style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {chartData.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {config.columns.map((col, colIndex) => (
-                        <td key={colIndex} style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
-                          {row[col]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-          );
-        default:
-          return null;
+  const handleDrop = (layout, layoutItem, _event) => {
+    // Handle widget drop from palette
+    const newWidget = {
+      id: layoutItem.i,
+      type: layoutItem.type,
+      title: `New ${layoutItem.type} Widget`,
+      config: {
+        // Default config based on widget type
+        ...(layoutItem.type === 'chart' && {
+          type: 'line',
+          xAxis: 'x',
+          yAxis: 'y'
+        }),
+        ...(layoutItem.type === 'table' && {
+          columns: [],
+          pagination: false
+        }),
+        ...(layoutItem.type === 'metric' && {
+          format: 'number',
+          showTrend: true,
+          showProgress: false
+        })
       }
     };
-
-    return (
-      <DashboardPaper elevation={2}>
-        <WidgetHeader>
-          <Typography variant="h6">{title}</Typography>
-          {isEditing && (
-            <WidgetToolbar>
-              <Tooltip title="Configure">
-                <IconButton size="small" onClick={() => handleConfigOpen(widget)}>
-                  <SettingsIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Remove">
-                <IconButton size="small" onClick={() => onWidgetRemove(id)}>
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </WidgetToolbar>
-          )}
-        </WidgetHeader>
-        <ChartContainer>
-          {renderChart()}
-        </ChartContainer>
-      </DashboardPaper>
-    );
+    onWidgetAdd(newWidget);
   };
 
   return (
-    <>
+    <Box sx={{ height: '100%', minHeight: '600px' }}>
       <ResponsiveGridLayout
         className="layout"
         layouts={{ lg: widgets.map(w => w.layout) }}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        rowHeight={100}
-        onLayoutChange={onLayoutChange}
+        rowHeight={30}
+        margin={[16, 16]}
+        containerPadding={[16, 16]}
         isDraggable={isEditing}
         isResizable={isEditing}
-        draggableHandle=".drag-handle"
+        onLayoutChange={handleLayoutChange}
+        onDrop={handleDrop}
+        droppingItem={{ i: 'dropping-item', w: 6, h: 4 }}
+        useCSSTransforms={true}
       >
         {widgets.map(widget => (
-          <div key={widget.id} className="widget-container">
-            <div className="drag-handle" style={{ cursor: 'move' }}>
-              <DragIcon />
-            </div>
-            {renderWidget(widget)}
-          </div>
+          <Box key={widget.id} sx={{ height: '100%' }}>
+            <Widget
+              id={widget.id}
+              type={widget.type}
+              title={widget.title}
+              data={widget.data}
+              config={widget.config}
+              onUpdate={(id, updates) => {
+                const updatedWidgets = widgets.map(w => 
+                  w.id === id ? { ...w, ...updates } : w
+                );
+                onLayoutChange(updatedWidgets.map(w => w.layout));
+              }}
+              onDelete={onWidgetRemove}
+              onDuplicate={() => {
+                const newWidget = {
+                  ...widget,
+                  id: Date.now().toString(),
+                  layout: {
+                    ...widget.layout,
+                    i: Date.now().toString()
+                  }
+                };
+                onWidgetAdd(newWidget);
+              }}
+              isEditing={isEditing}
+            />
+          </Box>
         ))}
       </ResponsiveGridLayout>
 
@@ -372,7 +290,7 @@ const DashboardGrid = ({
           <Button onClick={handleConfigClose} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Box>
   );
 };
 
