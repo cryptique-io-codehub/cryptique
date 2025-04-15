@@ -19,6 +19,7 @@ import History from "./pages/Dashboard/History.js";
 import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
+import CustomDashboard from "./pages/Dashboard/CustomDashboard.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 const RouteListener = () => {
@@ -92,6 +93,8 @@ function App() {
         </Route>
 
         <Route path="/test-analytics" element={<TestAnalytics />} />
+
+        <Route path={`/${selectedTeam}/custom-dashboard`} element={<CustomDashboard />} />
 
       </Routes>
     </BrowserRouter>

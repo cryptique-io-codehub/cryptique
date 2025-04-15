@@ -16,6 +16,7 @@ import History from "./History.js";
 import ConversionEvents from './ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
+import CustomDashboard from './CustomDashboard.js'
 
 const Dashboard = () => {
   // State management
@@ -69,7 +70,7 @@ const Dashboard = () => {
       const pages = [
         "offchain-analytics", "onchain-explorer", "kol-intelligence", 
         "campaigns", "conversion-events", "advertise", "history", 
-        "import-users", "manage-websites"
+        "import-users", "manage-websites", "custom-dashboard"
       ];
       
       for (const page of pages) {
@@ -163,6 +164,8 @@ const Dashboard = () => {
         return <ImportUsers {...commonProps} />;
       case "manage-websites":
         return <ManageWebsites {...commonProps} />;
+      case "custom-dashboard":
+        return <CustomDashboard {...commonProps} />;
       case "settings":
         return <Settings {...commonProps} />;
       default:
