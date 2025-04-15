@@ -1,4 +1,4 @@
-import { Analytics } from './analyticsSDK';
+import Analytics from './analyticsSDK';
 
 // Process traffic source data
 export const TrafficSource = {
