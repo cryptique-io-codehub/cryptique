@@ -1,22 +1,29 @@
 import React from 'react';
 import { Box, IconButton, Paper, Typography } from '@mui/material';
 import { Delete, Settings } from '@mui/icons-material';
-import { LineChart, BarChart, PieChart, TableChart, Speed, Map } from '@mui/icons-material';
+import { 
+  Timeline as LineChartIcon,
+  BarChart as BarChartIcon,
+  PieChart as PieChartIcon,
+  TableChart as TableChartIcon,
+  Speed as SpeedIcon,
+  Map as MapIcon 
+} from '@mui/icons-material';
 
 const getWidgetIcon = (type) => {
   switch (type) {
     case 'lineChart':
-      return <LineChart />;
+      return <LineChartIcon />;
     case 'barChart':
-      return <BarChart />;
+      return <BarChartIcon />;
     case 'pieChart':
-      return <PieChart />;
+      return <PieChartIcon />;
     case 'table':
-      return <TableChart />;
+      return <TableChartIcon />;
     case 'metric':
-      return <Speed />;
+      return <SpeedIcon />;
     case 'map':
-      return <Map />;
+      return <MapIcon />;
     default:
       return null;
   }
