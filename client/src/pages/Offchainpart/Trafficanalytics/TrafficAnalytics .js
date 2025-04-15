@@ -750,23 +750,33 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     
     // Generate traffic quality data for the scatter chart
     const qualityData = Object.keys(uniqueUserIdsBySource).map((source, index) => {
-      // Only include sources with users
+      // Get unique users for this source
       const sourceUniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
       if (sourceUniqueUsers === 0) return null;
       
-      // Calculate engagement time in minutes (average session duration)
+      // Calculate average engagement time in minutes
       const totalDuration = sourceDurations[source] || 0;
       const sessionCount = sourceCounts[source] || 0;
       const engagement = sessionCount > 0 
         ? (totalDuration / sessionCount) / 60  // Convert seconds to minutes
         : 0;
       
-      // Use the already calculated conversion rate
-      const conversion = conversionRates[source] || 0;
+      // Calculate conversion rate (wallets connected / unique visitors)
+      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      const conversion = sourceUniqueUsers > 0 ? (wallets / sourceUniqueUsers) * 100 : 0;
+      
+      // Calculate bounce rate (100 - (wallets / web3 users))
+      const bounceRate = web3Users > 0 ? 100 - ((wallets / web3Users) * 100) : 100;
+      
       return {
         source,
         engagement: parseFloat(engagement.toFixed(2)),
         conversion: parseFloat(conversion.toFixed(2)),
+        bounceRate: parseFloat(bounceRate.toFixed(2)),
+        uniqueUsers: sourceUniqueUsers,
+        web3Users,
+        wallets,
         color: colorPalette[index % colorPalette.length]
       };
     }).filter(item => item !== null); // Remove null entries
@@ -824,6 +834,10 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
           <p className="font-semibold">{data.source}</p>
           <p>Engagement: {data.engagement} mins</p>
           <p>Conversion: {data.conversion}%</p>
+          <p>Bounce Rate: {data.bounceRate}%</p>
+          <p>Unique Users: {data.uniqueUsers}</p>
+          <p>Web3 Users: {data.web3Users}</p>
+          <p>Wallets: {data.wallets}</p>
         </div>
       );
     }
@@ -860,119 +874,118 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         </div>
       </div>
 
-      {/* Traffic Quality + Web3 Users by Medium */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Traffic Quality Analysis - Updated to use real data */}
-        <div className="bg-white rounded-lg shadow p-2 md:p-4">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
-          <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">Value-Per-Traffic-Source</div>
-          {trafficQualityData.length > 0 ? (
-            <div className="h-48 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart
-                  margin={{ top: 10, right: 10, bottom: 30, left: 30 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    type="number" 
-                    dataKey="engagement" 
-                    name="Engagement" 
-                    label={{ 
-                      value: 'Engagement (mins)', 
-                      position: 'bottom',
-                      offset: 0,
-                      style: { fontSize: '0.75rem' }
-                    }}
-                    domain={[0, 'dataMax']}
-                    tickCount={6}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="conversion" 
-                    name="Conversion" 
-                    label={{ 
-                      value: 'Conversion (%)', 
-                      angle: -90, 
-                      position: 'left',
-                      style: { fontSize: '0.75rem' }
-                    }}
-                    domain={[0, 'dataMax']}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    layout="horizontal" 
-                    verticalAlign="top" 
-                    align="center"
-                    wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
-                  />
-                  {trafficQualityData.map(entry => (
-                    <Scatter 
-                      key={entry.source} 
-                      name={entry.source} 
-                      data={[entry]} 
-                      fill={entry.color} 
-                      shape="circle"
-                      legendType="circle"
-                    />
-                  ))}
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
-              No traffic source data available
-            </div>
-          )}
+      {/* Traffic Quality Analysis */}
+      <div className="bg-white rounded-lg shadow p-2 md:p-4">
+        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
+        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+          Value-Per-Traffic-Source (Engagement vs Conversion)
         </div>
-
-        {/* Web3 Users by Medium - Placeholder data (to be updated with real data) */}
-        <div className="bg-white rounded-lg shadow p-2 md:p-4">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium (to be released soon)</h3>
+        {trafficQualityData.length > 0 ? (
           <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={web3UsersByTimeData} 
-                margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
+              <ScatterChart
+                margin={{ top: 10, right: 10, bottom: 30, left: 30 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
+                  type="number" 
+                  dataKey="engagement" 
+                  name="Engagement" 
+                  label={{ 
+                    value: 'Avg. Engagement (mins)', 
+                    position: 'bottom',
+                    offset: 0,
+                    style: { fontSize: '0.75rem' }
+                  }}
+                  domain={[0, 'dataMax + 5']}
+                  tickCount={6}
                   tick={{ fontSize: 10 }}
-                  interval="preserveStartEnd"
                 />
                 <YAxis 
-                  domain={[0, 200]} 
-                  axisLine={false}
-                  tickLine={false}
+                  type="number" 
+                  dataKey="conversion" 
+                  name="Conversion" 
+                  label={{ 
+                    value: 'Conversion Rate (%)', 
+                    angle: -90, 
+                    position: 'left',
+                    style: { fontSize: '0.75rem' }
+                  }}
+                  domain={[0, 'dataMax + 5']}
                   tick={{ fontSize: 10 }}
                 />
-                <Tooltip wrapperStyle={{ fontSize: '0.75rem' }} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend 
                   layout="horizontal" 
                   verticalAlign="top" 
-                  align="center" 
+                  align="center"
                   wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
-                  iconSize={8}
                 />
-                {Object.keys(webUsersColors).map((key) => (
-                  <Line 
-                    type="monotone" 
-                    dataKey={key} 
-                    stroke={webUsersColors[key]} 
-                    key={key}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    name={key}
+                {trafficQualityData.map(entry => (
+                  <Scatter 
+                    key={entry.source} 
+                    name={entry.source} 
+                    data={[entry]} 
+                    fill={entry.color} 
+                    shape="circle"
+                    legendType="circle"
                   />
                 ))}
-              </LineChart>
+              </ScatterChart>
             </ResponsiveContainer>
           </div>
+        ) : (
+          <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
+            No traffic source data available
+          </div>
+        )}
+      </div>
+
+      {/* Web3 Users by Medium - Placeholder data (to be updated with real data) */}
+      <div className="bg-white rounded-lg shadow p-2 md:p-4">
+        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium (to be released soon)</h3>
+        <div className="h-48 md:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart 
+              data={web3UsersByTimeData} 
+              margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
+              <XAxis 
+                dataKey="time" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis 
+                domain={[0, 200]} 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10 }}
+              />
+              <Tooltip wrapperStyle={{ fontSize: '0.75rem' }} />
+              <Legend 
+                layout="horizontal" 
+                verticalAlign="top" 
+                align="center" 
+                wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
+                iconSize={8}
+              />
+              {Object.keys(webUsersColors).map((key) => (
+                <Line 
+                  type="monotone" 
+                  dataKey={key} 
+                  stroke={webUsersColors[key]} 
+                  key={key}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name={key}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
