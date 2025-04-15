@@ -82,9 +82,19 @@ console.log(idy);
   const totalSessions = analytics?.sessions?.length || 1; // Use 1 as fallback to avoid division by zero
   const pagepervisit = (totalPageViews / totalSessions).toFixed(2);
   const calculateAverageDuration = (sessions) => {
-     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-    const totalDuration = sessions.reduce((sum, session) => sum + session.duration, 0);
-    return totalDuration / sessions.length;
+    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+    
+    // Filter out any sessions with invalid or missing duration
+    const validSessions = sessions.filter(session => 
+      typeof session?.duration === 'number' && 
+      !isNaN(session.duration) && 
+      session.duration >= 0
+    );
+    
+    if (validSessions.length === 0) return 0;
+    
+    const totalDuration = validSessions.reduce((sum, session) => sum + session.duration, 0);
+    return totalDuration / validSessions.length;
   };
 
   const calculateBounceRate = (sessions) => {
