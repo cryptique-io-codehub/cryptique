@@ -99,15 +99,23 @@ console.log(idy);
 
   const calculateBounceRate = (sessions) => {
     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-  
-    const bounceCount = sessions.reduce((count, session) => {
-      return session.isBounce === true ? count + 1 : count;
+    
+    // Filter out any sessions with invalid isBounce property
+    const validSessions = sessions.filter(session => 
+      typeof session?.isBounce === 'boolean'
+    );
+    
+    if (validSessions.length === 0) return 0;
+    
+    const bounceCount = validSessions.reduce((count, session) => {
+      return session.isBounce ? count + 1 : count;
     }, 0);
-  
-    return bounceCount / sessions.length;
+    
+    // Calculate percentage and round to 2 decimal places
+    return (bounceCount / validSessions.length) * 100;
   };
 
-const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+const bounceRate = calculateBounceRate(analytics?.sessions).toFixed(2);
 const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
 const avgVisitDuration = formatDuration(rawAvgDuration);
 
