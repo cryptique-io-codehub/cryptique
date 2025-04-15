@@ -38,7 +38,23 @@ import {
 } from '@mui/icons-material';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { BarChart, LineChart, PieChart, ScatterChart, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { 
+  BarChart, 
+  LineChart, 
+  PieChart, 
+  ScatterChart, 
+  AreaChart, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  Legend,
+  Bar,
+  Line,
+  Pie,
+  Scatter,
+  Area
+} from 'recharts';
 import { 
   Analytics, 
   TrafficSource, 
