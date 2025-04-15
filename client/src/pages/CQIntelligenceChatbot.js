@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 const PIN_CODE = '29409071';
 const GEMINI_API_KEY = 'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + GEMINI_API_KEY;
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY;
 
 const CQIntelligenceChatbot = () => {
   const { team } = useParams();
