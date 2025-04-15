@@ -80,10 +80,11 @@ const OffchainAnalytics = () => {
 console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
   const pageViews_size = Object.keys(analytics?.pageViews ?? {}).length;
-  const pagepervisit=(totalPageViews/pageViews_size).toFixed(2);
+  const numberOfSessions = Array.isArray(analytics?.sessions) ? analytics.sessions.length : 1;
+  const pagepervisit = analytics?.pagesPerVisit || (numberOfSessions > 0 ? (totalPageViews / numberOfSessions).toFixed(2) : "0.00");
   const calculateAverageDuration = (sessions) => {
      if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-    const totalDuration = sessions.reduce((sum, session) => sum + session.duration, 0);
+    const totalDuration = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
     return totalDuration / sessions.length;
   };
 
@@ -97,8 +98,11 @@ console.log(idy);
     return bounceCount / sessions.length;
   };
 
-const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
-const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
+// Use the precalculated bounceRate from backend if available, otherwise calculate it
+const bounceRate = analytics?.bounceRate || (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+
+// Use the precalculated avgSessionDuration from backend if available, otherwise calculate it
+const rawAvgDuration = analytics?.avgSessionDuration ? parseFloat(analytics.avgSessionDuration) : calculateAverageDuration(analytics?.sessions);
 const avgVisitDuration = formatDuration(rawAvgDuration);
 
 function formatDuration(seconds) {
