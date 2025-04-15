@@ -1,5 +1,8 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
+import Layout from './components/Layout/Layout';
 import Interface from './pages/Onboarding/LoginForm.js'
 import Dashboard from './pages/Dashboard/Dashboard.js'
 import LandingPage from './pages/LandingPage/LandingPage.js'
@@ -24,6 +27,35 @@ import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import CQIntelligence from './pages/CQIntelligence/CQIntelligence';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Create theme
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#00ff9d',
+    },
+    secondary: {
+      main: '#8b5cf6',
+    },
+    background: {
+      default: '#1a1a2e',
+      paper: '#16213e',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
+    },
+  },
+});
 
 const RouteListener = () => {
   const location = useLocation();
