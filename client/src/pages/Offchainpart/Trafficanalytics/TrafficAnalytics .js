@@ -598,7 +598,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
       uniqueUserIdsBySource[firstSource].add(session.userId);
       
-      // Count web3 users by first source (wallet type not "No Wallet Detected")
+      // Track unique web3 users by first source (wallet type not "No Wallet Detected")
       if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
         if (!web3UsersBySource[firstSource]) {
           web3UsersBySource[firstSource] = new Set();
@@ -606,7 +606,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         web3UsersBySource[firstSource].add(session.userId);
       }
       
-      // Count wallets by first source (wallet address not empty)
+      // Track unique wallets by first source (wallet address not empty)
       if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
         if (!walletsBySource[firstSource]) {
           walletsBySource[firstSource] = new Set();
@@ -656,24 +656,26 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
     });
     
-    // Find the source with the most web3 users
+    // Find the source with the highest number of unique web3 users
     let maxWeb3Source = '';
     let maxWeb3Count = 0;
     
     Object.entries(web3UsersBySource).forEach(([source, users]) => {
-      if (users.size > maxWeb3Count) {
-        maxWeb3Count = users.size;
+      const uniqueWeb3Users = users.size;
+      if (uniqueWeb3Users > maxWeb3Count) {
+        maxWeb3Count = uniqueWeb3Users;
         maxWeb3Source = source;
       }
     });
     
-    // Find the source with the most wallet connections
+    // Find the source with the most unique wallet connections
     let maxWalletSource = '';
     let maxWalletCount = 0;
     
     Object.entries(walletsBySource).forEach(([source, wallets]) => {
-      if (wallets.size > maxWalletCount) {
-        maxWalletCount = wallets.size;
+      const uniqueWallets = wallets.size;
+      if (uniqueWallets > maxWalletCount) {
+        maxWalletCount = uniqueWallets;
         maxWalletSource = source;
       }
     });
@@ -698,7 +700,6 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     // Get metrics for the best source by sessions
     const totalSessions = sourceCounts[maxSessionsSource] || 0;
     const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
-    const totalWeb3Users = web3UsersBySource[maxWeb3Source] ? web3UsersBySource[maxWeb3Source].size : 0;
     
     // Calculate bounce rate for the best source
     const bounces = sourceBounceCounts[maxSessionsSource] || 0;
@@ -707,8 +708,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     setMetrics({
       bestSource: maxSessionsSource,
       totalSessions,
-      web3Users: maxWeb3Count,
-      walletsConnected: maxWalletCount,  // Use the actual count from the best wallet source
+      web3Users: maxWeb3Count,  // Number of unique web3 users from the best source
+      walletsConnected: maxWalletCount,  // Number of unique wallets from the best source
       leastEffectiveSource: lowestConversionSource,
       avgConversion: `${bestConversionRate.toFixed(2)}%`,
       avgBounceRate: `${bounceRate.toFixed(2)}%`,
