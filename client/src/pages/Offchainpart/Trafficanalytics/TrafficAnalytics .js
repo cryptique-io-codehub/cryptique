@@ -773,51 +773,108 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         : num;
   };
 
-  // Sample data for the Web3 Users by Medium chart (would be replaced with real data in a production app)
-  const web3UsersByTimeData = [
-    { time: '00:00', 'Paid/Ads': 35, 'Organic': 20, 'Social': 115, 'KOL & Partnerships': 145, 'Events': 150, 'Others': 120 },
-    { time: '04:00', 'Paid/Ads': 50, 'Organic': 28, 'Social': 50, 'KOL & Partnerships': 120, 'Events': 80, 'Others': 155 },
-    { time: '08:00', 'Paid/Ads': 25, 'Organic': 35, 'Social': 165, 'KOL & Partnerships': 100, 'Events': 120, 'Others': 45 },
-    { time: '12:00', 'Paid/Ads': 40, 'Organic': 20, 'Social': 100, 'KOL & Partnerships': 130, 'Events': 110, 'Others': 30 },
-    { time: '16:00', 'Paid/Ads': 55, 'Organic': 12, 'Social': 50, 'KOL & Partnerships': 145, 'Events': 90, 'Others': 125 },
-    { time: '20:00', 'Paid/Ads': 65, 'Organic': 55, 'Social': 75, 'KOL & Partnerships': 55, 'Events': 45, 'Others': 80 },
-    { time: '23:59', 'Paid/Ads': 35, 'Organic': 62, 'Social': 120, 'KOL & Partnerships': 130, 'Events': 135, 'Others': 125 }
-  ];
+  // Process Web3 Users by Medium data
+  const processWeb3UsersByMedium = () => {
+    if (!analytics || !analytics.sessions || analytics.sessions.length === 0) {
+      return [];
+    }
+
+    // Group sessions by time and medium
+    const timeGroups = {};
+    const mediumCategories = {
+      'Paid/Ads': ['google', 'facebook', 'twitter', 'linkedin', 'ad', 'sponsored'],
+      'Organic': ['organic', 'search', 'google', 'bing', 'yahoo'],
+      'Social': ['facebook', 'twitter', 'instagram', 'linkedin', 'reddit', 'social'],
+      'KOL & Partnerships': ['partner', 'kol', 'influencer', 'affiliate'],
+      'Events': ['event', 'conference', 'meetup', 'hackathon'],
+      'Others': [] // Default category
+    };
+
+    // Process each session
+    analytics.sessions.forEach(session => {
+      if (!session.userId || !session.timestamp) return;
+
+      // Get the time group (hour)
+      const date = new Date(session.timestamp);
+      const hour = date.getHours();
+      const timeKey = `${hour.toString().padStart(2, '0')}:00`;
+
+      // Initialize time group if not exists
+      if (!timeGroups[timeKey]) {
+        timeGroups[timeKey] = {
+          'Paid/Ads': new Set(),
+          'Organic': new Set(),
+          'Social': new Set(),
+          'KOL & Partnerships': new Set(),
+          'Events': new Set(),
+          'Others': new Set()
+        };
+      }
+
+      // Determine the medium
+      let medium = 'Others';
+      const source = session.utmData?.source?.toLowerCase() || 
+                    session.referrer?.toLowerCase() || 
+                    'direct';
+
+      // Check if user has a wallet
+      const hasWallet = session.wallet && 
+                       session.wallet.walletAddress && 
+                       session.wallet.walletAddress.trim() !== '';
+
+      if (!hasWallet) return;
+
+      // Categorize the source
+      for (const [category, keywords] of Object.entries(mediumCategories)) {
+        if (keywords.some(keyword => source.includes(keyword))) {
+          medium = category;
+          break;
+        }
+      }
+
+      // Add user to the appropriate medium group
+      timeGroups[timeKey][medium].add(session.userId);
+    });
+
+    // Convert to chart data format
+    const chartData = Object.entries(timeGroups).map(([time, mediums]) => {
+      const dataPoint = { time };
+      Object.entries(mediums).forEach(([medium, users]) => {
+        dataPoint[medium] = users.size;
+      });
+      return dataPoint;
+    });
+
+    // Sort by time
+    return chartData.sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  // Get the Web3 Users by Medium data
+  const web3UsersByTimeData = processWeb3UsersByMedium();
 
   // Colors for the Web3 Users chart
   const webUsersColors = {
-    'Paid/Ads': '#4285F4',
-    'Organic': '#EA4335',
-    'Social': '#FBBC05',
-    'KOL & Partnerships': '#34A853',
-    'Events': '#0F9D58',
-    'Others': '#00BCD4'
+    'Paid/Ads': '#4285F4',    // Google Blue
+    'Organic': '#EA4335',      // Google Red
+    'Social': '#FBBC05',       // Google Yellow
+    'KOL & Partnerships': '#34A853', // Google Green
+    'Events': '#0F9D58',      // Darker Green
+    'Others': '#00BCD4'       // Cyan
   };
 
-  // MetricCard component for displaying metrics
-  const MetricCard = ({ title, value, source }) => (
-    <div className="bg-white rounded-lg shadow p-2 md:p-4">
-      <div className="text-xs md:text-sm text-gray-500 mb-1">{title}</div>
-      <div className="flex items-center justify-center h-12 md:h-24">
-        <span className="text-lg md:text-xl font-bold">{value}</span>
-      </div>
-      {source && <div className="text-xs text-center text-gray-500">From {source}</div>}
-    </div>
-  );
-
-  // Custom tooltip for the scatter plot
-  const CustomTooltip = ({ active, payload }) => {
+  // Custom tooltip for the Web3 Users chart
+  const Web3UsersTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const total = payload.reduce((sum, entry) => sum + entry.value, 0);
       return (
         <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
-          <p className="font-semibold">{data.source}</p>
-          <p>Engagement: {data.engagement} mins</p>
-          <p>Conversion: {data.conversion}%</p>
-          <p>Bounce Rate: {data.bounceRate}%</p>
-          <p>Unique Users: {data.uniqueUsers}</p>
-          <p>Web3 Users: {data.web3Users}</p>
-          <p>Wallets: {data.wallets}</p>
+          <p className="font-semibold">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {entry.value} ({((entry.value / total) * 100).toFixed(1)}%)
+            </p>
+          ))}
+          <p className="font-semibold mt-1">Total: {total}</p>
         </div>
       );
     }
@@ -921,9 +978,12 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         )}
       </div>
 
-      {/* Web3 Users by Medium - Placeholder data (to be updated with real data) */}
+      {/* Web3 Users by Medium */}
       <div className="bg-white rounded-lg shadow p-2 md:p-4">
-        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium (to be released soon)</h3>
+        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
+        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+          Distribution of Web3 Users Across Traffic Sources
+        </div>
         <div className="h-48 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart 
@@ -939,12 +999,12 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
                 interval="preserveStartEnd"
               />
               <YAxis 
-                domain={[0, 200]} 
+                domain={[0, 'dataMax + 5']} 
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10 }}
               />
-              <Tooltip wrapperStyle={{ fontSize: '0.75rem' }} />
+              <Tooltip content={<Web3UsersTooltip />} />
               <Legend 
                 layout="horizontal" 
                 verticalAlign="top" 
