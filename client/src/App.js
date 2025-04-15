@@ -109,36 +109,147 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Interface />} />
             <Route path="/signup" element={<Interface />} />
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
+            
+            {/* Protected Routes - No Layout wrapper */}
+            <Route 
+              path="/dashboard" 
               element={
                 <PrivateRoute>
-                  <Layout />
+                  <Dashboard />
                 </PrivateRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="offchain" element={<OffchainAnalytics />} />
-              <Route path="onchain" element={<OnchainExplorer />} />
-              <Route path="kol" element={<KOLIntelligence />} />
-              <Route path="campaigns" element={<Campaigns />} />
-              <Route path="conversion-events" element={<ConversionEvents />} />
-              <Route path="advertise" element={<Advertise />} />
-              <Route path="history" element={<History />} />
-              <Route path="importusers" element={<ImportUsers />} />
-              <Route path="managewebsites" element={<ManageWebsites />} />
-              <Route path="custom-dashboard" element={<CustomDashboard />} />
-              <Route path="cq-intelligence" element={<CQIntelligence />} />
-              {/* Settings Routes */}
-              <Route path="settings">
-                <Route index element={<Settings />} />
-                <Route path="billing" element={<Billing />} />
-                <Route path="members" element={<MembersSection />} />
-                <Route path="personal" element={<PersonalInfoSection />} />
-                <Route path="teams" element={<TeamsSection />} />
-              </Route>
-            </Route>
+              } 
+            />
+            <Route 
+              path="/offchain" 
+              element={
+                <PrivateRoute>
+                  <OffchainAnalytics />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/onchain" 
+              element={
+                <PrivateRoute>
+                  <OnchainExplorer />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/kol" 
+              element={
+                <PrivateRoute>
+                  <KOLIntelligence />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/cq-intelligence" 
+              element={
+                <PrivateRoute>
+                  <CQIntelligence />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/campaigns" 
+              element={
+                <PrivateRoute>
+                  <Campaigns />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/conversion-events" 
+              element={
+                <PrivateRoute>
+                  <ConversionEvents />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/advertise" 
+              element={
+                <PrivateRoute>
+                  <Advertise />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/history" 
+              element={
+                <PrivateRoute>
+                  <History />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/importusers" 
+              element={
+                <PrivateRoute>
+                  <ImportUsers />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/managewebsites" 
+              element={
+                <PrivateRoute>
+                  <ManageWebsites />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/custom-dashboard" 
+              element={
+                <PrivateRoute>
+                  <CustomDashboard />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Settings Routes */}
+            <Route 
+              path="/settings" 
+              element={
+                <PrivateRoute>
+                  <Settings />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/settings/billing" 
+              element={
+                <PrivateRoute>
+                  <Billing />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/settings/members" 
+              element={
+                <PrivateRoute>
+                  <MembersSection />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/settings/personal" 
+              element={
+                <PrivateRoute>
+                  <PersonalInfoSection />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/settings/teams" 
+              element={
+                <PrivateRoute>
+                  <TeamsSection />
+                </PrivateRoute>
+              } 
+            />
+            
             <Route path="/test-analytics" element={<TestAnalytics />} />
           </Routes>
         </BrowserRouter>

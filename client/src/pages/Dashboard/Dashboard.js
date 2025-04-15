@@ -1,228 +1,227 @@
-import React, { useState, useEffect } from "react";
-import Sidebar from "../../components/Sidebar.js";
-import Header from "../../components/Header.js";
-import Tabs from "./components/Tabs";
-import { FeatureCards } from "./components/FeatureCards";
-import MarketingSection from "./components/MarketingSection";
-import Settings from "../Setting/Settings.js";
-import { Menu } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import OffchainAnalytics from './OffchainAnalytics.js'
-import OnchainExplorer from './OnchainExplorer.js'
-import ManageWebsites from './ManageWebsites.js'
-import KOLIntelligence from './KOLIntelligence.js'
-import ImportUsers from './ImportUsers.js'
-import History from "./History.js";
-import ConversionEvents from './ConversionEvents.js'
-import Campaigns from './Campaigns.js'
-import Advertise from './Advertise.js'
-import CustomDashboard from './CustomDashboard.js'
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Box, Container, AppBar, Toolbar, Typography, Button, IconButton, Avatar, Paper, Grid } from '@mui/material';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import GroupsIcon from '@mui/icons-material/Groups';
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import TransformIcon from '@mui/icons-material/Transform';
+import AdsClickIcon from '@mui/icons-material/AdsClick';
+import HistoryIcon from '@mui/icons-material/History';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import LanguageIcon from '@mui/icons-material/Language';
 
 const Dashboard = () => {
-  // State management
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedPage, setSelectedPage] = useState("dashboard");
-  const [screenSize, setScreenSize] = useState({
-    isMobile: false,
-    isTablet: false,
-    isDesktop: false
-  });
-  const location = useLocation();
-  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('User') || '{}');
+  const team = localStorage.getItem('selectedTeam') || '';
 
-  // Screen size detection with multiple breakpoints
-  useEffect(() => {
-    const updateScreenSize = () => {
-      const width = window.innerWidth;
-      setScreenSize({
-        isMobile: width < 640, // Small mobile devices
-        isTablet: width >= 640 && width < 1024, // Tablets and small laptops
-        isDesktop: width >= 1024 // Desktops and large screens
-      });
-      
-      // Auto-close sidebar on mobile, auto-open on desktop
-      if (width >= 1024 && !isSidebarOpen) {
-        setIsSidebarOpen(true);
-      } else if (width < 640 && isSidebarOpen) {
-        setIsSidebarOpen(false);
-      }
-    };
-    
-    // Initial check
-    updateScreenSize();
-    
-    // Add event listener for resize
-    window.addEventListener('resize', updateScreenSize);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', updateScreenSize);
-  }, [isSidebarOpen]);
+  const featureCards = [
+    {
+      title: "Off-Chain Analytics",
+      description: "Track user journeys, conversions, and traffic sources across your website.",
+      icon: <BarChartIcon color="primary" fontSize="large" />,
+      path: "/offchain",
+    },
+    {
+      title: "On-Chain Explorer",
+      description: "Analyze blockchain data and monitor wallet activity related to your project.",
+      icon: <TimelineIcon color="primary" fontSize="large" />,
+      path: "/onchain",
+    },
+    {
+      title: "CQ Intelligence",
+      description: "Get insights and intelligence on your crypto audience and market position.",
+      icon: <PsychologyIcon color="primary" fontSize="large" />,
+      path: "/cq-intelligence",
+    },
+    {
+      title: "KOL Intelligence",
+      description: "Access advanced KOL data and on-chain insights into your social dynamics.",
+      icon: <GroupsIcon color="primary" fontSize="large" />,
+      path: "/kol",
+    },
+    {
+      title: "Custom Dashboard",
+      description: "Create personalized dashboards with your most important metrics and widgets.",
+      icon: <DashboardCustomizeIcon color="primary" fontSize="large" />,
+      path: "/custom-dashboard",
+    },
+    {
+      title: "Campaigns",
+      description: "Measure performance & retention of all your marketing campaigns.",
+      icon: <CampaignIcon color="primary" fontSize="large" />,
+      path: "/campaigns",
+    },
+  ];
 
-  // Sync selectedPage with URL
-  useEffect(() => {
-    const path = location.pathname;
-    if (path === `/${selectedTeam}/dashboard`) {
-      setSelectedPage("dashboard");
-    } else if (path.includes('/settings')) {
-      setSelectedPage("settings");
-    } else {
-      // Check for other routes
-      const pages = [
-        "offchain-analytics", "onchain-explorer", "kol-intelligence", 
-        "campaigns", "conversion-events", "advertise", "history", 
-        "import-users", "manage-websites", "custom-dashboard"
-      ];
-      
-      for (const page of pages) {
-        if (path.includes(`/${page}`)) {
-          setSelectedPage(page);
-          break;
-        }
-      }
-    }
-  }, [location, selectedTeam]);
-
-  const handleNavigation = (page) => {
-    setSelectedPage(page);
-    // Close sidebar on navigation only for mobile
-    if (screenSize.isMobile && isSidebarOpen) {
-      setIsSidebarOpen(false);
-    }
-  };
-
-  // Determine sidebar classes based on screen size
-  const getSidebarClasses = () => {
-    if (screenSize.isDesktop) {
-      return "h-screen sticky top-0 flex-shrink-0 transition-all duration-300";
-    }
-    
-    if (screenSize.isMobile || screenSize.isTablet) {
-      return "fixed top-0 left-0 h-full z-50 transition-all duration-300 transform " + 
-             (isSidebarOpen ? "translate-x-0" : "-translate-x-full");
-    }
-    
-    return "h-screen sticky top-0 flex-shrink-0";
-  };
-
-  // Get correct content padding based on sidebar state and screen size
-  const getMainContentClasses = () => {
-    let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
-    
-    if (screenSize.isDesktop) {
-      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
-    }
-    
-    return baseClasses;
-  };
-
-  // Get main content padding
-  const getMainPaddingClasses = () => {
-    let paddingClasses = "p-4 md:p-6 lg:p-8 flex flex-col gap-4 md:gap-6 lg:gap-8 ";
-    
-    if (screenSize.isMobile) {
-      paddingClasses += "pt-16"; // Extra padding for mobile menu button
-    }
-    
-    return paddingClasses;
-  };
-
-  // Render component for current page
-  const renderCurrentPage = () => {
-    const commonProps = {
-      onMenuClick: () => setIsSidebarOpen(!isSidebarOpen),
-      onClose: () => setSelectedPage("dashboard"),
-      screenSize: screenSize
-    };
-
-    switch (selectedPage) {
-      case "dashboard":
-        return (
-          <>
-            <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
-            <main className={getMainPaddingClasses()}>
-              <MarketingSection />
-              <Tabs />
-              <FeatureCards />
-            </main>
-          </>
-        );
-      case "offchain-analytics":
-        return <OffchainAnalytics {...commonProps} />;
-      case "onchain-explorer":
-        return <OnchainExplorer {...commonProps} />;
-      case "kol-intelligence":
-        return <KOLIntelligence {...commonProps} />;
-      case "campaigns":
-        return <Campaigns {...commonProps} />;
-      case "conversion-events":
-        return <ConversionEvents {...commonProps} />;
-      case "advertise":
-        return <Advertise {...commonProps} />;
-      case "history":
-        return <History {...commonProps} />;
-      case "import-users":
-        return <ImportUsers {...commonProps} />;
-      case "manage-websites":
-        return <ManageWebsites {...commonProps} />;
-      case "custom-dashboard":
-        return <CustomDashboard {...commonProps} />;
-      case "settings":
-        return <Settings {...commonProps} />;
-      default:
-        return (
-          <>
-            <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
-            <main className={getMainPaddingClasses()}>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold text-gray-700">Page Not Found</h2>
-                <p className="mt-2 text-gray-500">The page you're looking for doesn't exist.</p>
-              </div>
-            </main>
-          </>
-        );
-    }
-  };
+  const secondaryFeatures = [
+    { title: "Conversion Events", icon: <TransformIcon />, path: "/conversion-events" },
+    { title: "Advertise", icon: <AdsClickIcon />, path: "/advertise" },
+    { title: "History", icon: <HistoryIcon />, path: "/history" },
+    { title: "Import Users", icon: <PersonAddIcon />, path: "/importusers" },
+    { title: "Manage Websites", icon: <LanguageIcon />, path: "/managewebsites" },
+  ];
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Sidebar - conditionally rendered based on screen size and state */}
-      <div className={getSidebarClasses()}>
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          onNavigate={handleNavigation}
-          currentPage={selectedPage}
-          isCompact={screenSize.isTablet && !isSidebarOpen}
-          screenSize={screenSize}
-        />
-      </div>
+    <Box sx={{ flexGrow: 1 }}>
+      {/* App Bar */}
+      <AppBar position="static" sx={{ bgcolor: "#1a2437" }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Cryptique
+          </Typography>
+          <Typography variant="body2" sx={{ mr: 2 }}>
+            Team: {team}
+          </Typography>
+          <IconButton color="inherit">
+            <NotificationsIcon />
+          </IconButton>
+          <IconButton color="inherit" onClick={() => navigate('/settings')}>
+            <SettingsIcon />
+          </IconButton>
+          <IconButton color="inherit">
+            {user.avatar ? (
+              <Avatar src={user.avatar} alt={user.name} sx={{ width: 32, height: 32 }} />
+            ) : (
+              <Avatar sx={{ width: 32, height: 32 }}>{user.name?.[0] || 'U'}</Avatar>
+            )}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
 
-      {/* Main content area */}
-      <div className={getMainContentClasses()}>
-        {/* Mobile menu toggle button */}
-        {(screenSize.isMobile || screenSize.isTablet) && (
-          <button 
-            className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            aria-label="Toggle navigation menu"
-          >
-            <Menu size={screenSize.isMobile ? 20 : 24} />
-          </button>
-        )}
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        {/* Hero Section */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 4, 
+            mb: 4, 
+            borderRadius: 2, 
+            bgcolor: "#e4c795", 
+            display: "flex", 
+            flexDirection: { xs: "column", md: "row" }, 
+            alignItems: "center",
+            justifyContent: "space-between"
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+              One Stop for your Web3 Marketing
+            </Typography>
+            <Typography variant="body1" paragraph>
+              Easy onboarding<br />
+              One-min integration<br />
+              No-code insights
+            </Typography>
+            <Button 
+              variant="contained" 
+              sx={{ 
+                bgcolor: "white", 
+                color: "#1a2437", 
+                "&:hover": { bgcolor: "#f5f5f5" } 
+              }}
+            >
+              Integrate your website/app now
+            </Button>
+          </Box>
+          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', mt: { xs: 3, md: 0 } }}>
+            <Box 
+              component="img"
+              src="https://placehold.co/200x200/gold/white?text=CQ"
+              alt="Cryptique logo"
+              sx={{ maxWidth: 200, height: 'auto' }}
+            />
+          </Box>
+        </Paper>
 
-        {/* Render the selected page */}
-        {renderCurrentPage()}
-      </div>
+        {/* Tab Navigation */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4, display: 'flex', justifyContent: 'center' }}>
+          <Button sx={{ fontWeight: 'bold', borderBottom: '2px solid #4a90e2', borderRadius: 0, px: 3 }}>
+            Overview
+          </Button>
+          <Button sx={{ px: 3 }} onClick={() => navigate('/offchain')}>
+            Analytics
+          </Button>
+          <Button sx={{ px: 3 }} onClick={() => navigate('/campaigns')}>
+            Campaigns
+          </Button>
+        </Box>
 
-      {/* Overlay for mobile when sidebar is open */}
-      {(screenSize.isMobile || screenSize.isTablet) && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-    </div>
+        {/* Main Feature Cards */}
+        <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4, mb: 2 }}>
+          Main Features
+        </Typography>
+        <Grid container spacing={3}>
+          {featureCards.map((card, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Paper 
+                elevation={1} 
+                sx={{ 
+                  p: 3, 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    boxShadow: 3,
+                    transform: 'translateY(-4px)'
+                  }
+                }}
+                onClick={() => navigate(card.path)}
+              >
+                <Box sx={{ display: 'flex', mb: 2 }}>
+                  {card.icon}
+                </Box>
+                <Typography variant="subtitle1" component="h3" gutterBottom fontWeight="bold">
+                  {card.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, flexGrow: 1 }}>
+                  {card.description}
+                </Typography>
+                <Box sx={{ mt: 'auto', textAlign: 'right' }}>
+                  <Button color="primary" sx={{ px: 0 }}>
+                    Explore →
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Secondary Features */}
+        <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4, mb: 2 }}>
+          Additional Tools
+        </Typography>
+        <Grid container spacing={2}>
+          {secondaryFeatures.map((feature, index) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={feature.icon}
+                fullWidth
+                sx={{ 
+                  py: 1.5, 
+                  px: 2, 
+                  justifyContent: 'flex-start',
+                  textTransform: 'none',
+                  borderColor: 'rgba(0,0,0,0.12)'
+                }}
+                onClick={() => navigate(feature.path)}
+              >
+                {feature.title}
+              </Button>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </Box>
   );
 };
 
