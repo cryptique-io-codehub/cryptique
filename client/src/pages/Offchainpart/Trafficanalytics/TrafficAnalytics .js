@@ -738,7 +738,6 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       
       // Use the already calculated conversion rate
       const conversion = conversionRates[source] || 0;
-      
       return {
         source,
         engagement: parseFloat(engagement.toFixed(2)),
