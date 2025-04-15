@@ -708,7 +708,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     setMetrics({
       bestSource: maxSessionsSource,
       totalSessions,
-      web3Users: totalWeb3Users,
+      web3Users: maxWeb3Count,  // Use the actual count from the best web3 source
       walletsConnected: totalWallets,
       leastEffectiveSource: lowestConversionSource,
       avgConversion: `${bestConversionRate.toFixed(2)}%`,
