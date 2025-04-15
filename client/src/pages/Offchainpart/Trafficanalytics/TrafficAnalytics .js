@@ -32,112 +32,92 @@ const AttributionJourneySankey = ({analytics}) => {
     
     // First, determine the first source for each user
     const userFirstSources = {};
+    const userOutcomes = {};
     
     // Sort sessions by timestamp to determine the first session per user
     const sortedSessions = [...analytics.sessions].sort((a, b) => {
       return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
     });
     
-    // Determine the first source for each user
+    // Determine the first source and final outcome for each user
     sortedSessions.forEach(session => {
       const userId = session.userId;
       
       // Skip if we already have the first source for this user
-      if (userFirstSources[userId]) return;
-      
-      // Determine the source (utm source or referrer)
-      let source = 'Direct';
-      
-      if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
-        // Normalize UTM source
-        source = normalizeDomain(session.utmData.source);
-      } else if (session.referrer && session.referrer !== 'direct') {
-        // Extract and normalize domain from referrer
-        try {
-          const url = new URL(session.referrer);
-          source = normalizeDomain(url.hostname || url.host || session.referrer);
-        } catch (e) {
-          source = normalizeDomain(session.referrer);
+      if (!userFirstSources[userId]) {
+        // Determine the source (utm source or referrer)
+        let source = 'Direct';
+        
+        if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
+          // Normalize UTM source
+          source = normalizeDomain(session.utmData.source);
+        } else if (session.referrer && session.referrer !== 'direct') {
+          // Extract and normalize domain from referrer
+          try {
+            const url = new URL(session.referrer);
+            source = normalizeDomain(url.hostname || url.host || session.referrer);
+          } catch (e) {
+            source = normalizeDomain(session.referrer);
+          }
         }
+        
+        // Record the first source for this user
+        userFirstSources[userId] = source;
       }
       
-      // Record the first source for this user
-      userFirstSources[userId] = source;
+      // Update user outcome based on wallet connection
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+        userOutcomes[userId] = 'Wallet Connected';
+      } else if (!userOutcomes[userId]) {
+        userOutcomes[userId] = 'No Wallet';
+      }
     });
     
-    // Group sessions by the first source of each user, ignoring later sources
-    const sourceGroups = {};
+    // Count users by source and outcome
+    const sourceOutcomeCounts = {};
     
-    analytics.sessions.forEach(session => {
-      const userId = session.userId;
-      const source = userFirstSources[userId] || 'Direct';
+    Object.entries(userFirstSources).forEach(([userId, source]) => {
+      const outcome = userOutcomes[userId] || 'No Wallet';
       
-      // Create the source group if it doesn't exist
-      if (!sourceGroups[source]) {
-        sourceGroups[source] = {
-          connected: new Set(),
-          notConnected: new Set(),
-          uniqueVisitors: new Set()
+      if (!sourceOutcomeCounts[source]) {
+        sourceOutcomeCounts[source] = {
+          'Wallet Connected': 0,
+          'No Wallet': 0,
+          total: 0
         };
       }
       
-      // Add userId to track unique visitors
-      sourceGroups[source].uniqueVisitors.add(userId);
-      
-      // Check if wallet is connected
-      const isWalletConnected = session.wallet && 
-                               session.wallet.walletAddress && 
-                               session.wallet.walletAddress.trim() !== '';
-      
-      // Add userId to the appropriate set - based on ANY session with this userId
-      // This means if they connect a wallet in any session, they're counted as connected
-      if (isWalletConnected) {
-        sourceGroups[source].connected.add(userId);
-        // Remove from notConnected if they were there
-        sourceGroups[source].notConnected.delete(userId);
-      } else if (!sourceGroups[source].connected.has(userId)) {
-        // Only mark as not connected if they haven't connected in any other session
-        sourceGroups[source].notConnected.add(userId);
-      }
+      sourceOutcomeCounts[source][outcome]++;
+      sourceOutcomeCounts[source].total++;
     });
     
-    // Sort sources by unique visitors count and take top 5
-    const topSources = Object.keys(sourceGroups)
-      .map(source => ({
-        source,
-        uniqueVisitors: sourceGroups[source].uniqueVisitors.size
-      }))
-      .sort((a, b) => b.uniqueVisitors - a.uniqueVisitors)
-      .slice(0, 5)
-      .map(item => item.source);
-    
-    // Convert source groups to Sankey data format (only for top 5 sources)
+    // Convert to Sankey data format
     const sankeyData = [];
     
-    topSources.forEach(source => {
-      const connectedCount = sourceGroups[source].connected.size;
-      const notConnectedCount = sourceGroups[source].notConnected.size;
-      
-      if (connectedCount > 0) {
+    Object.entries(sourceOutcomeCounts).forEach(([source, counts]) => {
+      if (counts['Wallet Connected'] > 0) {
         sankeyData.push({
-          source: source,
-          target: 'Wallet Connect',
-          value: connectedCount,
-          totalVisitors: sourceGroups[source].uniqueVisitors.size
+          source,
+          target: 'Wallet Connected',
+          value: counts['Wallet Connected'],
+          total: counts.total
         });
       }
       
-      if (notConnectedCount > 0) {
+      if (counts['No Wallet'] > 0) {
         sankeyData.push({
-          source: source,
-          target: 'Drop off',
-          value: notConnectedCount,
-          totalVisitors: sourceGroups[source].uniqueVisitors.size
+          source,
+          target: 'No Wallet',
+          value: counts['No Wallet'],
+          total: counts.total
         });
       }
     });
     
-    return sankeyData;
+    // Sort by total users and take top 5 sources
+    return sankeyData
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10); // Show top 5 sources (2 outcomes each = 10 flows)
   };
   
   // Get the Sankey data
@@ -145,8 +125,8 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
-    { source: 'Direct', target: 'Wallet Connect', value: 1, totalVisitors: 1 },
-    { source: 'Direct', target: 'Drop off', value: 1, totalVisitors: 1 }
+    { source: 'Direct', target: 'Wallet Connected', value: 1, total: 1 },
+    { source: 'Direct', target: 'No Wallet', value: 1, total: 1 }
   ];
   
   // Calculate total values for scaling
@@ -162,8 +142,8 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Define fixed colors for targets
   const targetColors = {
-    'Wallet Connect': '#28a745', // Green for success
-    'Drop off': '#dc3545'        // Red for drop off
+    'Wallet Connected': '#28a745', // Green for success
+    'No Wallet': '#dc3545'        // Red for no wallet
   };
   
   // Define node positions and dimensions dynamically
@@ -173,7 +153,7 @@ const AttributionJourneySankey = ({analytics}) => {
   uniqueSources.forEach((source, index) => {
     const sourceData = finalData.filter(item => item.source === source);
     const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
-    const totalVisitors = sourceData[0].totalVisitors; // All entries for this source have the same totalVisitors
+    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
     const heightRatio = totalSourceValue / totalValue;
     
     nodes[source] = {
@@ -286,10 +266,10 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Color blending logic for flows
   const getFlowColor = (source, target) => {
-    if (target === 'Wallet Connect') {
+    if (target === 'Wallet Connected') {
       return '#28a745'; // Green for wallet connect flows
-    } else if (target === 'Drop off') {
-      return '#dc3545'; // Red for drop off flows
+    } else if (target === 'No Wallet') {
+      return '#dc3545'; // Red for no wallet flows
     } else {
       // Blend colors for other flows
       const sourceColor = nodes[source].color;
@@ -451,10 +431,10 @@ const AttributionJourneySankey = ({analytics}) => {
             {/* Legend */}
             <g transform="translate(20, 20)">
               <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-              <text x="20" y="12" className="text-xs" style={{ fill: "#333333" }}>Wallet Connect</text>
+              <text x="20" y="12" className="text-xs" style={{ fill: "#333333" }}>Wallet Connected</text>
               
               <rect x="0" y="25" width="15" height="15" fill="#dc3545" />
-              <text x="20" y="37" className="text-xs" style={{ fill: "#333333" }}>Drop off</text>
+              <text x="20" y="37" className="text-xs" style={{ fill: "#333333" }}>No Wallet</text>
             </g>
           </svg>
         </div>
