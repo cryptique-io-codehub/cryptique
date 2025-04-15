@@ -775,17 +775,19 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
 
   // Process Web3 Users by Medium data
   const processWeb3UsersByMedium = () => {
+    // Always return some data, either real or sample
+    const sampleData = [
+      { time: '00:00', 'Paid/Ads': 35, 'Organic': 20, 'Social': 115, 'KOL & Partnerships': 145, 'Events': 150, 'Others': 120 },
+      { time: '04:00', 'Paid/Ads': 50, 'Organic': 28, 'Social': 50, 'KOL & Partnerships': 120, 'Events': 80, 'Others': 155 },
+      { time: '08:00', 'Paid/Ads': 25, 'Organic': 35, 'Social': 165, 'KOL & Partnerships': 100, 'Events': 120, 'Others': 45 },
+      { time: '12:00', 'Paid/Ads': 40, 'Organic': 20, 'Social': 100, 'KOL & Partnerships': 130, 'Events': 110, 'Others': 30 },
+      { time: '16:00', 'Paid/Ads': 55, 'Organic': 12, 'Social': 50, 'KOL & Partnerships': 145, 'Events': 90, 'Others': 125 },
+      { time: '20:00', 'Paid/Ads': 65, 'Organic': 55, 'Social': 75, 'KOL & Partnerships': 55, 'Events': 45, 'Others': 80 },
+      { time: '23:59', 'Paid/Ads': 35, 'Organic': 62, 'Social': 120, 'KOL & Partnerships': 130, 'Events': 135, 'Others': 125 }
+    ];
+
     if (!analytics || !analytics.sessions || analytics.sessions.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { time: '00:00', 'Paid/Ads': 35, 'Organic': 20, 'Social': 115, 'KOL & Partnerships': 145, 'Events': 150, 'Others': 120 },
-        { time: '04:00', 'Paid/Ads': 50, 'Organic': 28, 'Social': 50, 'KOL & Partnerships': 120, 'Events': 80, 'Others': 155 },
-        { time: '08:00', 'Paid/Ads': 25, 'Organic': 35, 'Social': 165, 'KOL & Partnerships': 100, 'Events': 120, 'Others': 45 },
-        { time: '12:00', 'Paid/Ads': 40, 'Organic': 20, 'Social': 100, 'KOL & Partnerships': 130, 'Events': 110, 'Others': 30 },
-        { time: '16:00', 'Paid/Ads': 55, 'Organic': 12, 'Social': 50, 'KOL & Partnerships': 145, 'Events': 90, 'Others': 125 },
-        { time: '20:00', 'Paid/Ads': 65, 'Organic': 55, 'Social': 75, 'KOL & Partnerships': 55, 'Events': 45, 'Others': 80 },
-        { time: '23:59', 'Paid/Ads': 35, 'Organic': 62, 'Social': 120, 'KOL & Partnerships': 130, 'Events': 135, 'Others': 125 }
-      ];
+      return sampleData;
     }
 
     // Group sessions by time and medium
@@ -855,11 +857,15 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     });
 
     // Sort by time
-    return chartData.sort((a, b) => a.time.localeCompare(b.time));
+    const sortedData = chartData.sort((a, b) => a.time.localeCompare(b.time));
+    
+    // If we have no real data points, return sample data
+    return sortedData.length > 0 ? sortedData : sampleData;
   };
 
   // Get the Web3 Users by Medium data
   const web3UsersByTimeData = processWeb3UsersByMedium();
+  const isSampleData = !analytics || !analytics.sessions || analytics.sessions.length === 0;
 
   // Colors for the Web3 Users chart
   const webUsersColors = {
@@ -1010,7 +1016,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       <div className="bg-white rounded-lg shadow p-2 md:p-4">
         <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
         <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
-          {(!analytics || !analytics.sessions || analytics.sessions.length === 0) ? (
+          {isSampleData ? (
             <span className="text-yellow-600">Sample Data - No real data available yet</span>
           ) : (
             "Distribution of Web3 Users Across Traffic Sources"
@@ -1054,7 +1060,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
                   dot={false}
                   activeDot={{ r: 4 }}
                   name={key}
-                  strokeDasharray={(!analytics || !analytics.sessions || analytics.sessions.length === 0) ? "5 5" : "0"}
+                  strokeDasharray={isSampleData ? "5 5" : "0"}
                 />
               ))}
             </LineChart>
