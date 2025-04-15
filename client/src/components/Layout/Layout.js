@@ -33,17 +33,17 @@ const menuItems = [
   {
     text: 'Dashboard',
     icon: <DashboardIcon />,
-    path: '/'
+    path: '/dashboard'
   },
   {
     text: 'Custom Dashboard',
     icon: <DashboardCustomizeIcon />,
-    path: '/custom-dashboard'
+    path: '/dashboard/custom'
   },
   {
     text: 'CQ Intelligence',
     icon: <PsychologyIcon />,
-    path: '/cq-intelligence'
+    path: '/dashboard/cq-intelligence'
   }
 ];
 

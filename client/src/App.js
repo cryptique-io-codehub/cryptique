@@ -98,10 +98,6 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
-  // const Navigate = useNavigate();
-  
-
-
 
   return (
     <ThemeProvider theme={theme}>
@@ -113,8 +109,10 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Interface />} />
             <Route path="/signup" element={<Interface />} />
+            
+            {/* Protected Routes */}
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <PrivateRoute>
                   <Layout />
@@ -122,36 +120,34 @@ function App() {
               }
             >
               <Route index element={<Dashboard />} />
-              <Route path="custom-dashboard" element={<CustomDashboard />} />
+              <Route path="custom" element={<CustomDashboard />} />
               <Route path="cq-intelligence" element={<CQIntelligence />} />
-            </Route>
-            <Route path="/:team/offchain" element={<OffchainAnalytics />} />
-            <Route path="/:team/onchain" element={<OnchainExplorer />} />
-            <Route path="/:team/kol" element={<KOLIntelligence/>} />
-            <Route path="/:team/campaigns" element={<Campaigns/>} />
-            <Route path="/:team/conversion-events" element={<ConversionEvents/>} />
-            <Route path="/:team/advertise" element={<Advertise/>} />
-            <Route path="/:team/history" element={<History/>} />
-            <Route path="/:team/importusers" element={<ImportUsers/>} />
-            <Route path="/:team/managewebsites" element={<ManageWebsites/>} />
-            
-            {/* Parent Route for Settings */}
-            <Route path="/:team/settings" element={<Settings />}>
-              {/* Child Route for Billing */}
-              <Route path="/:team/settings/billing"  element={<Billing />} />
-              <Route path="/:team/settings/members" element={<MembersSection />} />
-              <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
-              <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
+              <Route path="offchain" element={<OffchainAnalytics />} />
+              <Route path="onchain" element={<OnchainExplorer />} />
+              <Route path="kol" element={<KOLIntelligence />} />
+              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="conversion-events" element={<ConversionEvents />} />
+              <Route path="advertise" element={<Advertise />} />
+              <Route path="history" element={<History />} />
+              <Route path="importusers" element={<ImportUsers />} />
+              <Route path="managewebsites" element={<ManageWebsites />} />
               
+              {/* Settings Routes */}
+              <Route path="settings">
+                <Route index element={<Settings />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="members" element={<MembersSection />} />
+                <Route path="personal" element={<PersonalInfoSection />} />
+                <Route path="teams" element={<TeamsSection />} />
+              </Route>
             </Route>
 
             <Route path="/test-analytics" element={<TestAnalytics />} />
-
           </Routes>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
+export default App;
