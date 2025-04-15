@@ -6,17 +6,23 @@ const { HourlyStats, DailyStats, WeeklyStats, MonthlyStats } = require("../model
 exports.postAnalytics = async (req, res) => {
   try {
     const { payload, sessionData } = req.body;
+    
+    // Handle session data updates (from the SDK tracking)
     if (!payload && sessionData) {
-      // console.log("sessionData", sessionData);
-      const { siteId, wallet, sessionId, userId, pagesViewed, duration } = sessionData;
-      const analytics = await Analytics.findOne({ siteId: siteId });
+      console.log("Processing session data update");
+      const { siteId, wallet, sessionId, userId, pagesViewed, pageVisits } = sessionData;
       
+      if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required' });
+      }
+      
+      const analytics = await Analytics.findOne({ siteId: siteId });
       if (!analytics) {
         return res.status(404).json({ error: 'Analytics not found for this site ID' });
       }
       
-      // Check if session with this ID already exists
-      const session = await Session.findOne({ sessionId: sessionId });
+      // Find existing session with this ID
+      const existingSession = await Session.findOne({ sessionId: sessionId });
       
       // Handle wallet updates if present
       if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
@@ -25,70 +31,79 @@ exports.postAnalytics = async (req, res) => {
           walletType: wallet.walletType,
           chainName: wallet.chainName,
         };
+        
         const walletExists = analytics.wallets.some(
           (w) => w.walletAddress === newWallet.walletAddress
         );
 
         if (!walletExists) {
-          analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
-          analytics.walletsConnected += 1; // Increment wallets connected
+          analytics.wallets.push(newWallet);
+          analytics.walletsConnected += 1;
           await analytics.save();
         }
       }
-
-      // If session doesn't exist, create a new one
-      if (!session) {
+      
+      // If session doesn't exist, create it
+      if (!existingSession) {
+        console.log("Creating new session:", sessionId);
         const newSession = new Session(sessionData);
         await newSession.save();
         
-        // Check if this session ID is already in analytics.sessions to avoid duplicates
-        const sessionExists = await Analytics.findOne({
-          siteId: siteId,
-          sessions: newSession._id
-        });
-        
-        if (!sessionExists) {
-          analytics.sessions.push(newSession._id); // Add session to the analytics
+        // Add to analytics if not already there
+        if (!analytics.sessions.includes(newSession._id)) {
+          analytics.sessions.push(newSession._id);
           await analytics.save();
         }
         
-        return res.status(200).json({ session: newSession });
+        return res.status(200).json({ 
+          message: 'New session created',
+          session: newSession 
+        });
       } 
-      // If session exists, update it with the new data
+      // If session exists, update it properly
       else {
-        // Merge the session data - increment pages viewed
-        const updatedPagesViewed = Math.max(session.pagesViewed || 0, pagesViewed || 0);
+        console.log("Updating existing session:", sessionId);
         
-        // Combine page visits arrays without duplicates
-        const combinedPageVisits = sessionData.pageVisits || [];
+        // Merge page visits arrays without duplicates
+        let combinedPageVisits = existingSession.pageVisits || [];
         
-        // Update session data
+        // Add new page visits from sessionData if they don't already exist
+        if (sessionData.pageVisits && Array.isArray(sessionData.pageVisits)) {
+          sessionData.pageVisits.forEach(newVisit => {
+            // Check if this URL already exists in the combined list
+            const exists = combinedPageVisits.some(
+              existingVisit => existingVisit.url === newVisit.url
+            );
+            
+            // Only add if it doesn't exist already
+            if (!exists) {
+              combinedPageVisits.push(newVisit);
+            }
+          });
+        }
+        
+        // Update session data with correct page view count
         const updatedData = {
           ...sessionData,
-          pagesViewed: updatedPagesViewed,
-          // Only update endTime if it's later than current end time
-          endTime: sessionData.endTime || session.endTime,
-          // Set isBounce to false if more than one page is viewed
-          isBounce: updatedPagesViewed <= 1,
-          // Update wallet data if it exists in the new data
-          wallet: {
-            walletAddress: wallet?.walletAddress || session.wallet?.walletAddress || '',
-            walletType: wallet?.walletType || session.wallet?.walletType || '',
-            chainName: wallet?.chainName || session.wallet?.chainName || '',
-          }
+          pageVisits: combinedPageVisits,
+          pagesViewed: combinedPageVisits.length,
+          isBounce: combinedPageVisits.length <= 1
         };
         
         const updatedSession = await Session.findByIdAndUpdate(
-          session._id, 
+          existingSession._id, 
           updatedData, 
           { new: true }
         );
         
-        return res.status(200).json({ session: updatedSession });
+        return res.status(200).json({ 
+          message: 'Session updated',
+          session: updatedSession 
+        });
       }
     }
     
-    // Handle payload requests (new session creation with events)
+    // Handle payload events
     if (payload) {
       const { siteId, websiteUrl, userId, pagePath, isWeb3User, sessionId } = payload;
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
@@ -197,10 +212,13 @@ exports.postAnalytics = async (req, res) => {
       }
     }
     
-    return res.status(400).json({ message: "Invalid request data" });
+    return res.status(400).json({ message: "Invalid request format" });
   } catch (e) {
     console.error("Error in postAnalytics:", e);
-    res.status(500).json({ message: "Error while processing analytics data", error: e.message });
+    res.status(500).json({ 
+      message: "Error processing analytics data", 
+      error: e.message 
+    });
   }
 };
 
