@@ -699,7 +699,6 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     const totalSessions = sourceCounts[maxSessionsSource] || 0;
     const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
     const totalWeb3Users = web3UsersBySource[maxWeb3Source] ? web3UsersBySource[maxWeb3Source].size : 0;
-    const totalWallets = walletsBySource[maxWalletSource] ? walletsBySource[maxWalletSource].size : 0;
     
     // Calculate bounce rate for the best source
     const bounces = sourceBounceCounts[maxSessionsSource] || 0;
@@ -708,8 +707,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     setMetrics({
       bestSource: maxSessionsSource,
       totalSessions,
-      web3Users: maxWeb3Count,  // Use the actual count from the best web3 source
-      walletsConnected: totalWallets,
+      web3Users: maxWeb3Count,
+      walletsConnected: maxWalletCount,  // Use the actual count from the best wallet source
       leastEffectiveSource: lowestConversionSource,
       avgConversion: `${bestConversionRate.toFixed(2)}%`,
       avgBounceRate: `${bounceRate.toFixed(2)}%`,
