@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
+import DashboardBuilder from '../../components/CustomDashboardBuilder/DashboardBuilder';
 
 const CustomDashboard = ({ onMenuClick, onClose }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,32 +24,11 @@ const CustomDashboard = ({ onMenuClick, onClose }) => {
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-col w-full h-screen">
-        {/* Header */}
-        <Header className="w-full flex-shrink-0" />
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6">Custom Dashboard</h1>
-            
-            {/* Placeholder for custom dashboard content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-semibold mb-4">Custom Widget 1</h2>
-                <p className="text-gray-600">Add your custom widgets here</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-semibold mb-4">Custom Widget 2</h2>
-                <p className="text-gray-600">Add your custom widgets here</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-semibold mb-4">Custom Widget 3</h2>
-                <p className="text-gray-600">Add your custom widgets here</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onMenuClick={onMenuClick} />
+        <main className="flex-1 overflow-y-auto p-4">
+          <DashboardBuilder />
+        </main>
       </div>
 
       {/* Overlay for mobile navigation */}
