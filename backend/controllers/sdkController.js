@@ -8,10 +8,12 @@ exports.postAnalytics = async (req, res) => {
     const { payload, sessionData } = req.body;
     if (!payload && sessionData) {
       // console.log("sessionData", sessionData);
-      const { siteId, wallet,sessionId } = sessionData;
+      const { siteId, wallet, sessionId, userId, pagesViewed, duration } = sessionData;
       const analytics = await Analytics.findOne({ siteId: siteId });
-      const session=await Session.findOne({sessionId:sessionId});
-      if (wallet && wallet.walletAddress.length > 0) {
+      const session = await Session.findOne({ sessionId: sessionId });
+      
+      // Handle wallet updates if present
+      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet = {
           walletAddress: wallet.walletAddress,
           walletType: wallet.walletType,
@@ -26,28 +28,46 @@ exports.postAnalytics = async (req, res) => {
           analytics.walletsConnected += 1; // Increment wallets connected
         }
 
-        await analytics.save(); // Increment wallets connected
+        await analytics.save();
       }
 
-      //if sessionid is same just update the session data
-      if(!session) {
+      // If session doesn't exist, create a new one
+      if (!session) {
         const newSession = new Session(sessionData);
         await newSession.save();
         analytics.sessions.push(newSession._id); // Add session to the analytics
         await analytics.save();
+        return res.status(200).json({ session: newSession });
+      } 
+      // If session exists, update it with the new data
+      else {
+        // Merge the session data - increment pages viewed
+        const updatedPagesViewed = Math.max(session.pagesViewed, pagesViewed);
+        
+        // Update session data
+        const updatedData = {
+          ...sessionData,
+          pagesViewed: updatedPagesViewed,
+          // Only update endTime if it's later than current end time
+          endTime: sessionData.endTime || session.endTime,
+          // Set isBounce to false if more than one page is viewed
+          isBounce: updatedPagesViewed <= 1,
+          // Update wallet data if it exists in the new data
+          wallet: {
+            walletAddress: wallet?.walletAddress || session.wallet?.walletAddress || '',
+            walletType: wallet?.walletType || session.wallet?.walletType || '',
+            chainName: wallet?.chainName || session.wallet?.chainName || '',
+          }
+        };
+        
+        const updatedSession = await Session.findByIdAndUpdate(
+          session._id, 
+          updatedData, 
+          { new: true }
+        );
+        
+        return res.status(200).json({ session: updatedSession });
       }
-      else{
-        const updatedSession = await Session.findByIdAndUpdate(session._id, sessionData, { new: true });
-
-        if (updatedSession.duration > 30) {
-          updatedSession.isBounce = false;
-          await updatedSession.save();
-        }
-        console.log("updatedSession", updatedSession);  
-      }
-      return res
-        .status(200)
-        .json({ session });
     }
     const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
     const sanitizedPagePath = pagePath.replace(/\./g, "_");
