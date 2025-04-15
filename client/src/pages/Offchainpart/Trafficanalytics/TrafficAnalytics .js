@@ -615,59 +615,73 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
     });
 
+    // Find the source with the highest number of sessions
+    let maxSessionsSource = '';
+    let maxSessionsCount = 0;
+    
+    Object.entries(sourceCounts).forEach(([source, count]) => {
+      if (count > maxSessionsCount) {
+        maxSessionsCount = count;
+        maxSessionsSource = source;
+      }
+    });
+    
     // Calculate conversion rates for each source
     const conversionRates = {};
-    Object.keys(uniqueUserIdsBySource).forEach(source => {
-      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
-      conversionRates[source] = uniqueUsers > 0 ? (wallets / uniqueUsers) * 100 : 0;
+    Object.entries(uniqueUserIdsBySource).forEach(([source, userIds]) => {
+      const totalUsers = userIds.size;
+      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      conversionRates[source] = totalUsers > 0 ? (web3Users / totalUsers) * 100 : 0;
     });
-
-    // Find best and worst performing sources by conversion rate
-    let bestConversionRate = -1;
+    
+    // Find the source with the best conversion rate
     let bestConversionSource = '';
-    let lowestConversionRate = Infinity;
-    let lowestConversionSource = '';
-    
-    // Find source with maximum web3 users
-    let maxWeb3Users = 0;
-    let maxWeb3Source = '';
-    
-    // Find source with maximum wallet connections
-    let maxWallets = 0;
-    let maxWalletSource = '';
+    let bestConversionRate = 0;
     
     Object.entries(conversionRates).forEach(([source, rate]) => {
-      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      
-      // Only consider sources with users
-      if (uniqueUsers > 0) {
-        if (rate > bestConversionRate) {
-          bestConversionRate = rate;
-          bestConversionSource = source;
-        }
-        if (rate < lowestConversionRate) {
-          lowestConversionRate = rate;
-          lowestConversionSource = source;
-        }
+      if (rate > bestConversionRate) {
+        bestConversionRate = rate;
+        bestConversionSource = source;
       }
-      
-      // Find source with most web3 users
-      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
-      if (web3Users > maxWeb3Users) {
-        maxWeb3Users = web3Users;
+    });
+    
+    // Find the source with the lowest conversion rate
+    let lowestConversionSource = '';
+    let lowestConversionRate = 100;
+    
+    Object.entries(conversionRates).forEach(([source, rate]) => {
+      if (rate < lowestConversionRate) {
+        lowestConversionRate = rate;
+        lowestConversionSource = source;
+      }
+    });
+    
+    // Find the source with the most web3 users
+    let maxWeb3Source = '';
+    let maxWeb3Count = 0;
+    
+    Object.entries(web3UsersBySource).forEach(([source, users]) => {
+      if (users.size > maxWeb3Count) {
+        maxWeb3Count = users.size;
         maxWeb3Source = source;
       }
-      
-      // Find source with most wallet connections
-      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
-      if (wallets > maxWallets) {
-        maxWallets = wallets;
+    });
+    
+    // Find the source with the most wallet connections
+    let maxWalletSource = '';
+    let maxWalletCount = 0;
+    
+    Object.entries(walletsBySource).forEach(([source, wallets]) => {
+      if (wallets.size > maxWalletCount) {
+        maxWalletCount = wallets.size;
         maxWalletSource = source;
       }
     });
     
-    // If we didn't find any sources (shouldn't happen but just in case)
+    // Set default values if no sources found
+    if (maxSessionsSource === '') {
+      maxSessionsSource = 'Direct';
+    }
     if (bestConversionSource === '') {
       bestConversionSource = 'Direct';
     }
@@ -681,18 +695,18 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       maxWalletSource = 'Direct';
     }
     
-    // Get metrics for the best source by conversion
-    const totalSessions = sourceCounts[bestConversionSource] || 0;
-    const uniqueUsers = uniqueUserIdsBySource[bestConversionSource] ? uniqueUserIdsBySource[bestConversionSource].size : 0;
+    // Get metrics for the best source by sessions
+    const totalSessions = sourceCounts[maxSessionsSource] || 0;
+    const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
     const totalWeb3Users = web3UsersBySource[maxWeb3Source] ? web3UsersBySource[maxWeb3Source].size : 0;
     const totalWallets = walletsBySource[maxWalletSource] ? walletsBySource[maxWalletSource].size : 0;
     
     // Calculate bounce rate for the best source
-    const bounces = sourceBounceCounts[bestConversionSource] || 0;
+    const bounces = sourceBounceCounts[maxSessionsSource] || 0;
     const bounceRate = totalSessions > 0 ? (bounces / totalSessions) * 100 : 0;
     
     setMetrics({
-      bestSource: bestConversionSource,
+      bestSource: maxSessionsSource,
       totalSessions,
       web3Users: totalWeb3Users,
       walletsConnected: totalWallets,
