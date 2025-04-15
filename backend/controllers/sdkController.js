@@ -10,7 +10,7 @@ exports.postAnalytics = async (req, res) => {
     // Handle session data updates (from the SDK tracking)
     if (!payload && sessionData) {
       console.log("Processing session data update");
-      const { siteId, wallet, sessionId, userId, pagesViewed, pageVisits } = sessionData;
+      const { siteId, wallet, sessionId, userId, pagesViewed, pageVisits, startTime, referrer, utmData } = sessionData;
       
       if (!sessionId) {
         return res.status(400).json({ error: 'Session ID is required' });
@@ -82,11 +82,32 @@ exports.postAnalytics = async (req, res) => {
           });
         }
         
-        // Update session data with correct page view count
+        // Ensure we keep the original startTime from the first page
+        const originalStartTime = existingSession.startTime || sessionData.startTime;
+        
+        // Ensure we keep the original referrer from the first page
+        const originalReferrer = existingSession.referrer || sessionData.referrer;
+        
+        // Ensure we keep the original UTM data from the first page
+        const originalUtmData = existingSession.utmData || sessionData.utmData;
+        
+        // Calculate correct duration based on original startTime and current endTime
+        let duration = 0;
+        if (originalStartTime && sessionData.endTime) {
+          const startDate = new Date(originalStartTime);
+          const endDate = new Date(sessionData.endTime);
+          duration = Math.round((endDate - startDate) / 1000);
+        }
+        
+        // Update session data with correct values
         const updatedData = {
           ...sessionData,
+          startTime: originalStartTime,
+          referrer: originalReferrer,
+          utmData: originalUtmData,
           pageVisits: combinedPageVisits,
           pagesViewed: combinedPageVisits.length,
+          duration: duration,
           isBounce: combinedPageVisits.length <= 1
         };
         
@@ -193,6 +214,7 @@ exports.postAnalytics = async (req, res) => {
         
         if (existingSession) {
           // Update existing session instead of creating a new one
+          
           // Extract page visits from existing session
           let combinedPageVisits = existingSession.pageVisits || [];
           
@@ -209,11 +231,28 @@ exports.postAnalytics = async (req, res) => {
             });
           }
           
+          // Ensure we keep the original startTime and referrer from the first page
+          const originalStartTime = existingSession.startTime || sessionData.startTime;
+          const originalReferrer = existingSession.referrer || sessionData.referrer;
+          const originalUtmData = existingSession.utmData || sessionData.utmData;
+          
+          // Calculate correct duration
+          let duration = 0;
+          if (originalStartTime && sessionData.endTime) {
+            const startDate = new Date(originalStartTime);
+            const endDate = new Date(sessionData.endTime);
+            duration = Math.round((endDate - startDate) / 1000);
+          }
+          
           // Update session with combined data
           const updatedData = {
             ...sessionData,
+            startTime: originalStartTime,
+            referrer: originalReferrer,
+            utmData: originalUtmData,
             pageVisits: combinedPageVisits,
             pagesViewed: combinedPageVisits.length,
+            duration: duration,
             isBounce: combinedPageVisits.length <= 1
           };
           
@@ -229,6 +268,12 @@ exports.postAnalytics = async (req, res) => {
           });
         } else {
           // Create new session if none exists
+          // Set the referrer as "direct" if not specified and no UTM data
+          if (!sessionData.referrer && 
+              (!sessionData.utmData || !sessionData.utmData.source)) {
+            sessionData.referrer = "direct";
+          }
+          
           const newSession = new Session(sessionData);
           await newSession.save();
           analytics.sessions.push(newSession._id);
