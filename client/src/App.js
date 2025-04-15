@@ -23,7 +23,7 @@ import CustomDashboard from "./pages/Dashboard/CustomDashboard.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import CQIntelligence from './pages/CQIntelligence/CQIntelligence';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const RouteListener = () => {
   const location = useLocation();
