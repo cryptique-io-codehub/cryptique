@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Drawer, AppBar, Toolbar, Typography, List, ListItem, ListItemIcon, ListItemText, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -39,59 +40,64 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
 
 const menuItems = [
   {
+    text: 'Dashboard',
+    icon: <DashboardIcon />,
+    path: '/dashboard'
+  },
+  {
     text: 'Off-Chain Analytics',
     icon: <BarChartIcon />,
-    path: '/offchain'
+    path: '/dashboard/offchain'
   },
   {
     text: 'On-Chain Explorer',
     icon: <TimelineIcon />,
-    path: '/onchain'
+    path: '/dashboard/onchain'
   },
   {
     text: 'KOL Intelligence',
     icon: <GroupsIcon />,
-    path: '/kol'
+    path: '/dashboard/kol'
   },
   {
     text: 'Campaigns',
     icon: <CampaignIcon />,
-    path: '/campaigns'
+    path: '/dashboard/campaigns'
   },
   {
     text: 'Conversion Events',
     icon: <TransformIcon />,
-    path: '/conversion-events'
+    path: '/dashboard/conversion-events'
   },
   {
     text: 'Advertise',
     icon: <AdsClickIcon />,
-    path: '/advertise'
+    path: '/dashboard/advertise'
   },
   {
     text: 'History',
     icon: <HistoryIcon />,
-    path: '/history'
+    path: '/dashboard/history'
   },
   {
     text: 'Import Users',
     icon: <PersonAddIcon />,
-    path: '/importusers'
+    path: '/dashboard/importusers'
   },
   {
     text: 'Manage Websites',
     icon: <LanguageIcon />,
-    path: '/managewebsites'
+    path: '/dashboard/managewebsites'
   },
   {
     text: 'Custom Dashboard',
     icon: <DashboardCustomizeIcon />,
-    path: '/custom-dashboard'
+    path: '/dashboard/custom-dashboard'
   },
   {
     text: 'CQ Intelligence',
     icon: <PsychologyIcon />,
-    path: '/cq-intelligence'
+    path: '/dashboard/cq-intelligence'
   }
 ];
 
