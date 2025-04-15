@@ -2,6 +2,7 @@ import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, G
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
+import CQIntelligenceChatbot from './pages/CQIntelligenceChatbot';
 
 const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   const [isHovering, setIsHovering] = useState(false);
