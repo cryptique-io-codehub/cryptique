@@ -198,39 +198,10 @@ exports.postAnalytics = async (req, res) => {
           );
         }
         
-        // Calculate and store total page views
         analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
           (a, b) => a + b,
           0
         );
-        
-        // Only calculate metrics if we have sessions
-        if (analytics.sessions && analytics.sessions.length > 0) {
-          // Fetch all sessions to calculate metrics
-          const sessionCount = analytics.sessions.length;
-          const sessionsData = await Session.find({ _id: { $in: analytics.sessions } });
-          
-          if (sessionsData && sessionsData.length > 0) {
-            // Calculate pages per visit: total page views / number of sessions
-            analytics.pagesPerVisit = analytics.totalPageViews / sessionCount;
-            
-            // Calculate average session duration: sum of all session durations / number of sessions
-            const totalDuration = sessionsData.reduce((sum, session) => sum + (session.duration || 0), 0);
-            analytics.avgSessionDuration = Math.round(totalDuration / sessionCount);
-            
-            // Calculate bounce rate: (sessions with isBounce=true / total sessions) * 100
-            const bounceCount = sessionsData.reduce((count, session) => {
-              return session.isBounce === true ? count + 1 : count;
-            }, 0);
-            analytics.bounceRate = (bounceCount / sessionCount) * 100;
-          }
-        } else {
-          // Default values when no sessions
-          analytics.pagesPerVisit = 0;
-          analytics.avgSessionDuration = 0;
-          analytics.bounceRate = 0;
-        }
-        
         analytics.newVisitors = analytics.userId.length;
         analytics.returningVisitors = analytics.totalVisitors - analytics.newVisitors;
         
