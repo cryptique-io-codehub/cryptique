@@ -6,6 +6,14 @@ const userRouter = require("./routes/userRouter");
 const bodyParser = require("body-parser");
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Debug environment variables
+console.log('Main app environment check:', {
+  hasGeminiApi: !!process.env.GEMINI_API,
+  nodeEnv: process.env.NODE_ENV,
+  envKeys: Object.keys(process.env)
+});
+
 connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
@@ -22,6 +30,16 @@ app.get("/", (req, res) => {
     '<h1 style="text-align:center;">Welcome to the Cryptique Server</h1>'
   );
 });
+
+// Debug endpoint to check environment variables
+app.get("/debug/env", (req, res) => {
+  res.json({
+    hasGeminiApi: !!process.env.GEMINI_API,
+    nodeEnv: process.env.NODE_ENV,
+    envCount: Object.keys(process.env).length
+  });
+});
+
 app.use("/api/auth", userRouter);
 app.use("/api/team", require("./routes/teamRouter"));
 app.use("/api/sdk", require("./routes/sdkRouter"));

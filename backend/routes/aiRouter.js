@@ -3,6 +3,12 @@ const router = express.Router();
 const axios = require('axios');
 require('dotenv').config();
 
+// Debug environment variables
+console.log('Environment check on router load:', {
+    hasGeminiApi: !!process.env.GEMINI_API,
+    envKeys: Object.keys(process.env),
+});
+
 // Base URL for Google's Generative AI API
 const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -13,7 +19,11 @@ const cleanModelName = (modelName) => {
 
 // Helper function to create Google API request config
 const createGoogleApiConfig = (additionalHeaders = {}) => {
-    if (!process.env.GEMINI_API) {
+    const apiKey = process.env.GEMINI_API;
+    console.log('API Key check:', { hasKey: !!apiKey });
+    
+    if (!apiKey) {
+        console.error('Missing GEMINI_API environment variable');
         throw new Error('GEMINI_API environment variable is not set');
     }
     
@@ -23,7 +33,7 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
             ...additionalHeaders
         },
         params: {
-            key: process.env.GEMINI_API
+            key: apiKey
         }
     };
 };
@@ -31,7 +41,11 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
 // Get available models
 router.get('/models', async (req, res) => {
     try {
-        if (!process.env.GEMINI_API) {
+        console.log('Handling /models request');
+        const apiKey = process.env.GEMINI_API;
+        console.log('API Key status:', { exists: !!apiKey });
+
+        if (!apiKey) {
             throw new Error('GEMINI_API environment variable is not set');
         }
 
@@ -48,7 +62,8 @@ router.get('/models', async (req, res) => {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
-            message: error.message
+            message: error.message,
+            stack: error.stack
         });
 
         // Send appropriate error response
