@@ -1,12 +1,12 @@
-
 const mongoose = require("mongoose");
-const Analytics=require("./analytics")
-const hourlyStats = new mongoose.Schema({
+const Analytics = require("./analytics");
+
+const statsSchema = new mongoose.Schema({
   siteId: {
     type: String,
     required: true,
     index: true,
-    unique: true, // 1 doc per siteId
+    unique: true,
   },
   analyticsSnapshot: [
     {
@@ -14,97 +14,55 @@ const hourlyStats = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Analytics",
       },
-      hour: {
-        type: Date, // Rounded to the hour
+      timestamp: {
+        type: Date,
         required: true,
       },
+      visitors: {
+        type: Number,
+        default: 0,
+      },
+      wallets: {
+        type: Number,
+        default: 0,
+      },
+      pageViews: {
+        type: Number,
+        default: 0,
+      }
     },
   ],
   lastSnapshotAt: {
     type: Date,
     default: null,
-  }  
-});
-
-const dailyStats = new mongoose.Schema({
-  siteId: {
-    type: String,
-    required: true,
-    index: true,
-    unique: true, // 1 doc per siteId
   },
-  analyticsSnapshot: [
-    {
-      analyticsId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Analytics",
-      },
-      hour: {
-        type: Date, // Rounded to the hour
-        required: true,
-      },
-    },
-  ],
-  lastSnapshotAt: {
-    type: Date,
-    default: null,
-  }  
-});
-
-const weeklyStats = new mongoose.Schema({
-  siteId: {
+  timezone: {
     type: String,
-    required: true,
-    index: true,
-    unique: true, // 1 doc per siteId
-  },
-  analyticsSnapshot: [
-    {
-      analyticsId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Analytics",
-      },
-      hour: {
-        type: Date, // Rounded to the hour
-        required: true,
-      },
-    },
-  ],
-  lastSnapshotAt: {
-    type: Date,
-    default: null,
-  }  
+    default: 'UTC'
+  }
 });
 
-const monthlyStats = new mongoose.Schema({
-  siteId: {
-    type: String,
-    required: true,
-    index: true,
-    unique: true, // 1 doc per siteId
-  },
-  analyticsSnapshot: [
-    {
-      analyticsId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Analytics",
-      },
-      hour: {
-        type: Date, // Rounded to the hour
-        required: true,
-      },
-    },
-  ],
-  lastSnapshotAt: {
-    type: Date,
-    default: null,
-  }  
+// Create indexes for efficient querying
+statsSchema.index({ 'analyticsSnapshot.timestamp': 1 });
+statsSchema.index({ siteId: 1, 'analyticsSnapshot.timestamp': 1 });
+
+// Pre-save middleware to ensure data consistency
+statsSchema.pre('save', function(next) {
+  // Sort snapshots by timestamp
+  this.analyticsSnapshot.sort((a, b) => a.timestamp - b.timestamp);
+  next();
 });
 
-const HourlyStats=mongoose.model("HourlyStats", hourlyStats);
-const DailyStats=mongoose.model("DailyStats", dailyStats);
-const WeeklyStats=mongoose.model("WeeklyStats", weeklyStats);
-const MonthlyStats=mongoose.model("MonthlyStats", monthlyStats);
+// Create models for different time periods
+const HourlyStats = mongoose.model("HourlyStats", statsSchema);
+const DailyStats = mongoose.model("DailyStats", statsSchema);
+const WeeklyStats = mongoose.model("WeeklyStats", statsSchema);
+const MonthlyStats = mongoose.model("MonthlyStats", statsSchema);
 
-module.exports = {HourlyStats, DailyStats, WeeklyStats, MonthlyStats};
+module.exports = {
+  HourlyStats,
+  DailyStats,
+  WeeklyStats,
+  MonthlyStats
+};
 

@@ -12,7 +12,6 @@ import { useTeam } from "./context/teamContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
 import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
-import KOLIntelligence from "./pages/Dashboard/KOLIntelligence.js";
 import ManageWebsites from "./pages/Dashboard/ManageWebsites.js";
 import ImportUsers from "./pages/Dashboard/ImportUsers.js";
 import History from "./pages/Dashboard/History.js";
@@ -20,6 +19,7 @@ import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
+import TestAnalytics from './pages/TestAnalytics';
 const RouteListener = () => {
   const location = useLocation();
 
@@ -36,13 +36,13 @@ const RouteListener = () => {
       teamsSection: 'Teams',
       offchain: 'Offchain Analytics',
       onchain: 'Onchain Explorer',
-      kol: 'KOL Intelligence',
       campaigns: 'Campaigns',
       'conversion-events': 'Conversion Events',
       advertise: 'Advertise',
       history: 'History',
       importusers: 'Import Users',
       managewebsites: 'Manage Websites',
+      'cq-intelligence': 'CQ Intelligence',
       login: 'Login',
       signup: 'Sign Up',
     };
@@ -70,15 +70,15 @@ function App() {
         <Route path="/login" element={<Interface />} />
         <Route path="/signup" element={<Interface />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/:team/offchain" element={<OffchainAnalytics />} />
-        <Route path="/:team/onchain" element={<OnchainExplorer />} />
-        <Route path="/:team/kol" element={<KOLIntelligence/>} />
-        <Route path="/:team/campaigns" element={<Campaigns/>} />
-        <Route path="/:team/conversion-events" element={<ConversionEvents/>} />
-        <Route path="/:team/advertise" element={<Advertise/>} />
-        <Route path="/:team/history" element={<History/>} />
-        <Route path="/:team/importusers" element={<ImportUsers/>} />
-        <Route path="/:team/managewebsites" element={<ManageWebsites/>} />
+        <Route path="/:team/offchain" element={<Dashboard />} />
+        <Route path="/:team/onchain" element={<Dashboard />} />
+        <Route path="/:team/campaigns" element={<Dashboard />} />
+        <Route path="/:team/conversion-events" element={<Dashboard />} />
+        <Route path="/:team/advertise" element={<Dashboard />} />
+        <Route path="/:team/history" element={<Dashboard />} />
+        <Route path="/:team/importusers" element={<Dashboard />} />
+        <Route path="/:team/managewebsites" element={<Dashboard />} />
+        <Route path="/:team/cq-intelligence" element={<Dashboard />} />
         
         {/* Parent Route for Settings */}
         <Route path="/:team/settings" element={<Settings />}>
@@ -89,6 +89,8 @@ function App() {
           <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
           
         </Route>
+
+        <Route path="/test-analytics" element={<TestAnalytics />} />
 
       </Routes>
     </BrowserRouter>

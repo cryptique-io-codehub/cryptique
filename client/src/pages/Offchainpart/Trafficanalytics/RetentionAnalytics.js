@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const RetentionAnalytics = ({analytics, setanalytics}) => {
-  const [timeFrame, setTimeFrame] = useState('This Month');
+  const [timeFrame, setTimeFrame] = useState('Last 7 Days');
   const [retentionData, setRetentionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,42 +36,42 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           ? analytics.monthlyStats.analyticsSnapshot 
           : [];
         
-        // Calculate DAU - All unique users across all dailyStatsData elements
+        // Calculate DAU - Users active in the current calendar day
         const dailyActiveUserIds = new Set();
-        dailyStatsData.forEach(snapshot => {
-          // Check if analyticsId exists and has sessions
-          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-            snapshot.analyticsId.sessions.forEach(session => {
-              if (session.userId) {
-                dailyActiveUserIds.add(session.userId);
-              }
-            });
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        
+        allSessions.forEach(session => {
+          const sessionDate = new Date(session.startTime);
+          if (sessionDate >= todayStart && sessionDate <= todayEnd && session.userId) {
+            dailyActiveUserIds.add(session.userId);
           }
         });
         const dailyActiveUsers = dailyActiveUserIds.size;
         
-        // Calculate WAU - All unique users across all weeklyStatsData elements
+        // Calculate WAU - Users active in the last 7 calendar days
         const weeklyActiveUserIds = new Set();
-        weeklyStatsData.forEach(snapshot => {
-          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-            snapshot.analyticsId.sessions.forEach(session => {
-              if (session.userId) {
-                weeklyActiveUserIds.add(session.userId);
-              }
-            });
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 6);
+        
+        allSessions.forEach(session => {
+          const sessionDate = new Date(session.startTime);
+          if (sessionDate >= weekStart && sessionDate <= todayEnd && session.userId) {
+            weeklyActiveUserIds.add(session.userId);
           }
         });
         const weeklyActiveUsers = weeklyActiveUserIds.size;
         
-        // Calculate MAU - All unique users across all monthlyStatsData elements
+        // Calculate MAU - Users active in the last 30 calendar days
         const monthlyActiveUserIds = new Set();
-        monthlyStatsData.forEach(snapshot => {
-          if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-            snapshot.analyticsId.sessions.forEach(session => {
-              if (session.userId) {
-                monthlyActiveUserIds.add(session.userId);
-              }
-            });
+        const monthStart = new Date(todayStart);
+        monthStart.setDate(monthStart.getDate() - 29);
+        
+        allSessions.forEach(session => {
+          const sessionDate = new Date(session.startTime);
+          if (sessionDate >= monthStart && sessionDate <= todayEnd && session.userId) {
+            monthlyActiveUserIds.add(session.userId);
           }
         });
         const monthlyActiveUsers = monthlyActiveUserIds.size;
@@ -158,111 +158,67 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         const processChartData = () => {
           const chartData = [];
           
-          // Process dailyStats
-          dailyStatsData.forEach(snapshot => {
-            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-              // Get distinct user IDs from this daily stat
-              const distinctUserIds = new Set();
-              snapshot.analyticsId.sessions.forEach(session => {
-                if (session.userId) {
-                  distinctUserIds.add(session.userId);
-                }
-              });
-              
-              // Format the date for display in dd/mm format
-              const date = new Date(snapshot.hour);
-              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-              
-              // Add to chart data
-              chartData.push({
-                month: formattedDate, // Using date as the x-axis label
-                DAU: distinctUserIds.size,
-                // We'll add WAU and MAU when processing those stats
-              });
-            }
-          });
+          // Get all unique dates from sessions
+          const dates = new Set(allSessions.map(session => {
+            const date = new Date(session.startTime);
+            return `${date.getDate()}/${date.getMonth() + 1}`;
+          }));
           
-          // Process weeklyStats and update matching dates or add new entries
-          weeklyStatsData.forEach(snapshot => {
-            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-              const distinctUserIds = new Set();
-              snapshot.analyticsId.sessions.forEach(session => {
-                if (session.userId) {
-                  distinctUserIds.add(session.userId);
-                }
-              });
-              
-              const date = new Date(snapshot.hour);
-              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-              
-              // Check if we already have this date in chartData
-              const existingEntry = chartData.find(entry => entry.month === formattedDate);
-              if (existingEntry) {
-                existingEntry.WAU = distinctUserIds.size;
-              } else {
-                chartData.push({
-                  month: formattedDate,
-                  WAU: distinctUserIds.size,
-                });
+          // Process each date
+          [...dates].sort((a, b) => {
+            const [aDay, aMonth] = a.split('/').map(Number);
+            const [bDay, bMonth] = b.split('/').map(Number);
+            return aMonth === bMonth ? aDay - bDay : aMonth - bMonth;
+          }).forEach(formattedDate => {
+            const [day, month] = formattedDate.split('/').map(Number);
+            const currentDate = new Date(now.getFullYear(), month - 1, day);
+            
+            // Calculate DAU for this date
+            const dayStart = new Date(currentDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(currentDate);
+            dayEnd.setHours(23, 59, 59, 999);
+            
+            const dauUsers = new Set();
+            allSessions.forEach(session => {
+              const sessionDate = new Date(session.startTime);
+              if (sessionDate >= dayStart && sessionDate <= dayEnd && session.userId) {
+                dauUsers.add(session.userId);
               }
-            }
-          });
-          
-          // Process monthlyStats and update matching dates or add new entries
-          monthlyStatsData.forEach(snapshot => {
-            if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
-              const distinctUserIds = new Set();
-              snapshot.analyticsId.sessions.forEach(session => {
-                if (session.userId) {
-                  distinctUserIds.add(session.userId);
-                }
-              });
-              
-              const date = new Date(snapshot.hour);
-              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}`;
-              
-              // Check if we already have this date in chartData
-              const existingEntry = chartData.find(entry => entry.month === formattedDate);
-              if (existingEntry) {
-                existingEntry.MAU = distinctUserIds.size;
-              } else {
-                chartData.push({
-                  month: formattedDate,
-                  MAU: distinctUserIds.size,
-                });
+            });
+            
+            // Calculate WAU for this date (last 7 days from this date)
+            const wauUsers = new Set();
+            const weekStart = new Date(currentDate);
+            weekStart.setDate(weekStart.getDate() - 6);
+            weekStart.setHours(0, 0, 0, 0);
+            
+            allSessions.forEach(session => {
+              const sessionDate = new Date(session.startTime);
+              if (sessionDate >= weekStart && sessionDate <= dayEnd && session.userId) {
+                wauUsers.add(session.userId);
               }
-            }
-          });
-          
-          // If no chart data found yet, use direct analytics data
-          if (chartData.length === 0 && analytics.userId && analytics.userId.length > 0) {
-            const today = new Date();
-            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
+            });
+            
+            // Calculate MAU for this date (last 30 days from this date)
+            const mauUsers = new Set();
+            const monthStart = new Date(currentDate);
+            monthStart.setDate(monthStart.getDate() - 29);
+            monthStart.setHours(0, 0, 0, 0);
+            
+            allSessions.forEach(session => {
+              const sessionDate = new Date(session.startTime);
+              if (sessionDate >= monthStart && sessionDate <= dayEnd && session.userId) {
+                mauUsers.add(session.userId);
+              }
+            });
             
             chartData.push({
               month: formattedDate,
-              DAU: analytics.userId.length,
-              WAU: analytics.userId.length,
-              MAU: analytics.userId.length,
+              DAU: dauUsers.size,
+              WAU: wauUsers.size,
+              MAU: mauUsers.size
             });
-          }
-          
-          // Sort chart data by date
-          chartData.sort((a, b) => {
-            const [aDay, aMonth] = a.month.split('/').map(Number);
-            const [bDay, bMonth] = b.month.split('/').map(Number);
-            
-            if (aMonth !== bMonth) {
-              return aMonth - bMonth;
-            }
-            return aDay - bDay;
-          });
-          
-          // Ensure all entries have DAU, WAU, MAU (even if 0)
-          chartData.forEach(entry => {
-            entry.DAU = entry.DAU || 0;
-            entry.WAU = entry.WAU || 0;
-            entry.MAU = entry.MAU || 0;
           });
           
           return chartData;
@@ -272,119 +228,201 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         const chartData = processChartData();
         
         // Process cohort data for the past 7 days
-        const processCohortData = () => {
+        const processCohortData = (timeFrame, allSessions) => {
           const cohortData = [];
-          const today = new Date();
           
-          // Process data for past 7 days
-          for (let i = 6; i >= 0; i--) {
-            const currentDate = new Date(today);
-            currentDate.setDate(today.getDate() - i);
-            
-            // Format the date for display in dd/mm format
-            const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
-            
-            // Filter sessions for this day to get initial user count
-            const dayStart = new Date(currentDate);
-            dayStart.setHours(0, 0, 0, 0);
-            
-            const dayEnd = new Date(currentDate);
-            dayEnd.setHours(23, 59, 59, 999);
-            
-            const daysSessions = allSessions.filter(session => {
-              const sessionDate = new Date(session.startTime);
-              return sessionDate >= dayStart && sessionDate <= dayEnd;
-            });
-            
-            // Get unique user IDs for this day (initial users)
-            const dayUniqueUserIds = [...new Set(daysSessions.map(session => session.userId))];
-            const initialUsers = dayUniqueUserIds.length;
-            
-            if (initialUsers === 0) {
-              continue; // Skip days with no users
-            }
-            
-            // Calculate retention for subsequent days
-            const retentionByDay = [];
-            
-            // Day 0 is not showing 100% as requested
-            retentionByDay.push({ day: 0, value: initialUsers });
-            
-            // Calculate retention for each subsequent day
-            for (let j = 1; j <= 7; j++) {
-              // Skip if we're looking beyond today
-              if (i - j < 0) {
-                retentionByDay.push({ day: j, value: null });
-                continue;
+          // Get the first and last session dates
+          const sessionDates = allSessions.map(session => new Date(session.startTime));
+          const firstSessionDate = new Date(Math.min(...sessionDates));
+          const lastSessionDate = new Date(Math.max(...sessionDates));
+          
+          // Configure time periods based on selected timeframe
+          const timeFrameConfig = {
+            'Last 7 Days': {
+              periods: 7,
+              periodType: 'day',
+              periodLength: 1,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (date) => {
+                return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              },
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setDate(next.getDate() + 1);
+                return next;
               }
-              
-              const retentionDate = new Date(currentDate);
-              retentionDate.setDate(currentDate.getDate() + j);
-              
-              const retentionDayStart = new Date(retentionDate);
-              retentionDayStart.setHours(0, 0, 0, 0);
-              
-              const retentionDayEnd = new Date(retentionDate);
-              retentionDayEnd.setHours(23, 59, 59, 999);
-              
-              // Get sessions for the retention day
-              const retentionDaySessions = allSessions.filter(session => {
-                const sessionDate = new Date(session.startTime);
-                return sessionDate >= retentionDayStart && sessionDate <= retentionDayEnd;
-              });
-              
-              // Get unique user IDs for retention day
-              const retentionDayUserIds = [...new Set(retentionDaySessions.map(session => session.userId))];
-              
-              // Find returning users (intersection of day 0 and current day)
-              const returningUserIds = dayUniqueUserIds.filter(userId => 
-                retentionDayUserIds.includes(userId)
-              );
-              
-              // Calculate retention value - number of returning users
-              const retentionValue = returningUserIds.length;
-              
-              // Calculate retention percentage
-              const retentionPercentage = initialUsers > 0 
-                ? (retentionValue / initialUsers) * 100 
-                : 0;
-              
-              retentionByDay.push({ 
-                day: j, 
-                value: retentionValue, 
-                percentage: retentionPercentage.toFixed(1)
+            },
+            'Last Month': {
+              periods: 4,
+              periodType: 'week',
+              periodLength: 7,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setHours(0, 0, 0, 0);
+                // Align to week start (Monday)
+                const day = start.getDay();
+                const diff = day === 0 ? 6 : day - 1;
+                start.setDate(start.getDate() - diff);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setDate(end.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (date) => {
+                const startDate = new Date(date);
+                const endDate = new Date(date);
+                endDate.setDate(endDate.getDate() + 6);
+                return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+              },
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setDate(next.getDate() + 7);
+                return next;
+              }
+            },
+            'Last 3 Months': {
+              periods: 3,
+              periodType: 'month',
+              periodLength: 30,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setMonth(end.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (date) => {
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              },
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setMonth(next.getMonth() + 1);
+                next.setDate(1);
+                return next;
+              }
+            },
+            'Last Year': {
+              periods: 12,
+              periodType: 'month',
+              periodLength: 30,
+              getStart: (date) => {
+                const start = new Date(date);
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                return start;
+              },
+              getEnd: (date) => {
+                const end = new Date(date);
+                end.setMonth(end.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                return end;
+              },
+              formatLabel: (date) => {
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              },
+              getNextPeriod: (date) => {
+                const next = new Date(date);
+                next.setMonth(next.getMonth() + 1);
+                next.setDate(1);
+                return next;
+              }
+            }
+          };
+
+          const config = timeFrameConfig[timeFrame] || timeFrameConfig['Last 7 Days'];
+          const { periods, periodType, getStart, getEnd, formatLabel, getNextPeriod } = config;
+
+          // Start from the first session date
+          let currentPeriodStart = getStart(firstSessionDate);
+          let currentPeriodEnd = getEnd(currentPeriodStart);
+          
+          // Process data for each period
+          while (currentPeriodStart <= lastSessionDate) {
+            // Get sessions for this period
+            const periodSessions = allSessions.filter(session => {
+              const sessionDate = new Date(session.startTime);
+              return sessionDate >= currentPeriodStart && sessionDate <= currentPeriodEnd;
+            });
+
+            // Get unique users for this period
+            const uniqueUserIds = [...new Set(periodSessions.map(session => session.userId))];
+            const initialUsers = uniqueUserIds.length;
+
+            if (initialUsers > 0) {
+              // Calculate retention for subsequent periods
+              const retentionByDay = [];
+              retentionByDay.push({ day: 0, value: initialUsers, percentage: '100.0' });
+
+              // Calculate retention for each subsequent period
+              let nextRetentionStart = getNextPeriod(currentPeriodStart);
+              let nextRetentionEnd = getEnd(nextRetentionStart);
+              let dayIndex = 1;
+
+              while (dayIndex < periods && nextRetentionStart <= lastSessionDate) {
+                const retentionSessions = allSessions.filter(session => {
+                  const sessionDate = new Date(session.startTime);
+                  return sessionDate >= nextRetentionStart && sessionDate <= nextRetentionEnd;
+                });
+
+                const retentionUserIds = [...new Set(retentionSessions.map(session => session.userId))];
+                const returningUsers = uniqueUserIds.filter(userId => retentionUserIds.includes(userId));
+                const retentionValue = returningUsers.length;
+                const retentionPercentage = ((retentionValue / initialUsers) * 100).toFixed(1);
+
+                retentionByDay.push({
+                  day: dayIndex,
+                  value: retentionValue,
+                  percentage: retentionPercentage
+                });
+
+                nextRetentionStart = getNextPeriod(nextRetentionStart);
+                nextRetentionEnd = getEnd(nextRetentionStart);
+                dayIndex++;
+              }
+
+              // Fill remaining periods with null values
+              while (retentionByDay.length < periods) {
+                retentionByDay.push({
+                  day: retentionByDay.length,
+                  value: null,
+                  percentage: null
+                });
+              }
+
+              cohortData.push({
+                date: formatLabel(currentPeriodStart),
+                initialUsers,
+                retentionByDay
               });
             }
-            
-            // Add cohort data for this day
-            cohortData.push({
-              date: formattedDate,
-              initialUsers: initialUsers,
-              retentionByDay: retentionByDay
-            });
+
+            // Move to next period
+            currentPeriodStart = getNextPeriod(currentPeriodStart);
+            currentPeriodEnd = getEnd(currentPeriodStart);
           }
-          
-          // If no cohort data was generated, create a single entry for today
-          if (cohortData.length === 0 && analytics.userId && analytics.userId.length > 0) {
-            const today = new Date();
-            const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
-            
-            cohortData.push({
-              date: formattedDate,
-              initialUsers: analytics.userId.length,
-              retentionByDay: Array.from({ length: 8 }, (_, i) => ({
-                day: i,
-                value: i === 0 ? analytics.userId.length : 0,
-                percentage: i === 0 ? '100.0' : '0.0'
-              }))
-            });
-          }
-          
+
           return cohortData;
         };
         
         // Get cohort data
-        const cohortData = processCohortData();
+        const cohortData = processCohortData(timeFrame, allSessions);
         
         // If we don't have any chart data, use a placeholder
         const finalChartData = chartData.length > 0 ? chartData : [
@@ -530,7 +568,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
           <div>
             <h3 className="text-md md:text-lg font-semibold">Visitors retention</h3>
-            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site on subsequent days</p>
+            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site in subsequent periods</p>
           </div>
           
           <div className="self-start sm:self-center">
@@ -539,9 +577,10 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
             >
-              <option>This Month</option>
+              <option>Last 7 Days</option>
               <option>Last Month</option>
               <option>Last 3 Months</option>
+              <option>Last Year</option>
             </select>
           </div>
         </div>

@@ -6,137 +6,299 @@ const { HourlyStats, DailyStats, WeeklyStats, MonthlyStats } = require("../model
 exports.postAnalytics = async (req, res) => {
   try {
     const { payload, sessionData } = req.body;
+    
+    // Handle session data updates (from the SDK tracking)
     if (!payload && sessionData) {
-      // console.log("sessionData", sessionData);
-      const { siteId, wallet,sessionId } = sessionData;
+      console.log("Processing session data update");
+      const { siteId, wallet, sessionId, userId, pagesViewed, pageVisits, startTime, referrer, utmData } = sessionData;
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required' });
+      }
+      
       const analytics = await Analytics.findOne({ siteId: siteId });
-      const session=await Session.findOne({sessionId:sessionId});
-      if (wallet && wallet.walletAddress.length > 0) {
+      if (!analytics) {
+        return res.status(404).json({ error: 'Analytics not found for this site ID' });
+      }
+      
+      // Find existing session with this ID
+      const existingSession = await Session.findOne({ sessionId: sessionId });
+      
+      // Handle wallet updates if present
+      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
         const newWallet = {
           walletAddress: wallet.walletAddress,
           walletType: wallet.walletType,
           chainName: wallet.chainName,
         };
+        
         const walletExists = analytics.wallets.some(
           (w) => w.walletAddress === newWallet.walletAddress
         );
 
         if (!walletExists) {
-          analytics.wallets.push(newWallet); // Add wallet address to the array if not already present
-          analytics.walletsConnected += 1; // Increment wallets connected
+          analytics.wallets.push(newWallet);
+          analytics.walletsConnected += 1;
+          await analytics.save();
         }
-
-        await analytics.save(); // Increment wallets connected
       }
-
-      //if sessionid is same just update the session data
-      if(!session) {
+      
+      // If session doesn't exist, create it
+      if (!existingSession) {
+        console.log("Creating new session:", sessionId);
         const newSession = new Session(sessionData);
         await newSession.save();
-        analytics.sessions.push(newSession._id); // Add session to the analytics
+        
+        // Add to analytics if not already there
+        if (!analytics.sessions.includes(newSession._id)) {
+          analytics.sessions.push(newSession._id);
+          await analytics.save();
+        }
+        
+        return res.status(200).json({ 
+          message: 'New session created',
+          session: newSession 
+        });
+      } 
+      // If session exists, update it properly
+      else {
+        console.log("Updating existing session:", sessionId);
+        
+        // Merge page visits arrays without duplicates
+        let combinedPageVisits = existingSession.pageVisits || [];
+        
+        // Add new page visits from sessionData if they don't already exist
+        if (sessionData.pageVisits && Array.isArray(sessionData.pageVisits)) {
+          sessionData.pageVisits.forEach(newVisit => {
+            // Check if this URL already exists in the combined list
+            const exists = combinedPageVisits.some(
+              existingVisit => existingVisit.url === newVisit.url
+            );
+            
+            // Only add if it doesn't exist already
+            if (!exists) {
+              combinedPageVisits.push(newVisit);
+            }
+          });
+        }
+        
+        // Ensure we keep the original startTime from the first page
+        const originalStartTime = existingSession.startTime || sessionData.startTime;
+        
+        // Ensure we keep the original referrer from the first page
+        const originalReferrer = existingSession.referrer || sessionData.referrer;
+        
+        // Ensure we keep the original UTM data from the first page
+        const originalUtmData = existingSession.utmData || sessionData.utmData;
+        
+        // Calculate correct duration based on original startTime and current endTime
+        let duration = 0;
+        if (originalStartTime && sessionData.endTime) {
+          const startDate = new Date(originalStartTime);
+          const endDate = new Date(sessionData.endTime);
+          duration = Math.round((endDate - startDate) / 1000);
+        }
+        
+        // Update session data with correct values
+        const updatedData = {
+          ...sessionData,
+          startTime: originalStartTime,
+          referrer: originalReferrer,
+          utmData: originalUtmData,
+          pageVisits: combinedPageVisits,
+          pagesViewed: combinedPageVisits.length,
+          duration: duration,
+          isBounce: combinedPageVisits.length <= 1
+        };
+        
+        const updatedSession = await Session.findByIdAndUpdate(
+          existingSession._id, 
+          updatedData, 
+          { new: true }
+        );
+        
+        return res.status(200).json({ 
+          message: 'Session updated',
+          session: updatedSession 
+        });
+      }
+    }
+    
+    // Handle payload events
+    if (payload) {
+      const { siteId, websiteUrl, userId, pagePath, isWeb3User, sessionId } = payload;
+      const sanitizedPagePath = pagePath.replace(/\./g, "_");
+      const analytics = await Analytics.findOne({ siteId: siteId });
+      
+      if (!analytics) {
+        // Create new analytics document
+        const analytics = new Analytics({
+          siteId: siteId,
+          websiteUrl: websiteUrl,
+          userId: [userId],
+          totalVisitors: 1,
+          uniqueVisitors: 1,
+          web3Visitors: 0,
+          walletsConnected: 0,
+          pageViews: { [sanitizedPagePath]: 1 },
+          sessions: [],
+        });
+        await analytics.save();
+        
+        // Create stats documents
+        const statstoCreate = {
+          siteId: siteId,
+          analyticsSnapshot: [
+            {
+              analyticsId: analytics._id,
+              hour: new Date(),
+            }
+          ],
+          lastSnapshotAt: new Date(),
+        };
+        const newHourlyStats = new HourlyStats(statstoCreate);
+        await newHourlyStats.save();
+        const newDailyStats = new DailyStats(statstoCreate);
+        await newDailyStats.save();
+        const newWeeklyStats = new WeeklyStats(statstoCreate);
+        await newWeeklyStats.save();
+        const newMonthlyStats = new MonthlyStats(statstoCreate);
+        await newMonthlyStats.save();
+        
+        analytics.hourlyStats = newHourlyStats._id;
+        analytics.dailyStats = newDailyStats._id;
+        analytics.weeklyStats = newWeeklyStats._id;
+        analytics.monthlyStats = newMonthlyStats._id;
+        await analytics.save();
+      } else {
+        // Update existing analytics document
+        if (isWeb3User) {
+          const walletIndex = analytics.web3UserId.findIndex(
+            (wallet) => wallet === userId
+          );
+          if (walletIndex === -1) {
+            analytics.web3UserId.push(userId);
+            analytics.web3Visitors += 1;
+          }
+        }
+
+        if (!analytics.userId.includes(userId)) {
+          analytics.userId.push(userId);
+          analytics.uniqueVisitors += 1;
+          analytics.totalVisitors += 1;
+          analytics.pageViews.set(
+            sanitizedPagePath,
+            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
+          );
+        } else {
+          analytics.totalVisitors += 1;
+          analytics.pageViews.set(
+            sanitizedPagePath,
+            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
+          );
+        }
+        
+        analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
+          (a, b) => a + b,
+          0
+        );
+        analytics.newVisitors = analytics.userId.length;
+        analytics.returningVisitors = analytics.totalVisitors - analytics.newVisitors;
+        
         await analytics.save();
       }
-      else{
-        const updatedSession = await Session.findByIdAndUpdate(session._id, sessionData, { new: true });
-
-        if (updatedSession.duration > 30) {
-          updatedSession.isBounce = false;
-          await updatedSession.save();
-        }
-        console.log("updatedSession", updatedSession);  
-      }
-      return res
-        .status(200)
-        .json({ session });
-    }
-    const { siteId, websiteUrl, userId, pagePath, isWeb3User } = payload;
-    const sanitizedPagePath = pagePath.replace(/\./g, "_");
-    const analytics = await Analytics.findOne({ siteId: siteId });
-    if (!analytics) {
-      const analytics = new Analytics({
-        siteId: siteId,
-        websiteUrl: websiteUrl,
-        userId: [userId], // Initialize userId as an array with the current userId
-        totalVisitors: 1,
-        uniqueVisitors: 1,
-        web3Visitors:  0,
-        walletsConnected: 0,
-        pageViews: { [sanitizedPagePath]: 1 },
-        sessions: [],
-      });
-      await analytics.save();
-      const statstoCreate = {
-        siteId: siteId,
-        analyticsSnapshot: [
-          {
-            analyticsId: analytics._id,
-            hour: new Date(),
+      
+      // Check if a session with this ID already exists before creating a new one
+      if (sessionData && sessionId) {
+        const existingSession = await Session.findOne({ sessionId: sessionId });
+        
+        if (existingSession) {
+          // Update existing session instead of creating a new one
+          
+          // Extract page visits from existing session
+          let combinedPageVisits = existingSession.pageVisits || [];
+          
+          // Add new page visit if it doesn't exist
+          if (sessionData.pageVisits && Array.isArray(sessionData.pageVisits)) {
+            sessionData.pageVisits.forEach(newVisit => {
+              const exists = combinedPageVisits.some(
+                existingVisit => existingVisit.url === newVisit.url
+              );
+              
+              if (!exists) {
+                combinedPageVisits.push(newVisit);
+              }
+            });
           }
-        ],
-        lastSnapshotAt: new Date(),
-      };
-      const newHourlyStats = new HourlyStats(statstoCreate);
-      await newHourlyStats.save();
-      const newDailyStats = new DailyStats(statstoCreate);
-      await newDailyStats.save();
-      const newWeeklyStats = new WeeklyStats(statstoCreate);
-      await newWeeklyStats.save();
-      const newMonthlyStats = new MonthlyStats(statstoCreate);
-      await newMonthlyStats.save();
-      analytics.hourlyStats = newHourlyStats._id; // Add the new stats reference to the analytics
-      analytics.dailyStats = newDailyStats._id; // Add the new stats reference to the analytics
-      analytics.weeklyStats = newWeeklyStats._id; // Add the new stats reference to the analytics
-      analytics.monthlyStats = newMonthlyStats._id; // Add the new stats reference to the analytics
-      await analytics.save(); // Save the updated analytics document
-    
-    }
-    //update the wallet stuff if something updates
-    if (isWeb3User) {
-      const walletIndex = analytics.web3UserId.findIndex(
-        (wallet) => wallet === userId
-      );
-      if (walletIndex === -1) {
-        analytics.web3UserId.push(userId); // Add wallet address to the array if not already present
-        analytics.web3Visitors += 1; // Increment wallets connected
+          
+          // Ensure we keep the original startTime and referrer from the first page
+          const originalStartTime = existingSession.startTime || sessionData.startTime;
+          const originalReferrer = existingSession.referrer || sessionData.referrer;
+          const originalUtmData = existingSession.utmData || sessionData.utmData;
+          
+          // Calculate correct duration
+          let duration = 0;
+          if (originalStartTime && sessionData.endTime) {
+            const startDate = new Date(originalStartTime);
+            const endDate = new Date(sessionData.endTime);
+            duration = Math.round((endDate - startDate) / 1000);
+          }
+          
+          // Update session with combined data
+          const updatedData = {
+            ...sessionData,
+            startTime: originalStartTime,
+            referrer: originalReferrer,
+            utmData: originalUtmData,
+            pageVisits: combinedPageVisits,
+            pagesViewed: combinedPageVisits.length,
+            duration: duration,
+            isBounce: combinedPageVisits.length <= 1
+          };
+          
+          const updatedSession = await Session.findByIdAndUpdate(
+            existingSession._id,
+            updatedData,
+            { new: true }
+          );
+          
+          return res.status(200).json({ 
+            message: "Session updated successfully", 
+            analytics 
+          });
+        } else {
+          // Create new session if none exists
+          // Set the referrer as "direct" if not specified and no UTM data
+          if (!sessionData.referrer && 
+              (!sessionData.utmData || !sessionData.utmData.source)) {
+            sessionData.referrer = "direct";
+          }
+          
+          const newSession = new Session(sessionData);
+          await newSession.save();
+          analytics.sessions.push(newSession._id);
+          await analytics.save();
+          
+          return res.status(200).json({ 
+            message: "New session created", 
+            analytics 
+          });
+        }
       }
+      
+      return res.status(200).json({ 
+        message: "Data processed successfully", 
+        analytics 
+      });
     }
-
-    if (!analytics.userId.includes(userId)) {
-      analytics.userId.push(userId); // Add userId to the array if not already present
-      analytics.uniqueVisitors += 1; // Increment unique visitors
-      analytics.totalVisitors += 1; // Increment total visitors
-      analytics.pageViews.set(
-        sanitizedPagePath,
-        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
-      );
-    } else {
-      analytics.totalVisitors += 1; // Increment total visitors
-      analytics.pageViews.set(
-        sanitizedPagePath,
-        (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
-      );
-    }
-    //sum all pageviews to get total pageviews
-    analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
-      (a, b) => a + b,
-      0
-    );
-    //calculate new visitors and returning visitors
-    analytics.newVisitors = analytics.userId.length;
-    analytics.returningVisitors =
-      analytics.totalVisitors - analytics.newVisitors;
-
-      const newSession = new Session(sessionData);
-      await newSession.save();
-      analytics.sessions.push(newSession._id); // Add session to the analytics
-      await analytics.save();
-    return res
-      .status(200)
-      .json({ message: "Data Updated successfully", analytics });
+    
+    return res.status(400).json({ message: "Invalid request format" });
   } catch (e) {
-    res
-      .status(500)
-      .json({ message: "Error while posting analyics name", error: e.message });
+    console.error("Error in postAnalytics:", e);
+    res.status(500).json({ 
+      message: "Error processing analytics data", 
+      error: e.message 
+    });
   }
 };
 

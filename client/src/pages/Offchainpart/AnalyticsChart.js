@@ -1,134 +1,167 @@
 import React, { useState, useEffect } from 'react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import axiosInstance from '../../axiosInstance';
 
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
-  const [selectedDataPoint, setSelectedDataPoint] = useState(null);
-  const [chartData, setChartData] = useState(null);
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: []
+  });
+  const [timeframe, setTimeframe] = useState('daily');
 
-  // Initialize empty chart data on component mount to ensure we always show something
-  useEffect(() => {
-    createEmptyChartData();
-  }, []);
-
-  // Process analytics data whenever it changes
-  useEffect(() => {
-    if (analytics && analytics.hourlyStats && analytics.hourlyStats.analyticsSnapshot 
-        && analytics.hourlyStats.analyticsSnapshot.length > 0) {
-      processAnalyticsData();
-    } else {
-      createEmptyChartData();
+  // Format time key based on timeframe
+  const formatTimeKey = (date, timeframe) => {
+    switch (timeframe) {
+      case 'daily':
+        const hour = date.getHours();
+        const minute = Math.floor(date.getMinutes() / 30) * 30;
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      case 'weekly':
+        return date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+      case 'monthly':
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case 'yearly':
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      default:
+        return date.toLocaleTimeString();
     }
-  }, [analytics]);
-
-  // Create empty chart data with zero values
-  const createEmptyChartData = () => {
-    const timeLabels = Array(24).fill().map((_, i) => `${i.toString().padStart(2, '0')}:00`);
-    const dataPoints = timeLabels.map(time => ({
-      time,
-      visitors: 0,
-      wallets: 0,
-      absoluteVisitors: 0,
-      absoluteWallets: 0
-    }));
-
-    setChartData({
-      datasets: {
-        visitors: Array(24).fill(0),
-        wallets: Array(24).fill(0),
-        absoluteVisitors: Array(24).fill(0),
-        absoluteWallets: Array(24).fill(0)
-      },
-      timeLabels,
-      dataPoints
-    });
   };
 
-  const processAnalyticsData = () => {
-    try {
-      console.log("Processing analytics data:", analytics);
-      
-      // Extract and format hourly stats from the data structure
-      const hourlySnapshotData = analytics.hourlyStats.analyticsSnapshot.map(snapshot => ({
-        timeStamp: snapshot.hour,
-        stats: {
-          totalVisitors: Number(snapshot.analyticsId.totalVisitors) || 0,
-          walletsConnected: Number(snapshot.analyticsId.walletsConnected) || 0
-        }
-      }));
-      
-      console.log("Hourly snapshot data:", hourlySnapshotData);
-      
-      // Sort hourlyStats by timestamp to ensure chronological order
-      const sortedStats = [...hourlySnapshotData].sort((a, b) => 
-        new Date(a.timeStamp) - new Date(b.timeStamp)
-      );
-      
-      console.log("Sorted stats:", sortedStats);
-      
-      // Extract time labels from timestamps (in HH:MM format)
-      const timeLabels = sortedStats.map(stat => {
-        const date = new Date(stat.timeStamp);
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-      });
-      
-      console.log("Time labels:", timeLabels);
-      
-      // Get absolute values from each timestamp
-      const absoluteVisitors = sortedStats.map(stat => stat.stats.totalVisitors);
-      const absoluteWallets = sortedStats.map(stat => stat.stats.walletsConnected);
-      
-      console.log("Absolute visitors:", absoluteVisitors);
-      console.log("Absolute wallets:", absoluteWallets);
-      
-      // Initialize arrays for new visitors/wallets
-      const visitors = [];
-      const wallets = [];
-      
-      // First point: new visitors and wallets are 0
-      visitors.push(0);
-      wallets.push(0);
-      
-      // Calculate differences for remaining points
-      for (let i = 1; i < sortedStats.length; i++) {
-        const newVisitors = Math.max(0, absoluteVisitors[i] - absoluteVisitors[i-1]);
-        const newWallets = Math.max(0, absoluteWallets[i] - absoluteWallets[i-1]);
-        
-        visitors.push(newVisitors);
-        wallets.push(newWallets);
-      }
-      
-      console.log("New visitors per point:", visitors);
-      console.log("New wallets per point:", wallets);
-      
-      // Create dataPoints array
-      const dataPoints = sortedStats.map((stat, i) => ({
-        time: timeLabels[i],
-        visitors: visitors[i],
-        wallets: wallets[i],
-        absoluteVisitors: absoluteVisitors[i],
-        absoluteWallets: absoluteWallets[i],
-        timestamp: new Date(stat.timeStamp)
-      }));
-      
-      console.log("Data points:", dataPoints);
+  // Calculate interval for x-axis labels based on data length
+  const getLabelInterval = (dataLength) => {
+    if (dataLength <= 7) return 0; // Show all labels for small datasets
+    if (dataLength <= 14) return 1; // Show every other label
+    if (dataLength <= 30) return 2; // Show every third label
+    return Math.ceil(dataLength / 10); // Show approximately 10 labels
+  };
 
-      // Update chart data
+  useEffect(() => {
+    if (!analytics || !analytics.sessions) {
       setChartData({
-        datasets: {
-          visitors,
-          wallets,
-          absoluteVisitors,
-          absoluteWallets
-        },
-        timeLabels,
-        dataPoints
+        labels: [],
+        datasets: []
       });
-    } catch (error) {
-      console.error('Error processing analytics data:', error);
-      console.error('Error details:', error.message);
-      console.error('Stack trace:', error.stack);
-      createEmptyChartData();
+      return;
     }
-  };
+
+    const finalData = {};
+    console.log('Raw Analytics Data:', analytics);
+    console.log('Sessions:', analytics.sessions);
+    console.log('Wallets:', analytics.wallets);
+
+    // Generate empty buckets for all time slots in the selected timeframe
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (
+      timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
+      timeframe === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
+      timeframe === 'monthly' ? 30 * 24 * 60 * 60 * 1000 :
+      timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
+      24 * 60 * 60 * 1000
+    ));
+
+    // Create buckets for all time slots based on timeframe
+    let currentDate = new Date(startDate);
+    while (currentDate <= now) {
+      const timeKey = formatTimeKey(currentDate, timeframe);
+      finalData[timeKey] = {
+        timestamp: currentDate.getTime(),
+        time: timeKey,
+        visitors: 0,
+        walletConnects: 0
+      };
+
+      // Increment date based on timeframe
+      switch (timeframe) {
+        case 'daily':
+          currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000); // 30 minutes
+          break;
+        case 'weekly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        case 'monthly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        case 'yearly':
+          currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          break;
+        default:
+          currentDate = new Date(currentDate.getTime() + 30 * 60 * 1000);
+      }
+    }
+
+    // Process sessions data
+    analytics.sessions.forEach(session => {
+      const date = new Date(session.startTime);
+      const timeKey = formatTimeKey(date, timeframe);
+      
+      if (finalData[timeKey]) {
+        finalData[timeKey].visitors++;
+        
+        // Check if this session has a wallet connection
+        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+          finalData[timeKey].walletConnects++;
+          console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
+            address: session.wallet.walletAddress,
+            sessionTime: date.toString()
+          });
+        }
+      }
+    });
+
+    // Clear any previous wallet processing code
+    console.log('Sessions-based wallet connection data:', finalData);
+    
+    // Ensure all time slots have walletConnects initialized
+    Object.keys(finalData).forEach(key => {
+      if (finalData[key].walletConnects === undefined) {
+        finalData[key].walletConnects = 0;
+      }
+    });
+    
+    console.log('Final data after wallet processing:', finalData);
+
+    // Convert to array and sort by timestamp
+    const sortedData = Object.entries(finalData)
+      .map(([time, data]) => ({
+        time,
+        ...data
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    console.log('Sorted Data:', sortedData);
+
+    const formattedData = {
+      labels: sortedData.map(item => item.time),
+      datasets: [
+        {
+          label: 'Visitors',
+          data: sortedData.map(item => ({
+            x: item.time,
+            y: item.visitors || 0
+          })),
+          backgroundColor: 'rgba(252, 211, 77, 0.5)',
+          borderColor: '#fcd34d',
+          borderWidth: 1
+        },
+        {
+          label: 'Wallets',
+          data: sortedData.map(item => ({
+            x: item.time,
+            y: item.walletConnects || 0
+          })),
+          backgroundColor: 'rgba(139, 92, 246, 0.7)',
+          borderColor: '#8b5cf6',
+          borderWidth: 1
+        }
+      ]
+    };
+
+    // Debug log to verify the data
+    console.log('Formatted Chart Data - Visitors:', formattedData.datasets[0].data);
+    console.log('Formatted Chart Data - Wallets:', formattedData.datasets[1].data);
+
+    setChartData(formattedData);
+  }, [analytics, timeframe]);
 
   if (isLoading) {
     return (
@@ -150,286 +183,112 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     );
   }
 
-  // Calculate max values for scaling
-  const maxVisitors = chartData?.datasets.visitors.length > 0 ? Math.max(...chartData.datasets.visitors, 1) : 1;
-  const maxWallets = chartData?.datasets.wallets.length > 0 ? Math.max(...chartData.datasets.wallets, 1) : 1;
-  const overallMax = Math.max(maxVisitors, maxWallets);
-  
-  // Generate Y-axis with dynamic values based on data
-  const yAxisMax = Math.max(5, Math.ceil(overallMax * 1.2)); // At least 5 for empty data
-  const yAxisSteps = 5; // Number of steps on Y-axis
-  const yAxisValues = Array(yAxisSteps).fill().map((_, i) => 
-    Math.round((yAxisMax / (yAxisSteps - 1)) * i)
-  ).reverse(); // Reverse to start from top
-
-  // Calculate positions for both SVG paths and point markers
-  const calculatePoints = (data, dataPointCount) => {
-    if (!data || data.length === 0) return [];
-    
-    return data.map((value, index) => {
-      // Calculate x position based on index divided by total points
-      const x = (index / (dataPointCount - 1)) * 100; // Percentage of width
-      const y = 100 - (value / yAxisMax) * 100; // Percentage of height from top
-      return { x, y, value };
-    });
-  };
-  
-  const dataPointCount = chartData?.datasets.visitors.length || 0;
-  const visitorPoints = chartData ? calculatePoints(chartData.datasets.visitors, dataPointCount) : [];
-  const walletPoints = chartData ? calculatePoints(chartData.datasets.wallets, dataPointCount) : [];
-
-  // Generate SVG area path
-  const generateAreaPath = (points) => {
-    if (!points || points.length === 0) return '';
-    
-    // Start at the bottom left
-    let path = `M0,100`;
-    
-    // Add the first data point
-    path += ` L${points[0].x},${points[0].y}`;
-    
-    // Add the lines between points
-    for (let i = 1; i < points.length; i++) {
-      path += ` L${points[i].x},${points[i].y}`;
-    }
-    
-    // Close the path by going to the bottom right and then bottom left
-    path += ` L100,100 Z`;
-    
-    return path;
-  };
-
-  // Generate SVG line path
-  const generateLinePath = (points) => {
-    if (!points || points.length === 0) return '';
-    
-    // Start at the first point
-    let path = `M${points[0].x},${points[0].y}`;
-    
-    // Add lines to each subsequent point
-    for (let i = 1; i < points.length; i++) {
-      path += ` L${points[i].x},${points[i].y}`;
-    }
-    
-    return path;
-  };
-
-  // Handle data point selection or hover
-  const handleDataPointClick = (dataPoint) => {
-    setSelectedDataPoint(dataPoint);
-  };
-
-  // Show a tooltip when hovering over the chart area
-  const handleChartHover = (e) => {
-    if (!chartData || !chartData.dataPoints || chartData.dataPoints.length === 0) return;
-    
-    // Get mouse position relative to chart container
-    const chartRect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - chartRect.left;
-    const chartWidth = chartRect.width;
-    
-    // Calculate which data point this corresponds to
-    const index = Math.min(
-      Math.floor((mouseX / chartWidth) * chartData.dataPoints.length),
-      chartData.dataPoints.length - 1
+  if (!chartData || !chartData.labels.length) {
+    return (
+      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+        <div className="h-64 flex items-center justify-center">
+          <div className="text-gray-500">No data available</div>
+        </div>
+      </div>
     );
-    
-    // Set the selected data point
-    setSelectedDataPoint(chartData.dataPoints[index]);
-  };
+  }
 
   return (
-    <div className="bg-white p-4 rounded-2xl mt-4 w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Analytics</h2>
-        <div className="flex space-x-4">
-          <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-yellow-300 mr-2"></div>
-            <span className="text-xs">Visitors count</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-purple-600 mr-2"></div>
-            <span className="text-xs">Wallets count</span>
-          </div>
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-gray-800">Analytics Overview</h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setTimeframe('daily')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'daily'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Daily
+          </button>
+          <button
+            onClick={() => setTimeframe('weekly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'weekly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Weekly
+          </button>
+          <button
+            onClick={() => setTimeframe('monthly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'monthly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setTimeframe('yearly')}
+            className={`px-3 py-1 rounded-md text-sm ${
+              timeframe === 'yearly'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Yearly
+          </button>
         </div>
       </div>
-      
-      <div className="h-64 relative flex">
-        {/* Y-axis labels */}
-        <div className="w-10 h-full flex flex-col justify-between text-xs text-gray-500 pr-2">
-          {yAxisValues.map((value, index) => (
-            <div key={index} className="flex items-center justify-end">
-              {value}
-            </div>
-          ))}
-        </div>
-        
-        {/* Chart area */}
-        <div className="flex-1 relative" 
-             onMouseMove={handleChartHover} 
-             onMouseLeave={() => setSelectedDataPoint(null)}>
-          
-          {/* Data point tooltip */}
-          {selectedDataPoint && (
-            <div className="absolute top-0 right-0 bg-white p-2 rounded-lg shadow-md border text-xs z-10">
-              <div className="font-semibold">{selectedDataPoint.time}</div>
-              <div>New visitors: <span className="font-medium">{selectedDataPoint.visitors}</span></div>
-              <div>New wallets: <span className="font-medium">{selectedDataPoint.wallets}</span></div>
-              <div className="mt-1 pt-1 border-t border-gray-200">
-                <div>Total visitors: <span className="font-medium">{selectedDataPoint.absoluteVisitors}</span></div>
-                <div>Total wallets: <span className="font-medium">{selectedDataPoint.absoluteWallets}</span></div>
-              </div>
-            </div>
-          )}
-          
-          {/* Chart with horizontal grid lines */}
-          <div className="h-full w-full bg-white rounded-lg relative">
-            {/* SVG chart with percentages for responsive scaling */}
-            <svg className="w-full h-full absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {/* Horizontal grid lines */}
-              <g className="grid-lines">
-                {yAxisValues.map((_, index) => {
-                  const y = (index / (yAxisValues.length - 1)) * 100;
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={chartData.datasets[0].data.map((item, index) => ({
+              time: item.x,
+              visitors: item.y,
+              wallets: chartData.datasets[1].data[index].y
+            }))}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="time"
+              interval={getLabelInterval(chartData.labels.length)}
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+            />
+            <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
                   return (
-                    <line 
-                      key={index} 
-                      x1="0" 
-                      y1={y} 
-                      x2="100" 
-                      y2={y} 
-                      stroke="#f0f0f0" 
-                      strokeWidth="0.5" 
-                    />
+                    <div className="bg-white p-3 border rounded-lg shadow-lg">
+                      <p className="font-semibold">{label}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
+                      <p className="text-purple-500">Wallets Connected: {payload[1]?.value || 0}</p>
+                    </div>
                   );
-                })}
-              </g>
-              
-              {/* Vertical grid lines for data points */}
-              <g className="grid-lines">
-                {chartData && chartData.timeLabels && chartData.timeLabels.map((_, index) => {
-                  if (chartData.timeLabels.length <= 1) return null;
-                  const x = (index / (chartData.timeLabels.length - 1)) * 100;
-                  return (
-                    <line 
-                      key={index} 
-                      x1={x} 
-                      y1="0" 
-                      x2={x} 
-                      y2="100" 
-                      stroke="#f0f0f0" 
-                      strokeWidth="0.5" 
-                    />
-                  );
-                })}
-              </g>
-              
-              {/* X-axis line */}
-              <line 
-                x1="0" 
-                y1="100" 
-                x2="100" 
-                y2="100" 
-                stroke="#e5e7eb" 
-                strokeWidth="1" 
-              />
-              
-              {/* Visitors area (yellow) */}
-              <path 
-                d={generateAreaPath(visitorPoints)}
-                fill="rgba(252, 211, 77, 0.5)" 
-                stroke="none"
-              />
-              
-              {/* Wallets area (purple) */}
-              <path 
-                d={generateAreaPath(walletPoints)}
-                fill="rgba(124, 58, 237, 0.7)" 
-                stroke="none"
-              />
-              
-              {/* Visitors line */}
-              <path 
-                d={generateLinePath(visitorPoints)}
-                fill="none"
-                stroke="#f6d667"
-                strokeWidth="0.7"
-                strokeLinejoin="round"
-              />
-              
-              {/* Wallets line */}
-              <path 
-                d={generateLinePath(walletPoints)}
-                fill="none"
-                stroke="#8b5cf6"
-                strokeWidth="0.7"
-                strokeLinejoin="round"
-              />
-              
-              {/* Data point markers */}
-              {visitorPoints.map((point, index) => (
-                <circle
-                  key={`visitor-${index}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r="0.8"
-                  fill={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#eab308" : "#fcd34d"}
-                  stroke={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#fef3c7" : "none"}
-                  strokeWidth="0.3"
-                  className="cursor-pointer"
-                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index])}
-                />
-              ))}
-              
-              {walletPoints.map((point, index) => (
-                <circle
-                  key={`wallet-${index}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r="0.8"
-                  fill={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#7c3aed" : "#8b5cf6"}
-                  stroke={selectedDataPoint === (chartData?.dataPoints?.[index] || null) ? "#ede9fe" : "none"}
-                  strokeWidth="0.3"
-                  className="cursor-pointer"
-                  onClick={() => handleDataPointClick(chartData?.dataPoints?.[index])}
-                />
-              ))}
-            </svg>
-          </div>
-        </div>
-      </div>
-      
-      {/* X-axis time labels with fixed positioning */}
-      <div className="mt-2 flex justify-between text-xs text-gray-500 px-2 h-8">
-        {chartData && chartData.timeLabels && chartData.timeLabels.length > 0 && (
-          <>
-            {/* Only render a subset of labels if there are too many */}
-            {chartData.timeLabels.map((label, index) => {
-              // Skip some labels if there are too many to fit
-              const totalLabels = chartData.timeLabels.length;
-              
-              // Determine how many labels to skip based on total number
-              let skipFactor = 1;
-              if (totalLabels > 12) skipFactor = Math.ceil(totalLabels / 12);
-              
-              // Only show labels at regular intervals, always show first and last
-              if (index % skipFactor === 0 || index === 0 || index === totalLabels - 1) {
-                return (
-                  <div 
-                    key={index}
-                    className="text-center"
-                    style={{
-                      // Position each label within the flex container
-                      width: `${100 / (Math.ceil(totalLabels / skipFactor) + (totalLabels % skipFactor === 0 ? 0 : 1))}%`
-                    }}
-                  >
-                    {label}
-                  </div>
-                );
-              }
-              return null;
-            })}
-          </>
-        )}
+                }
+                return null;
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="visitors"
+              stackId="1"
+              stroke="#fcd34d"
+              fill="rgba(252, 211, 77, 0.5)"
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="wallets"
+              stackId="2"
+              stroke="#8b5cf6"
+              fill="rgba(139, 92, 246, 0.7)"
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

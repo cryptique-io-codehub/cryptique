@@ -49,7 +49,34 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       return 'Direct';
     }
     
-    const sourceStr = source.trim();
+    const sourceStr = source.trim().toLowerCase();
+    
+    // Source mapping for common variations and case sensitivity
+    const sourceMapping = {
+      'facebook': 'Facebook',
+      'fb': 'Facebook',
+      'instagram': 'Instagram',
+      'ig': 'Instagram',
+      'twitter': 'Twitter',
+      'x': 'Twitter',
+      'linkedin': 'LinkedIn',
+      'linked in': 'LinkedIn',
+      'dribbble': 'Dribbble',
+      'behance': 'Behance',
+      'pinterest': 'Pinterest',
+      'pin': 'Pinterest',
+      'google': 'Google',
+      'youtube': 'YouTube',
+      'yt': 'YouTube',
+      'reddit': 'Reddit',
+      'tiktok': 'TikTok',
+      'discord': 'Discord',
+      'telegram': 'Telegram',
+      'tg': 'Telegram',
+      'medium': 'Medium',
+      'github': 'GitHub',
+      'git': 'GitHub'
+    };
     
     // Domain mapping for known redirects and variations
     const domainMapping = {
@@ -58,7 +85,18 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       'l.facebook.com': 'Facebook',
       'lm.facebook.com': 'Facebook',
       't.co': 'Twitter',
-      'x.com': 'Twitter'
+      'x.com': 'Twitter',
+      'lnkd.in': 'LinkedIn',
+      'dribb.com': 'Dribbble',
+      'be.net': 'Behance',
+      'pin.it': 'Pinterest',
+      'youtu.be': 'YouTube',
+      'redd.it': 'Reddit',
+      'tiktok.com': 'TikTok',
+      'discord.gg': 'Discord',
+      't.me': 'Telegram',
+      'medium.com': 'Medium',
+      'github.com': 'GitHub'
     };
     
     try {
@@ -72,8 +110,8 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         // Domain without protocol
         hostname = sourceStr.split('/')[0];
       } else {
-        // Not a URL or domain
-        return sourceStr;
+        // Not a URL or domain, check direct source mapping
+        return sourceMapping[sourceStr] || sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
       }
       
       // Remove www. prefix
@@ -84,10 +122,17 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         return domainMapping[hostname];
       }
       
-      return hostname;
+      // Check if the base domain matches any source mapping
+      const baseDomain = hostname.split('.')[0];
+      if (sourceMapping[baseDomain]) {
+        return sourceMapping[baseDomain];
+      }
+      
+      // If no mapping found, capitalize first letter
+      return hostname.charAt(0).toUpperCase() + hostname.slice(1);
     } catch (e) {
-      // If URL parsing fails, return the original source
-      return sourceStr;
+      // If URL parsing fails, check direct source mapping
+      return sourceMapping[sourceStr] || sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
     }
   }
 

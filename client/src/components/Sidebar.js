@@ -1,4 +1,4 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
@@ -61,20 +61,20 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
           <img 
             src="../../logo192.png" 
             alt="Cryptique logo" 
-            className="w-10 h-10 rounded-full shadow-lg" // Increased from w-8 h-8 to w-10 h-10
+            className="w-10 h-10 rounded-full shadow-lg"
           />
           <div className="flex flex-col">
-            <span className="text-lg font-bold">Cryptique</span> {/* Increased from text-base to text-lg and added font-bold */}
-            <span className="text-sm text-gray-500">Analytics</span> {/* Increased from text-xs to text-sm */}
+            <span className="text-lg font-bold">Cryptique</span>
+            <span className="text-sm text-gray-500">Analytics</span>
           </div>
         </h2>
 )
  : (
-          <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-8 h-8 shadow-lg mx-auto"> {/* Increased from w-6 h-6 to w-8 h-8 */}
-            Q
-          </span>
-        )}
-        {showExpanded && <button className="md:hidden text-gray-500 hover:text-gray-700 p-2" onClick={() => { onClose(); hideMarketing && hideMarketing(); }}>✖</button>}
+        <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-8 h-8 shadow-lg mx-auto">
+          Q
+        </span>
+      )}
+      {showExpanded && <button className="md:hidden text-gray-500 hover:text-gray-700 p-2" onClick={() => { onClose(); hideMarketing && hideMarketing(); }}>✖</button>}
       </div>
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className="space-y-1 text-xs font-medium">
@@ -99,7 +99,13 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
           >
             <LineChart size={14} /> {showExpanded && "On-chain explorer"}
           </Link>
-          
+          <Link 
+            to={`/${selectedTeam}/cq-intelligence`}
+            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            onClick={() => onNavigate && onNavigate("cq-intelligence")}
+          >
+            <BrainCircuit size={14} /> {showExpanded && "CQ Intelligence"}
+          </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
