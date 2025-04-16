@@ -32,112 +32,92 @@ const AttributionJourneySankey = ({analytics}) => {
     
     // First, determine the first source for each user
     const userFirstSources = {};
+    const userOutcomes = {};
     
     // Sort sessions by timestamp to determine the first session per user
     const sortedSessions = [...analytics.sessions].sort((a, b) => {
       return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
     });
     
-    // Determine the first source for each user
+    // Determine the first source and final outcome for each user
     sortedSessions.forEach(session => {
       const userId = session.userId;
       
       // Skip if we already have the first source for this user
-      if (userFirstSources[userId]) return;
-      
-      // Determine the source (utm source or referrer)
-      let source = 'Direct';
-      
-      if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
-        // Normalize UTM source
-        source = normalizeDomain(session.utmData.source);
-      } else if (session.referrer && session.referrer !== 'direct') {
-        // Extract and normalize domain from referrer
-        try {
-          const url = new URL(session.referrer);
-          source = normalizeDomain(url.hostname || url.host || session.referrer);
-        } catch (e) {
-          source = normalizeDomain(session.referrer);
+      if (!userFirstSources[userId]) {
+        // Determine the source (utm source or referrer)
+        let source = 'Direct';
+        
+        if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
+          // Normalize UTM source
+          source = normalizeDomain(session.utmData.source);
+        } else if (session.referrer && session.referrer !== 'direct') {
+          // Extract and normalize domain from referrer
+          try {
+            const url = new URL(session.referrer);
+            source = normalizeDomain(url.hostname || url.host || session.referrer);
+          } catch (e) {
+            source = normalizeDomain(session.referrer);
+          }
         }
+        
+        // Record the first source for this user
+        userFirstSources[userId] = source;
       }
       
-      // Record the first source for this user
-      userFirstSources[userId] = source;
+      // Update user outcome based on wallet connection
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+        userOutcomes[userId] = 'Wallet Connected';
+      } else if (!userOutcomes[userId]) {
+        userOutcomes[userId] = 'No Wallet';
+      }
     });
     
-    // Group sessions by the first source of each user, ignoring later sources
-    const sourceGroups = {};
+    // Count users by source and outcome
+    const sourceOutcomeCounts = {};
     
-    analytics.sessions.forEach(session => {
-      const userId = session.userId;
-      const source = userFirstSources[userId] || 'Direct';
+    Object.entries(userFirstSources).forEach(([userId, source]) => {
+      const outcome = userOutcomes[userId] || 'No Wallet';
       
-      // Create the source group if it doesn't exist
-      if (!sourceGroups[source]) {
-        sourceGroups[source] = {
-          connected: new Set(),
-          notConnected: new Set(),
-          uniqueVisitors: new Set()
+      if (!sourceOutcomeCounts[source]) {
+        sourceOutcomeCounts[source] = {
+          'Wallet Connected': 0,
+          'No Wallet': 0,
+          total: 0
         };
       }
       
-      // Add userId to track unique visitors
-      sourceGroups[source].uniqueVisitors.add(userId);
-      
-      // Check if wallet is connected
-      const isWalletConnected = session.wallet && 
-                               session.wallet.walletAddress && 
-                               session.wallet.walletAddress.trim() !== '';
-      
-      // Add userId to the appropriate set - based on ANY session with this userId
-      // This means if they connect a wallet in any session, they're counted as connected
-      if (isWalletConnected) {
-        sourceGroups[source].connected.add(userId);
-        // Remove from notConnected if they were there
-        sourceGroups[source].notConnected.delete(userId);
-      } else if (!sourceGroups[source].connected.has(userId)) {
-        // Only mark as not connected if they haven't connected in any other session
-        sourceGroups[source].notConnected.add(userId);
-      }
+      sourceOutcomeCounts[source][outcome]++;
+      sourceOutcomeCounts[source].total++;
     });
     
-    // Sort sources by unique visitors count and take top 5
-    const topSources = Object.keys(sourceGroups)
-      .map(source => ({
-        source,
-        uniqueVisitors: sourceGroups[source].uniqueVisitors.size
-      }))
-      .sort((a, b) => b.uniqueVisitors - a.uniqueVisitors)
-      .slice(0, 5)
-      .map(item => item.source);
-    
-    // Convert source groups to Sankey data format (only for top 5 sources)
+    // Convert to Sankey data format
     const sankeyData = [];
     
-    topSources.forEach(source => {
-      const connectedCount = sourceGroups[source].connected.size;
-      const notConnectedCount = sourceGroups[source].notConnected.size;
-      
-      if (connectedCount > 0) {
+    Object.entries(sourceOutcomeCounts).forEach(([source, counts]) => {
+      if (counts['Wallet Connected'] > 0) {
         sankeyData.push({
-          source: source,
-          target: 'Wallet Connect',
-          value: connectedCount,
-          totalVisitors: sourceGroups[source].uniqueVisitors.size
+          source,
+          target: 'Wallet Connected',
+          value: counts['Wallet Connected'],
+          total: counts.total
         });
       }
       
-      if (notConnectedCount > 0) {
+      if (counts['No Wallet'] > 0) {
         sankeyData.push({
-          source: source,
-          target: 'Drop off',
-          value: notConnectedCount,
-          totalVisitors: sourceGroups[source].uniqueVisitors.size
+          source,
+          target: 'No Wallet',
+          value: counts['No Wallet'],
+          total: counts.total
         });
       }
     });
     
-    return sankeyData;
+    // Sort by total users and take top 5 sources
+    return sankeyData
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10); // Show top 5 sources (2 outcomes each = 10 flows)
   };
   
   // Get the Sankey data
@@ -145,8 +125,8 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
-    { source: 'Direct', target: 'Wallet Connect', value: 1, totalVisitors: 1 },
-    { source: 'Direct', target: 'Drop off', value: 1, totalVisitors: 1 }
+    { source: 'Direct', target: 'Wallet Connected', value: 1, total: 1 },
+    { source: 'Direct', target: 'No Wallet', value: 1, total: 1 }
   ];
   
   // Calculate total values for scaling
@@ -162,8 +142,8 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Define fixed colors for targets
   const targetColors = {
-    'Wallet Connect': '#28a745', // Green for success
-    'Drop off': '#dc3545'        // Red for drop off
+    'Wallet Connected': '#28a745', // Green for success
+    'No Wallet': '#dc3545'        // Red for no wallet
   };
   
   // Define node positions and dimensions dynamically
@@ -173,7 +153,7 @@ const AttributionJourneySankey = ({analytics}) => {
   uniqueSources.forEach((source, index) => {
     const sourceData = finalData.filter(item => item.source === source);
     const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
-    const totalVisitors = sourceData[0].totalVisitors; // All entries for this source have the same totalVisitors
+    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
     const heightRatio = totalSourceValue / totalValue;
     
     nodes[source] = {
@@ -286,10 +266,10 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Color blending logic for flows
   const getFlowColor = (source, target) => {
-    if (target === 'Wallet Connect') {
+    if (target === 'Wallet Connected') {
       return '#28a745'; // Green for wallet connect flows
-    } else if (target === 'Drop off') {
-      return '#dc3545'; // Red for drop off flows
+    } else if (target === 'No Wallet') {
+      return '#dc3545'; // Red for no wallet flows
     } else {
       // Blend colors for other flows
       const sourceColor = nodes[source].color;
@@ -451,10 +431,10 @@ const AttributionJourneySankey = ({analytics}) => {
             {/* Legend */}
             <g transform="translate(20, 20)">
               <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-              <text x="20" y="12" className="text-xs" style={{ fill: "#333333" }}>Wallet Connect</text>
+              <text x="20" y="12" className="text-xs" style={{ fill: "#333333" }}>Wallet Connected</text>
               
               <rect x="0" y="25" width="15" height="15" fill="#dc3545" />
-              <text x="20" y="37" className="text-xs" style={{ fill: "#333333" }}>Drop off</text>
+              <text x="20" y="37" className="text-xs" style={{ fill: "#333333" }}>No Wallet</text>
             </g>
           </svg>
         </div>
@@ -491,6 +471,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     avgBounceRate: '0%',
     bestSourceByWeb3: '',
     bestSourceByWallets: '',
+    bestSourceByConversion: '',
+    sourceWithHighestBounce: '',
   });
 
   // State for traffic quality data
@@ -598,7 +580,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
       uniqueUserIdsBySource[firstSource].add(session.userId);
       
-      // Count web3 users by first source (wallet type not "No Wallet Detected")
+      // Track unique web3 users by first source (wallet type not "No Wallet Detected")
       if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
         if (!web3UsersBySource[firstSource]) {
           web3UsersBySource[firstSource] = new Set();
@@ -606,7 +588,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         web3UsersBySource[firstSource].add(session.userId);
       }
       
-      // Count wallets by first source (wallet address not empty)
+      // Track unique wallets by first source (wallet address not empty)
       if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
         if (!walletsBySource[firstSource]) {
           walletsBySource[firstSource] = new Set();
@@ -615,59 +597,97 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
     });
 
-    // Calculate conversion rates for each source
-    const conversionRates = {};
-    Object.keys(uniqueUserIdsBySource).forEach(source => {
-      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
-      conversionRates[source] = uniqueUsers > 0 ? (wallets / uniqueUsers) * 100 : 0;
+    // Find the source with the highest number of sessions
+    let maxSessionsSource = '';
+    let maxSessionsCount = 0;
+    
+    Object.entries(sourceCounts).forEach(([source, count]) => {
+      if (count > maxSessionsCount) {
+        maxSessionsCount = count;
+        maxSessionsSource = source;
+      }
     });
-
-    // Find best and worst performing sources by conversion rate
-    let bestConversionRate = -1;
-    let bestConversionSource = '';
-    let lowestConversionRate = Infinity;
+    
+    // Calculate conversion rates and bounce rates for each source
+    const conversionRates = {};
+    const bounceRates = {};
+    
+    Object.entries(uniqueUserIdsBySource).forEach(([source, userIds]) => {
+      const totalVisitors = userIds.size;
+      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      
+      // Calculate conversion rate (wallets connected / number of visitors)
+      conversionRates[source] = totalVisitors > 0 ? (wallets / totalVisitors) * 100 : 0;
+      
+      // Calculate bounce rate (100 - (wallets connected / web3 users))
+      bounceRates[source] = web3Users > 0 ? 100 - ((wallets / web3Users) * 100) : 100;
+    });
+    
+    // Find the source with the lowest conversion rate (least effective)
     let lowestConversionSource = '';
-    
-    // Find source with maximum web3 users
-    let maxWeb3Users = 0;
-    let maxWeb3Source = '';
-    
-    // Find source with maximum wallet connections
-    let maxWallets = 0;
-    let maxWalletSource = '';
+    let lowestConversionRate = 100;
+    let lowestConversionVisitors = 0;
     
     Object.entries(conversionRates).forEach(([source, rate]) => {
-      const uniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      
-      // Only consider sources with users
-      if (uniqueUsers > 0) {
-        if (rate > bestConversionRate) {
-          bestConversionRate = rate;
-          bestConversionSource = source;
-        }
-        if (rate < lowestConversionRate) {
-          lowestConversionRate = rate;
-          lowestConversionSource = source;
-        }
+      const visitors = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
+      if (rate < lowestConversionRate || (rate === lowestConversionRate && visitors > lowestConversionVisitors)) {
+        lowestConversionRate = rate;
+        lowestConversionSource = source;
+        lowestConversionVisitors = visitors;
       }
-      
-      // Find source with most web3 users
-      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
-      if (web3Users > maxWeb3Users) {
-        maxWeb3Users = web3Users;
+    });
+    
+    // Find the source with the best conversion rate
+    let bestConversionSource = '';
+    let bestConversionRate = 0;
+    
+    Object.entries(conversionRates).forEach(([source, rate]) => {
+      if (rate > bestConversionRate) {
+        bestConversionRate = rate;
+        bestConversionSource = source;
+      }
+    });
+    
+    // Find the source with the highest bounce rate
+    let highestBounceSource = '';
+    let highestBounceRate = 0;
+    
+    Object.entries(bounceRates).forEach(([source, rate]) => {
+      if (rate > highestBounceRate) {
+        highestBounceRate = rate;
+        highestBounceSource = source;
+      }
+    });
+    
+    // Find the source with the highest number of unique web3 users
+    let maxWeb3Source = '';
+    let maxWeb3Count = 0;
+    
+    Object.entries(web3UsersBySource).forEach(([source, users]) => {
+      const uniqueWeb3Users = users.size;
+      if (uniqueWeb3Users > maxWeb3Count) {
+        maxWeb3Count = uniqueWeb3Users;
         maxWeb3Source = source;
       }
-      
-      // Find source with most wallet connections
-      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
-      if (wallets > maxWallets) {
-        maxWallets = wallets;
+    });
+    
+    // Find the source with the most unique wallet connections
+    let maxWalletSource = '';
+    let maxWalletCount = 0;
+    
+    Object.entries(walletsBySource).forEach(([source, wallets]) => {
+      const uniqueWallets = wallets.size;
+      if (uniqueWallets > maxWalletCount) {
+        maxWalletCount = uniqueWallets;
         maxWalletSource = source;
       }
     });
     
-    // If we didn't find any sources (shouldn't happen but just in case)
+    // Set default values if no sources found
+    if (maxSessionsSource === '') {
+      maxSessionsSource = 'Direct';
+    }
     if (bestConversionSource === '') {
       bestConversionSource = 'Direct';
     }
@@ -680,27 +700,26 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     if (maxWalletSource === '') {
       maxWalletSource = 'Direct';
     }
+    if (highestBounceSource === '') {
+      highestBounceSource = 'Direct';
+    }
     
-    // Get metrics for the best source by conversion
-    const totalSessions = sourceCounts[bestConversionSource] || 0;
-    const uniqueUsers = uniqueUserIdsBySource[bestConversionSource] ? uniqueUserIdsBySource[bestConversionSource].size : 0;
-    const totalWeb3Users = web3UsersBySource[maxWeb3Source] ? web3UsersBySource[maxWeb3Source].size : 0;
-    const totalWallets = walletsBySource[maxWalletSource] ? walletsBySource[maxWalletSource].size : 0;
-    
-    // Calculate bounce rate for the best source
-    const bounces = sourceBounceCounts[bestConversionSource] || 0;
-    const bounceRate = totalSessions > 0 ? (bounces / totalSessions) * 100 : 0;
+    // Get metrics for the best source by sessions
+    const totalSessions = sourceCounts[maxSessionsSource] || 0;
+    const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
     
     setMetrics({
-      bestSource: bestConversionSource,
+      bestSource: maxSessionsSource,
       totalSessions,
-      web3Users: totalWeb3Users,
-      walletsConnected: totalWallets,
+      web3Users: maxWeb3Count,
+      walletsConnected: maxWalletCount,
       leastEffectiveSource: lowestConversionSource,
       avgConversion: `${bestConversionRate.toFixed(2)}%`,
-      avgBounceRate: `${bounceRate.toFixed(2)}%`,
+      avgBounceRate: `${highestBounceRate.toFixed(2)}%`,
       bestSourceByWeb3: maxWeb3Source,
       bestSourceByWallets: maxWalletSource,
+      bestSourceByConversion: bestConversionSource,
+      sourceWithHighestBounce: highestBounceSource
     });
 
     // Generate colors for sources
@@ -711,24 +730,33 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     
     // Generate traffic quality data for the scatter chart
     const qualityData = Object.keys(uniqueUserIdsBySource).map((source, index) => {
-      // Only include sources with users
+      // Get unique users for this source
       const sourceUniqueUsers = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
       if (sourceUniqueUsers === 0) return null;
       
-      // Calculate engagement time in minutes (average session duration)
+      // Calculate average engagement time in minutes
       const totalDuration = sourceDurations[source] || 0;
       const sessionCount = sourceCounts[source] || 0;
       const engagement = sessionCount > 0 
         ? (totalDuration / sessionCount) / 60  // Convert seconds to minutes
         : 0;
       
-      // Use the already calculated conversion rate
-      const conversion = conversionRates[source] || 0;
+      // Calculate conversion rate (wallets connected / unique visitors)
+      const web3Users = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      const wallets = walletsBySource[source] ? walletsBySource[source].size : 0;
+      const conversion = sourceUniqueUsers > 0 ? (wallets / sourceUniqueUsers) * 100 : 0;
+      
+      // Calculate bounce rate (100 - (wallets / web3 users))
+      const bounceRate = web3Users > 0 ? 100 - ((wallets / web3Users) * 100) : 100;
       
       return {
         source,
         engagement: parseFloat(engagement.toFixed(2)),
         conversion: parseFloat(conversion.toFixed(2)),
+        bounceRate: parseFloat(bounceRate.toFixed(2)),
+        uniqueUsers: sourceUniqueUsers,
+        web3Users,
+        wallets,
         color: colorPalette[index % colorPalette.length]
       };
     }).filter(item => item !== null); // Remove null entries
@@ -745,40 +773,131 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         : num;
   };
 
-  // Sample data for the Web3 Users by Medium chart (would be replaced with real data in a production app)
-  const web3UsersByTimeData = [
-    { time: '00:00', 'Paid/Ads': 35, 'Organic': 20, 'Social': 115, 'KOL & Partnerships': 145, 'Events': 150, 'Others': 120 },
-    { time: '04:00', 'Paid/Ads': 50, 'Organic': 28, 'Social': 50, 'KOL & Partnerships': 120, 'Events': 80, 'Others': 155 },
-    { time: '08:00', 'Paid/Ads': 25, 'Organic': 35, 'Social': 165, 'KOL & Partnerships': 100, 'Events': 120, 'Others': 45 },
-    { time: '12:00', 'Paid/Ads': 40, 'Organic': 20, 'Social': 100, 'KOL & Partnerships': 130, 'Events': 110, 'Others': 30 },
-    { time: '16:00', 'Paid/Ads': 55, 'Organic': 12, 'Social': 50, 'KOL & Partnerships': 145, 'Events': 90, 'Others': 125 },
-    { time: '20:00', 'Paid/Ads': 65, 'Organic': 55, 'Social': 75, 'KOL & Partnerships': 55, 'Events': 45, 'Others': 80 },
-    { time: '23:59', 'Paid/Ads': 35, 'Organic': 62, 'Social': 120, 'KOL & Partnerships': 130, 'Events': 135, 'Others': 125 }
-  ];
+  // Process Web3 Users by Medium data
+  const processWeb3UsersByMedium = () => {
+    // Always return some data, either real or sample
+    const sampleData = [
+      { time: '00:00', 'Paid/Ads': 35, 'Organic': 20, 'Social': 115, 'KOL & Partnerships': 145, 'Events': 150, 'Others': 120 },
+      { time: '04:00', 'Paid/Ads': 50, 'Organic': 28, 'Social': 50, 'KOL & Partnerships': 120, 'Events': 80, 'Others': 155 },
+      { time: '08:00', 'Paid/Ads': 25, 'Organic': 35, 'Social': 165, 'KOL & Partnerships': 100, 'Events': 120, 'Others': 45 },
+      { time: '12:00', 'Paid/Ads': 40, 'Organic': 20, 'Social': 100, 'KOL & Partnerships': 130, 'Events': 110, 'Others': 30 },
+      { time: '16:00', 'Paid/Ads': 55, 'Organic': 12, 'Social': 50, 'KOL & Partnerships': 145, 'Events': 90, 'Others': 125 },
+      { time: '20:00', 'Paid/Ads': 65, 'Organic': 55, 'Social': 75, 'KOL & Partnerships': 55, 'Events': 45, 'Others': 80 },
+      { time: '23:59', 'Paid/Ads': 35, 'Organic': 62, 'Social': 120, 'KOL & Partnerships': 130, 'Events': 135, 'Others': 125 }
+    ];
+
+    if (!analytics || !analytics.sessions || analytics.sessions.length === 0) {
+      return sampleData;
+    }
+
+    // Group sessions by time and medium
+    const timeGroups = {};
+    const mediumCategories = {
+      'Paid/Ads': ['google', 'facebook', 'twitter', 'linkedin', 'ad', 'sponsored'],
+      'Organic': ['organic', 'search', 'google', 'bing', 'yahoo'],
+      'Social': ['facebook', 'twitter', 'instagram', 'linkedin', 'reddit', 'social'],
+      'KOL & Partnerships': ['partner', 'kol', 'influencer', 'affiliate'],
+      'Events': ['event', 'conference', 'meetup', 'hackathon'],
+      'Others': [] // Default category
+    };
+
+    // Process each session
+    analytics.sessions.forEach(session => {
+      if (!session.userId || !session.timestamp) return;
+
+      // Get the time group (hour)
+      const date = new Date(session.timestamp);
+      const hour = date.getHours();
+      const timeKey = `${hour.toString().padStart(2, '0')}:00`;
+
+      // Initialize time group if not exists
+      if (!timeGroups[timeKey]) {
+        timeGroups[timeKey] = {
+          'Paid/Ads': new Set(),
+          'Organic': new Set(),
+          'Social': new Set(),
+          'KOL & Partnerships': new Set(),
+          'Events': new Set(),
+          'Others': new Set()
+        };
+      }
+
+      // Determine the medium
+      let medium = 'Others';
+      const source = session.utmData?.source?.toLowerCase() || 
+                    session.referrer?.toLowerCase() || 
+                    'direct';
+
+      // Check if user has a wallet
+      const hasWallet = session.wallet && 
+                       session.wallet.walletAddress && 
+                       session.wallet.walletAddress.trim() !== '';
+
+      if (!hasWallet) return;
+
+      // Categorize the source
+      for (const [category, keywords] of Object.entries(mediumCategories)) {
+        if (keywords.some(keyword => source.includes(keyword))) {
+          medium = category;
+          break;
+        }
+      }
+
+      // Add user to the appropriate medium group
+      timeGroups[timeKey][medium].add(session.userId);
+    });
+
+    // Convert to chart data format
+    const chartData = Object.entries(timeGroups).map(([time, mediums]) => {
+      const dataPoint = { time };
+      Object.entries(mediums).forEach(([medium, users]) => {
+        dataPoint[medium] = users.size;
+      });
+      return dataPoint;
+    });
+
+    // Sort by time
+    const sortedData = chartData.sort((a, b) => a.time.localeCompare(b.time));
+    
+    // If we have no real data points, return sample data
+    return sortedData.length > 0 ? sortedData : sampleData;
+  };
+
+  // Get the Web3 Users by Medium data
+  const web3UsersByTimeData = processWeb3UsersByMedium();
+  const isSampleData = !analytics || !analytics.sessions || analytics.sessions.length === 0;
 
   // Colors for the Web3 Users chart
   const webUsersColors = {
-    'Paid/Ads': '#4285F4',
-    'Organic': '#EA4335',
-    'Social': '#FBBC05',
-    'KOL & Partnerships': '#34A853',
-    'Events': '#0F9D58',
-    'Others': '#00BCD4'
+    'Paid/Ads': '#4285F4',    // Google Blue
+    'Organic': '#EA4335',      // Google Red
+    'Social': '#FBBC05',       // Google Yellow
+    'KOL & Partnerships': '#34A853', // Google Green
+    'Events': '#0F9D58',      // Darker Green
+    'Others': '#00BCD4'       // Cyan
   };
 
-  // MetricCard component for displaying metrics
-  const MetricCard = ({ title, value, source }) => (
-    <div className="bg-white rounded-lg shadow p-2 md:p-4">
-      <div className="text-xs md:text-sm text-gray-500 mb-1">{title}</div>
-      <div className="flex items-center justify-center h-12 md:h-24">
-        <span className="text-lg md:text-xl font-bold">{value}</span>
-      </div>
-      {source && <div className="text-xs text-center text-gray-500">From {source}</div>}
-    </div>
-  );
+  // Custom tooltip for the Web3 Users chart
+  const Web3UsersTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const total = payload.reduce((sum, entry) => sum + entry.value, 0);
+      return (
+        <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
+          <p className="font-semibold">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {entry.value} ({((entry.value / total) * 100).toFixed(1)}%)
+            </p>
+          ))}
+          <p className="font-semibold mt-1">Total: {total}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Custom tooltip for the scatter plot
-  const CustomTooltip = ({ active, payload }) => {
+  const TrafficQualityTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -786,6 +905,10 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
           <p className="font-semibold">{data.source}</p>
           <p>Engagement: {data.engagement} mins</p>
           <p>Conversion: {data.conversion}%</p>
+          <p>Bounce Rate: {data.bounceRate}%</p>
+          <p>Unique Users: {data.uniqueUsers}</p>
+          <p>Web3 Users: {data.web3Users}</p>
+          <p>Wallets: {data.wallets}</p>
         </div>
       );
     }
@@ -802,14 +925,9 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         <MetricCard title="Total Sessions" value={formatNumber(metrics.totalSessions)} source={metrics.bestSource} />
         <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSourceByWeb3} />
         <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSourceByWallets} />
-        <div className="col-span-2 md:col-span-1 bg-white rounded-lg shadow p-2 md:p-4">
-          <div className="text-xs md:text-sm text-gray-500 mb-1">Least effective source</div>
-          <div className="flex items-center justify-center h-12 md:h-24">
-            <span className="text-lg md:text-xl font-bold">{metrics.leastEffectiveSource}</span>
-          </div>
-        </div>
-        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSource} />
-        <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.bestSource} />
+        <MetricCard title="Least effective source" value={metrics.leastEffectiveSource} source={`${metrics.leastEffectiveSource}`} />
+        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSourceByConversion} />
+        <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.sourceWithHighestBounce} />
       </div>
 
       {/* Attribution Journey + Traffic Sources */}
@@ -827,119 +945,126 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         </div>
       </div>
 
-      {/* Traffic Quality + Web3 Users by Medium */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Traffic Quality Analysis - Updated to use real data */}
-        <div className="bg-white rounded-lg shadow p-2 md:p-4">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
-          <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">Value-Per-Traffic-Source</div>
-          {trafficQualityData.length > 0 ? (
-            <div className="h-48 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart
-                  margin={{ top: 10, right: 10, bottom: 30, left: 30 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    type="number" 
-                    dataKey="engagement" 
-                    name="Engagement" 
-                    label={{ 
-                      value: 'Engagement (mins)', 
-                      position: 'bottom',
-                      offset: 0,
-                      style: { fontSize: '0.75rem' }
-                    }}
-                    domain={[0, 'dataMax']}
-                    tickCount={6}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="conversion" 
-                    name="Conversion" 
-                    label={{ 
-                      value: 'Conversion (%)', 
-                      angle: -90, 
-                      position: 'left',
-                      style: { fontSize: '0.75rem' }
-                    }}
-                    domain={[0, 'dataMax']}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    layout="horizontal" 
-                    verticalAlign="top" 
-                    align="center"
-                    wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
-                  />
-                  {trafficQualityData.map(entry => (
-                    <Scatter 
-                      key={entry.source} 
-                      name={entry.source} 
-                      data={[entry]} 
-                      fill={entry.color} 
-                      shape="circle"
-                      legendType="circle"
-                    />
-                  ))}
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
-              No traffic source data available
-            </div>
-          )}
+      {/* Traffic Quality Analysis */}
+      <div className="bg-white rounded-lg shadow p-2 md:p-4">
+        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
+        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+          Value-Per-Traffic-Source (Engagement vs Conversion)
         </div>
-
-        {/* Web3 Users by Medium - Placeholder data (to be updated with real data) */}
-        <div className="bg-white rounded-lg shadow p-2 md:p-4">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium (to be released soon)</h3>
+        {trafficQualityData.length > 0 ? (
           <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={web3UsersByTimeData} 
-                margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
+              <ScatterChart
+                margin={{ top: 10, right: 10, bottom: 30, left: 30 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
+                  type="number" 
+                  dataKey="engagement" 
+                  name="Engagement" 
+                  label={{ 
+                    value: 'Avg. Engagement (mins)', 
+                    position: 'bottom',
+                    offset: 0,
+                    style: { fontSize: '0.75rem' }
+                  }}
+                  domain={[0, 'dataMax + 5']}
+                  tickCount={6}
                   tick={{ fontSize: 10 }}
-                  interval="preserveStartEnd"
                 />
                 <YAxis 
-                  domain={[0, 200]} 
-                  axisLine={false}
-                  tickLine={false}
+                  type="number" 
+                  dataKey="conversion" 
+                  name="Conversion" 
+                  label={{ 
+                    value: 'Conversion Rate (%)', 
+                    angle: -90, 
+                    position: 'left',
+                    style: { fontSize: '0.75rem' }
+                  }}
+                  domain={[0, 'dataMax + 5']}
                   tick={{ fontSize: 10 }}
                 />
-                <Tooltip wrapperStyle={{ fontSize: '0.75rem' }} />
+                <Tooltip content={<TrafficQualityTooltip />} />
                 <Legend 
                   layout="horizontal" 
                   verticalAlign="top" 
-                  align="center" 
+                  align="center"
                   wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
-                  iconSize={8}
                 />
-                {Object.keys(webUsersColors).map((key) => (
-                  <Line 
-                    type="monotone" 
-                    dataKey={key} 
-                    stroke={webUsersColors[key]} 
-                    key={key}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    name={key}
+                {trafficQualityData.map(entry => (
+                  <Scatter 
+                    key={entry.source} 
+                    name={entry.source} 
+                    data={[entry]} 
+                    fill={entry.color} 
+                    shape="circle"
+                    legendType="circle"
                   />
                 ))}
-              </LineChart>
+              </ScatterChart>
             </ResponsiveContainer>
           </div>
+        ) : (
+          <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
+            No traffic source data available
+          </div>
+        )}
+      </div>
+
+      {/* Web3 Users by Medium */}
+      <div className="bg-white rounded-lg shadow p-2 md:p-4">
+        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
+        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+          {isSampleData ? (
+            <span className="text-yellow-600">Sample Data - No real data available yet</span>
+          ) : (
+            "Distribution of Web3 Users Across Traffic Sources"
+          )}
+        </div>
+        <div className="h-48 md:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart 
+              data={web3UsersByTimeData} 
+              margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
+              <XAxis 
+                dataKey="time" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis 
+                domain={[0, 'dataMax + 5']} 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10 }}
+              />
+              <Tooltip content={<Web3UsersTooltip />} />
+              <Legend 
+                layout="horizontal" 
+                verticalAlign="top" 
+                align="center" 
+                wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
+                iconSize={8}
+              />
+              {Object.keys(webUsersColors).map((key) => (
+                <Line 
+                  type="monotone" 
+                  dataKey={key} 
+                  stroke={webUsersColors[key]} 
+                  key={key}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name={key}
+                  strokeDasharray={isSampleData ? "5 5" : "0"}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

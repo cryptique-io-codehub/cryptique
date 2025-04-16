@@ -99,24 +99,28 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       if (finalData[timeKey]) {
         finalData[timeKey].visitors++;
         
-        // Check if session has a wallet connection
-        if (session.wallet && session.wallet.walletAddress) {
-          if (!connectedWallets.has(session.wallet.walletAddress)) {
-            connectedWallets.add(session.wallet.walletAddress);
-            finalData[timeKey].walletConnects++;
-          }
+        // Check if this session has a wallet connection
+        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+          finalData[timeKey].walletConnects++;
+          console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
+            address: session.wallet.walletAddress,
+            sessionTime: date.toString()
+          });
         }
       }
     });
 
-    // Initialize wallet counts for all time slots that haven't been set
+    // Clear any previous wallet processing code
+    console.log('Sessions-based wallet connection data:', finalData);
+    
+    // Ensure all time slots have walletConnects initialized
     Object.keys(finalData).forEach(key => {
       if (finalData[key].walletConnects === undefined) {
         finalData[key].walletConnects = 0;
       }
     });
-
-    console.log('Processed Final Data:', finalData);
+    
+    console.log('Final data after wallet processing:', finalData);
 
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(finalData)

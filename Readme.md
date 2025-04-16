@@ -20,6 +20,11 @@ Real-time analytics service with 15-minute interval aggregation.
 - Implemented automatic cleanup of old data
 - Optimized memory usage with efficient data structures
 
+### Deployment Update
+
+- Improved Vercel build configuration
+- Updated documentation
+
 ## Installation
 
 ```bash

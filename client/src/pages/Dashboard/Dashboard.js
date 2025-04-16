@@ -10,12 +10,12 @@ import { useLocation } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
 import ManageWebsites from './ManageWebsites.js'
-import KOLIntelligence from './KOLIntelligence.js'
 import ImportUsers from './ImportUsers.js'
 import History from "./History.js";
 import ConversionEvents from './ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
+import CQIntelligence from './CQIntelligence.js'
 
 const Dashboard = () => {
   // State management
@@ -60,25 +60,33 @@ const Dashboard = () => {
   // Sync selectedPage with URL
   useEffect(() => {
     const path = location.pathname;
-    if (path === `/${selectedTeam}/dashboard`) {
-      setSelectedPage("dashboard");
-    } else if (path.includes('/settings')) {
-      setSelectedPage("settings");
+    
+    // Extract the current route from the path
+    const pathSegments = path.split('/').filter(Boolean);
+    const currentRoute = pathSegments.length > 1 ? pathSegments[1] : '';
+    
+    // Map route names to page identifiers
+    const routeToPageMap = {
+      'dashboard': 'dashboard',
+      'offchain': 'offchain-analytics',
+      'onchain': 'onchain-explorer',
+      'campaigns': 'campaigns',
+      'conversion-events': 'conversion-events',
+      'advertise': 'advertise',
+      'history': 'history',
+      'importusers': 'import-users',
+      'managewebsites': 'manage-websites',
+      'cq-intelligence': 'cq-intelligence',
+      'settings': 'settings'
+    };
+    
+    // Set the selected page based on the current route
+    if (routeToPageMap[currentRoute]) {
+      setSelectedPage(routeToPageMap[currentRoute]);
     } else {
-      // Check for other routes
-      const pages = [
-        "offchain-analytics", "onchain-explorer", "kol-intelligence", 
-        "campaigns", "conversion-events", "advertise", "history", 
-        "import-users", "manage-websites"
-      ];
-      
-      for (const page of pages) {
-        if (path.includes(`/${page}`)) {
-          setSelectedPage(page);
-          break;
-        }
-      }
+      setSelectedPage('dashboard'); // Default to dashboard
     }
+    
   }, [location, selectedTeam]);
 
   const handleNavigation = (page) => {
@@ -149,8 +157,6 @@ const Dashboard = () => {
         return <OffchainAnalytics {...commonProps} />;
       case "onchain-explorer":
         return <OnchainExplorer {...commonProps} />;
-      case "kol-intelligence":
-        return <KOLIntelligence {...commonProps} />;
       case "campaigns":
         return <Campaigns {...commonProps} />;
       case "conversion-events":
@@ -163,6 +169,8 @@ const Dashboard = () => {
         return <ImportUsers {...commonProps} />;
       case "manage-websites":
         return <ManageWebsites {...commonProps} />;
+      case "cq-intelligence":
+        return <CQIntelligence {...commonProps} />;
       case "settings":
         return <Settings {...commonProps} />;
       default:

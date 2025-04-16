@@ -1,5 +1,4 @@
 import React,{useState,useEffect} from "react";
-import Sidebar from "../../components/Sidebar";
 import Header from "../../components/Header";
 import Filters from "../Offchainpart/Filters";
 import OnchainDashboard from "../Onchainpart/OnchainDashboard";
@@ -7,12 +6,12 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
-const OnchainExplorer = () => {
+
+const OnchainExplorer = ({ onMenuClick, screenSize }) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
     const [selectedWebsite, setSelectedWebsite] = useState();
     const [selectedDate, setSelectedDate] = useState('Select Date');
     const [selectedFilters, setSelectedFilters] = useState('Select Filters');
-    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [secondNavOpen, setSecondNavOpen] = useState(false);
     const [websitearray,setWebsitearray]=useState([]);
     const [analytics,setanalytics]=useState({});
@@ -30,36 +29,17 @@ const OnchainExplorer = () => {
       { label: 'Market Insights' },
       { label: 'Wallet Insights' }
     ];
-     // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
+    
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
     setSecondNavOpen(!secondNavOpen);
   };
     return (
       <div className="flex h-screen overflow-hidden bg-gray-50">
-        {/* Mobile menu toggle button for main sidebar */}
-        <button 
-          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
-          onClick={toggleSidebar}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-    
-        {/* Main sidebar - fixed on desktop, slide-in on mobile */}
-        <div className={`h-screen flex-shrink-0 md:block ${sidebarOpen ? 'block fixed z-40' : 'hidden'}`}>
-          <Sidebar currentPage="offchain-analytics" />
-        </div>
-    
         {/* Content area with header and flexible content */}
         <div className="flex flex-col w-full h-screen">
           {/* Header - fixed at top */}
-          <Header className="w-full flex-shrink-0" />
+          <Header className="w-full flex-shrink-0" onMenuClick={onMenuClick} screenSize={screenSize} />
     
           {/* Content area below header */}
           <div className="flex flex-1 overflow-hidden">
@@ -226,11 +206,10 @@ const OnchainExplorer = () => {
         </div>
         
         {/* Overlay for mobile navigation */}
-        {(sidebarOpen || secondNavOpen) && (
+        {secondNavOpen && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
             onClick={() => {
-              setSidebarOpen(false);
               setSecondNavOpen(false);
             }}
           />

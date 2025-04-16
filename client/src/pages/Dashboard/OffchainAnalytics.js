@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, FunnelChart, Funnel, LabelList, Tooltip } from "recharts";
-import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import AnalyticsChart from '../Offchainpart/AnalyticsChart';
 import TrafficSourcesComponent from '../Offchainpart/TrafficSourcesComponent';
@@ -14,12 +13,11 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
 
 
-const OffchainAnalytics = () => {
+const OffchainAnalytics = ({ onMenuClick, screenSize }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
   const [selectedWebsite, setSelectedWebsite] = useState();
   const [selectedDate, setSelectedDate] = useState('Select Date');
   const [selectedFilters, setSelectedFilters] = useState('Select Filters');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [secondNavOpen, setSecondNavOpen] = useState(false);
   const [websitearray,setWebsitearray]=useState([]);
   const [analytics,setanalytics]=useState({});
@@ -39,6 +37,7 @@ const OffchainAnalytics = () => {
       if(idt){
         setverifyload(true);
         try {
+          // Use a relative path
           const new_response = await axiosInstance.get(`/sdk/analytics/${idt}`);
           if (new_response.data && new_response.data.analytics) {
             setanalytics(new_response.data.analytics);
@@ -67,7 +66,7 @@ const OffchainAnalytics = () => {
           }
         } catch (error) {
           console.error('Error fetching analytics:', error);
-          setError('Failed to load analytics data');
+          setError('Failed to load analytics data. Please check your connection or try again later.');
         } finally {
           setverifyload(false);
         }
@@ -79,25 +78,43 @@ const OffchainAnalytics = () => {
 
 console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
-  const pageViews_size = Object.keys(analytics?.pageViews ?? {}).length;
-  const pagepervisit=(totalPageViews/pageViews_size).toFixed(2);
+  const totalSessions = analytics?.sessions?.length || 1; // Use 1 as fallback to avoid division by zero
+  const pagepervisit = (totalPageViews / totalSessions).toFixed(2);
   const calculateAverageDuration = (sessions) => {
-     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-    const totalDuration = sessions.reduce((sum, session) => sum + session.duration, 0);
-    return totalDuration / sessions.length;
+    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+    
+    // Filter out any sessions with invalid or missing duration
+    const validSessions = sessions.filter(session => 
+      typeof session?.duration === 'number' && 
+      !isNaN(session.duration) && 
+      session.duration >= 0
+    );
+    
+    if (validSessions.length === 0) return 0;
+    
+    const totalDuration = validSessions.reduce((sum, session) => sum + session.duration, 0);
+    return totalDuration / validSessions.length;
   };
 
   const calculateBounceRate = (sessions) => {
     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-  
-    const bounceCount = sessions.reduce((count, session) => {
-      return session.isBounce === true ? count + 1 : count;
+    
+    // Filter out any sessions with invalid isBounce property
+    const validSessions = sessions.filter(session => 
+      typeof session?.isBounce === 'boolean'
+    );
+    
+    if (validSessions.length === 0) return 0;
+    
+    const bounceCount = validSessions.reduce((count, session) => {
+      return session.isBounce ? count + 1 : count;
     }, 0);
-  
-    return bounceCount / sessions.length;
+    
+    // Calculate percentage and round to 2 decimal places
+    return (bounceCount / validSessions.length) * 100;
   };
 
-const bounceRate = (calculateBounceRate(analytics?.sessions)*100).toFixed(2);
+const bounceRate = calculateBounceRate(analytics?.sessions).toFixed(2);
 const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
 const avgVisitDuration = formatDuration(rawAvgDuration);
 
@@ -117,7 +134,7 @@ function formatDuration(seconds) {
   
  
   
-  console.log(pageViews_size);
+  console.log(totalSessions);
   console.log(totalPageViews);
   // const [analyticsData, setAnalyticsData] = useState({
   //   uniqueVisitors:analytics.uniqueVisitors,
@@ -164,8 +181,18 @@ function formatDuration(seconds) {
   ];
 
   const data = [
-    { name: "New", value: analytics?.newVisitors, color: "#3B82F6" }, // Blue
-    { name: "Returning", value: analytics?.returningVisitors, color: "#F59E0B" }, // Orange
+    { 
+      name: "New", 
+      value: analytics?.uniqueVisitors || 0, 
+      color: "#3B82F6",
+      percentage: totalSessions > 0 ? ((analytics?.uniqueVisitors || 0) / totalSessions * 100).toFixed(2) : "0.00"
+    },
+    { 
+      name: "Returning", 
+      value: totalSessions > 0 ? (totalSessions - (analytics?.uniqueVisitors || 0)) : 0, 
+      color: "#F59E0B",
+      percentage: totalSessions > 0 ? ((totalSessions - (analytics?.uniqueVisitors || 0)) / totalSessions * 100).toFixed(2) : "0.00"
+    }
   ];
   
   // Updated AnalyticsCard to be responsive
@@ -230,82 +257,74 @@ function formatDuration(seconds) {
           end: endDate
         });
 
-        // Fetch chart data from API
-        const chartResponse = await axiosInstance.get(`/analytics/chart`, {
-          params: {
-            siteId: idy,
-            timeframe: 'hourly',
-            start: startDate,
-            end: endDate
-          }
-        }).catch(error => {
-          console.error('Chart API Error:', error.response?.data || error.message);
-          throw new Error(error.response?.data?.message || 'Failed to fetch chart data');
-        });
-
-        if (!chartResponse?.data) {
-          throw new Error('No data received from chart API');
-        }
-
-        if (chartResponse.data.error) {
-          throw new Error(chartResponse.data.error);
-        }
-
-        console.log('Chart API Response:', chartResponse.data);
-
-        // Transform the data to match the expected format
-        const transformedChartData = {
-          labels: chartResponse.data.labels || [],
-          datasets: [
-            {
-              label: 'Visitors',
-              data: chartResponse.data.visitors || []
-            },
-            {
-              label: 'Wallets',
-              data: chartResponse.data.wallets || []
+        // Fetch chart data from API - use try-catch for each request
+        let chartResponse;
+        try {
+          chartResponse = await axiosInstance.get(`/analytics/chart`, {
+            params: {
+              siteId: idy,
+              timeframe: 'hourly',
+              start: startDate,
+              end: endDate
             }
-          ]
-        };
+          });
+        } catch (chartError) {
+          console.error('Chart API Error:', chartError);
+          // Continue execution even if this request fails
+        }
 
-        setChartData(transformedChartData);
-
-        // Fetch traffic sources data
-        console.log('Fetching traffic sources with params:', {
-          siteId: idy,
-          start: startDate,
-          end: endDate
-        });
-
-        const trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
-          params: {
-            siteId: idy,
-            start: startDate,
-            end: endDate
+        if (chartResponse?.data) {
+          if (chartResponse.data.error) {
+            console.warn("Chart data error:", chartResponse.data.error);
+          } else {
+            // Transform the data to match the expected format
+            const transformedChartData = {
+              labels: chartResponse.data.labels || [],
+              datasets: [
+                {
+                  label: 'Visitors',
+                  data: chartResponse.data.visitors || []
+                },
+                {
+                  label: 'Wallets',
+                  data: chartResponse.data.wallets || []
+                }
+              ]
+            };
+            
+            setChartData(transformedChartData);
           }
-        }).catch(error => {
-          console.error('Traffic Sources API Error:', error.response?.data || error.message);
-          throw new Error(error.response?.data?.message || 'Failed to fetch traffic sources data');
-        });
-
-        if (!trafficResponse?.data) {
-          throw new Error('No data received from traffic sources API');
         }
 
-        if (trafficResponse.data.error) {
-          throw new Error(trafficResponse.data.error);
+        // Fetch traffic sources data - use try-catch for each request
+        let trafficResponse;
+        try {
+          trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
+            params: {
+              siteId: idy,
+              start: startDate,
+              end: endDate
+            }
+          });
+          
+          if (trafficResponse?.data) {
+            if (trafficResponse.data.error) {
+              console.warn("Traffic sources data error:", trafficResponse.data.error);
+            } else {
+              setTrafficSources(trafficResponse.data.sources || []);
+            }
+          }
+        } catch (trafficError) {
+          console.error('Traffic Sources API Error:', trafficError);
+          // Continue execution even if this request fails
         }
-
-        console.log('Traffic Sources API Response:', trafficResponse.data);
-
-        setTrafficSources(trafficResponse.data.sources || []);
 
         // Update Web3 data
         const web3Data = {
-          visitorsPercentage: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(2)}%`,
-          visitorsIncrease: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`,
+          visitorsPercentage: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(2) : "0.00"}%`,
+          visitorsIncrease: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`,
           walletsConnected: analytics?.walletsConnected || 0,
-          walletsIncrease: `${((analytics?.walletsConnected / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`
+          walletsIncrease: `${analytics?.walletsConnected && analytics?.uniqueVisitors ? ((analytics.walletsConnected / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`
         };
 
         setWeb3Data(web3Data);
@@ -325,7 +344,7 @@ function formatDuration(seconds) {
       console.log('No idy available, skipping data fetch');
       setError('No website selected. Please select a website to view analytics.');
     }
-  }, [idy, selectedDate, selectedFilters, activeSection]);
+  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.web3Visitors, analytics?.walletsConnected]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {
@@ -365,11 +384,6 @@ function formatDuration(seconds) {
     setTrafficSources(updatedSources);
   };
 
-  // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
     setSecondNavOpen(!secondNavOpen);
@@ -379,25 +393,14 @@ function formatDuration(seconds) {
 console.log(analytics);
 return (
   <div className="flex h-screen overflow-hidden bg-gray-50">
-    {/* Mobile menu toggle button for main sidebar */}
-    <button 
-      className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
-      onClick={toggleSidebar}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
+    {/* Remove mobile menu toggle button for main sidebar since it's handled by parent */}
 
-    {/* Main sidebar - fixed on desktop, slide-in on mobile */}
-    <div className={`h-screen flex-shrink-0 md:block ${sidebarOpen ? 'block fixed z-40' : 'hidden'}`}>
-      <Sidebar currentPage="offchain-analytics" />
-    </div>
+    {/* Remove the main sidebar div since it's handled by parent */}
 
     {/* Content area with header and flexible content */}
     <div className="flex flex-col w-full h-screen">
       {/* Header - fixed at top */}
-      <Header className="w-full flex-shrink-0" />
+      <Header className="w-full flex-shrink-0" onMenuClick={onMenuClick} screenSize={screenSize} />
 
       {/* Content area below header */}
       <div className="flex flex-1 overflow-hidden">
@@ -629,7 +632,7 @@ return (
                                         {item.name}
                                       </td>
                                       <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
-                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{(item.value/(analytics?.newVisitors + analytics?.returningVisitors)*100).toFixed(2)}</td>
+                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{item.percentage}%</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -777,11 +780,10 @@ return (
     </div>
     
     {/* Overlay for mobile navigation */}
-    {(sidebarOpen || secondNavOpen) && (
+    {secondNavOpen && (
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
         onClick={() => {
-          setSidebarOpen(false);
           setSecondNavOpen(false);
         }}
       />
