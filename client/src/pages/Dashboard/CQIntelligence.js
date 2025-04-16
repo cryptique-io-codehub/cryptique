@@ -120,10 +120,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      // Simplified request format - testing with a basic request first
+      // Get API key from environment variable
+      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please check your environment variables.");
+      }
+
+      // Simple request with proper role format
       const requestBody = {
         contents: [
           {
+            role: "user",
             parts: [
               { text: messageWithContext }
             ]
@@ -135,9 +142,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
       };
 
-      console.log("Sending request to Gemini API:", JSON.stringify(requestBody, null, 2));
+      console.log("Sending request to Gemini API");
 
-      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=' + process.env.REACT_APP_GEMINI_API_KEY, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -152,7 +159,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
       }
 
-      console.log("Gemini API Response:", JSON.stringify(responseData, null, 2));
+      console.log("Gemini API Response received");
       
       const botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
