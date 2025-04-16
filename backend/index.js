@@ -14,6 +14,7 @@ console.log('Main app environment check:', {
   envKeys: Object.keys(process.env)
 });
 
+// Connect to MongoDB
 connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
@@ -24,12 +25,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
 app.use(bodyParser.json());
-app.get("/", (req, res) => {
-  res.send(
-    '<h1 style="text-align:center;">Welcome to the Cryptique Server</h1>'
-  );
-});
 
 // Debug endpoint to check environment variables
 app.get("/debug/env", (req, res) => {
@@ -40,12 +37,46 @@ app.get("/debug/env", (req, res) => {
   });
 });
 
+// Debug endpoint to list all registered routes
+app.get("/debug/routes", (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach(handler => {
+        if (handler.route) {
+          routes.push({
+            path: handler.route.path,
+            methods: Object.keys(handler.route.methods)
+          });
+        }
+      });
+    }
+  });
+  res.json(routes);
+});
+
+// Load routes
+console.log('Loading routes...');
+
 app.use("/api/auth", userRouter);
 app.use("/api/team", require("./routes/teamRouter"));
 app.use("/api/sdk", require("./routes/sdkRouter"));
-app.use("/api/website",require("./routes/websiteRouter"));
+app.use("/api/website", require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
-app.use("/api/ai", require("./routes/aiRouter"));
+
+// Load AI router with explicit error handling
+try {
+  const aiRouter = require("./routes/aiRouter");
+  app.use("/api/ai", aiRouter);
+  console.log('AI router loaded successfully');
+} catch (error) {
+  console.error('Error loading AI router:', error);
+}
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

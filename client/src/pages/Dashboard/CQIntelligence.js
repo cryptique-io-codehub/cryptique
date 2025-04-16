@@ -111,8 +111,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const initializeAI = () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
                   window.ENV?.NEXT_PUBLIC_GEMINI_API || 
-                  'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg'; // Fallback for testing
-    return new GoogleGenerativeAI(apiKey);
+                  'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
+    return new GoogleGenerativeAI(apiKey, {
+      apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta'
+    });
   };
 
   // Verify model availability
@@ -124,7 +126,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       console.log("Available models:", data.models?.map(m => m.name));
       
       // First try to find gemini-pro model
-      const defaultModel = 'gemini-pro';
+      const defaultModel = 'gemini-1.0-pro';  // Updated model name
       const models = data.models || [];
       
       // Check if our preferred model exists
@@ -141,8 +143,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       return cleanedName;
     } catch (error) {
       console.error("Error fetching models:", error.response?.data || error);
-      // Default to gemini-pro if we can't fetch models
-      return 'gemini-pro';
+      // Default to gemini-1.0-pro if we can't fetch models
+      return 'gemini-1.0-pro';
     }
   };
 
