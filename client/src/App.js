@@ -12,7 +12,6 @@ import { useTeam } from "./context/teamContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
 import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
-import KOLIntelligence from "./pages/Dashboard/KOLIntelligence.js";
 import ManageWebsites from "./pages/Dashboard/ManageWebsites.js";
 import ImportUsers from "./pages/Dashboard/ImportUsers.js";
 import History from "./pages/Dashboard/History.js";
@@ -37,7 +36,6 @@ const RouteListener = () => {
       teamsSection: 'Teams',
       offchain: 'Offchain Analytics',
       onchain: 'Onchain Explorer',
-      kol: 'KOL Intelligence',
       campaigns: 'Campaigns',
       'conversion-events': 'Conversion Events',
       advertise: 'Advertise',
@@ -74,7 +72,6 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/:team/offchain" element={<Dashboard />} />
         <Route path="/:team/onchain" element={<Dashboard />} />
-        <Route path="/:team/kol" element={<Dashboard />} />
         <Route path="/:team/campaigns" element={<Dashboard />} />
         <Route path="/:team/conversion-events" element={<Dashboard />} />
         <Route path="/:team/advertise" element={<Dashboard />} />

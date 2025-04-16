@@ -10,7 +10,6 @@ import { useLocation } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
 import ManageWebsites from './ManageWebsites.js'
-import KOLIntelligence from './KOLIntelligence.js'
 import ImportUsers from './ImportUsers.js'
 import History from "./History.js";
 import ConversionEvents from './ConversionEvents.js'
@@ -71,7 +70,6 @@ const Dashboard = () => {
       'dashboard': 'dashboard',
       'offchain': 'offchain-analytics',
       'onchain': 'onchain-explorer',
-      'kol': 'kol-intelligence',
       'campaigns': 'campaigns',
       'conversion-events': 'conversion-events',
       'advertise': 'advertise',
@@ -159,8 +157,6 @@ const Dashboard = () => {
         return <OffchainAnalytics {...commonProps} />;
       case "onchain-explorer":
         return <OnchainExplorer {...commonProps} />;
-      case "kol-intelligence":
-        return <KOLIntelligence {...commonProps} />;
       case "campaigns":
         return <Campaigns {...commonProps} />;
       case "conversion-events":
