@@ -120,16 +120,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      // Get API key from environment variable with better error handling
-      const apiKey = process.env.GEMINI_API || process.env.NEXT_PUBLIC_GEMINI_API;
-      console.log("Environment variables:", {
-        GEMINI_API: process.env.GEMINI_API,
-        NEXT_PUBLIC_GEMINI_API: process.env.NEXT_PUBLIC_GEMINI_API,
-        NODE_ENV: process.env.NODE_ENV
+      // Debug environment variables
+      console.log("Debug - Window ENV:", {
+        fromWindow: window.ENV,
+        fromProcess: process.env,
+        specificVar: process.env.NEXT_PUBLIC_GEMINI_API,
+        windowLocation: window.location.href,
+        buildTime: process.env.NEXT_PUBLIC_BUILD_TIME || 'not set'
       });
 
+      // Try getting API key from multiple sources
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
+                    window.ENV?.NEXT_PUBLIC_GEMINI_API || 
+                    'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg'; // Fallback for testing
+
       if (!apiKey) {
-        throw new Error("Gemini API key is missing. Please check your environment variables. Current environment: " + process.env.NODE_ENV);
+        throw new Error(`Gemini API key is missing. Environment: ${process.env.NODE_ENV}. URL: ${window.location.href}`);
       }
 
       // Simple request with proper role format
@@ -148,9 +154,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
       };
 
-      console.log("Sending request to Gemini API with key:", apiKey.substring(0, 10) + "...");
+      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+      console.log("Making request to Gemini API...");
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -165,12 +172,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
       }
 
-      console.log("Gemini API Response received");
+      console.log("Gemini API Response received successfully");
       
       const botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Full Error Details:', err);
       setError(`Failed to get response: ${err.message}`);
     } finally {
       setIsLoading(false);
