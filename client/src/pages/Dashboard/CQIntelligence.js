@@ -121,7 +121,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
       // Get API key from environment variable
-      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API;
       if (!apiKey) {
         throw new Error("Gemini API key is missing. Please check your environment variables.");
       }
