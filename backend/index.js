@@ -72,11 +72,22 @@ app.use("/api/analytics", require("./routes/analytics"));
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/api/ai", aiRouter);
+  app.use("/", aiRouter);
   console.log('AI router loaded successfully');
 } catch (error) {
   console.error('Error loading AI router:', error);
 }
+
+// Add catch-all route for debugging
+app.use((req, res, next) => {
+  console.log('Request received:', {
+    method: req.method,
+    path: req.path,
+    body: req.body,
+    query: req.query
+  });
+  next();
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

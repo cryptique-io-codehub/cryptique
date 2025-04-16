@@ -39,9 +39,9 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
 };
 
 // Get available models
-router.get('/models', async (req, res) => {
+router.get('/api/ai/models', async (req, res) => {
     try {
-        console.log('Handling /models request');
+        console.log('Handling /api/ai/models request');
         const apiKey = process.env.GEMINI_API;
         console.log('API Key status:', { exists: !!apiKey });
 
@@ -58,7 +58,7 @@ router.get('/models', async (req, res) => {
         console.log('Models fetched successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error in /models endpoint:', {
+        console.error('Error in /api/ai/models endpoint:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
@@ -66,7 +66,6 @@ router.get('/models', async (req, res) => {
             stack: error.stack
         });
 
-        // Send appropriate error response
         res.status(error.response?.status || 500).json({
             error: 'Failed to fetch models',
             details: error.response?.data || error.message
@@ -75,14 +74,11 @@ router.get('/models', async (req, res) => {
 });
 
 // Generate content
-router.post('/generate', async (req, res) => {
+router.post('/api/ai/generate', async (req, res) => {
     try {
+        console.log('Handling /api/ai/generate request');
         const { model, contents } = req.body;
         
-        if (!process.env.GEMINI_API) {
-            throw new Error('GEMINI_API environment variable is not set');
-        }
-
         if (!model || !contents) {
             return res.status(400).json({ error: 'Model and contents are required' });
         }
@@ -99,7 +95,7 @@ router.post('/generate', async (req, res) => {
         console.log('Content generated successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error in /generate endpoint:', {
+        console.error('Error in /api/ai/generate endpoint:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
@@ -108,12 +104,19 @@ router.post('/generate', async (req, res) => {
             requestBody: req.body
         });
 
-        // Send appropriate error response
         res.status(error.response?.status || 500).json({
             error: 'Failed to generate content',
             details: error.response?.data || error.message
         });
     }
+});
+
+// Debug route to test router
+router.get('/api/ai/test', (req, res) => {
+    res.json({
+        message: 'AI router is working',
+        timestamp: new Date().toISOString()
+    });
 });
 
 module.exports = router; 
