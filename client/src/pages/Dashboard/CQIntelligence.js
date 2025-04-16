@@ -85,25 +85,113 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Generate analytics summary for the AI context
+  // Generate comprehensive analytics summary for the AI context
   const generateAnalyticsSummary = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
       return "No analytics data available for this website yet.";
     }
 
-    const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
-    const totalSessions = analytics.sessions?.length || 0;
-    const uniqueVisitors = analytics.uniqueVisitors || 0;
-    const wallets = analytics.walletsConnected || 0;
-    const web3Visitors = analytics.web3Visitors || 0;
+    // Helper function to format date objects in sessions
+    const formatDate = (dateStr) => {
+      try {
+        return new Date(dateStr).toISOString();
+      } catch (e) {
+        return dateStr;
+      }
+    };
+
+    // Helper function to format session data
+    const formatSessions = (sessions) => {
+      if (!sessions || !Array.isArray(sessions)) return [];
+      return sessions.map(session => ({
+        startTime: formatDate(session.startTime),
+        endTime: formatDate(session.endTime),
+        duration: session.duration,
+        pages: session.pages,
+        referrer: session.referrer,
+        utm: {
+          source: session.utmSource,
+          medium: session.utmMedium,
+          campaign: session.utmCampaign,
+          term: session.utmTerm,
+          content: session.utmContent
+        },
+        device: session.device,
+        browser: session.browser,
+        os: session.os,
+        country: session.country,
+        region: session.region,
+        city: session.city
+      }));
+    };
+
+    // Format page views data
+    const pageViewsData = analytics.pageViews || {};
+    const totalPageViews = Object.values(pageViewsData).reduce((sum, views) => sum + views, 0);
+    const pageViewsByPath = Object.entries(pageViewsData).map(([path, views]) => ({
+      path,
+      views
+    }));
+
+    // Format traffic sources
+    const trafficSources = analytics.trafficSources || {};
+    
+    // Format wallet data
+    const walletData = {
+      totalWallets: analytics.walletsConnected || 0,
+      uniqueWallets: analytics.uniqueWallets || [],
+      walletTypes: analytics.walletTypes || {},
+      web3Visitors: analytics.web3Visitors || 0,
+      chainInteractions: analytics.chainInteractions || {}
+    };
+
+    // Compile complete analytics summary
+    const fullAnalytics = {
+      overview: {
+        totalPageViews,
+        uniqueVisitors: analytics.uniqueVisitors || 0,
+        averageSessionDuration: analytics.averageSessionDuration || 0,
+        bounceRate: analytics.bounceRate || 0
+      },
+      pageViews: {
+        total: totalPageViews,
+        byPath: pageViewsByPath
+      },
+      sessions: {
+        total: analytics.sessions?.length || 0,
+        details: formatSessions(analytics.sessions)
+      },
+      traffic: {
+        sources: trafficSources,
+        topReferrers: analytics.topReferrers || [],
+        utmSources: analytics.utmSources || {},
+        utmMediums: analytics.utmMediums || {},
+        utmCampaigns: analytics.utmCampaigns || {}
+      },
+      web3Data: {
+        ...walletData,
+        transactions: analytics.transactions || [],
+        contractInteractions: analytics.contractInteractions || []
+      },
+      geography: {
+        countries: analytics.countries || {},
+        regions: analytics.regions || {},
+        cities: analytics.cities || {}
+      },
+      technology: {
+        browsers: analytics.browsers || {},
+        devices: analytics.devices || {},
+        operatingSystems: analytics.operatingSystems || {}
+      },
+      customEvents: analytics.customEvents || [],
+      timeOnPage: analytics.timeOnPage || {},
+      exitPages: analytics.exitPages || {},
+      entryPages: analytics.entryPages || {}
+    };
 
     return `
-      Website Analytics Summary:
-      - Total Page Views: ${totalPageViews}
-      - Total Sessions: ${totalSessions}
-      - Unique Visitors: ${uniqueVisitors}
-      - Connected Wallets: ${wallets}
-      - Web3 Visitors: ${web3Visitors}
+      Website Analytics Data:
+      ${JSON.stringify(fullAnalytics, null, 2)}
     `;
   };
 
