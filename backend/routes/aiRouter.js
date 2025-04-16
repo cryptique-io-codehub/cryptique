@@ -43,9 +43,9 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
 };
 
 // Get available models
-router.get('/api/ai/models', async (req, res) => {
+router.get('/models', async (req, res) => {
     try {
-        console.log('Handling /api/ai/models request');
+        console.log('Handling /models request');
         const apiKey = process.env.GEMINI_API;
         console.log('API Key status:', { exists: !!apiKey });
 
@@ -62,7 +62,7 @@ router.get('/api/ai/models', async (req, res) => {
         console.log('Models fetched successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error in /api/ai/models endpoint:', {
+        console.error('Error in /models endpoint:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
@@ -78,9 +78,9 @@ router.get('/api/ai/models', async (req, res) => {
 });
 
 // Generate content
-router.post('/api/ai/generate', async (req, res) => {
+router.post('/generate', async (req, res) => {
     try {
-        console.log('Handling /api/ai/generate request');
+        console.log('Handling /generate request');
         const { model, contents } = req.body;
         
         if (!model || !contents) {
@@ -99,7 +99,7 @@ router.post('/api/ai/generate', async (req, res) => {
         console.log('Content generated successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error in /api/ai/generate endpoint:', {
+        console.error('Error in /generate endpoint:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
@@ -117,7 +117,7 @@ router.post('/api/ai/generate', async (req, res) => {
 });
 
 // Debug route to test router
-router.get('/api/ai/test', (req, res) => {
+router.get('/test', (req, res) => {
     res.json({
         message: 'AI router is working',
         timestamp: new Date().toISOString()

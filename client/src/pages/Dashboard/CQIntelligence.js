@@ -121,7 +121,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const verifyModel = async () => {
     try {
       console.log('Fetching available models...');
-      const response = await axiosInstance.get('/api/ai/models');
+      const response = await axiosInstance.get('/ai/models');
       const data = response.data;
       console.log("Available models:", data.models?.map(m => m.name));
       
@@ -208,7 +208,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         };
 
         console.log("Sending request to backend:", requestBody);
-        const response = await axiosInstance.post('/api/ai/generate', requestBody);
+        const response = await axiosInstance.post('/ai/generate', requestBody);
         
         if (!response.data) {
           throw new Error('No response data received from backend');

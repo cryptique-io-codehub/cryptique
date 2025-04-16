@@ -72,8 +72,8 @@ app.use("/api/analytics", require("./routes/analytics"));
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/", aiRouter);
-  console.log('AI router loaded successfully');
+  app.use("/api/ai", aiRouter);
+  console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);
 }
