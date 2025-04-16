@@ -120,32 +120,40 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      const response = await fetch('https://api.gemini.com/v1/chat/completions', {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_GEMINI_API_KEY}`
+          'x-goog-api-key': process.env.REACT_APP_GEMINI_API_KEY
         },
         body: JSON.stringify({
-          model: 'gemini-2.0-flash',
-          messages: [
-            { role: 'system', content: 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.' },
-            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
-            { role: 'user', content: messageWithContext }
-          ]
+          contents: [
+            { role: 'user', parts: [{ text: 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.' }] },
+            ...messages.map(msg => ({ 
+              role: msg.role === 'assistant' ? 'model' : 'user', 
+              parts: [{ text: msg.content }] 
+            })),
+            { role: 'user', parts: [{ text: messageWithContext }] }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024
+          }
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from Gemini');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      const botMessage = data.choices[0]?.message?.content || "Sorry, I couldn't process your request.";
+      const botMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
       console.error('Error:', err);
-      setError('Failed to get response. Please try again.');
+      setError('Failed to get response. Please check your API key and try again.');
     } finally {
       setIsLoading(false);
     }
