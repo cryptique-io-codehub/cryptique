@@ -3,26 +3,59 @@ const router = express.Router();
 const axios = require('axios');
 require('dotenv').config();
 
+// Base URL for Google's Generative AI API
+const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
 // Helper function to validate and clean model name
 const cleanModelName = (modelName) => {
     return modelName.replace(/^models\//, '');
 };
 
+// Helper function to create Google API request config
+const createGoogleApiConfig = (additionalHeaders = {}) => {
+    if (!process.env.GEMINI_API) {
+        throw new Error('GEMINI_API environment variable is not set');
+    }
+    
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            ...additionalHeaders
+        },
+        params: {
+            key: process.env.GEMINI_API
+        }
+    };
+};
+
 // Get available models
 router.get('/models', async (req, res) => {
     try {
+        if (!process.env.GEMINI_API) {
+            throw new Error('GEMINI_API environment variable is not set');
+        }
+
+        console.log('Fetching models from Google AI API...');
         const response = await axios.get(
-            'https://generativelanguage.googleapis.com/v1beta/models',
-            {
-                params: {
-                    key: process.env.GEMINI_API
-                }
-            }
+            `${GOOGLE_AI_BASE_URL}/models`,
+            createGoogleApiConfig()
         );
+
+        console.log('Models fetched successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error fetching models:', error.response?.data || error.message);
-        res.status(500).json({ error: 'Failed to fetch models' });
+        console.error('Error in /models endpoint:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            message: error.message
+        });
+
+        // Send appropriate error response
+        res.status(error.response?.status || 500).json({
+            error: 'Failed to fetch models',
+            details: error.response?.data || error.message
+        });
     }
 });
 
@@ -31,30 +64,39 @@ router.post('/generate', async (req, res) => {
     try {
         const { model, contents } = req.body;
         
+        if (!process.env.GEMINI_API) {
+            throw new Error('GEMINI_API environment variable is not set');
+        }
+
         if (!model || !contents) {
             return res.status(400).json({ error: 'Model and contents are required' });
         }
 
         const cleanedModelName = cleanModelName(model);
+        console.log('Using model:', cleanedModelName);
         
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${cleanedModelName}:generateContent`,
+            `${GOOGLE_AI_BASE_URL}/models/${cleanedModelName}:generateContent`,
             { contents },
-            {
-                params: {
-                    key: process.env.GEMINI_API
-                },
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
+            createGoogleApiConfig()
         );
 
+        console.log('Content generated successfully');
         res.json(response.data);
     } catch (error) {
-        console.error('Error generating content:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: error.response?.data?.error || 'Failed to generate content' 
+        console.error('Error in /generate endpoint:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            message: error.message,
+            requestedModel: req.body?.model,
+            requestBody: req.body
+        });
+
+        // Send appropriate error response
+        res.status(error.response?.status || 500).json({
+            error: 'Failed to generate content',
+            details: error.response?.data || error.message
         });
     }
 });

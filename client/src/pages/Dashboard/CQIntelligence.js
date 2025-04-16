@@ -118,14 +118,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Verify model availability
   const verifyModel = async () => {
     try {
+      console.log('Fetching available models...');
       const response = await axiosInstance.get('/ai/models');
-      const data = await response.data;
+      const data = response.data;
       console.log("Available models:", data.models?.map(m => m.name));
-      const modelName = data.models?.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
-      return modelName?.replace('models/', '') || 'gemini-pro';
+      
+      // First try to find gemini-pro model
+      const defaultModel = 'gemini-pro';
+      const models = data.models || [];
+      
+      // Check if our preferred model exists
+      const hasPreferredModel = models.some(m => m.name.includes(defaultModel));
+      if (hasPreferredModel) {
+        console.log(`Using preferred model: ${defaultModel}`);
+        return defaultModel;
+      }
+      
+      // Otherwise find first model that supports generateContent
+      const modelName = models.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
+      const cleanedName = modelName?.replace('models/', '') || defaultModel;
+      console.log(`Using alternative model: ${cleanedName}`);
+      return cleanedName;
     } catch (error) {
-      console.error("Error fetching models:", error);
-      return 'gemini-pro'; // Fallback to known model
+      console.error("Error fetching models:", error.response?.data || error);
+      // Default to gemini-pro if we can't fetch models
+      return 'gemini-pro';
     }
   };
 
@@ -149,7 +166,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         // Try SDK approach first
         const ai = initializeAI();
         const modelName = await verifyModel();
-        console.log("Using model:", modelName);
+        console.log("Using model for SDK:", modelName);
         
         const model = ai.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(messageWithContext);
@@ -159,6 +176,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         console.log("SDK approach failed, falling back to REST API:", sdkError);
         
         const modelName = await verifyModel();
+        console.log("Using model for REST API:", modelName);
         
         const requestBody = {
           model: modelName,
@@ -171,10 +189,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           ]
         };
 
+        console.log("Sending request to backend:", requestBody);
         const response = await axiosInstance.post('/ai/generate', requestBody);
         
         if (!response.data) {
-          throw new Error('No response data received');
+          throw new Error('No response data received from backend');
+        }
+
+        if (response.data.error) {
+          throw new Error(response.data.error);
         }
 
         botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
@@ -182,8 +205,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
-      console.error('Full Error Details:', err);
-      setError(`Failed to get response: ${err.message}`);
+      console.error('Full Error Details:', err.response?.data || err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
+      setError(`Failed to get response: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
