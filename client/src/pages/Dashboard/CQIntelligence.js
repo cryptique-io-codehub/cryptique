@@ -120,6 +120,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
+      // System prompt for Gemini
+      const systemPrompt = 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.';
+
+      // Format conversation history
+      const formattedMessages = messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
+
+      // Add the current message with context
+      formattedMessages.push({ 
+        role: 'user', 
+        parts: [{ text: messageWithContext }] 
+      });
+
       const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
         method: 'POST',
         headers: {
@@ -127,17 +142,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           'x-goog-api-key': process.env.REACT_APP_GEMINI_API_KEY
         },
         body: JSON.stringify({
-          contents: [
-            { role: 'user', parts: [{ text: 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.' }] },
-            ...messages.map(msg => ({ 
-              role: msg.role === 'assistant' ? 'model' : 'user', 
-              parts: [{ text: msg.content }] 
-            })),
-            { role: 'user', parts: [{ text: messageWithContext }] }
-          ],
+          contents: formattedMessages,
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 1024
+            maxOutputTokens: 800,
+            topP: 0.95,
+            topK: 40
           }
         })
       });
