@@ -121,30 +121,46 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const verifyModel = async () => {
     try {
       console.log('Fetching available models...');
-      const response = await axiosInstance.get('/ai/models');
+      const response = await axiosInstance.get('/api/ai/models');
       const data = response.data;
       console.log("Available models:", data.models?.map(m => m.name));
       
-      // First try to find gemini-pro model
-      const defaultModel = 'gemini-1.0-pro';  // Updated model name
+      // Define preferred models in order of preference
+      const preferredModels = [
+        'gemini-1.5-pro',
+        'gemini-pro',
+        'gemini-1.5-pro-latest'
+      ];
+      
       const models = data.models || [];
       
-      // Check if our preferred model exists
-      const hasPreferredModel = models.some(m => m.name.includes(defaultModel));
-      if (hasPreferredModel) {
-        console.log(`Using preferred model: ${defaultModel}`);
-        return defaultModel;
+      // Try to find any of our preferred models
+      for (const preferredModel of preferredModels) {
+        const hasModel = models.some(m => m.name.includes(preferredModel));
+        if (hasModel) {
+          console.log(`Using preferred model: ${preferredModel}`);
+          return preferredModel;
+        }
       }
       
-      // Otherwise find first model that supports generateContent
-      const modelName = models.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
-      const cleanedName = modelName?.replace('models/', '') || defaultModel;
-      console.log(`Using alternative model: ${cleanedName}`);
-      return cleanedName;
+      // If no preferred model found, find first model that supports generateContent
+      const modelName = models.find(m => 
+        m.supportedGenerationMethods?.includes('generateContent') &&
+        m.name.includes('pro') // Prefer pro models
+      )?.name;
+      
+      if (modelName) {
+        const cleanedName = modelName.replace('models/', '');
+        console.log(`Using alternative model: ${cleanedName}`);
+        return cleanedName;
+      }
+      
+      // Default fallback
+      console.log('Falling back to default model: gemini-1.5-pro');
+      return 'gemini-1.5-pro';
     } catch (error) {
       console.error("Error fetching models:", error.response?.data || error);
-      // Default to gemini-1.0-pro if we can't fetch models
-      return 'gemini-1.0-pro';
+      return 'gemini-1.5-pro'; // Default fallback
     }
   };
 
@@ -192,7 +208,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         };
 
         console.log("Sending request to backend:", requestBody);
-        const response = await axiosInstance.post('/ai/generate', requestBody);
+        const response = await axiosInstance.post('/api/ai/generate', requestBody);
         
         if (!response.data) {
           throw new Error('No response data received from backend');

@@ -14,7 +14,11 @@ const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 // Helper function to validate and clean model name
 const cleanModelName = (modelName) => {
-    return modelName.replace(/^models\//, '');
+    // Remove 'models/' prefix if it exists
+    const cleaned = modelName.replace(/^models\//, '');
+    
+    // Add 'models/' prefix if it doesn't exist
+    return cleaned.startsWith('models/') ? cleaned : `models/${cleaned}`;
 };
 
 // Helper function to create Google API request config
@@ -101,6 +105,7 @@ router.post('/api/ai/generate', async (req, res) => {
             data: error.response?.data,
             message: error.message,
             requestedModel: req.body?.model,
+            cleanedModel: cleanModelName(req.body?.model || ''),
             requestBody: req.body
         });
 
