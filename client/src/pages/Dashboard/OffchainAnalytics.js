@@ -37,6 +37,7 @@ const OffchainAnalytics = ({ onMenuClick, screenSize }) => {
       if(idt){
         setverifyload(true);
         try {
+          // Use a relative path
           const new_response = await axiosInstance.get(`/sdk/analytics/${idt}`);
           if (new_response.data && new_response.data.analytics) {
             setanalytics(new_response.data.analytics);
@@ -65,7 +66,7 @@ const OffchainAnalytics = ({ onMenuClick, screenSize }) => {
           }
         } catch (error) {
           console.error('Error fetching analytics:', error);
-          setError('Failed to load analytics data');
+          setError('Failed to load analytics data. Please check your connection or try again later.');
         } finally {
           setverifyload(false);
         }
@@ -256,82 +257,74 @@ function formatDuration(seconds) {
           end: endDate
         });
 
-        // Fetch chart data from API
-        const chartResponse = await axiosInstance.get(`/analytics/chart`, {
-          params: {
-            siteId: idy,
-            timeframe: 'hourly',
-            start: startDate,
-            end: endDate
-          }
-        }).catch(error => {
-          console.error('Chart API Error:', error.response?.data || error.message);
-          throw new Error(error.response?.data?.message || 'Failed to fetch chart data');
-        });
-
-        if (!chartResponse?.data) {
-          throw new Error('No data received from chart API');
-        }
-
-        if (chartResponse.data.error) {
-          throw new Error(chartResponse.data.error);
-        }
-
-        console.log('Chart API Response:', chartResponse.data);
-
-        // Transform the data to match the expected format
-        const transformedChartData = {
-          labels: chartResponse.data.labels || [],
-          datasets: [
-            {
-              label: 'Visitors',
-              data: chartResponse.data.visitors || []
-            },
-            {
-              label: 'Wallets',
-              data: chartResponse.data.wallets || []
+        // Fetch chart data from API - use try-catch for each request
+        let chartResponse;
+        try {
+          chartResponse = await axiosInstance.get(`/analytics/chart`, {
+            params: {
+              siteId: idy,
+              timeframe: 'hourly',
+              start: startDate,
+              end: endDate
             }
-          ]
-        };
+          });
+        } catch (chartError) {
+          console.error('Chart API Error:', chartError);
+          // Continue execution even if this request fails
+        }
 
-        setChartData(transformedChartData);
-
-        // Fetch traffic sources data
-        console.log('Fetching traffic sources with params:', {
-          siteId: idy,
-          start: startDate,
-          end: endDate
-        });
-
-        const trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
-          params: {
-            siteId: idy,
-            start: startDate,
-            end: endDate
+        if (chartResponse?.data) {
+          if (chartResponse.data.error) {
+            console.warn("Chart data error:", chartResponse.data.error);
+          } else {
+            // Transform the data to match the expected format
+            const transformedChartData = {
+              labels: chartResponse.data.labels || [],
+              datasets: [
+                {
+                  label: 'Visitors',
+                  data: chartResponse.data.visitors || []
+                },
+                {
+                  label: 'Wallets',
+                  data: chartResponse.data.wallets || []
+                }
+              ]
+            };
+            
+            setChartData(transformedChartData);
           }
-        }).catch(error => {
-          console.error('Traffic Sources API Error:', error.response?.data || error.message);
-          throw new Error(error.response?.data?.message || 'Failed to fetch traffic sources data');
-        });
-
-        if (!trafficResponse?.data) {
-          throw new Error('No data received from traffic sources API');
         }
 
-        if (trafficResponse.data.error) {
-          throw new Error(trafficResponse.data.error);
+        // Fetch traffic sources data - use try-catch for each request
+        let trafficResponse;
+        try {
+          trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
+            params: {
+              siteId: idy,
+              start: startDate,
+              end: endDate
+            }
+          });
+          
+          if (trafficResponse?.data) {
+            if (trafficResponse.data.error) {
+              console.warn("Traffic sources data error:", trafficResponse.data.error);
+            } else {
+              setTrafficSources(trafficResponse.data.sources || []);
+            }
+          }
+        } catch (trafficError) {
+          console.error('Traffic Sources API Error:', trafficError);
+          // Continue execution even if this request fails
         }
-
-        console.log('Traffic Sources API Response:', trafficResponse.data);
-
-        setTrafficSources(trafficResponse.data.sources || []);
 
         // Update Web3 data
         const web3Data = {
-          visitorsPercentage: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(2)}%`,
-          visitorsIncrease: `${((analytics?.web3Visitors / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`,
+          visitorsPercentage: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(2) : "0.00"}%`,
+          visitorsIncrease: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`,
           walletsConnected: analytics?.walletsConnected || 0,
-          walletsIncrease: `${((analytics?.walletsConnected / analytics?.uniqueVisitors) * 100).toFixed(1)}% Increase`
+          walletsIncrease: `${analytics?.walletsConnected && analytics?.uniqueVisitors ? ((analytics.walletsConnected / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`
         };
 
         setWeb3Data(web3Data);
@@ -351,7 +344,7 @@ function formatDuration(seconds) {
       console.log('No idy available, skipping data fetch');
       setError('No website selected. Please select a website to view analytics.');
     }
-  }, [idy, selectedDate, selectedFilters, activeSection]);
+  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.web3Visitors, analytics?.walletsConnected]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {
