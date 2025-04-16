@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
+import { GoogleGenAI } from "@google/genai";
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -106,6 +107,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     `;
   };
 
+  // Initialize Gemini AI
+  const initializeAI = () => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
+                  window.ENV?.NEXT_PUBLIC_GEMINI_API || 
+                  'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg'; // Fallback for testing
+    return new GoogleGenAI({ apiKey });
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -120,61 +129,56 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      // Debug environment variables
-      console.log("Debug - Window ENV:", {
-        fromWindow: window.ENV,
-        fromProcess: process.env,
-        specificVar: process.env.NEXT_PUBLIC_GEMINI_API,
-        windowLocation: window.location.href,
-        buildTime: process.env.NEXT_PUBLIC_BUILD_TIME || 'not set'
-      });
+      let response;
+      let botMessage;
 
-      // Try getting API key from multiple sources
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
-                    window.ENV?.NEXT_PUBLIC_GEMINI_API || 
-                    'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg'; // Fallback for testing
+      try {
+        // Try SDK approach first
+        const ai = initializeAI();
+        const result = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: messageWithContext,
+        });
+        botMessage = result.text;
+      } catch (sdkError) {
+        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        
+        // Fallback to REST API approach
+        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
+                      window.ENV?.NEXT_PUBLIC_GEMINI_API || 
+                      'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
 
-      if (!apiKey) {
-        throw new Error(`Gemini API key is missing. Environment: ${process.env.NODE_ENV}. URL: ${window.location.href}`);
-      }
+        const requestBody = {
+          contents: [
+            {
+              parts: [
+                { text: messageWithContext }
+              ]
+            }
+          ]
+        };
 
-      // Simple request with proper role format
-      const requestBody = {
-        contents: [
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
           {
-            role: "user",
-            parts: [
-              { text: messageWithContext }
-            ]
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
           }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 800
+        );
+
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+          console.error('API Error Details:', JSON.stringify(responseData, null, 2));
+          throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
         }
-      };
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
-      console.log("Making request to Gemini API...");
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        console.error('API Error Details:', JSON.stringify(responseData, null, 2));
-        throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
+        botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
 
-      console.log("Gemini API Response received successfully");
-      
-      const botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
       console.error('Full Error Details:', err);
