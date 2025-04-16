@@ -120,10 +120,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      // Get API key from environment variable
-      const apiKey = process.env.GEMINI_API;
+      // Get API key from environment variable with better error handling
+      const apiKey = process.env.GEMINI_API || process.env.NEXT_PUBLIC_GEMINI_API;
+      console.log("Environment variables:", {
+        GEMINI_API: process.env.GEMINI_API,
+        NEXT_PUBLIC_GEMINI_API: process.env.NEXT_PUBLIC_GEMINI_API,
+        NODE_ENV: process.env.NODE_ENV
+      });
+
       if (!apiKey) {
-        throw new Error("Gemini API key is missing. Please check your environment variables.");
+        throw new Error("Gemini API key is missing. Please check your environment variables. Current environment: " + process.env.NODE_ENV);
       }
 
       // Simple request with proper role format
@@ -142,7 +148,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
       };
 
-      console.log("Sending request to Gemini API");
+      console.log("Sending request to Gemini API with key:", apiKey.substring(0, 10) + "...");
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`, {
         method: 'POST',
