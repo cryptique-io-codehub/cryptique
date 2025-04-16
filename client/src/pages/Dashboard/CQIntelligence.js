@@ -1,13 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
+import axiosInstance from "../../axiosInstance";
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
+  // State for website selection and data
+  const [websiteArray, setWebsiteArray] = useState([]);
   const [selectedSite, setSelectedSite] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [analytics, setAnalytics] = useState({});
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -17,6 +22,89 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Fetch website list on component mount
+  useEffect(() => {
+    const fetchWebsites = async () => {
+      setIsLoading(true);
+      try {
+        const selectedTeam = localStorage.getItem("selectedTeam");
+        const response = await axiosInstance.post('/website/getWebsites', {
+          teamName: selectedTeam
+        });
+        
+        if (response.status === 200 && response.data.websites.length > 0) {
+          setWebsiteArray(response.data.websites);
+          
+          // Get the currently selected website from localStorage
+          const savedWebsiteId = localStorage.getItem("idy");
+          if (savedWebsiteId) {
+            setSelectedSite(savedWebsiteId);
+            fetchAnalyticsData(savedWebsiteId);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching websites:", error);
+        setError("Failed to load websites. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWebsites();
+  }, []);
+
+  // Function to fetch analytics data for a selected website
+  const fetchAnalyticsData = async (siteId) => {
+    setIsDataLoading(true);
+    try {
+      const response = await axiosInstance.get(`/sdk/analytics/${siteId}`);
+      if (response.data && response.data.analytics) {
+        setAnalytics(response.data.analytics);
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error fetching analytics data:", error);
+      setError("Failed to load analytics data for this website.");
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  // Handle website selection change
+  const handleSiteChange = async (e) => {
+    const siteId = e.target.value;
+    setSelectedSite(siteId);
+    
+    if (siteId) {
+      localStorage.setItem("idy", siteId);
+      fetchAnalyticsData(siteId);
+    } else {
+      setAnalytics({});
+    }
+  };
+
+  // Generate analytics summary for the AI context
+  const generateAnalyticsSummary = () => {
+    if (!analytics || Object.keys(analytics).length === 0) {
+      return "No analytics data available for this website yet.";
+    }
+
+    const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
+    const totalSessions = analytics.sessions?.length || 0;
+    const uniqueVisitors = analytics.uniqueVisitors || 0;
+    const wallets = analytics.walletsConnected || 0;
+    const web3Visitors = analytics.web3Visitors || 0;
+
+    return `
+      Website Analytics Summary:
+      - Total Page Views: ${totalPageViews}
+      - Total Sessions: ${totalSessions}
+      - Unique Visitors: ${uniqueVisitors}
+      - Connected Wallets: ${wallets}
+      - Web3 Visitors: ${web3Visitors}
+    `;
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -28,6 +116,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
+      // Include analytics data in the context
+      const analyticsSummary = generateAnalyticsSummary();
+      const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
+
       const response = await fetch('https://api.gemini.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -37,8 +129,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         body: JSON.stringify({
           model: 'gemini-2.0-flash',
           messages: [
+            { role: 'system', content: 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.' },
             ...messages.map(msg => ({ role: msg.role, content: msg.content })),
-            { role: 'user', content: userMessage }
+            { role: 'user', content: messageWithContext }
           ]
         })
       });
@@ -48,14 +141,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
 
       const data = await response.json();
-      const botMessage = data.choices[0].message.content;
+      const botMessage = data.choices[0]?.message?.content || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
-      setError('Failed to get response. Please try again.');
       console.error('Error:', err);
+      setError('Failed to get response. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Format analytics data for display
+  const formatAnalyticsData = () => {
+    if (!analytics || Object.keys(analytics).length === 0) {
+      return [];
+    }
+
+    const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
+    const uniqueVisitors = analytics.uniqueVisitors || 0;
+    
+    return [
+      { label: "Total Page Views", value: totalPageViews },
+      { label: "Unique Visitors", value: uniqueVisitors },
+      { label: "Connected Wallets", value: analytics.walletsConnected || 0 },
+      { label: "Web3 Visitors", value: analytics.web3Visitors || 0 }
+    ];
   };
 
   return (
@@ -80,13 +190,44 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
             <select
               value={selectedSite}
-              onChange={(e) => setSelectedSite(e.target.value)}
+              onChange={handleSiteChange}
               className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
             >
               <option value="">Select a website</option>
-              <option value="site1">Site 1</option>
-              <option value="site2">Site 2</option>
+              {websiteArray.map(website => (
+                <option key={website.siteId} value={website.siteId}>
+                  {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                </option>
+              ))}
             </select>
+            
+            {/* Analytics Summary */}
+            {isDataLoading ? (
+              <div className="mt-4 p-4 bg-white rounded-lg text-center">
+                <div className="animate-pulse flex space-x-4">
+                  <div className="flex-1 space-y-4 py-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : analytics && Object.keys(analytics).length > 0 ? (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                {formatAnalyticsData().map((item, index) => (
+                  <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
+                    <div className="text-xs text-gray-500">{item.label}</div>
+                    <div className="text-lg font-semibold">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+            ) : selectedSite ? (
+              <div className="mt-4 p-4 bg-white rounded-lg text-center text-gray-500">
+                No analytics data available for this website yet.
+              </div>
+            ) : null}
           </div>
 
           {/* Chat Area */}
@@ -98,6 +239,26 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 <p className="text-gray-600 max-w-md">
                   I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
                 </p>
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => {
+                      setInput("What are the top pages on my website?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    What are the top pages on my website?
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("How is my website performing?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    How is my website performing?
+                  </button>
+                </div>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -146,14 +307,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask about your analytics..."
-                className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
+                placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
+                disabled={!selectedSite || isLoading}
+                className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
               />
               <button
                 onClick={handleSend}
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !input.trim() || !selectedSite}
                 className={`px-6 rounded-lg flex items-center gap-2 ${
-                  isLoading || !input.trim()
+                  isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
                 }`}
