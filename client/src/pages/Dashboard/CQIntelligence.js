@@ -120,53 +120,45 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      // System prompt for Gemini
-      const systemPrompt = 'You are CQ Intelligence, an AI assistant for Cryptique Analytics. You help users analyze and understand their website analytics data. When answering questions, use the provided context about the website\'s analytics to give relevant insights. Focus on explaining trends, providing recommendations, and highlighting important metrics. If you cannot answer a question based on the available data, be honest about the limitations.';
+      // Simplified request format - testing with a basic request first
+      const requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: messageWithContext }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 800
+        }
+      };
 
-      // Format conversation history
-      const formattedMessages = messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
+      console.log("Sending request to Gemini API:", JSON.stringify(requestBody, null, 2));
 
-      // Add the current message with context
-      formattedMessages.push({ 
-        role: 'user', 
-        parts: [{ text: messageWithContext }] 
-      });
-
-      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=' + process.env.REACT_APP_GEMINI_API_KEY, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.REACT_APP_GEMINI_API_KEY
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          contents: formattedMessages,
-          systemInstruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800,
-            topP: 0.95,
-            topK: 40
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', errorData);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        console.error('API Error Details:', JSON.stringify(responseData, null, 2));
+        throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
       }
 
-      const data = await response.json();
-      const botMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+      console.log("Gemini API Response:", JSON.stringify(responseData, null, 2));
+      
+      const botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
       console.error('Error:', err);
-      setError('Failed to get response. Please check your API key and try again.');
+      setError(`Failed to get response: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
