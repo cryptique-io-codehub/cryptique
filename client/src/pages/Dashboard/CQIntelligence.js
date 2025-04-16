@@ -118,16 +118,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Verify model availability
   const verifyModel = async () => {
     try {
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models?key=' + 
-        (process.env.NEXT_PUBLIC_GEMINI_API || window.ENV?.NEXT_PUBLIC_GEMINI_API || 'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg')
-      );
-      const data = await response.json();
+      const response = await axiosInstance.get('/ai/models');
+      const data = await response.data;
       console.log("Available models:", data.models?.map(m => m.name));
-      return data.models?.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
+      const modelName = data.models?.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
+      return modelName?.replace('models/', '') || 'gemini-pro';
     } catch (error) {
       console.error("Error fetching models:", error);
-      return 'gemini-1.0-pro'; // Fallback to known model
+      return 'gemini-pro'; // Fallback to known model
     }
   };
 
@@ -145,7 +143,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
 
-      let response;
       let botMessage;
 
       try {
@@ -161,14 +158,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       } catch (sdkError) {
         console.log("SDK approach failed, falling back to REST API:", sdkError);
         
-        // Fallback to REST API approach
-        const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
-                      window.ENV?.NEXT_PUBLIC_GEMINI_API || 
-                      'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
-
         const modelName = await verifyModel();
         
         const requestBody = {
+          model: modelName,
           contents: [
             {
               parts: [
@@ -178,25 +171,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           ]
         };
 
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-          }
-        );
-
-        const responseData = await response.json();
+        const response = await axiosInstance.post('/ai/generate', requestBody);
         
-        if (!response.ok) {
-          console.error('API Error Details:', JSON.stringify(responseData, null, 2));
-          throw new Error(`API error: ${response.status} ${response.statusText} - ${responseData.error?.message || 'Unknown error'}`);
+        if (!response.data) {
+          throw new Error('No response data received');
         }
 
-        botMessage = responseData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+        botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);

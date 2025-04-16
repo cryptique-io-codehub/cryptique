@@ -10,7 +10,12 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors("*"));
+app.use(cors({
+  origin: ["http://localhost:3000", "https://app.cryptique.io"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send(
@@ -22,6 +27,7 @@ app.use("/api/team", require("./routes/teamRouter"));
 app.use("/api/sdk", require("./routes/sdkRouter"));
 app.use("/api/website",require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
+app.use("/api/ai", require("./routes/aiRouter"));
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
