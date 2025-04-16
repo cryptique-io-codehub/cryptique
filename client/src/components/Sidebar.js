@@ -1,4 +1,4 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
@@ -104,7 +104,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
             className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
             onClick={() => onNavigate && onNavigate("cq-intelligence")}
           >
-            <BarChart size={14} /> {showExpanded && "CQ Intelligence"}
+            <BrainCircuit size={14} /> {showExpanded && "CQ Intelligence"}
           </Link>
           
           
