@@ -19,7 +19,7 @@ import History from "./pages/Dashboard/History.js";
 import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
-import CQIntelligenceChatbot from './pages/CQIntelligenceChatbot';
+import CQIntelligence from './pages/Dashboard/CQIntelligence.js';
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 const RouteListener = () => {
@@ -82,7 +82,7 @@ function App() {
         <Route path="/:team/history" element={<History/>} />
         <Route path="/:team/importusers" element={<ImportUsers/>} />
         <Route path="/:team/managewebsites" element={<ManageWebsites/>} />
-        <Route path="/:team/cq-intelligence" element={<CQIntelligenceChatbot />} />
+        <Route path="/:team/cq-intelligence" element={<CQIntelligence />} />
         
         {/* Parent Route for Settings */}
         <Route path="/:team/settings" element={<Settings />}>
