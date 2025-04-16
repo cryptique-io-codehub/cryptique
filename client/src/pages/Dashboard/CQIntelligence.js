@@ -115,6 +115,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return new GoogleGenerativeAI(apiKey);
   };
 
+  // Verify model availability
+  const verifyModel = async () => {
+    try {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models?key=' + 
+        (process.env.NEXT_PUBLIC_GEMINI_API || window.ENV?.NEXT_PUBLIC_GEMINI_API || 'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg')
+      );
+      const data = await response.json();
+      console.log("Available models:", data.models?.map(m => m.name));
+      return data.models?.find(m => m.supportedGenerationMethods?.includes('generateContent'))?.name;
+    } catch (error) {
+      console.error("Error fetching models:", error);
+      return 'gemini-1.0-pro'; // Fallback to known model
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -135,7 +151,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       try {
         // Try SDK approach first
         const ai = initializeAI();
-        const model = ai.getGenerativeModel({ model: "gemini-pro" });
+        const modelName = await verifyModel();
+        console.log("Using model:", modelName);
+        
+        const model = ai.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(messageWithContext);
         const response = await result.response;
         botMessage = response.text();
@@ -147,6 +166,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                       window.ENV?.NEXT_PUBLIC_GEMINI_API || 
                       'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
 
+        const modelName = await verifyModel();
+        
         const requestBody = {
           contents: [
             {
@@ -158,7 +179,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         };
 
         response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
           {
             method: 'POST',
             headers: {
