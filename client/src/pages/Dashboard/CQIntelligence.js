@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -112,7 +112,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
                   window.ENV?.NEXT_PUBLIC_GEMINI_API || 
                   'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg'; // Fallback for testing
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenerativeAI(apiKey);
   };
 
   const handleSend = async () => {
@@ -135,11 +135,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       try {
         // Try SDK approach first
         const ai = initializeAI();
-        const result = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
-          contents: messageWithContext,
-        });
-        botMessage = result.text;
+        const model = ai.getGenerativeModel({ model: "gemini-pro" });
+        const result = await model.generateContent(messageWithContext);
+        const response = await result.response;
+        botMessage = response.text();
       } catch (sdkError) {
         console.log("SDK approach failed, falling back to REST API:", sdkError);
         
@@ -159,7 +158,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         };
 
         response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
           {
             method: 'POST',
             headers: {
