@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, Bot, Globe } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 
-const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
+const CQIntelligence = () => {
   const [selectedSite, setSelectedSite] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -58,42 +58,42 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className={`fixed right-0 top-0 h-screen w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Bot className="text-[#caa968]" size={20} />
-            <h2 className="text-lg font-semibold text-[#1d0c46]">CQ Intelligence</h2>
+        <div className="p-6 border-b">
+          <div className="flex items-center gap-3">
+            <Bot className="text-[#caa968]" size={24} />
+            <div>
+              <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
+              <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
-            <X size={20} className="text-gray-500" />
-          </button>
         </div>
 
         {/* Website Selector */}
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Globe size={16} className="text-gray-500" />
-            <select
-              value={selectedSite}
-              onChange={(e) => setSelectedSite(e.target.value)}
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
-            >
-              <option value="">Select Website</option>
-              <option value="site1">Site 1</option>
-              <option value="site2">Site 2</option>
-            </select>
-          </div>
+        <div className="p-6 border-b bg-gray-50">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
+          <select
+            value={selectedSite}
+            onChange={(e) => setSelectedSite(e.target.value)}
+            className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
+          >
+            <option value="">Select a website</option>
+            <option value="site1">Site 1</option>
+            <option value="site2">Site 2</option>
+          </select>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-              <Bot size={48} className="mb-4 text-[#caa968]" />
-              <p className="text-lg font-semibold text-[#1d0c46]">Welcome to CQ Intelligence</p>
-              <p className="mt-2">Ask me anything about your website's performance and analytics.</p>
+            <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+              <Bot size={64} className="mb-6 text-[#caa968]" />
+              <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+              <p className="text-gray-600 max-w-md">
+                I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+              </p>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -102,7 +102,7 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                  className={`max-w-[80%] p-4 rounded-lg ${
                     message.role === 'user'
                       ? 'bg-[#1d0c46] text-white'
                       : 'bg-gray-100 text-gray-800'
@@ -115,7 +115,7 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
           )}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 p-3 rounded-lg">
+              <div className="bg-gray-100 p-4 rounded-lg">
                 <div className="flex space-x-2">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
@@ -126,7 +126,7 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
           )}
           {error && (
             <div className="flex justify-start">
-              <div className="bg-red-100 text-red-600 p-3 rounded-lg">
+              <div className="bg-red-100 text-red-600 p-4 rounded-lg">
                 {error}
               </div>
             </div>
@@ -134,27 +134,28 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
+        {/* Input Area */}
+        <div className="p-6 border-t bg-gray-50">
+          <div className="flex gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Type your message..."
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
+              placeholder="Ask about your analytics..."
+              className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
             />
             <button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              className={`p-2 rounded-lg ${
+              className={`px-6 rounded-lg flex items-center gap-2 ${
                 isLoading || !input.trim()
                   ? 'bg-gray-200 text-gray-400'
                   : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
               }`}
             >
               <Send size={20} />
+              <span>Send</span>
             </button>
           </div>
         </div>
@@ -163,4 +164,4 @@ const CQIntelligenceSidebar = ({ isOpen, onClose }) => {
   );
 };
 
-export default CQIntelligenceSidebar; 
+export default CQIntelligence; 
