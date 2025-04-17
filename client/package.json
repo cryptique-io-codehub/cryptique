@@ -24,11 +24,13 @@
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^18.0.0",
     "react-grid-layout": "^1.5.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.4.0",
     "react-scripts": "5.0.1",
     "react-simple-maps": "^3.0.0",
     "react-svg-worldmap": "^2.0.0-alpha.16",
     "recharts": "^2.15.1",
+    "remark-gfm": "^4.0.1",
     "web-vitals": "^2.1.4"
   },
   "proxy": "https://cryptique-backend.vercel.app",

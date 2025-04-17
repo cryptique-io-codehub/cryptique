@@ -3,6 +3,8 @@ import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -450,7 +452,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     ];
   };
 
-  // Update the message rendering in the JSX to preserve formatting
+  // Update the message rendering function
   const renderMessage = (message) => {
     return (
       <div className={`max-w-[90%] p-4 rounded-lg ${
@@ -460,8 +462,30 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }`}>
         <div className="prose prose-sm max-w-none">
           {message.role === 'assistant' ? (
-            <div className="markdown-content whitespace-pre-wrap" style={{ counterReset: 'recommendation' }}>
-              {message.content}
+            <div className="markdown-content">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4" {...props} />,
+                  p: ({node, ...props}) => <p className="text-gray-700 mb-4" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-semibold text-[#1d0c46]" {...props} />,
+                  em: ({node, ...props}) => <em className="text-gray-600 italic" {...props} />,
+                  code: ({node, inline, ...props}) => 
+                    inline ? 
+                      <code className="bg-gray-100 text-[#1d0c46] px-1 py-0.5 rounded text-sm" {...props} /> :
+                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />,
+                  hr: ({node, ...props}) => <hr className="my-6 border-t border-gray-200" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-2 mb-4" {...props} />,
+                  li: ({node, ordered, ...props}) => (
+                    <li className="text-gray-700 ml-4" {...props} />
+                  ),
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-2 my-4 bg-gray-50 rounded-r" {...props} />
+                  )
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
           ) : (
             message.content
@@ -493,19 +517,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     .markdown-content {
       font-family: 'Poppins', sans-serif;
-      font-weight: 400;
       line-height: 1.6;
     }
 
     .markdown-content h3 {
       font-family: 'Montserrat', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin: 2rem 0 1rem;
-      color: #1d0c46;
-      letter-spacing: -0.02em;
-      border-bottom: 2px solid #f3f4f6;
-      padding-bottom: 0.5rem;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
     }
 
     .markdown-content h3:first-child {
@@ -513,89 +531,49 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     .markdown-content p {
-      margin: 0.75rem 0;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 400;
+      margin-bottom: 1rem;
     }
 
     .markdown-content strong {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
       color: #1d0c46;
     }
 
-    .markdown-content ul {
-      margin: 0.75rem 0;
-      padding-left: 1.5rem;
-      list-style-type: none;
-    }
-
-    .markdown-content ul li {
-      margin: 0.5rem 0;
-      position: relative;
-    }
-
-    .markdown-content ul li::before {
-      content: "•";
-      color: #caa968;
-      font-weight: bold;
-      position: absolute;
-      left: -1rem;
+    .markdown-content code {
+      font-family: 'Poppins', sans-serif;
     }
 
     .markdown-content blockquote {
-      border-left: 4px solid #caa968;
-      padding: 0.5rem 0 0.5rem 1rem;
-      margin: 0.75rem 0;
-      background-color: #f8f9fa;
-      font-family: 'Poppins', sans-serif;
+      margin: 1rem 0;
     }
 
     .markdown-content blockquote p {
       margin: 0;
     }
 
-    .markdown-content code {
-      background-color: #f3f4f6;
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
-      font-size: 0.875rem;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 500;
-      color: #1d0c46;
+    .markdown-content ul {
+      margin: 1rem 0;
+    }
+
+    .markdown-content li {
+      margin: 0.5rem 0;
     }
 
     .markdown-content hr {
-      margin: 1.5rem 0;
-      border: 0;
-      border-top: 1px solid #e5e7eb;
+      margin: 2rem 0;
     }
 
-    .markdown-content em {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 400;
-      font-style: italic;
-      color: #4b5563;
+    /* Metrics styling */
+    .markdown-content p strong + code {
+      margin-left: 0.25rem;
+      color: #1d0c46;
+      font-weight: 500;
     }
 
-    .markdown-content blockquote strong {
-      display: block;
-      margin-bottom: 0.25rem;
-    }
-
-    .markdown-content blockquote:not(:last-child) {
-      margin-bottom: 1rem;
-    }
-
-    /* Number the recommendations */
-    .markdown-content blockquote {
-      counter-increment: recommendation;
-    }
-
-    .markdown-content blockquote strong::before {
-      content: counter(recommendation) ". ";
-      font-weight: 600;
-      color: #caa968;
+    /* Mobile adjustments */
+    @media (max-width: 640px) {
+      .markdown-content h3 {
+        font-size: 1.125rem;
+      }
     }
 
     /* 3D Cube Animation */
