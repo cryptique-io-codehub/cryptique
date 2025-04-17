@@ -6,6 +6,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+// Import knowledge base
+import expertKnowledge from '../../data/web3_expert_knowledge.txt';
+
+// Add knowledge base loading function
+const loadExpertKnowledge = async () => {
+  try {
+    const response = await fetch(expertKnowledge);
+    const knowledge = await response.text();
+    return knowledge;
+  } catch (error) {
+    console.error('Error loading expert knowledge:', error);
+    return '';
+  }
+};
+
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
   const [websiteArray, setWebsiteArray] = useState([]);
@@ -17,6 +32,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const [analytics, setAnalytics] = useState({});
   const [isDataLoading, setIsDataLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Add state for expert knowledge
+  const [expertContext, setExpertContext] = useState('');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,6 +104,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setAnalytics({});
     }
   };
+
+  // Load expert knowledge on component mount
+  useEffect(() => {
+    const loadKnowledge = async () => {
+      const knowledge = await loadExpertKnowledge();
+      setExpertContext(knowledge);
+    };
+    loadKnowledge();
+  }, []);
 
   // Helper functions for analytics processing
   const calculateRetentionMetrics = (sessions) => {
@@ -936,7 +963,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==============================================");
 
-    // Update the system context to handle missing data gracefully
+    // Update the system context to include expert knowledge
     const systemContext = `
       You are CQ Intelligence, the premier Web3 analytics and marketing intelligence platform and an expert web3 marketing consultant, providing expert insights for blockchain, DeFi, NFTs, and Web3 projects. As the platform provider, you represent the cutting edge of Web3 analytics. Your expertise includes:
       
@@ -948,6 +975,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - DeFi user behavior analysis
       - Web3 funnel optimization
       - Blockchain-specific user journey mapping
+      
+      EXPERT KNOWLEDGE BASE:
+      ${expertContext}
       
       IMPORTANT: Your primary focus is to directly answer the user's specific question through the lens of a Web3 marketing expert. While you have access to various analytics and metrics, always prioritize addressing exactly what was asked. Avoid following rigid templates or providing unnecessary information that wasn't requested. Instead, draw upon your expertise to provide targeted, relevant insights that specifically answer the user's query.
       IMPORTANT PLATFORM GUIDELINES:
@@ -1268,12 +1298,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               >
                 {message.content}
               </ReactMarkdown>
-            </div>
+              </div>
           ) : (
             message.content
           )}
-        </div>
-      </div>
+            </div>
+          </div>
     );
   };
 
@@ -1288,7 +1318,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <div className="cube-face left"></div>
           <div className="cube-face top"></div>
           <div className="cube-face bottom"></div>
-        </div>
+          </div>
       </div>
     );
   };
@@ -1478,14 +1508,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Update the chat area section to use the new loading state
   const ChatArea = () => (
-    <div className="flex-1 overflow-y-auto p-6 space-y-4">
-      {messages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-          <Bot size={64} className="mb-6 text-[#caa968]" />
-          <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+                <Bot size={64} className="mb-6 text-[#caa968]" />
+                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
           <p className="text-gray-600 max-w-md mb-8">
-            I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-          </p>
+                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+                </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
             {/* Example questions buttons */}
             <button 
@@ -1525,29 +1555,29 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               What are my traffic sources?
             </button>
           </div>
-        </div>
-      ) : (
+              </div>
+            ) : (
         <>
           {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
               {renderMessage(message)}
-            </div>
+                  </div>
           ))}
           {isLoading && renderLoadingState()}
-          {error && (
-            <div className="flex justify-start">
-              <div className="bg-red-100 text-red-600 p-4 rounded-lg">
-                {error}
+            {error && (
+              <div className="flex justify-start">
+                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
+                  {error}
+                </div>
               </div>
-            </div>
           )}
         </>
-      )}
-      <div ref={messagesEndRef} />
-    </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
   );
 
   return (
