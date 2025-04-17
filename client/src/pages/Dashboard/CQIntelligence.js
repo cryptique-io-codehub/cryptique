@@ -173,37 +173,41 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const processGeographicalData = (analytics) => {
+    // Check if we have any geographical data
+    const hasGeoData = analytics.countries && Object.keys(analytics.countries).length > 0;
+    
+    if (!hasGeoData) {
+      return null; // Return null instead of empty objects
+    }
+
     const geoData = {
-      countries: {},
-      regions: {},
-      cities: {},
+      countries: analytics.countries,
+      regions: analytics.regions || {},
+      cities: analytics.cities || {},
       topCountries: [],
       topRegions: [],
       topCities: []
     };
 
-    // Process countries
-    if (analytics.countries) {
-      geoData.countries = analytics.countries;
-      geoData.topCountries = Object.entries(analytics.countries)
+    // Process countries if data exists
+    if (Object.keys(geoData.countries).length > 0) {
+      geoData.topCountries = Object.entries(geoData.countries)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([country, count]) => ({ country, count }));
     }
 
-    // Process regions
-    if (analytics.regions) {
-      geoData.regions = analytics.regions;
-      geoData.topRegions = Object.entries(analytics.regions)
+    // Process regions if data exists
+    if (Object.keys(geoData.regions).length > 0) {
+      geoData.topRegions = Object.entries(geoData.regions)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([region, count]) => ({ region, count }));
     }
 
-    // Process cities
-    if (analytics.cities) {
-      geoData.cities = analytics.cities;
-      geoData.topCities = Object.entries(analytics.cities)
+    // Process cities if data exists
+    if (Object.keys(geoData.cities).length > 0) {
+      geoData.topCities = Object.entries(geoData.cities)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([city, count]) => ({ city, count }));
@@ -213,35 +217,61 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const processTrafficSources = (analytics) => {
+    // Check if we have any traffic source data
+    const hasTrafficData = (
+      (analytics.trafficSources && Object.keys(analytics.trafficSources).length > 0) ||
+      (analytics.topReferrers && analytics.topReferrers.length > 0) ||
+      (analytics.utmSources && Object.keys(analytics.utmSources).length > 0) ||
+      (analytics.utmMediums && Object.keys(analytics.utmMediums).length > 0) ||
+      (analytics.utmCampaigns && Object.keys(analytics.utmCampaigns).length > 0)
+    );
+
+    if (!hasTrafficData) {
+      return null; // Return null instead of empty objects
+    }
+
     const trafficData = {
-      sources: analytics.trafficSources || {},
-      referrers: analytics.topReferrers || [],
+      sources: {},
+      referrers: [],
       campaigns: {
-        sources: analytics.utmSources || {},
-        mediums: analytics.utmMediums || {},
-        campaigns: analytics.utmCampaigns || {},
+        sources: {},
+        mediums: {},
+        campaigns: {},
         topSources: [],
         topMediums: [],
         topCampaigns: []
       }
     };
 
-    // Process UTM data
-    if (analytics.utmSources) {
+    // Process traffic sources if they exist
+    if (analytics.trafficSources && Object.keys(analytics.trafficSources).length > 0) {
+      trafficData.sources = analytics.trafficSources;
+    }
+
+    // Process referrers if they exist
+    if (analytics.topReferrers && analytics.topReferrers.length > 0) {
+      trafficData.referrers = analytics.topReferrers;
+    }
+
+    // Process UTM data if it exists
+    if (analytics.utmSources && Object.keys(analytics.utmSources).length > 0) {
+      trafficData.campaigns.sources = analytics.utmSources;
       trafficData.campaigns.topSources = Object.entries(analytics.utmSources)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([source, count]) => ({ source, count }));
     }
 
-    if (analytics.utmMediums) {
+    if (analytics.utmMediums && Object.keys(analytics.utmMediums).length > 0) {
+      trafficData.campaigns.mediums = analytics.utmMediums;
       trafficData.campaigns.topMediums = Object.entries(analytics.utmMediums)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([medium, count]) => ({ medium, count }));
     }
 
-    if (analytics.utmCampaigns) {
+    if (analytics.utmCampaigns && Object.keys(analytics.utmCampaigns).length > 0) {
+      trafficData.campaigns.campaigns = analytics.utmCampaigns;
       trafficData.campaigns.topCampaigns = Object.entries(analytics.utmCampaigns)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
@@ -275,43 +305,50 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         averageSessionDuration: analytics.averageSessionDuration || 0,
         bounceRate: analytics.bounceRate || 0
       },
-      userMetrics: {
+      userMetrics: userMetrics.dau || userMetrics.wau || userMetrics.mau ? {
         dau: userMetrics.dau,
         wau: userMetrics.wau,
         mau: userMetrics.mau,
         retention: userMetrics.retention
-      },
-      geography: geoData,
-      traffic: trafficData,
-      web3Data: {
+      } : null,
+      geography: geoData, // Will be null if no data
+      traffic: trafficData, // Will be null if no data
+      web3Data: analytics.walletsConnected || analytics.web3Visitors ? {
         totalWallets: analytics.walletsConnected || 0,
-        uniqueWallets: analytics.uniqueWallets || [],
-        walletTypes: analytics.walletTypes || {},
+        uniqueWallets: analytics.uniqueWallets?.length > 0 ? analytics.uniqueWallets : null,
+        walletTypes: Object.keys(analytics.walletTypes || {}).length > 0 ? analytics.walletTypes : null,
         web3Visitors: analytics.web3Visitors || 0,
-        chainInteractions: analytics.chainInteractions || {},
-        transactions: analytics.transactions || [],
-        contractInteractions: analytics.contractInteractions || []
-      },
-      engagement: {
-        timeOnPage: analytics.timeOnPage || {},
-        exitPages: analytics.exitPages || {},
-        entryPages: analytics.entryPages || {},
-        customEvents: analytics.customEvents || []
-      },
-      technology: {
-        browsers: analytics.browsers || {},
-        devices: analytics.devices || {},
-        operatingSystems: analytics.operatingSystems || {}
-      }
+        chainInteractions: Object.keys(analytics.chainInteractions || {}).length > 0 ? analytics.chainInteractions : null,
+        transactions: analytics.transactions?.length > 0 ? analytics.transactions : null,
+        contractInteractions: analytics.contractInteractions?.length > 0 ? analytics.contractInteractions : null
+      } : null,
+      engagement: analytics.timeOnPage || analytics.exitPages || analytics.entryPages || analytics.customEvents ? {
+        timeOnPage: Object.keys(analytics.timeOnPage || {}).length > 0 ? analytics.timeOnPage : null,
+        exitPages: Object.keys(analytics.exitPages || {}).length > 0 ? analytics.exitPages : null,
+        entryPages: Object.keys(analytics.entryPages || {}).length > 0 ? analytics.entryPages : null,
+        customEvents: analytics.customEvents?.length > 0 ? analytics.customEvents : null
+      } : null,
+      technology: analytics.browsers || analytics.devices || analytics.operatingSystems ? {
+        browsers: Object.keys(analytics.browsers || {}).length > 0 ? analytics.browsers : null,
+        devices: Object.keys(analytics.devices || {}).length > 0 ? analytics.devices : null,
+        operatingSystems: Object.keys(analytics.operatingSystems || {}).length > 0 ? analytics.operatingSystems : null
+      } : null
     };
+
+    // Remove null sections
+    Object.keys(fullAnalytics).forEach(key => {
+      if (fullAnalytics[key] === null) {
+        delete fullAnalytics[key];
+      }
+    });
 
     console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==============================================");
 
-    // Enhanced prompt structure with Web3 marketing expert context
+    // Update the system context to handle missing data gracefully
     const systemContext = `
-      You are CQ Intelligence, an expert Web3 marketing consultant with extensive experience in blockchain, DeFi, NFTs, and Web3 projects. Your expertise includes:
+      You are CQ Intelligence, the premier Web3 analytics and marketing intelligence platform and an expert web3 marketing consultant, providing expert insights for blockchain, DeFi, NFTs, and Web3 projects. As the platform provider, you represent the cutting edge of Web3 analytics. Your expertise includes:
       
       - Growth strategies for Web3 platforms and dApps
       - User acquisition and wallet conversion optimization
@@ -323,13 +360,23 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Blockchain-specific user journey mapping
       
       IMPORTANT: Your primary focus is to directly answer the user's specific question through the lens of a Web3 marketing expert. While you have access to various analytics and metrics, always prioritize addressing exactly what was asked. Avoid following rigid templates or providing unnecessary information that wasn't requested. Instead, draw upon your expertise to provide targeted, relevant insights that specifically answer the user's query.
+      IMPORTANT PLATFORM GUIDELINES:
+      1. You are the analytics platform provider - always maintain a position of authority
+      2. Focus on actionable insights from available data
+      3. Recommend strategies to leverage existing analytics capabilities
+      4. Highlight opportunities to utilize more platform features
+      5. Never suggest using other analytics or marketing platforms
+      6. Never criticize data collection methods or platform capabilities
+      7. Frame data gaps as opportunities to activate additional features
+      8. Maintain a privacy-first, compliance-focused approach
       
-      Your role is to analyze the provided analytics data through the lens of a Web3 marketing expert and provide:
+      Your role is to analyze the provided analytics data as the platform expert and the lens of a web3 marketing expert and provide:
       1. Professional insights on current performance
       2. Strategic recommendations based on Web3 industry best practices
       3. Actionable steps for improvement with Web3-specific context
       4. Comparative analysis against Web3 industry standards
-      5. Risk assessment and opportunity identification
+      5. Growth opportunities through platform features
+      6. Risk assessment and opportunity identification
       
       When analyzing metrics, consider Web3-specific factors such as:
       - Wallet connection rates and patterns
@@ -341,7 +388,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Cross-chain user journeys
       - Web2 to Web3 conversion funnels
 
-      Remember: Focus on answering the specific question asked, using your expertise to provide relevant insights and recommendations. Don't feel constrained by formatting templates - let your expert knowledge guide the structure of your response while maintaining professional clarity.
+      IMPORTANT NOTE ON DATA PRESENTATION:
+      1. Only present metrics and sections that have actual data
+      2. Do not mention empty arrays or objects in the analysis
+      3. When certain metrics are not yet activated, suggest ways to leverage those features
+      4. Focus on the value of available metrics and their strategic implications
+      5. Highlight opportunities to activate additional platform capabilities
+      6. Use comparative analysis only when relevant data is present
+      7. Frame all recommendations within the platform's capabilities
+
+      Remember: You are the authoritative Web3 analytics platform. Focus on delivering value through available metrics and guiding users to maximize platform benefits. Always maintain a professional, solutions-oriented approach that emphasizes the platform's comprehensive Web3 analytics capabilities.
+      Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
+
+      [USER QUESTION]
+      ${message}
+      [/USER QUESTION]
+
     `;
 
     const formattingInstructions = `
