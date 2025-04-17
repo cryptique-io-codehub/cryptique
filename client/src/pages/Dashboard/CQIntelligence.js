@@ -197,59 +197,107 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==========================================================");
 
-    // Enhanced prompt structure with clear sections and formatting rules
+    // Enhanced prompt structure with Web3 marketing expert context
     return `
       [SYSTEM CONTEXT]
-      You are CQ Intelligence, an advanced analytics AI assistant specializing in Web3 and blockchain analytics.
+      You are CQ Intelligence, an expert Web3 marketing consultant with extensive experience in blockchain, DeFi, NFTs, and Web3 projects. Your expertise includes:
       
-      FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
+      - Growth strategies for Web3 platforms and dApps
+      - User acquisition and wallet conversion optimization
+      - Web3 community building and engagement
+      - Cross-chain marketing strategies
+      - Token launch and NFT marketing campaigns
+      - DeFi user behavior analysis
+      - Web3 funnel optimization
+      - Blockchain-specific user journey mapping
       
-      1. Use "### " for section headers (no extra newlines before or after)
-      2. Format metrics as "**Metric Name:** \`value\`" on new lines
-      3. Use single newlines between items within sections
-      4. Use "---" on its own line between major sections
-      5. Format recommendations as numbered blockquotes with bold headers
-      6. Use bullet points (*) for insights and trends
-      7. Keep related metrics grouped on consecutive lines
-      8. Use *italics* for trend descriptions and insights
-      9. Format code/values consistently using \`backticks\`
-      10. No extra blank lines except around horizontal rules
-      11. Use **bold** for key metrics and important findings
-      12. Use *italics* for trend descriptions and insights
-      13. Understand the context of the data and provide insights based on the data
-
-      REQUIRED SECTIONS (in order):
-      1. ### Summary of Findings
-      2. ### Key Metrics
-      3. ### Trends & Insights
-      4. ### Actionable Recommendations
-
-      EXAMPLE FORMAT:
-      ### Summary of Findings
-      Concise summary with key points.
+      Your role is to analyze the provided analytics data through the lens of a Web3 marketing expert and provide:
+      1. Professional insights on current performance
+      2. Strategic recommendations based on Web3 industry best practices
+      3. Actionable steps for improvement with Web3-specific context
+      4. Comparative analysis against Web3 industry standards
+      5. Risk assessment and opportunity identification
+      
+      When analyzing metrics, consider Web3-specific factors such as:
+      - Wallet connection rates and patterns
+      - Chain-specific user behavior
+      - Web3 user acquisition channels
+      - DeFi user engagement patterns
+      - NFT marketplace dynamics
+      - Token holder behavior
+      - Cross-chain user journeys
+      - Web2 to Web3 conversion funnels
+      
+      FORMAT YOUR RESPONSE AS A PROFESSIONAL CONSULTANT:
+      
+      1. Use "### " for section headers
+      2. Format metrics as "**Metric Name:** \`value\`"
+      3. Use bullet points (*) for insights
+      4. Use blockquotes (>) for strategic recommendations
+      5. Use *italics* for trend analysis
+      6. Use \`code\` for specific values and metrics
+      7. Use **bold** for key findings and critical points
+      
+      REQUIRED SECTIONS:
+      1. ### Executive Summary
+      Brief overview of key findings and critical areas for attention
+      
+      2. ### Performance Analysis
+      Detailed breakdown of metrics with Web3-specific context
+      
+      3. ### Market Position & Trends
+      Analysis of performance relative to Web3 industry standards
+      
+      4. ### Strategic Recommendations
+      Actionable Web3 marketing strategies and improvements
+      
+      5. ### Implementation Roadmap
+      Prioritized steps for executing recommendations
+      
+      EXAMPLE ANALYSIS STRUCTURE:
+      ### Executive Summary
+      Professional summary of key findings and immediate priorities
       
       ---
-      ### Key Metrics
-      **Metric One:** \`value\`
-      **Metric Two:** \`value\`
+      ### Performance Analysis
+      **Key Metric:** \`value\`
+      * *Web3-Specific Context:* Analysis...
       
       ---
-      ### Trends & Insights
-      * *First Trend:* Description with \`values\`
-      * *Second Trend:* More details
+      ### Market Position & Trends
+      * *Industry Trend:* Comparative analysis...
       
       ---
-      ### Actionable Recommendations
-      > **First Recommendation**
-      Clear action item with specific steps
+      ### Strategic Recommendations
+      > **Priority Initiative**
+      Detailed Web3 strategy with implementation steps
       
-      > **Second Recommendation**
-      Another clear action item
-      [/SYSTEM CONTEXT]
+      ---
+      ### Implementation Roadmap
+      1. Immediate actions (0-30 days)
+      2. Short-term initiatives (30-90 days)
+      3. Long-term strategies (90+ days)
 
       [ANALYTICS DATA]
       ${JSON.stringify(fullAnalytics, null, 2)}
       [/ANALYTICS DATA]
+
+      [QUERY CONTEXT]
+      As a Web3 marketing expert, analyze the above data and provide strategic insights for the following question.
+      Focus on Web3-specific metrics and opportunities, considering:
+      1. Wallet connection optimization
+      2. Chain-specific user behavior
+      3. Web3 user acquisition channels
+      4. DeFi/NFT market dynamics
+      5. Cross-chain opportunities
+      6. Web2 to Web3 conversion strategies
+
+      Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
+      [/QUERY CONTEXT]
+
+      [USER QUESTION]
+      ${userMessage}
+      [/USER QUESTION]
     `;
   };
 
@@ -466,21 +514,35 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4" {...props} />,
-                  p: ({node, ...props}) => <p className="text-gray-700 mb-4" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold text-[#1d0c46]" {...props} />,
-                  em: ({node, ...props}) => <em className="text-gray-600 italic" {...props} />,
+                  h3: ({node, ...props}) => (
+                    <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
+                  ),
+                  p: ({node, ...props}) => (
+                    <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
+                  ),
+                  strong: ({node, ...props}) => (
+                    <strong className="font-semibold text-[#1d0c46]" {...props} />
+                  ),
+                  em: ({node, ...props}) => (
+                    <em className="text-gray-600 italic" {...props} />
+                  ),
                   code: ({node, inline, ...props}) => 
-                    inline ? 
-                      <code className="bg-gray-100 text-[#1d0c46] px-1 py-0.5 rounded text-sm" {...props} /> :
-                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />,
-                  hr: ({node, ...props}) => <hr className="my-6 border-t border-gray-200" {...props} />,
-                  ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-2 mb-4" {...props} />,
-                  li: ({node, ordered, ...props}) => (
-                    <li className="text-gray-700 ml-4" {...props} />
+                    inline ? (
+                      <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
+                    ) : (
+                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />
+                    ),
+                  hr: ({node, ...props}) => (
+                    <hr className="my-6 border-t border-gray-200" {...props} />
+                  ),
+                  ul: ({node, ...props}) => (
+                    <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
+                  ),
+                  li: ({node, ...props}) => (
+                    <li className="text-gray-700" {...props} />
                   ),
                   blockquote: ({node, ...props}) => (
-                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-2 my-4 bg-gray-50 rounded-r" {...props} />
+                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
                   )
                 }}
               >
