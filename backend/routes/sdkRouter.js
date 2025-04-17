@@ -4,17 +4,26 @@ const cors = require('cors');
 
 const router = express.Router();
 
-// Configure CORS for the tracking endpoint
+// Configure CORS for the SDK endpoints
 const corsOptions = {
   origin: true, // Allow all origins
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 86400 // 24 hours
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  credentials: false,
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware specifically to the tracking endpoint
-router.post('/track', cors(corsOptions), postAnalytics);
+// Handle preflight requests
+router.options('*', cors(corsOptions));
+
+// Apply CORS middleware to all SDK routes
+router.use(cors(corsOptions));
+
+// Define routes
+router.post('/track', postAnalytics);
 router.get('/analytics/:siteId', getAnalytics);
 router.get('/update-all-analytics-stats-hourly', updateHourlyAnalyticsStats);
 router.get('/update-all-analytics-stats-daily', updateDailyAnalyticsStats);

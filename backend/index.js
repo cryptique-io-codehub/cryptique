@@ -19,12 +19,23 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-app.use(cors({
+// Define CORS options for different routes
+const mainCorsOptions = {
   origin: ["http://localhost:3000", "https://app.cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-}));
+};
+
+const sdkCorsOptions = {
+  origin: true, // Allow all origins for SDK
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  credentials: false
+};
+
+// Apply main CORS configuration
+app.use(cors(mainCorsOptions));
 
 app.use(bodyParser.json());
 
@@ -60,12 +71,13 @@ app.get("/debug/routes", (req, res) => {
   res.json(routes);
 });
 
-// Load routes
+// Load routes with specific CORS configurations
 console.log('Loading routes...');
 
 app.use("/api/auth", userRouter);
 app.use("/api/team", require("./routes/teamRouter"));
-app.use("/api/sdk", require("./routes/sdkRouter"));
+// Apply SDK-specific CORS for the SDK route
+app.use("/api/sdk", cors(sdkCorsOptions), require("./routes/sdkRouter"));
 app.use("/api/website", require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
 
