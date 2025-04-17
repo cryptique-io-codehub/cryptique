@@ -19,34 +19,23 @@ connect(process.env.MONGODB_URI).then(() => {
   console.log("Connected to the database");
 });
 
-// Define CORS options for different routes
+// Configure CORS options for main routes
 const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io"],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: ['http://localhost:3000', 'https://app.cryptique.io'],
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   credentials: true,
-  maxAge: 86400
+  maxAge: 86400 // 24 hours
 };
 
-// SDK CORS configuration with explicit headers
+// Configure CORS options for SDK routes
 const sdkCorsOptions = {
-  origin: '*', // Allow all origins for SDK
+  origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
   credentials: false,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  maxAge: 86400
 };
-
-// Global middleware to handle OPTIONS requests
-app.options('*', (req, res, next) => {
-  if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
-  } else {
-    cors(mainCorsOptions)(req, res, next);
-  }
-});
 
 // Apply CORS configuration based on route
 app.use((req, res, next) => {
@@ -55,10 +44,28 @@ app.use((req, res, next) => {
   res.header('X-Frame-Options', 'DENY');
   res.header('X-XSS-Protection', '1; mode=block');
   
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    if (req.path.startsWith('/api/sdk/')) {
+      res.header('Access-Control-Allow-Origin', '*');
+    } else {
+      const origin = req.headers.origin;
+      if (mainCorsOptions.origin.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+    }
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+    res.header('Access-Control-Max-Age', '86400');
+    return res.status(204).end();
+  }
+  
   if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', sdkCorsOptions.methods.join(', '));
+    res.header('Access-Control-Allow-Headers', sdkCorsOptions.allowedHeaders.join(', '));
+    res.header('Access-Control-Max-Age', sdkCorsOptions.maxAge.toString());
   } else {
-    // For all other routes, including analytics
     const origin = req.headers.origin;
     if (mainCorsOptions.origin.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
@@ -67,8 +74,8 @@ app.use((req, res, next) => {
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
     }
-    next();
   }
+  next();
 });
 
 app.use(bodyParser.json());

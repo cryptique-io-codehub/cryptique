@@ -477,23 +477,23 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
 
     .futuristic-container {
-      background: linear-gradient(135deg, rgba(29, 12, 70, 0.95) 0%, rgba(29, 12, 70, 0.8) 100%);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(202, 169, 104, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
 
     .blockchain-input {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(5px);
-      border: 1px solid rgba(202, 169, 104, 0.2);
+      border: 1px solid rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease;
     }
 
     .blockchain-input:focus {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: #caa968;
-      box-shadow: 0 0 15px rgba(202, 169, 104, 0.3);
+      background: rgba(255, 255, 255, 1);
+      border-color: #1d0c46;
+      box-shadow: 0 0 15px rgba(29, 12, 70, 0.1);
     }
 
     .message-container {
@@ -508,7 +508,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       left: 0;
       right: 0;
       bottom: 0;
-      background: linear-gradient(135deg, rgba(29, 12, 70, 0.7) 0%, rgba(202, 169, 104, 0.1) 100%);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 100%);
       border-radius: inherit;
       z-index: -1;
     }
@@ -525,9 +525,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       position: absolute;
       width: 100%;
       height: 100%;
-      background: #caa968;
+      background: #1d0c46;
       opacity: 0.8;
-      border: 2px solid rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.9);
     }
 
     .loading-cube-face:nth-child(1) { transform: translateZ(20px); }
@@ -546,8 +546,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       position: absolute;
       inset: 0;
       background-image: 
-        linear-gradient(rgba(202, 169, 104, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(202, 169, 104, 0.1) 1px, transparent 1px);
+        linear-gradient(rgba(29, 12, 70, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29, 12, 70, 0.05) 1px, transparent 1px);
       background-size: 30px 30px;
       transform: perspective(500px) rotateX(60deg);
       transform-origin: top;
@@ -568,7 +568,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       content: '';
       position: absolute;
       inset: -1px;
-      background: linear-gradient(45deg, #caa968, transparent, #1d0c46);
+      background: linear-gradient(45deg, #1d0c46, transparent, #1d0c46);
       filter: blur(5px);
       z-index: -1;
       opacity: 0;
@@ -576,13 +576,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     .glow-effect:hover::after {
-      opacity: 1;
+      opacity: 0.5;
     }
 
     .markdown-content {
       font-family: 'Poppins', sans-serif;
       line-height: 1.6;
-      color: rgba(255, 255, 255, 0.9);
+      color: rgba(0, 0, 0, 0.9);
     }
 
     .markdown-content h3 {
@@ -590,24 +590,24 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       font-size: 1.25rem;
       font-weight: 600;
       margin: 1.5rem 0 1rem;
-      color: #caa968;
-      border-bottom: 2px solid rgba(202, 169, 104, 0.2);
+      color: #1d0c46;
+      border-bottom: 2px solid rgba(29, 12, 70, 0.1);
       padding-bottom: 0.5rem;
     }
 
     .markdown-content code {
-      background: rgba(202, 169, 104, 0.1);
+      background: rgba(29, 12, 70, 0.05);
       padding: 0.2rem 0.4rem;
       border-radius: 0.25rem;
-      color: #caa968;
+      color: #1d0c46;
       font-family: 'Poppins', sans-serif;
     }
 
     .markdown-content blockquote {
-      border-left: 4px solid #caa968;
+      border-left: 4px solid #1d0c46;
       padding: 0.5rem 0 0.5rem 1rem;
       margin: 0.75rem 0;
-      background: rgba(202, 169, 104, 0.1);
+      background: rgba(29, 12, 70, 0.05);
     }
   `;
 
@@ -623,7 +623,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
-      <div className="flex-1 p-6 bg-[#0a0520] overflow-hidden">
+      <div className="flex-1 p-6 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto futuristic-container rounded-xl h-full flex flex-col relative overflow-hidden">
           {/* Blockchain Grid Background */}
           <div className="blockchain-grid"></div>
@@ -632,20 +632,20 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-b border-[rgba(202,169,104,0.2)]"
+            className="p-6 border-b border-gray-200"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="text-[#caa968]"
+                  className="text-[#1d0c46]"
                 >
                   <Bot size={24} />
                 </motion.div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">CQ Intelligence</h1>
-                  <p className="text-gray-400 mt-1">Ask anything about your website's analytics and performance</p>
+                  <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
+                  <p className="text-gray-600 mt-1">Ask anything about your website's analytics and performance</p>
                 </div>
               </div>
               
@@ -656,7 +656,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 <select
                   value={selectedSite}
                   onChange={handleSiteChange}
-                  className="w-full p-2 blockchain-input rounded-lg text-white focus:outline-none text-sm"
+                  className="w-full p-2 blockchain-input rounded-lg text-gray-800 focus:outline-none text-sm"
                 >
                   <option value="">Select a website</option>
                   {websiteArray.map(website => (
@@ -677,7 +677,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-12"
+                  className="flex flex-col items-center justify-center h-full text-center text-gray-600 py-12"
                 >
                   <div className="mb-6">
                     <div className="loading-cube">
@@ -689,8 +689,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                       <div className="loading-cube-face"></div>
                     </div>
                   </div>
-                  <h2 className="text-xl font-semibold text-white mb-2">Welcome to CQ Intelligence</h2>
-                  <p className="text-gray-400 max-w-md mb-8">
+                  <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+                  <p className="text-gray-600 max-w-md mb-8">
                     I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
@@ -700,13 +700,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                       'What are my traffic sources?'].map((question, index) => (
                       <motion.button
                         key={index}
-                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(202, 169, 104, 0.1)' }}
+                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(29, 12, 70, 0.05)' }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           setInput(question);
                           setTimeout(() => handleSend(), 100);
                         }}
-                        className="p-4 blockchain-input rounded-lg text-left hover:text-white transition-colors glow-effect"
+                        className="p-4 blockchain-input rounded-lg text-left hover:text-[#1d0c46] transition-colors glow-effect"
                       >
                         {question}
                       </motion.button>
@@ -723,8 +723,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   >
                     <div className={`message-container max-w-[90%] p-4 rounded-lg ${
                       message.role === 'user'
-                        ? 'bg-[#caa968] text-white'
-                        : 'bg-[rgba(29,12,70,0.7)] text-white'
+                        ? 'bg-[#1d0c46] text-white'
+                        : 'bg-white shadow-sm border border-gray-100'
                     }`}>
                       <div className="prose prose-sm max-w-none">
                         {message.role === 'assistant' ? (
@@ -763,7 +763,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-t border-[rgba(202,169,104,0.2)] bg-[rgba(10,5,32,0.8)]"
+            className="p-6 border-t border-gray-200 bg-white"
           >
             <div className="flex gap-3">
               <input
@@ -773,7 +773,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
                 disabled={!selectedSite || isLoading}
-                className="flex-1 p-4 blockchain-input rounded-lg text-white placeholder-gray-500 focus:outline-none disabled:opacity-50"
+                className="flex-1 p-4 blockchain-input rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none disabled:opacity-50"
               />
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -782,8 +782,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 disabled={isLoading || !input.trim() || !selectedSite}
                 className={`px-8 rounded-lg flex items-center gap-2 glow-effect ${
                   isLoading || !input.trim() || !selectedSite
-                    ? 'bg-gray-700 text-gray-400'
-                    : 'bg-[#caa968] text-white hover:bg-[#caa968]/90'
+                    ? 'bg-gray-200 text-gray-400'
+                    : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
                 }`}
               >
                 <Send size={20} />
