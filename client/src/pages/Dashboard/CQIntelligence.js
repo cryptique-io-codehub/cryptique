@@ -572,7 +572,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
       <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
-        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
+        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
           {/* Header */}
           <div className="p-6 border-b">
             <div className="flex items-center gap-3">
@@ -599,34 +599,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 </option>
               ))}
             </select>
-            
-            {/* Analytics Summary */}
-            {isDataLoading ? (
-              <div className="mt-4 p-4 bg-white rounded-lg text-center">
-                <div className="animate-pulse flex space-x-4">
-                  <div className="flex-1 space-y-4 py-1">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : analytics && Object.keys(analytics).length > 0 ? (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-                {formatAnalyticsData().map((item, index) => (
-                  <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
-                    <div className="text-xs text-gray-500">{item.label}</div>
-                    <div className="text-lg font-semibold">{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            ) : selectedSite ? (
-              <div className="mt-4 p-4 bg-white rounded-lg text-center text-gray-500">
-                No analytics data available for this website yet.
-              </div>
-            ) : null}
           </div>
 
           {/* Chat Area */}
@@ -635,16 +607,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
                 <Bot size={64} className="mb-6 text-[#caa968]" />
                 <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-                <p className="text-gray-600 max-w-md">
+                <p className="text-gray-600 max-w-md mb-8">
                   I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
                 </p>
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
                   <button 
                     onClick={() => {
                       setInput("What are the top pages on my website?");
                       setTimeout(() => handleSend(), 100);
                     }}
-                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
                   >
                     What are the top pages on my website?
                   </button>
@@ -653,9 +625,27 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                       setInput("How is my website performing?");
                       setTimeout(() => handleSend(), 100);
                     }}
-                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
                   >
                     How is my website performing?
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("Show me my Web3 user analytics");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    Show me my Web3 user analytics
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("What are my traffic sources?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    What are my traffic sources?
                   </button>
                 </div>
               </div>
@@ -700,12 +690,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
                 disabled={!selectedSite || isLoading}
-                className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
+                className="flex-1 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
               />
               <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
-                className={`px-6 rounded-lg flex items-center gap-2 ${
+                className={`px-8 rounded-lg flex items-center gap-2 ${
                   isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
