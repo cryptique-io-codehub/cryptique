@@ -88,6 +88,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Generate comprehensive analytics summary for the AI context
   const generateAnalyticsSummary = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
+      console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
 
@@ -189,6 +190,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       entryPages: analytics.entryPages || {}
     };
 
+    console.log("========== ANALYTICS CONTEXT BEING SENT TO GEMINI ==========");
+    console.log("Raw Analytics Object:", analytics);
+    console.log("Processed Analytics Data:", fullAnalytics);
+    console.log("==========================================================");
+
     return `
       Website Analytics Data:
       ${JSON.stringify(fullAnalytics, null, 2)}
@@ -265,6 +271,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Include analytics data in the context
       const analyticsSummary = generateAnalyticsSummary();
       const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
+
+      console.log("========== FULL MESSAGE BEING SENT TO GEMINI ==========");
+      console.log(messageWithContext);
+      console.log("====================================================");
 
       let botMessage;
 
