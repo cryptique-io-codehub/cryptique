@@ -195,31 +195,54 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==========================================================");
 
-    // Enhanced prompt structure with clear sections
+    // Enhanced prompt structure with clear sections and formatting rules
     return `
       [SYSTEM CONTEXT]
       You are CQ Intelligence, an advanced analytics AI assistant specializing in Web3 and blockchain analytics.
-      Your responses should be:
-      1. Well-structured using markdown formatting
-      2. Data-driven with specific metrics
-      3. Action-oriented with clear recommendations
-      4. Organized with clear sections using headers
-      5. Highlighted with important insights using bold and italics
       
-      Format your responses using:
-      - **Bold** for key metrics and important findings
-      - *Italic* for trends and changes
-      - ### Headers for main sections
-      - > Blockquotes for actionable recommendations
-      - Lists for multiple points
-      - \`code\` for specific values or metrics
-      - --- for separating sections
+      FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
       
-      Always include these sections in your response:
-      1. Summary of Findings
-      2. Key Metrics Analysis
-      3. Trends & Insights
-      4. Actionable Recommendations
+      1. Use "### " for section headers (no extra newlines before or after)
+      2. Format metrics as "**Metric Name:** \`value\`" on new lines
+      3. Use single newlines between items within sections
+      4. Use "---" on its own line between major sections
+      5. Format recommendations as numbered blockquotes with bold headers
+      6. Use bullet points (*) for insights and trends
+      7. Keep related metrics grouped on consecutive lines
+      8. Use *italics* for trend descriptions and insights
+      9. Format code/values consistently using \`backticks\`
+      10. No extra blank lines except around horizontal rules
+      11. Use **bold** for key metrics and important findings
+      12. Use *italics* for trend descriptions and insights
+      13. Understand the context of the data and provide insights based on the data
+
+      REQUIRED SECTIONS (in order):
+      1. ### Summary of Findings
+      2. ### Key Metrics
+      3. ### Trends & Insights
+      4. ### Actionable Recommendations
+
+      EXAMPLE FORMAT:
+      ### Summary of Findings
+      Concise summary with key points.
+      
+      ---
+      ### Key Metrics
+      **Metric One:** \`value\`
+      **Metric Two:** \`value\`
+      
+      ---
+      ### Trends & Insights
+      * *First Trend:* Description with \`values\`
+      * *Second Trend:* More details
+      
+      ---
+      ### Actionable Recommendations
+      > **First Recommendation**
+      Clear action item with specific steps
+      
+      > **Second Recommendation**
+      Another clear action item
       [/SYSTEM CONTEXT]
 
       [ANALYTICS DATA]
@@ -286,26 +309,26 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const formatResponse = (response) => {
-    // Clean up any extra whitespace and line breaks
     let formattedText = response.trim()
+      // Remove excessive newlines
       .replace(/\n{3,}/g, '\n\n')
+      // Ensure consistent spacing around backticks
       .replace(/\s+`/g, ' `')
-      .replace(/`\s+/g, '` ');
-
-    // Format headers with proper spacing
-    formattedText = formattedText.replace(/###\s*(.*)/g, '\n### $1\n');
-
-    // Format metrics with proper spacing
-    formattedText = formattedText.replace(/\*\*(.*?):\*\*/g, '**$1:**');
-
-    // Format blockquotes with proper spacing
-    formattedText = formattedText.replace(/>\s*(.*)/g, '\n> $1');
-
-    // Format bullet points with proper spacing
-    formattedText = formattedText.replace(/\*\s+(.*)/g, '* $1');
-
-    // Add extra spacing around horizontal rules
-    formattedText = formattedText.replace(/---/g, '\n---\n');
+      .replace(/`\s+/g, '` ')
+      // Format headers with single newline
+      .replace(/###\s*(.*?)(?=\n)/g, '### $1')
+      // Format metrics consistently
+      .replace(/\*\*(.*?):\*\*/g, '**$1:**')
+      // Format blockquotes consistently
+      .replace(/>\s*(.*?)(?=\n|$)/g, '> $1')
+      // Format bullet points consistently
+      .replace(/^\s*\*\s+/gm, '* ')
+      // Ensure single newline after horizontal rules
+      .replace(/---\s*/g, '---\n')
+      // Remove extra spaces at start of lines
+      .replace(/^\s+/gm, '')
+      // Ensure single newlines between items
+      .replace(/\n\n+/g, '\n\n');
 
     return formattedText;
   };
