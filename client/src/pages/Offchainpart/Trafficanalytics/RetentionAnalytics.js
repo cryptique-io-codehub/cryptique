@@ -524,56 +524,57 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
 
   return (
     <div className="w-full px-4 md:px-6 py-6">
-      <h1 className="text-xl md:text-2xl font-bold mb-4">Retention</h1>
+      {/* Updated title text with larger font size matching the sidebar */}
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">Retention</h1>
       
-      {/* Active Users Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      {/* Active Users Summary Cards with improved text sizes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {retentionData.summaryCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-lg p-4 shadow">
-            <h3 className="text-center text-sm md:text-lg font-semibold mb-2">{card.title}</h3>
-            <p className="text-center text-xl md:text-2xl font-bold">{card.value}</p>
-            <p className="text-center text-green-500 text-xs md:text-sm">{card.increase}</p>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span>{card.flag}</span>
-              <span className="text-xs text-gray-500 truncate">{card.country}</span>
+          <div key={index} className="bg-white rounded-lg p-6 shadow">
+            <h3 className="text-center text-lg md:text-xl font-semibold mb-3">{card.title}</h3>
+            <p className="text-center text-2xl md:text-3xl font-bold">{card.value}</p>
+            <p className="text-center text-green-500 text-sm md:text-base mt-1">{card.increase}</p>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <span className="text-lg">{card.flag}</span>
+              <span className="text-sm text-gray-600">{card.country}</span>
             </div>
           </div>
         ))}
       </div>
       
-      {/* Retention Chart */}
-      <div className="bg-white rounded-lg p-4 shadow mb-6">
-        <h3 className="text-md md:text-lg font-semibold mb-4">Active Users Over Time</h3>
-        <div className="h-60 md:h-80">
+      {/* Retention Chart with improved text visibility */}
+      <div className="bg-white rounded-lg p-6 shadow mb-8">
+        <h3 className="text-xl font-semibold mb-4">Active Users Over Time</h3>
+        <div className="h-64 md:h-96">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={retentionData.retentionChart}
-              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+              margin={{ top: 10, right: 20, left: 5, bottom: 10 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: '0.75rem' }} />
-              <YAxis tick={{ fontSize: '0.75rem' }} />
-              <Tooltip contentStyle={{ fontSize: '0.75rem' }} />
-              <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-              <Line type="monotone" dataKey="DAU" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="WAU" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="MAU" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
+              <XAxis dataKey="month" tick={{ fontSize: '0.875rem' }} />
+              <YAxis tick={{ fontSize: '0.875rem' }} />
+              <Tooltip contentStyle={{ fontSize: '0.875rem' }} />
+              <Legend wrapperStyle={{ fontSize: '0.875rem' }} />
+              <Line type="monotone" dataKey="DAU" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="WAU" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="MAU" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
       
-      {/* Visitors Retention Section */}
-      <div className="bg-white rounded-lg p-4 shadow">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+      {/* Visitors Retention Section with improved visibility */}
+      <div className="bg-white rounded-lg p-6 shadow">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
           <div>
-            <h3 className="text-md md:text-lg font-semibold">Visitors retention</h3>
-            <p className="text-xs md:text-sm text-gray-500">The retention rate shows how many unique users return to your site in subsequent periods</p>
+            <h3 className="text-xl font-semibold mb-1">Visitors retention</h3>
+            <p className="text-sm md:text-base text-gray-600">The retention rate shows how many unique users return to your site in subsequent periods</p>
           </div>
           
           <div className="self-start sm:self-center">
             <select 
-              className="border border-gray-300 rounded px-2 py-1 text-xs md:text-sm"
+              className="border border-gray-300 rounded px-3 py-2 text-sm md:text-base"
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
             >
@@ -585,15 +586,15 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           </div>
         </div>
         
-        {/* Retention Cohort Table */}
+        {/* Retention Cohort Table with improved text sizes */}
         <div className="overflow-x-auto -mx-4 px-4 pb-4">
           <div className="min-w-max">
-            <table className="min-w-full border-collapse text-xs md:text-sm">
+            <table className="min-w-full border-collapse text-sm md:text-base">
               <thead>
                 <tr>
-                  <th className="p-1 md:p-2 bg-gray-50 border text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 z-10">Day</th>
+                  <th className="p-2 md:p-3 bg-gray-50 border text-left font-medium text-gray-600 uppercase tracking-wider sticky left-0 z-10">Day</th>
                   {Array.from({ length: 8 }, (_, i) => (
-                    <th key={i} className="p-1 md:p-2 bg-gray-50 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={i} className="p-2 md:p-3 bg-gray-50 border text-center font-medium text-gray-600 uppercase tracking-wider">
                       {i === 0 ? 'Initial' : `Day ${i}`}
                     </th>
                   ))}
@@ -602,21 +603,21 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               <tbody>
                 {retentionData.cohortData.map((cohort, index) => (
                   <tr key={index}>
-                    <td className="p-1 md:p-2 border bg-gray-50 sticky left-0 z-10">
-                      <div className="font-medium text-xs md:text-sm">{cohort.date}</div>
-                      <div className="text-xs text-gray-500">Users: {cohort.initialUsers}</div>
+                    <td className="p-2 md:p-3 border bg-gray-50 sticky left-0 z-10">
+                      <div className="font-medium text-sm md:text-base">{cohort.date}</div>
+                      <div className="text-sm text-gray-600">Users: {cohort.initialUsers}</div>
                     </td>
                     {cohort.retentionByDay.slice(0, 8).map((day, dayIndex) => (
                       <td 
                         key={dayIndex} 
-                        className={`p-1 md:p-2 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
+                        className={`p-2 md:p-3 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
                       >
                         {formatRetentionValue(day.value, day.percentage)}
                       </td>
                     ))}
                     {/* Fill the remaining cells if less than 8 days of data */}
                     {Array.from({ length: 8 - cohort.retentionByDay.length }, (_, i) => (
-                      <td key={`empty-${i}`} className="p-1 md:p-2 border text-center bg-gray-100">-</td>
+                      <td key={`empty-${i}`} className="p-2 md:p-3 border text-center bg-gray-100">-</td>
                     ))}
                   </tr>
                 ))}

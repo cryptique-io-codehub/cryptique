@@ -4,18 +4,54 @@ const cors = require('cors');
 
 const router = express.Router();
 
-// Configure CORS for the tracking endpoint
+// Configure CORS for the SDK endpoints
 const corsOptions = {
-  origin: true, // Allow all origins
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  credentials: false,
   maxAge: 86400 // 24 hours
 };
 
-// Apply CORS middleware specifically to the tracking endpoint
-router.post('/track', cors(corsOptions), postAnalytics);
-router.get('/analytics/:siteId', getAnalytics);
+// Middleware to ensure CORS headers are set
+const setCorsHeaders = (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+  res.header('Access-Control-Max-Age', '86400');
+  next();
+};
+
+// Apply CORS and headers middleware to all routes
+router.use(cors(corsOptions));
+router.use(setCorsHeaders);
+
+// Handle preflight requests explicitly
+router.options('*', (req, res) => {
+  res.status(204).end();
+});
+
+// Define routes with error handling
+router.post('/track', async (req, res) => {
+  try {
+    await postAnalytics(req, res);
+  } catch (error) {
+    console.error('Error in track endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/analytics/:siteId', async (req, res) => {
+  try {
+    await getAnalytics(req, res);
+  } catch (error) {
+    console.error('Error in analytics endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Stats update routes
 router.get('/update-all-analytics-stats-hourly', updateHourlyAnalyticsStats);
 router.get('/update-all-analytics-stats-daily', updateDailyAnalyticsStats);
 router.get('/update-all-analytics-stats-weekly', updateWeeklyAnalyticsStats);

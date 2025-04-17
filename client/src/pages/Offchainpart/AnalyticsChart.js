@@ -2,6 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import axiosInstance from '../../axiosInstance';
 
+// Removed custom font styles to match second code snippet
+const styles = {
+  container: {},
+  heading: {
+    fontWeight: 600,
+  },
+  buttonActive: {
+    backgroundColor: '#8b5cf6',
+    color: 'white',
+    fontWeight: 500,
+  },
+  buttonInactive: {
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+  }
+};
+
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState({
     labels: [],
@@ -158,10 +175,6 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       ]
     };
 
-    // Debug log to verify the data
-    console.log('Formatted Chart Data - Visitors:', formattedData.datasets[0].data);
-    console.log('Formatted Chart Data - Wallets:', formattedData.datasets[1].data);
-
     setChartData(formattedData);
   }, [analytics, timeframe]);
 
@@ -198,48 +211,18 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Analytics Overview</h2>
+        <h2 className="text-xl font-semibold text-gray-800" style={styles.heading}>Analytics Overview</h2>
         <div className="flex space-x-2">
-          <button
-            onClick={() => setTimeframe('daily')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'daily'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Daily
-          </button>
-          <button
-            onClick={() => setTimeframe('weekly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'weekly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setTimeframe('monthly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'monthly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setTimeframe('yearly')}
-            className={`px-3 py-1 rounded-md text-sm ${
-              timeframe === 'yearly'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Yearly
-          </button>
+          {['daily', 'weekly', 'monthly', 'yearly'].map((period) => (
+            <button
+              key={period}
+              onClick={() => setTimeframe(period)}
+              className={`px-3 py-1 rounded-md text-sm`}
+              style={timeframe === period ? styles.buttonActive : styles.buttonInactive}
+            >
+              {period.charAt(0).toUpperCase() + period.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
       <div className="h-64">

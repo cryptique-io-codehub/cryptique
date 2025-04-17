@@ -13,13 +13,14 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
 
 
-const OffchainAnalytics = ({ onMenuClick, screenSize }) => {
+const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
   const [selectedWebsite, setSelectedWebsite] = useState();
   const [selectedDate, setSelectedDate] = useState('Select Date');
   const [selectedFilters, setSelectedFilters] = useState('Select Filters');
   const [secondNavOpen, setSecondNavOpen] = useState(false);
   const [websitearray,setWebsitearray]=useState([]);
+  const[contractarray,setcontractarray]=useState([]);
   const [analytics,setanalytics]=useState({});
   const [idy,setidy]=useState(localStorage.getItem("idy"));
   const [chartData, setChartData] = useState(null);
@@ -195,14 +196,11 @@ function formatDuration(seconds) {
     }
   ];
   
-  // Updated AnalyticsCard to be responsive
+  // Updated AnalyticsCard to be responsive with Montserrat for headings and Poppins for body
   const AnalyticsCard = ({ label, data, bgColor, textColor }) => (
-    <div className={`rounded-xl p-2 md:p-3 ${bgColor} ${textColor} flex flex-col justify-between h-full`}>
-      <div className="text-[9px] sm:text-xs opacity-80 mb-0.5">{label}</div>
-      <div className="flex items-center justify-between">
-        <div className="text-[10px] sm:text-sm font-bold">{data}</div>
-        {/* <div className="pl-1 opacity-70 text-[9px] sm:text-xs">↑ {data.increase}</div> */}
-      </div>
+    <div className={`${bgColor} ${textColor} p-4 rounded-lg shadow-sm`}>
+      <h3 className="text-base font-semibold mb-2">{label}</h3>
+      <p className="text-base font-bold">{data}</p>
     </div>
   );
 
@@ -393,10 +391,6 @@ function formatDuration(seconds) {
 console.log(analytics);
 return (
   <div className="flex h-screen overflow-hidden bg-gray-50">
-    {/* Remove mobile menu toggle button for main sidebar since it's handled by parent */}
-
-    {/* Remove the main sidebar div since it's handled by parent */}
-
     {/* Content area with header and flexible content */}
     <div className="flex flex-col w-full h-screen">
       {/* Header - fixed at top */}
@@ -416,236 +410,298 @@ return (
         
         {/* Second navigation bar - fixed on desktop, slide-in drawer on mobile */}
         <div className={`md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 
-          ${secondNavOpen ? 'fixed left-0 top-0 w-64 z-30 pt-16' : 'hidden'}`}>
-          <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
-            {navItems.map((item, index) => (
-              item.type === 'header' ? (
-                <div 
-                  key={index} 
-                  className="text-xs text-gray-500 uppercase mt-4 mb-2 font-semibold"
-                >
-                  {item.section}
-                </div>
-              ) : (
-                <div 
-                  key={index}
-                  className={`
-                    px-3 py-2 rounded-md cursor-pointer 
-                    ${activeSection === item.label 
-                      ? 'bg-purple-100 text-purple-600' 
-                      : 'text-gray-700 hover:bg-gray-100'}
-                    text-sm
-                  `}
-                  onClick={() => {
-                    setActiveSection(item.label);
-                    // Close navigation drawer on mobile after selection
-                    if (window.innerWidth < 768) {
-                      setSecondNavOpen(false);
-                    }
-                  }}
-                >
-                  {item.label}
-                </div>
-              )
-            ))}
-          </nav>
-        </div>
+              ${secondNavOpen ? 'fixed left-0 top-0 w-64 z-30 pt-16' : 'hidden'}`}>
+              <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
+                {navItems.map((item, index) => (
+                  item.type === 'header' ? (
+                    <div 
+                      key={index} 
+                      className="text-xs text-gray-500 uppercase mt-4 mb-2 font-semibold"
+                    >
+                      {item.section}
+                    </div>
+                  ) : (
+                    <div 
+                      key={index}
+                      className={`
+                        px-3 py-2 rounded-md cursor-pointer 
+                        ${activeSection === item.label 
+                          ? 'bg-purple-100 text-purple-600' 
+                          : 'text-gray-700 hover:bg-gray-100'}
+                        text-base
+                      `}
+                      onClick={() => {
+                        setActiveSection(item.label);
+                        // Close navigation drawer on mobile after selection
+                        if (window.innerWidth < 768) {
+                          setSecondNavOpen(false);
+                        }
+                      }}
+                    >
+                      {item.label}
+                    </div>
+                  )
+                ))}
+              </nav>
+            </div>
         
         {/* Main content area - scrollable */}
-       <div className="flex-grow overflow-y-auto">
-             
-              {/* Main content */}
-              <div className="px-2 md:px-4 pb-4">
-                {/* Main content section */}
-                {activeSection === 'Dashboard' && (
-                  <div className="flex flex-col">
-                    <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
-                      <div className="max-w-7xl mx-auto">
-                        <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
-                        <p className="text-xs md:text-sm text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
+        <div className="flex-grow overflow-y-auto">
+              
+            {/* Main content */}
+            <div className="px-2 md:px-4 pb-4">
+              {/* Main content section */}
+              {activeSection === 'Dashboard' && (
+                <div className="flex flex-col h-full">
+                  <div className="bg-[#CAA968] p-4 md:p-6 rounded-xl md:rounded-2xl m-2 md:m-4">
+                    <div className="max-w-7xl mx-auto">
+                    <h1 className="text-base md:text-xl font-bold mb-1 md:mb-2 text-white">Welcome back, {userData.name}!</h1>
+                    <p className="text-base text-white opacity-80">Get an overall overview of how things are now with our real time analytics</p>
+                    </div>
+                  </div>
+                  <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                  />
+                  {verifyload ? (
+                    <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+                      <div className="flex flex-col items-center">
+                        <svg
+                          className="animate-spin h-8 w-8 text-blue-600 mb-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        <span className="text-sm text-gray-600">Loading analytics data...</span>
                       </div>
                     </div>
-                    <Filters 
-                      websitearray={websitearray}
-                      setWebsitearray={setWebsitearray}
-                      analytics={analytics}
-                      setanalytics={setanalytics}
-                      selectedDate={selectedDate} 
-                      setSelectedDate={setSelectedDate} 
-                      selectedWebsite={selectedWebsite} 
-                      setSelectedWebsite={setSelectedWebsite}
-                      selectedFilters={selectedFilters} 
-                      setSelectedFilters={setSelectedFilters}
-                      idy={idy}
-                      setidy={setidy}
-                    />
-                    {verifyload ? (
-                   <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-                     <div className="flex flex-col items-center">
-                       <svg
-                         className="animate-spin h-8 w-8 text-blue-600 mb-4"
-                         xmlns="http://www.w3.org/2000/svg"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                       >
-                         <circle
-                           className="opacity-25"
-                           cx="12"
-                           cy="12"
-                           r="10"
-                           stroke="currentColor"
-                           strokeWidth="4"
-                         />
-                         <path
-                           className="opacity-75"
-                           fill="currentColor"
-                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                         />
-                       </svg>
-                       <span className="text-sm text-gray-600">Loading analytics data...</span>
-                     </div>
-                   </div>
-                  ):
-                  (<>
-                    {/* MODIFICATION: Analytics cards in full width single row */}
-                   {websitearray.length>0 && analytics && Object.keys(analytics).length > 0 ?  <div>
-                    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 h-auto pl-2">
-                      
-                      <AnalyticsCard 
-                        label="Unique visitors" 
-                        data={analytics?.uniqueVisitors} 
-                        bgColor="bg-[#CAA968]" 
-                        textColor="text-black" 
-                      />
-                      <AnalyticsCard 
-                        label="Total Wallets Connected " 
-                        data= {analytics?.walletsConnected}
-                        bgColor="bg-[#1D0C46]" 
-                        textColor="text-white" 
-                      />
-                       <AnalyticsCard 
-                        label="Pages per visit" 
-                        data= {pagepervisit} 
-                        bgColor="bg-white" 
-                        textColor="black" 
-                      />
-                      <AnalyticsCard 
-                        label="Total Page Views" 
-                        data= {totalPageViews}
-                        bgColor="bg-white" 
-                        textColor="black" 
-                      />
-                       <AnalyticsCard 
-                        label="Avg. visit duration" 
-                        data={avgVisitDuration} 
-                        bgColor="bg-white" 
-                        textColor="text-black" 
-                      />
-                      <AnalyticsCard 
-                        label="Web3 Users" 
-                        data={analytics?.web3Visitors}
-                        bgColor="bg-white" 
-                        textColor="text-black" 
-                      />
-                      <AnalyticsCard 
-                        label="Bounce rate" 
-                        data={bounceRate} 
-                        bgColor="bg-white" 
-                        textColor="text-black" 
-                      />
-                    </div>
-                    
-                    {/* Dynamic Analytics chart */}
-                    <div className="w-full">
-                    <AnalyticsChart 
-                      analytics={analytics}
-                      setAnalytics={setanalytics}
-                      isLoading={isLoading}
-                       error={error}
-                    />
-                    </div>
-                    
-                    <FunnelDashboard analytics={analytics}/>
-                    
-                    {/* MODIFICATION: Remaining content in two-column layout */}
-                    <div className="flex flex-col lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0">
-                      {/* Left side */}
-                      <div className="w-full lg:w-3/5">
-                        {/* Geo Analytics Map */}
-                        <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}/>
-                      </div>
-                      
-                      {/* Right side */}
-                      <div className="w-full lg:w-2/5">
-                        {/* Traffic Sources Component */}
-                        <TrafficSourcesComponent 
-                          setanalytics={setanalytics}
-                          analytics={analytics}
-                          trafficSources={trafficSources} 
-                          setTrafficSources={setTrafficSources}
-                           
-                        />
-                        
-                        {/* User Type Donut Chart */}
-                        <div className="w-full bg-white shadow-md rounded-lg p-4 md:p-6 mt-4">
-                          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">User Type</h3>
-                          <div className="h-48 md:h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={data}
-                                  dataKey="value"
-                                  nameKey="name"
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius="40%"
-                                  outerRadius="60%"
-                                  startAngle={90}
-                                  endAngle={450}
-                                  stroke="none"
-                                >
-                                  {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Pie>
-                                <Tooltip />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
+                  ) : (
+                    <>
+                      {/* MODIFICATION: Analytics cards in full width single row */}
+                      {websitearray.length > 0 && analytics && Object.keys(analytics).length > 0 ? (
+                        <div className="h-full flex flex-col">
+                          <div className="flex flex-col space-y-4">
+                            {/* Analytics Cards */}
+                            <div className="w-full grid grid-rows-2 gap-4 h-auto">
+                              {/* First row - 4 cards */}
+                              <div className="grid grid-cols-4 gap-2">
+                                <AnalyticsCard 
+                                  label="Unique visitors" 
+                                  data={analytics?.uniqueVisitors} 
+                                  bgColor="bg-[#CAA968]" 
+                                  textColor="text-black" 
+                                />
+                                <AnalyticsCard 
+                                  label="Total Wallets Connected" 
+                                  data={analytics?.walletsConnected}
+                                  bgColor="bg-[#1D0C46]" 
+                                  textColor="text-white" 
+                                />
+                                <AnalyticsCard 
+                                  label="Pages per visit" 
+                                  data={pagepervisit} 
+                                  bgColor="bg-white" 
+                                  textColor="text-black" 
+                                />
+                                <AnalyticsCard 
+                                  label="Total Page Views" 
+                                  data={totalPageViews}
+                                  bgColor="bg-white" 
+                                  textColor="text-black" 
+                                />
+                              </div>
+                              
+                              {/* Second row - 3 cards */}
+                              <div className="grid grid-cols-3 gap-2">
+                                <AnalyticsCard 
+                                  label="Avg. visit duration" 
+                                  data={avgVisitDuration} 
+                                  bgColor="bg-white" 
+                                  textColor="text-black" 
+                                />
+                                <AnalyticsCard 
+                                  label="Web3 Users" 
+                                  data={analytics?.web3Visitors}
+                                  bgColor="bg-white" 
+                                  textColor="text-black" 
+                                />
+                                <AnalyticsCard 
+                                  label="Bounce rate" 
+                                  data={bounceRate} 
+                                  bgColor="bg-white" 
+                                  textColor="text-black" 
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Dynamic Analytics chart with spacing */}
+                            <div className="w-full mt-4">
+                              <AnalyticsChart 
+                                analytics={analytics}
+                                setAnalytics={setanalytics}
+                                isLoading={isLoading}
+                                error={error}
+                              />
+                            </div>
+                            
+                            {/* Funnel Dashboard with spacing - REDUCED MARGIN */}
+                            <div className="w-full mt-4">
+                              <FunnelDashboard analytics={analytics}/>
+                            </div>
+                            
+                            {/* MODIFICATION: Traffic Sources & User Type cards in same line */}
+                            <div className="flex flex-col lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0 mt-4">
+                              {/* Traffic Sources Component - Now 50% width */}
+                              <div className="w-full lg:w-1/2">
+                                <TrafficSourcesComponent 
+                                  setanalytics={setanalytics}
+                                  analytics={analytics}
+                                  trafficSources={trafficSources} 
+                                  setTrafficSources={setTrafficSources}
+                                  className="h-full"
+                                />
+                              </div>
+                              
+                              {/* User Type Donut Chart - Now 50% width */}
+                              <div className="w-full lg:w-1/2 bg-white shadow-md rounded-lg p-4 md:p-6">
+                                <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">User Type</h3>
+                                <div className="h-48 md:h-64">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={data}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius="40%"
+                                        outerRadius="60%"
+                                        startAngle={90}
+                                        endAngle={450}
+                                        stroke="none"
+                                      >
+                                        {data.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                      </Pie>
+                                      <Tooltip />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
 
-                          {/* Table */}
-                          <div className="mt-4">
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-left border-collapse">
-                                <thead>
-                                  <tr className="border-b">
-                                    <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">Type</th>
-                                    <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">Visitors</th>
-                                    <th className="p-1 md:p-2 text-gray-600 text-xs md:text-sm">%</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {data.map((item, index) => (
-                                    <tr key={index} className="border-b">
-                                      <td className="p-1 md:p-2 flex items-center text-xs md:text-sm">
-                                        <span className="w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2" style={{ backgroundColor: item.color }}></span>
-                                        {item.name}
-                                      </td>
-                                      <td className="p-1 md:p-2 text-xs md:text-sm">{item.value}</td>
-                                      <td className="p-1 md:p-2 text-green-500 text-xs md:text-sm">{item.percentage}%</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                {/* Table */}
+                                <div className="mt-4">
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                      <thead>
+                                        <tr className="border-b">
+                                          <th className="p-1 md:p-2 text-gray-600 text-base">Type</th>
+                                          <th className="p-1 md:p-2 text-gray-600 text-base">Visitors</th>
+                                          <th className="p-1 md:p-2 text-gray-600 text-base">%</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {data.map((item, index) => (
+                                          <tr key={index} className="border-b">
+                                            <td className="p-1 md:p-2 flex items-center text-base">
+                                              <span className="w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2" style={{ backgroundColor: item.color }}></span>
+                                              {item.name}
+                                            </td>
+                                            <td className="p-1 md:p-2 text-base">{item.value}</td>
+                                            <td className="p-1 md:p-2 text-green-500 text-base">{item.percentage}%</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* MODIFICATION: Full width Geo Analytics Map at bottom */}
+                            <div className="w-full mt-4 mb-4">
+                              <div className="w-full bg-white shadow-md rounded-lg p-4 md:p-6 min-h-128">
+                                <GeoAnalyticsMap 
+                                  analytics={analytics} 
+                                  selectedCountry={selectedCountry} 
+                                  setSelectedCountry={setSelectedCountry}
+                                  className="h-96 w-full"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    </div>
-                  :(
-                    
-                      <div className="flex h-screen">
+                      ) : (
+                        <div className="flex h-screen">
+                          <div className="flex-1 flex items-center justify-center bg-gray-50">
+                            <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
+                              <h1 className="text-4xl font-bold text-blue-800 mb-4">
+                                Please Add atleast one website <br/> or verify your current website to get analytics
+                              </h1>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {activeSection === 'Traffic analytics' && (
+                <>
+                  <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                  />
+                  {analytics && Object.keys(analytics).length > 0 ? (
+                    <TrafficAnalytics 
+                      analytics={analytics}
+                      setanalytics={setanalytics}
+                      trafficSources={trafficSources} 
+                      setTrafficSources={setTrafficSources}
+                    />
+                  ) : (
+                    <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
@@ -654,128 +710,90 @@ return (
                         </div>
                       </div>
                     </div>
-                  
                   )}
                 </>
-                )}
-                  </div>
-                )}
-                
-                {activeSection === 'Traffic analytics' && (
-                  <>
-                    <Filters 
-                      websitearray={websitearray}
-                      setWebsitearray={setWebsitearray}
-                      analytics={analytics}
-                      setanalytics={setanalytics}
-                      selectedDate={selectedDate} 
-                      setSelectedDate={setSelectedDate} 
-                      selectedWebsite={selectedWebsite} 
-                      setSelectedWebsite={setSelectedWebsite}
-                      selectedFilters={selectedFilters} 
-                      setSelectedFilters={setSelectedFilters}
-                      idy={idy}
-                      setidy={setidy}
-                    />
-                      {analytics && Object.keys(analytics).length > 0 ? 
-                      <TrafficAnalytics 
-                      analytics={analytics}
-                      setanalytics={setanalytics}
-                      trafficSources={trafficSources} 
-                      setTrafficSources={setTrafficSources}  
-                    />:(
-                      <div className="flex h-screen">
-                      <div className="flex-1 flex items-center justify-center bg-gray-50">
-                        <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
-                          <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
-                          </h1>
-                        </div>
-                      </div>
-                    </div>
-                    )}
-
-                  </>
-                )}
-                
-                {activeSection === 'Geo Insights' && (
-                  <>
-                    <Filters 
-                      websitearray={websitearray}
-                      setWebsitearray={setWebsitearray}
-                      analytics={analytics}
-                      setanalytics={setanalytics}
-                      selectedDate={selectedDate} 
-                      setSelectedDate={setSelectedDate} 
-                      selectedWebsite={selectedWebsite} 
-                      setSelectedWebsite={setSelectedWebsite}
-                      selectedFilters={selectedFilters} 
-                      setSelectedFilters={setSelectedFilters}
-                      idy={idy}
-                      setidy={setidy}
-                    />
-                     {analytics && Object.keys(analytics).length > 0 ?
+              )}
+              
+              {activeSection === 'Geo Insights' && (
+                <>
+                  <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                  />
+                  {analytics && Object.keys(analytics).length > 0 ? (
                     <GeoAnalyticss analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
-                    
-                    :(
-                      <div className="flex h-screen">
+                  ) : (
+                    <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
+                            Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>
                     </div>
-                    )}
-                  </>
-                )}
-                
-                {activeSection === 'Retention' && (
-                  <>
-                    <Filters 
-                      websitearray={websitearray}
-                      setWebsitearray={setWebsitearray}
-                      analytics={analytics}
-                      setanalytics={setanalytics}
-                      selectedDate={selectedDate} 
-                      setSelectedDate={setSelectedDate} 
-                      selectedWebsite={selectedWebsite} 
-                      setSelectedWebsite={setSelectedWebsite}
-                      selectedFilters={selectedFilters} 
-                      setSelectedFilters={setSelectedFilters}
-                      idy={idy}
-                      setidy={setidy}
-                    />
-                    {analytics && Object.keys(analytics).length > 0 ?
+                  )}
+                </>
+              )}
+              
+              {activeSection === 'Retention' && (
+                <>
+                  <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                  />
+                  {analytics && Object.keys(analytics).length > 0 ? (
                     <RetentionAnalytics analytics={analytics} setanalytics={setanalytics}/>
-                    :(
-                      <div className="flex h-screen">
+                  ) : (
+                    <div className="flex h-screen">
                       <div className="flex-1 flex items-center justify-center bg-gray-50">
                         <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                           <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
+                            Please Add atleast one website <br/> or verify your current website to get analytics
                           </h1>
                         </div>
                       </div>
                     </div>
-                    )}
-                  </>
-                )}
-                
-                {/* For all other sections, display placeholder content */}
-                {!['Dashboard', 'Traffic analytics', 'Geo Insights', 'Retention'].includes(activeSection) && (
-                  <div className="w-full bg-white p-4 md:p-6 rounded-xl md:rounded-2xl">
-                    <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-4">{activeSection} Content</h2>
-                    <p className="text-sm md:text-base">This is the content for the {activeSection} section. It spans the full width without the right panel.</p>
-                    <div className="h-32 md:h-64 bg-gray-100 rounded-lg mt-4"></div>
-                  </div>
-                )}
-              </div>
-            
-
+                  )}
+                </>
+              )}
+              
+              {/* For all other sections, display placeholder content */}
+              {!['Dashboard', 'Traffic analytics', 'Geo Insights', 'Retention'].includes(activeSection) && (
+                <div className="w-full bg-white p-4 md:p-6 rounded-xl md:rounded-2xl">
+                  <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-4">{activeSection} Content</h2>
+                  <p className="text-sm md:text-base">This is the content for the {activeSection} section. It spans the full width without the right panel.</p>
+                  <div className="h-32 md:h-64 bg-gray-100 rounded-lg mt-4"></div>
+                </div>
+              )}
+            </div>
         </div>
-            
       </div>
     </div>
     

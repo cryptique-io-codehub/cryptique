@@ -88,6 +88,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Generate comprehensive analytics summary for the AI context
   const generateAnalyticsSummary = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
+      console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
 
@@ -189,9 +190,64 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       entryPages: analytics.entryPages || {}
     };
 
+    console.log("========== ANALYTICS CONTEXT BEING SENT TO GEMINI ==========");
+    console.log("Raw Analytics Object:", analytics);
+    console.log("Processed Analytics Data:", fullAnalytics);
+    console.log("==========================================================");
+
+    // Enhanced prompt structure with clear sections and formatting rules
     return `
-      Website Analytics Data:
+      [SYSTEM CONTEXT]
+      You are CQ Intelligence, an advanced analytics AI assistant specializing in Web3 and blockchain analytics.
+      
+      FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
+      
+      1. Use "### " for section headers (no extra newlines before or after)
+      2. Format metrics as "**Metric Name:** \`value\`" on new lines
+      3. Use single newlines between items within sections
+      4. Use "---" on its own line between major sections
+      5. Format recommendations as numbered blockquotes with bold headers
+      6. Use bullet points (*) for insights and trends
+      7. Keep related metrics grouped on consecutive lines
+      8. Use *italics* for trend descriptions and insights
+      9. Format code/values consistently using \`backticks\`
+      10. No extra blank lines except around horizontal rules
+      11. Use **bold** for key metrics and important findings
+      12. Use *italics* for trend descriptions and insights
+      13. Understand the context of the data and provide insights based on the data
+
+      REQUIRED SECTIONS (in order):
+      1. ### Summary of Findings
+      2. ### Key Metrics
+      3. ### Trends & Insights
+      4. ### Actionable Recommendations
+
+      EXAMPLE FORMAT:
+      ### Summary of Findings
+      Concise summary with key points.
+      
+      ---
+      ### Key Metrics
+      **Metric One:** \`value\`
+      **Metric Two:** \`value\`
+      
+      ---
+      ### Trends & Insights
+      * *First Trend:* Description with \`values\`
+      * *Second Trend:* More details
+      
+      ---
+      ### Actionable Recommendations
+      > **First Recommendation**
+      Clear action item with specific steps
+      
+      > **Second Recommendation**
+      Another clear action item
+      [/SYSTEM CONTEXT]
+
+      [ANALYTICS DATA]
       ${JSON.stringify(fullAnalytics, null, 2)}
+      [/ANALYTICS DATA]
     `;
   };
 
@@ -252,6 +308,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
+  const formatResponse = (response) => {
+    let formattedText = response.trim()
+      // Remove excessive newlines
+      .replace(/\n{3,}/g, '\n\n')
+      // Ensure consistent spacing around backticks
+      .replace(/\s+`/g, ' `')
+      .replace(/`\s+/g, '` ')
+      // Format headers with single newline
+      .replace(/###\s*(.*?)(?=\n)/g, '### $1')
+      // Format metrics consistently
+      .replace(/\*\*(.*?):\*\*/g, '**$1:**')
+      // Format blockquotes consistently
+      .replace(/>\s*(.*?)(?=\n|$)/g, '> $1')
+      // Format bullet points consistently
+      .replace(/^\s*\*\s+/gm, '* ')
+      // Ensure single newline after horizontal rules
+      .replace(/---\s*/g, '---\n')
+      // Remove extra spaces at start of lines
+      .replace(/^\s+/gm, '')
+      // Ensure single newlines between items
+      .replace(/\n\n+/g, '\n\n');
+
+    return formattedText;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -262,9 +343,36 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Include analytics data in the context
       const analyticsSummary = generateAnalyticsSummary();
-      const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
+      const messageWithContext = `
+        ${analyticsSummary}
+
+        [QUERY CONTEXT]
+        Analyze the above data and provide insights for the following question.
+        Follow these formatting rules strictly:
+        1. Use proper spacing between sections (double line breaks)
+        2. Format metrics as "**Metric Name:** \`value\`"
+        3. Use bullet points for lists with proper indentation
+        4. Use blockquotes (>) for recommendations with proper spacing
+        5. Use italics (*) for trends and insights
+        6. Keep related information grouped together
+        7. Use horizontal rules (---) to separate major sections
+        8. Ensure each section has a clear header (###)
+        9. Format numbers and percentages consistently using \`backticks\`
+        10. Use sub-bullets where appropriate (indent with 2 spaces)
+
+        Structure your response in this order:
+        1. ### Summary of Findings (High-level overview)
+        2. ### Key Metrics (Formatted as "**Metric:** \`value\`")
+        3. ### Trends & Insights (Use bullets and italics)
+        4. ### Actionable Recommendations (Use numbered blockquotes)
+
+        [/QUERY CONTEXT]
+
+        [USER QUESTION]
+        ${userMessage}
+        [/USER QUESTION]
+      `;
 
       let botMessage;
 
@@ -309,7 +417,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
+      // Format the response before displaying
+      const formattedMessage = formatResponse(botMessage);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: formattedMessage,
+        timestamp: new Date().toISOString()
+      }]);
     } catch (err) {
       console.error('Full Error Details:', err.response?.data || err);
       const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
@@ -336,136 +450,383 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     ];
   };
 
+  // Update the message rendering in the JSX to preserve formatting
+  const renderMessage = (message) => {
+    return (
+      <div className={`max-w-[90%] p-4 rounded-lg ${
+        message.role === 'user'
+          ? 'bg-[#1d0c46] text-white'
+          : 'bg-white shadow-sm border border-gray-100'
+      }`}>
+        <div className="prose prose-sm max-w-none">
+          {message.role === 'assistant' ? (
+            <div className="markdown-content whitespace-pre-wrap" style={{ counterReset: 'recommendation' }}>
+              {message.content}
+            </div>
+          ) : (
+            message.content
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Add the 3D Cube Loading component
+  const LoadingCube = () => {
+    return (
+      <div className="cube-wrapper">
+        <div className="cube">
+          <div className="cube-face front"></div>
+          <div className="cube-face back"></div>
+          <div className="cube-face right"></div>
+          <div className="cube-face left"></div>
+          <div className="cube-face top"></div>
+          <div className="cube-face bottom"></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Update the styles
+  const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
+
+    .markdown-content {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .markdown-content h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 2rem 0 1rem;
+      color: #1d0c46;
+      letter-spacing: -0.02em;
+      border-bottom: 2px solid #f3f4f6;
+      padding-bottom: 0.5rem;
+    }
+
+    .markdown-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .markdown-content p {
+      margin: 0.75rem 0;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+    }
+
+    .markdown-content strong {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      color: #1d0c46;
+    }
+
+    .markdown-content ul {
+      margin: 0.75rem 0;
+      padding-left: 1.5rem;
+      list-style-type: none;
+    }
+
+    .markdown-content ul li {
+      margin: 0.5rem 0;
+      position: relative;
+    }
+
+    .markdown-content ul li::before {
+      content: "•";
+      color: #caa968;
+      font-weight: bold;
+      position: absolute;
+      left: -1rem;
+    }
+
+    .markdown-content blockquote {
+      border-left: 4px solid #caa968;
+      padding: 0.5rem 0 0.5rem 1rem;
+      margin: 0.75rem 0;
+      background-color: #f8f9fa;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .markdown-content blockquote p {
+      margin: 0;
+    }
+
+    .markdown-content code {
+      background-color: #f3f4f6;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      color: #1d0c46;
+    }
+
+    .markdown-content hr {
+      margin: 1.5rem 0;
+      border: 0;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .markdown-content em {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+      font-style: italic;
+      color: #4b5563;
+    }
+
+    .markdown-content blockquote strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .markdown-content blockquote:not(:last-child) {
+      margin-bottom: 1rem;
+    }
+
+    /* Number the recommendations */
+    .markdown-content blockquote {
+      counter-increment: recommendation;
+    }
+
+    .markdown-content blockquote strong::before {
+      content: counter(recommendation) ". ";
+      font-weight: 600;
+      color: #caa968;
+    }
+
+    /* 3D Cube Animation */
+    .cube-wrapper {
+      width: 60px;
+      height: 60px;
+      perspective: 600px;
+      margin: 1rem;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: rotate 2s infinite linear;
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #caa968, #1d0c46);
+      opacity: 0.9;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .front  { transform: rotateY(0deg) translateZ(30px); }
+    .back   { transform: rotateY(180deg) translateZ(30px); }
+    .right  { transform: rotateY(90deg) translateZ(30px); }
+    .left   { transform: rotateY(-90deg) translateZ(30px); }
+    .top    { transform: rotateX(90deg) translateZ(30px); }
+    .bottom { transform: rotateX(-90deg) translateZ(30px); }
+
+    @keyframes rotate {
+      0% { transform: rotateX(0deg) rotateY(0deg); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    /* Loading State Styles */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: rgba(29, 12, 70, 0.03);
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .loading-text {
+      margin-top: 1rem;
+      color: #1d0c46;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 500;
+      font-size: 0.875rem;
+      letter-spacing: 0.025em;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  `;
+
+  // Add the styles to the document
+  useEffect(() => {
+    // Add font preload links for better performance
+    const fontPreloads = [
+      { href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', rel: 'preload', as: 'style' },
+      { href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap', rel: 'preload', as: 'style' }
+    ];
+
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = font.rel;
+      link.as = font.as;
+      document.head.appendChild(link);
+    });
+
+    // Add the actual font stylesheets
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    });
+
+    // Add component styles
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+
+    // Cleanup function
+    return () => {
+      document.head.removeChild(styleSheet);
+      // Remove font links on cleanup
+      const links = document.head.getElementsByTagName('link');
+      for (let i = links.length - 1; i >= 0; i--) {
+        const link = links[i];
+        if (link.href.includes('fonts.googleapis.com')) {
+          document.head.removeChild(link);
+        }
+      }
+    };
+  }, []);
+
+  // Update the loading state in the chat area
+  const renderLoadingState = () => (
+    <div className="flex justify-start">
+      <div className="loading-container">
+        <LoadingCube />
+        <div className="loading-text">Processing your request...</div>
+      </div>
+    </div>
+  );
+
+  // Update the chat area section to use the new loading state
+  const ChatArea = () => (
+    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+          <Bot size={64} className="mb-6 text-[#caa968]" />
+          <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+          <p className="text-gray-600 max-w-md mb-8">
+            I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            {/* Example questions buttons */}
+            <button 
+              onClick={() => {
+                setInput("What are the top pages on my website?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are the top pages on my website?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("How is my website performing?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              How is my website performing?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("Show me my Web3 user analytics");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              Show me my Web3 user analytics
+            </button>
+            <button 
+              onClick={() => {
+                setInput("What are my traffic sources?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are my traffic sources?
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {renderMessage(message)}
+            </div>
+          ))}
+          {isLoading && renderLoadingState()}
+          {error && (
+            <div className="flex justify-start">
+              <div className="bg-red-100 text-red-600 p-4 rounded-lg">
+                {error}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
       <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
-        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
-          {/* Header */}
+        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
+          {/* Header with Website Selector */}
           <div className="p-6 border-b">
-            <div className="flex items-center gap-3">
-              <Bot className="text-[#caa968]" size={24} />
-              <div>
-                <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
-                <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bot className="text-[#caa968]" size={24} />
+                <div>
+                  <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
+                  <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+                </div>
+              </div>
+              
+              {/* Website Selector */}
+              <div className="flex items-center gap-2 min-w-[300px]">
+                <select
+                  value={selectedSite}
+                  onChange={handleSiteChange}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                >
+                  <option value="">Select a website</option>
+                  {websiteArray.map(website => (
+                    <option key={website.siteId} value={website.siteId}>
+                      {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
 
-          {/* Website Selector */}
-          <div className="p-6 border-b bg-gray-50">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
-            <select
-              value={selectedSite}
-              onChange={handleSiteChange}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
-            >
-              <option value="">Select a website</option>
-              {websiteArray.map(website => (
-                <option key={website.siteId} value={website.siteId}>
-                  {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                </option>
-              ))}
-            </select>
-            
-            {/* Analytics Summary */}
-            {isDataLoading ? (
-              <div className="mt-4 p-4 bg-white rounded-lg text-center">
-                <div className="animate-pulse flex space-x-4">
-                  <div className="flex-1 space-y-4 py-1">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : analytics && Object.keys(analytics).length > 0 ? (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-                {formatAnalyticsData().map((item, index) => (
-                  <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
-                    <div className="text-xs text-gray-500">{item.label}</div>
-                    <div className="text-lg font-semibold">{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            ) : selectedSite ? (
-              <div className="mt-4 p-4 bg-white rounded-lg text-center text-gray-500">
-                No analytics data available for this website yet.
-              </div>
-            ) : null}
-          </div>
-
           {/* Chat Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-                <Bot size={64} className="mb-6 text-[#caa968]" />
-                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-                <p className="text-gray-600 max-w-md">
-                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-                </p>
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => {
-                      setInput("What are the top pages on my website?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    What are the top pages on my website?
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("How is my website performing?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-3 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    How is my website performing?
-                  </button>
-                </div>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] p-4 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-[#1d0c46] text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
-                </div>
-              ))
-            )}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 p-4 rounded-lg">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-                  </div>
-                </div>
-              </div>
-            )}
-            {error && (
-              <div className="flex justify-start">
-                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
-                  {error}
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+          <ChatArea />
 
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
@@ -477,12 +838,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
                 disabled={!selectedSite || isLoading}
-                className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
+                className="flex-1 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
               />
               <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
-                className={`px-6 rounded-lg flex items-center gap-2 ${
+                className={`px-8 rounded-lg flex items-center gap-2 ${
                   isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
