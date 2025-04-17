@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@duneanalytics/client-sdk": "^0.2.5",
     "axios": "^1.8.4",
     "backend": "file:",
     "bcrypt": "^5.1.1",
