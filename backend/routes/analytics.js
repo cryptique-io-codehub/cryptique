@@ -3,7 +3,7 @@ const router = express.Router();
 const cors = require('cors');
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
 
-// Configure CORS for analytics endpoints
+// Configure CORS for analytics endpoints new
 const corsOptions = {
   origin: ['http://localhost:3000', 'https://app.cryptique.io'],
   methods: ['GET', 'POST', 'OPTIONS'],
