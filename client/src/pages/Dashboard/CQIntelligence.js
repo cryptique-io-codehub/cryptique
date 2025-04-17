@@ -281,6 +281,82 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return trafficData;
   };
 
+  // Add utility function for value validation
+  const isValidValue = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'number' && (value === 0 || isNaN(value))) return false;
+    if (typeof value === 'string' && (value.trim() === '' || value.toLowerCase() === 'unknown')) return false;
+    if (Array.isArray(value) && value.length === 0) return false;
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
+    return true;
+  };
+
+  // Add time-based analysis helper function
+  const getTimeBasedMetrics = (sessions) => {
+    if (!sessions || !Array.isArray(sessions)) return null;
+    
+    const now = new Date();
+    const timeframes = {
+      day: { ms: 24 * 60 * 60 * 1000, label: '24h' },
+      week: { ms: 7 * 24 * 60 * 60 * 1000, label: '7d' },
+      month: { ms: 30 * 24 * 60 * 60 * 1000, label: '30d' },
+      year: { ms: 365 * 24 * 60 * 60 * 1000, label: '1y' }
+    };
+
+    const metrics = {
+      visitors: {},
+      web3Users: {},
+      walletsConnected: {},
+      engagement: {},
+      retention: {}
+    };
+
+    Object.entries(timeframes).forEach(([period, { ms, label }]) => {
+      const periodSessions = sessions.filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return (now - sessionDate) <= ms;
+      });
+
+      if (periodSessions.length > 0) {
+        // Unique visitors
+        const uniqueVisitors = new Set(periodSessions.map(s => s.device)).size;
+        if (uniqueVisitors > 0) metrics.visitors[label] = uniqueVisitors;
+
+        // Web3 users
+        const web3Users = periodSessions.filter(s => s.hasWeb3 || s.walletConnected).length;
+        if (web3Users > 0) metrics.web3Users[label] = web3Users;
+
+        // Connected wallets
+        const connectedWallets = periodSessions.filter(s => s.walletConnected).length;
+        if (connectedWallets > 0) metrics.walletsConnected[label] = connectedWallets;
+
+        // Average engagement time
+        const validDurations = periodSessions.filter(s => s.duration > 0).map(s => s.duration);
+        if (validDurations.length > 0) {
+          metrics.engagement[label] = validDurations.reduce((a, b) => a + b, 0) / validDurations.length;
+        }
+
+        // Retention calculation
+        const uniqueReturningUsers = new Set(
+          periodSessions.filter(s => s.returningUser).map(s => s.device)
+        ).size;
+        if (uniqueReturningUsers > 0) {
+          metrics.retention[label] = (uniqueReturningUsers / uniqueVisitors) * 100;
+        }
+      }
+    });
+
+    // Remove empty metric categories
+    Object.keys(metrics).forEach(key => {
+      if (Object.keys(metrics[key]).length === 0) {
+        delete metrics[key];
+      }
+    });
+
+    return Object.keys(metrics).length > 0 ? metrics : null;
+  };
+
+  // Update calculateAdvancedMetrics function
   const calculateAdvancedMetrics = (analytics) => {
     const metrics = {
       userSegments: {
@@ -291,24 +367,52 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       sourceMetrics: {},
       geographicMetrics: {},
       web3Metrics: {},
-      engagementMetrics: {}
+      engagementMetrics: {},
+      timeBasedMetrics: null
     };
 
-    // Process sessions for advanced metrics
     if (analytics.sessions && Array.isArray(analytics.sessions)) {
+      const validSessions = analytics.sessions.filter(session => 
+        session && 
+        (session.duration || session.pages?.length || session.walletConnected || session.transactions?.length)
+      );
+
+      if (validSessions.length === 0) return null;
+
       const sessionsBySource = new Map();
       const sessionsByCountry = new Map();
-      const web3SessionsBySource = new Map();
-      const walletsBySource = new Map();
-      const engagementBySource = new Map();
-      const engagementByCountry = new Map();
-      const bouncesBySource = new Map();
-      const durationsBySource = new Map();
-      const durationsByCountry = new Map();
 
-      analytics.sessions.forEach(session => {
-        // Source tracking
+      validSessions.forEach(session => {
+        // Only process sessions with valid data
         const source = session.utmSource || session.referrer || 'direct';
+        const country = session.country;
+        
+        // Skip if country is unknown or empty
+        if (country && country.toLowerCase() !== 'unknown') {
+          if (!sessionsByCountry.has(country)) {
+            sessionsByCountry.set(country, {
+              total: 0,
+              web3Users: 0,
+              walletsConnected: 0,
+              totalDuration: 0,
+              bounces: 0,
+              pageViews: 0,
+              uniqueVisitors: new Set()
+            });
+          }
+          const countryData = sessionsByCountry.get(country);
+          countryData.total++;
+          if (session.device) countryData.uniqueVisitors.add(session.device);
+          if (session.duration) countryData.totalDuration += session.duration;
+          if (session.pages?.length) {
+            countryData.pageViews += session.pages.length;
+            if (session.pages.length === 1) countryData.bounces++;
+          }
+          if (session.hasWeb3) countryData.web3Users++;
+          if (session.walletConnected) countryData.walletsConnected++;
+        }
+
+        // Process source data
         if (!sessionsBySource.has(source)) {
           sessionsBySource.set(source, {
             total: 0,
@@ -322,99 +426,237 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
         const sourceData = sessionsBySource.get(source);
         sourceData.total++;
-        sourceData.uniqueVisitors.add(session.device);
-        sourceData.totalDuration += session.duration || 0;
-        sourceData.pageViews += (session.pages?.length || 0);
-        if (session.pages?.length === 1) sourceData.bounces++;
-
-        // Geographic tracking
-        const country = session.country || 'unknown';
-        if (!sessionsByCountry.has(country)) {
-          sessionsByCountry.set(country, {
-            total: 0,
-            web3Users: 0,
-            walletsConnected: 0,
-            totalDuration: 0,
-            bounces: 0,
-            pageViews: 0,
-            uniqueVisitors: new Set()
-          });
+        if (session.device) sourceData.uniqueVisitors.add(session.device);
+        if (session.duration) sourceData.totalDuration += session.duration;
+        if (session.pages?.length) {
+          sourceData.pageViews += session.pages.length;
+          if (session.pages.length === 1) sourceData.bounces++;
         }
-        const countryData = sessionsByCountry.get(country);
-        countryData.total++;
-        countryData.uniqueVisitors.add(session.device);
-        countryData.totalDuration += session.duration || 0;
-        countryData.pageViews += (session.pages?.length || 0);
-        if (session.pages?.length === 1) countryData.bounces++;
+        if (session.hasWeb3) sourceData.web3Users++;
+        if (session.walletConnected) sourceData.walletsConnected++;
 
-        // New vs Returning
-        const isReturning = session.returningUser;
-        metrics.userSegments.newVsReturning[isReturning ? 'returning' : 'new']++;
+        // Only count user segments with valid data
+        if (session.returningUser !== undefined) {
+          metrics.userSegments.newVsReturning[session.returningUser ? 'returning' : 'new']++;
+        }
+        if (session.hasWeb3 || session.walletConnected) {
+          metrics.userSegments.web3VsTraditional.web3++;
+        } else {
+          metrics.userSegments.web3VsTraditional.traditional++;
+        }
 
-        // Web3 vs Traditional
-        const isWeb3 = session.hasWeb3 || session.walletConnected;
-        metrics.userSegments.web3VsTraditional[isWeb3 ? 'web3' : 'traditional']++;
-
-        // Engagement Level
         const engagementScore = calculateEngagementScore(session);
-        if (engagementScore > 7) metrics.userSegments.byEngagementLevel.high++;
-        else if (engagementScore > 3) metrics.userSegments.byEngagementLevel.medium++;
-        else metrics.userSegments.byEngagementLevel.low++;
+        if (engagementScore > 0) {
+          if (engagementScore > 7) metrics.userSegments.byEngagementLevel.high++;
+          else if (engagementScore > 3) metrics.userSegments.byEngagementLevel.medium++;
+          else metrics.userSegments.byEngagementLevel.low++;
+        }
       });
 
-      // Process source metrics
-      metrics.sourceMetrics = Array.from(sessionsBySource.entries()).map(([source, data]) => ({
-        source,
-        totalSessions: data.total,
-        uniqueVisitors: data.uniqueVisitors.size,
-        averageDuration: data.totalDuration / data.total,
-        bounceRate: (data.bounces / data.total) * 100,
-        pageViewsPerSession: data.pageViews / data.total,
-        web3Users: data.web3Users,
-        walletsConnected: data.walletsConnected
-      })).sort((a, b) => b.totalSessions - a.totalSessions);
+      // Process and filter source metrics
+      metrics.sourceMetrics = Array.from(sessionsBySource.entries())
+        .map(([source, data]) => ({
+          source,
+          totalSessions: data.total,
+          uniqueVisitors: data.uniqueVisitors.size,
+          averageDuration: data.totalDuration / data.total,
+          bounceRate: (data.bounces / data.total) * 100,
+          pageViewsPerSession: data.pageViews / data.total,
+          web3Users: data.web3Users,
+          walletsConnected: data.walletsConnected
+        }))
+        .filter(metric => 
+          metric.totalSessions > 0 && 
+          (metric.uniqueVisitors > 0 || metric.web3Users > 0 || metric.walletsConnected > 0)
+        )
+        .sort((a, b) => b.totalSessions - a.totalSessions);
 
-      // Process geographic metrics
-      metrics.geographicMetrics = Array.from(sessionsByCountry.entries()).map(([country, data]) => ({
-        country,
-        totalSessions: data.total,
-        uniqueVisitors: data.uniqueVisitors.size,
-        averageDuration: data.totalDuration / data.total,
-        bounceRate: (data.bounces / data.total) * 100,
-        pageViewsPerSession: data.pageViews / data.total,
-        web3Users: data.web3Users,
-        walletsConnected: data.walletsConnected
-      })).sort((a, b) => b.totalSessions - a.totalSessions);
+      // Process and filter geographic metrics
+      metrics.geographicMetrics = Array.from(sessionsByCountry.entries())
+        .map(([country, data]) => ({
+          country,
+          totalSessions: data.total,
+          uniqueVisitors: data.uniqueVisitors.size,
+          averageDuration: data.totalDuration / data.total,
+          bounceRate: (data.bounces / data.total) * 100,
+          pageViewsPerSession: data.pageViews / data.total,
+          web3Users: data.web3Users,
+          walletsConnected: data.walletsConnected
+        }))
+        .filter(metric => 
+          metric.totalSessions > 0 && 
+          (metric.uniqueVisitors > 0 || metric.web3Users > 0 || metric.walletsConnected > 0)
+        )
+        .sort((a, b) => b.totalSessions - a.totalSessions);
     }
 
-    // Process Web3 specific metrics
-    if (analytics.walletsConnected) {
-      metrics.web3Metrics = {
+    // Add time-based metrics
+    if (analytics.sessions && Array.isArray(analytics.sessions)) {
+      const timeBasedMetrics = getTimeBasedMetrics(analytics.sessions);
+      if (timeBasedMetrics) {
+        metrics.timeBasedMetrics = timeBasedMetrics;
+      }
+    }
+
+    // Enhanced Web3 metrics
+    if (analytics.walletsConnected && analytics.walletsConnected > 0) {
+      const web3Metrics = {
         totalWallets: analytics.walletsConnected,
-        walletsByType: analytics.walletTypes || {},
-        chainInteractions: analytics.chainInteractions || {},
-        averageTransactionsPerUser: analytics.transactions ? 
-          analytics.transactions.length / analytics.uniqueWallets.length : 0,
-        topContracts: processContractInteractions(analytics.contractInteractions),
-        walletRetention: calculateWalletRetention(analytics.sessions),
-        web3ConversionRate: analytics.web3Visitors ? 
-          (analytics.walletsConnected / analytics.web3Visitors) * 100 : 0
+        walletsByType: {},
+        chainInteractions: {},
+        topContracts: [],
+        walletActivity: {
+          activeWallets: {},
+          transactionVolume: {},
+          uniqueContracts: {}
+        }
       };
+
+      // Process wallet types with timeline data
+      if (analytics.walletTypes) {
+        const walletTimeline = {};
+        Object.entries(analytics.walletTypes).forEach(([type, data]) => {
+          if (typeof data === 'object') {
+            // If we have timeline data
+            Object.entries(data).forEach(([period, count]) => {
+              if (!walletTimeline[period]) walletTimeline[period] = {};
+              if (count > 0) walletTimeline[period][type] = count;
+            });
+          } else if (data > 0) {
+            // If we just have total counts
+            web3Metrics.walletsByType[type] = data;
+          }
+        });
+        if (Object.keys(walletTimeline).length > 0) {
+          web3Metrics.walletsByType = { ...web3Metrics.walletsByType, timeline: walletTimeline };
+        }
+      }
+
+      // Process chain interactions with timeline data
+      if (analytics.chainInteractions) {
+        const chainTimeline = {};
+        Object.entries(analytics.chainInteractions).forEach(([chain, data]) => {
+          if (typeof data === 'object') {
+            // If we have timeline data
+            Object.entries(data).forEach(([period, count]) => {
+              if (!chainTimeline[period]) chainTimeline[period] = {};
+              if (count > 0) chainTimeline[period][chain] = count;
+            });
+          } else if (data > 0) {
+            // If we just have total counts
+            web3Metrics.chainInteractions[chain] = data;
+          }
+        });
+        if (Object.keys(chainTimeline).length > 0) {
+          web3Metrics.chainInteractions = { ...web3Metrics.chainInteractions, timeline: chainTimeline };
+        }
+      }
+
+      // Process wallet activity metrics
+      if (analytics.sessions) {
+        const timeframes = {
+          '24h': 1,
+          '7d': 7,
+          '30d': 30,
+          '1y': 365
+        };
+
+        Object.entries(timeframes).forEach(([label, days]) => {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - days);
+
+          const periodSessions = analytics.sessions.filter(s => 
+            new Date(s.startTime) >= cutoff && s.walletConnected
+          );
+
+          if (periodSessions.length > 0) {
+            // Active wallets
+            const activeWallets = new Set(periodSessions.map(s => s.walletAddress)).size;
+            if (activeWallets > 0) web3Metrics.walletActivity.activeWallets[label] = activeWallets;
+
+            // Transaction volume
+            const transactions = periodSessions.reduce((sum, s) => sum + (s.transactions?.length || 0), 0);
+            if (transactions > 0) web3Metrics.walletActivity.transactionVolume[label] = transactions;
+
+            // Unique contracts
+            const uniqueContracts = new Set(
+              periodSessions.flatMap(s => s.contractInteractions?.map(i => i.contract) || [])
+            ).size;
+            if (uniqueContracts > 0) web3Metrics.walletActivity.uniqueContracts[label] = uniqueContracts;
+          }
+        });
+      }
+
+      // Clean up empty categories in wallet activity
+      Object.keys(web3Metrics.walletActivity).forEach(key => {
+        if (Object.keys(web3Metrics.walletActivity[key]).length === 0) {
+          delete web3Metrics.walletActivity[key];
+        }
+      });
+      if (Object.keys(web3Metrics.walletActivity).length === 0) {
+        delete web3Metrics.walletActivity;
+      }
+
+      // Only include if we have actual data
+      if (Object.keys(web3Metrics).length > 0) {
+        metrics.web3Metrics = web3Metrics;
+      }
     }
 
-    // Process engagement metrics
-    metrics.engagementMetrics = {
-      averageSessionDuration: analytics.averageSessionDuration || 0,
-      pageDepth: calculatePageDepth(analytics.sessions),
-      returnRate: calculateReturnRate(analytics.sessions),
-      timeOnPage: analytics.timeOnPage || {},
-      exitPages: processExitPages(analytics.exitPages),
-      entryPages: processEntryPages(analytics.entryPages),
-      userFlow: calculateUserFlow(analytics.sessions),
-      customEvents: processCustomEvents(analytics.customEvents)
-    };
+    // Filter engagement metrics to only include valid data
+    const engagementMetrics = {};
+    
+    if (analytics.averageSessionDuration > 0) {
+      engagementMetrics.averageSessionDuration = analytics.averageSessionDuration;
+    }
 
-    return metrics;
+    const pageDepth = calculatePageDepth(analytics.sessions);
+    if (pageDepth.average > 0) {
+      engagementMetrics.pageDepth = pageDepth;
+    }
+
+    const returnRate = calculateReturnRate(analytics.sessions);
+    if (returnRate > 0) {
+      engagementMetrics.returnRate = returnRate;
+    }
+
+    const timeOnPage = Object.entries(analytics.timeOnPage || {})
+      .filter(([_, duration]) => duration > 0)
+      .reduce((acc, [page, duration]) => ({ ...acc, [page]: duration }), {});
+    if (Object.keys(timeOnPage).length > 0) {
+      engagementMetrics.timeOnPage = timeOnPage;
+    }
+
+    const exitPages = processExitPages(analytics.exitPages)
+      .filter(page => page.count > 0);
+    if (exitPages.length > 0) {
+      engagementMetrics.exitPages = exitPages;
+    }
+
+    const entryPages = processEntryPages(analytics.entryPages)
+      .filter(page => page.count > 0);
+    if (entryPages.length > 0) {
+      engagementMetrics.entryPages = entryPages;
+    }
+
+    const userFlow = calculateUserFlow(analytics.sessions)
+      .filter(flow => flow.count > 0);
+    if (userFlow.length > 0) {
+      engagementMetrics.userFlow = userFlow;
+    }
+
+    if (Object.keys(engagementMetrics).length > 0) {
+      metrics.engagementMetrics = engagementMetrics;
+    }
+
+    // Remove any empty metric categories
+    Object.keys(metrics).forEach(key => {
+      if (!isValidValue(metrics[key])) {
+        delete metrics[key];
+      }
+    });
+
+    return Object.keys(metrics).length > 0 ? metrics : null;
   };
 
   // Helper functions for advanced metrics
@@ -506,7 +748,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       .sort((a, b) => b.count - a.count);
   };
 
-  // Update generateAnalyticsSummary to include advanced metrics
+  // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
     if (!analytics || Object.keys(analytics).length === 0) {
       console.log("Analytics Context: No analytics data available");
@@ -529,21 +771,42 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         uniqueVisitors: analytics.uniqueVisitors || 0,
         averageSessionDuration: analytics.averageSessionDuration || 0,
         bounceRate: analytics.bounceRate || 0
-      },
-      userSegments: advancedMetrics.userSegments,
-      sourceMetrics: advancedMetrics.sourceMetrics,
-      geographicMetrics: advancedMetrics.geographicMetrics,
-      web3Metrics: advancedMetrics.web3Metrics,
-      engagementMetrics: advancedMetrics.engagementMetrics,
-      geography: geoData,
-      traffic: trafficData
+      }
     };
 
-    // Remove null sections
+    // Add DAU/WAU/MAU if available
+    const activityMetrics = calculateRetentionMetrics(analytics.sessions);
+    if (activityMetrics) {
+      if (activityMetrics.dau > 0) fullAnalytics.overview.dau = activityMetrics.dau;
+      if (activityMetrics.wau > 0) fullAnalytics.overview.wau = activityMetrics.wau;
+      if (activityMetrics.mau > 0) fullAnalytics.overview.mau = activityMetrics.mau;
+      if (Object.keys(activityMetrics.retention).length > 0) {
+        fullAnalytics.overview.retention = activityMetrics.retention;
+      }
+    }
+
+    // Only include metrics with valid values
+    if (fullAnalytics.overview.totalPageViews === 0) delete fullAnalytics.overview.totalPageViews;
+    if (fullAnalytics.overview.uniqueVisitors === 0) delete fullAnalytics.overview.uniqueVisitors;
+    if (fullAnalytics.overview.averageSessionDuration === 0) delete fullAnalytics.overview.averageSessionDuration;
+    if (fullAnalytics.overview.bounceRate === 0) delete fullAnalytics.overview.bounceRate;
+
+    // Add advanced metrics if they exist
+    if (advancedMetrics) {
+      Object.entries(advancedMetrics).forEach(([key, value]) => {
+        if (isValidValue(value)) {
+          fullAnalytics[key] = value;
+        }
+      });
+    }
+
+    // Add geographical and traffic data if they exist
+    if (geoData && isValidValue(geoData)) fullAnalytics.geography = geoData;
+    if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
+
+    // Remove empty sections
     Object.keys(fullAnalytics).forEach(key => {
-      if (fullAnalytics[key] === null || 
-          (Array.isArray(fullAnalytics[key]) && fullAnalytics[key].length === 0) ||
-          (typeof fullAnalytics[key] === 'object' && Object.keys(fullAnalytics[key]).length === 0)) {
+      if (!isValidValue(fullAnalytics[key])) {
         delete fullAnalytics[key];
       }
     });
