@@ -198,8 +198,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("==========================================================");
 
     // Enhanced prompt structure with Web3 marketing expert context
-    return `
-      [SYSTEM CONTEXT]
+    const systemContext = `
       You are CQ Intelligence, an expert Web3 marketing consultant with extensive experience in blockchain, DeFi, NFTs, and Web3 projects. Your expertise includes:
       
       - Growth strategies for Web3 platforms and dApps
@@ -227,11 +226,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Token holder behavior
       - Cross-chain user journeys
       - Web2 to Web3 conversion funnels
-      
+    `;
+
+    const formattingInstructions = `
       FORMATTING INSTRUCTIONS:
       1. Always keep metrics and their values on the same line
       2. Format metrics as "**Metric Name:** \`value\`" (no line breaks)
-      3. Format page metrics as "**Page (`/path`):** \`value\` views"
+      3. Format page metrics as "**Page Path:** \`value\` views"
       4. Keep contextual information on the same line as its metric
       5. Use proper spacing between different metrics
       6. Format percentages inline as \`X%\`
@@ -250,10 +251,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
       > **Strategic Initiative**
       > Implement targeted improvements to increase conversion from \`25%\` to \`40%\`
+    `;
+
+    return `
+      [SYSTEM CONTEXT]
+      ${systemContext}
+
+      [FORMATTING INSTRUCTIONS]
+      ${formattingInstructions}
 
       [ANALYTICS DATA]
       ${JSON.stringify(fullAnalytics, null, 2)}
-      [/ANALYTICS DATA]
 
       [QUERY CONTEXT]
       As a Web3 marketing expert, analyze the above data and provide strategic insights for the following question.
@@ -266,7 +274,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       6. Web2 to Web3 conversion strategies
 
       Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
-      [/QUERY CONTEXT]
 
       [USER QUESTION]
       ${message}
