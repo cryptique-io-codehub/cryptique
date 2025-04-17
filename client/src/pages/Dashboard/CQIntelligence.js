@@ -294,6 +294,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       
       // Define preferred models in order of preference
       const preferredModels = [
+        'gemini-2.0-flash',
         'gemini-1.5-pro',
         'gemini-pro',
         'gemini-1.5-pro-latest'
