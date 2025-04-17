@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import GeoAnalyticsMap from '../GeoAnalyticsMap';
 
+
 // Format seconds into minutes and seconds
 const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60);
@@ -108,7 +109,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       
       // Track wallet connections and types
       if (session.wallet) {
-        // CORRECTED: Check for web3 users - has wallet type and it's not "No Wallet Detected"
+        // Check for web3 users - has wallet type and it's not "No Wallet Detected"
         if (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
           metrics[countryName].web3Users.add(userId);
           
@@ -127,7 +128,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
           metrics[countryName].wallets[walletType].add(userId);
         }
         
-        // CORRECTED: Track wallet connections (has non-empty address)
+        // Track wallet connections (has non-empty address)
         if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
           // If wallet type is "No Wallet Detected" but has wallet address, count as web3 user too
           if (session.wallet.walletType === 'No Wallet Detected') {
@@ -342,8 +343,8 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
   };
 
   return (
-    <div className="w-full px-4 py-6 md:px-6 lg:px-8">
-      <h1 className="text-xl md:text-2xl font-bold mb-4">GeoAnalytics</h1>
+    <div className="w-full px-4 py-6 md:px-6 lg:px-8 font-poppins">
+      <h1 className="text-xl md:text-2xl font-montserrat font-bold mb-4">GeoAnalytics</h1>
       
       {/* First row of metric cards - responsive grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
@@ -392,13 +393,13 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       {/* Map and country details section - stack on mobile, side by side on larger screens */}
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
         <div className="w-full lg:w-3/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
-          <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Details by country</h2>
+          <h2 className="text-base md:text-lg font-montserrat font-semibold mb-3 md:mb-4">Details by country</h2>
           <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
         </div>
         
         <div className="w-full lg:w-2/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
           <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h2 className="text-base md:text-lg font-semibold">Chosen Country:</h2>
+            <h2 className="text-base md:text-lg font-montserrat font-semibold">Chosen Country:</h2>
             <div className="flex items-center">
               <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">
                 {normalizeCountry(selectedCountry) || "Select a country"}
@@ -430,8 +431,8 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
 const MetricCard = ({ title, value, country, flag }) => {
   return (
     <div className="bg-white rounded-xl p-3 md:p-4 shadow-sm h-full">
-      <h3 className="text-xs md:text-sm font-medium mb-1 md:mb-2">{title}</h3>
-      <div className="text-lg md:text-2xl font-bold mb-1">{value}</div>
+      <h3 className="text-xs md:text-sm font-montserrat font-medium mb-1 md:mb-2">{title}</h3>
+      <div className="text-lg md:text-2xl font-montserrat font-bold mb-1">{value}</div>
       <div className="flex items-center text-xs text-gray-600 truncate">
         <span className="mr-1">{flag}</span>
         <span className="truncate">{country}</span>

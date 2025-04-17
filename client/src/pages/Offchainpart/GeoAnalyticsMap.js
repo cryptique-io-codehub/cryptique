@@ -127,11 +127,12 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
   };
 
   return (
-    <div className="w-full bg-white rounded-2xl p-6 mt-4">
+    <div className="w-full bg-white rounded-2xl p-6 mt-4 mb-0">
+      {/* Standardized header text */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Users by country</h2>
+        <h2 className="text-2xl font-semibold">Users by country</h2>
         <div className="relative">
-          <select className="bg-gray-50 border border-gray-200 text-gray-700 py-1 px-3 pr-8 rounded-md text-sm appearance-none">
+          <select className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-base appearance-none">
             <option>This Month</option>
             <option>Last Month</option>
             <option>Last 3 Months</option>
@@ -158,24 +159,24 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
         />
       </div>
 
-      {/* Top Countries List */}
-      <div>
-        <h3 className="text-lg font-medium mb-2">Top Countries</h3>
-        <ul className="space-y-2 text-sm text-gray-700">
+      {/* Top Countries List with standardized text */}
+      <div className="pb-0">
+        <h3 className="text-xl font-medium mb-3">Top Countries</h3>
+        <ul className="space-y-3 text-base text-gray-700">
           {topCountries.map(({ country, value, web3Users, walletConnections }) => {
             const countryCode = country.toUpperCase();
             const countryName = countryCodeToName[countryCode] || countryCode;
             const flagEmoji = getCountryFlag(countryCode);
             return (
-              <li key={country} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+              <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
                 <span className="flex items-center">
-                  <span className="text-xl mr-2">{flagEmoji}</span>
-                  <span className="font-medium">{countryName}</span>
+                  <span className="text-2xl mr-3">{flagEmoji}</span>
+                  <span className="font-medium text-lg">{countryName}</span>
                 </span>
-                <div className="flex space-x-4">
-                  <span className="font-semibold">{value} users</span>
-                  <span className="text-purple-600">{web3Users} web3</span>
-                  <span className="text-green-600">{walletConnections} wallets</span>
+                <div className="flex space-x-6">
+                  <span className="font-semibold text-base">{value} users</span>
+                  <span className="text-purple-600 text-base">{web3Users} web3</span>
+                  <span className="text-green-600 text-base">{walletConnections} wallets</span>
                 </div>
               </li>
             );

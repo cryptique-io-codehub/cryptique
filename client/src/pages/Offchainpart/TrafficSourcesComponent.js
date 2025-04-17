@@ -272,12 +272,12 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   }
   
   return (
-    <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold pl-3">Traffic sources</h3>
+    <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow h-full">
+      <div className="flex justify-between items-center mb-4 px-3">
+        <h3 className="text-xl font-semibold">Traffic sources</h3>
         <div className="relative">
-          <select 
-            className="text-sm bg-gray-50 border border-gray-200 rounded-md px-2 py-1 pr-8 appearance-none"
+          <select
+            className="text-base bg-gray-50 border border-gray-200 rounded-md px-2 py-1 pr-8 appearance-none"
             value={selectedMonth}
             onChange={handleMonthChange}
             disabled={isLoading}
@@ -296,7 +296,7 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       
       <div className="bg-gray-50 rounded-lg overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-12 bg-gray-100 p-3 pl-3 text-sm font-medium text-gray-600 sticky top-0">
+        <div className="grid grid-cols-12 bg-gray-100 p-3 text-base font-medium text-gray-600 sticky top-0">
           <div className="col-span-4">Traffic source</div>
           <div className="col-span-2 text-right">Visitors</div>
           <div className="col-span-1"></div> {/* Empty column for spacing */}
@@ -304,25 +304,26 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
           <div className="col-span-3 text-right">Wallets Connected</div>
         </div>
         
-        {/* Table rows - scrollable container */}
-        <div className="max-h-64 overflow-y-auto">
+        {/* Table rows - fixed height to show ~7 rows by default */}
+        <div className="max-h-80 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center text-gray-500">Loading data...</div>
+            <div className="p-4 text-center text-gray-500 text-base">Loading data...</div>
           ) : (
             <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
               {allSources.length > 0 ? (
                 allSources.map((source, index) => (
-                  <div key={index} className="grid grid-cols-4 p-3 text-sm hover:bg-gray-100">
-                    <div className="flex items-center space-x-2">
+                  <div key={index} className="grid grid-cols-12 p-3 text-base hover:bg-gray-100">
+                    <div className="col-span-4 flex items-center">
                       <span className="truncate">{formatSourceName(source.source)}</span>
                     </div>
-                    <div className="text-right">{formatNumber(source.visitors)}</div>
-                    <div className="text-right">{formatNumber(source.web3users)}</div>
-                    <div className="text-right">{formatNumber(source.walletsConnected)}</div>
+                    <div className="col-span-2 text-right">{formatNumber(source.visitors)}</div>
+                    <div className="col-span-1"></div>
+                    <div className="col-span-2 text-right">{formatNumber(source.web3users)}</div>
+                    <div className="col-span-3 text-right">{formatNumber(source.walletsConnected)}</div>
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-gray-500">No data available</div>
+                <div className="p-4 text-center text-gray-500 text-base">No data available</div>
               )}
             </div>
           )}
