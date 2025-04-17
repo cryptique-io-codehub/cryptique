@@ -87,115 +87,227 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Generate comprehensive analytics summary for the AI context
+  // Helper functions for analytics processing
+  const calculateRetentionMetrics = (sessions) => {
+    if (!sessions || !Array.isArray(sessions)) return {};
+    
+    const now = new Date();
+    const dayInMs = 24 * 60 * 60 * 1000;
+    const weekInMs = 7 * dayInMs;
+    const monthInMs = 30 * dayInMs;
+
+    // Get unique users by timeframe
+    const uniqueUsersByDay = new Map();
+    const uniqueUsersByWeek = new Map();
+    const uniqueUsersByMonth = new Map();
+    
+    sessions.forEach(session => {
+      const startTime = new Date(session.startTime);
+      const timeDiff = now - startTime;
+      const deviceId = session.device; // Using device as user identifier
+
+      // Daily
+      if (timeDiff <= dayInMs) {
+        const day = startTime.toISOString().split('T')[0];
+        if (!uniqueUsersByDay.has(day)) uniqueUsersByDay.set(day, new Set());
+        uniqueUsersByDay.get(day).add(deviceId);
+      }
+
+      // Weekly
+      if (timeDiff <= weekInMs) {
+        const week = Math.floor(startTime.getTime() / weekInMs);
+        if (!uniqueUsersByWeek.has(week)) uniqueUsersByWeek.set(week, new Set());
+        uniqueUsersByWeek.get(week).add(deviceId);
+      }
+
+      // Monthly
+      if (timeDiff <= monthInMs) {
+        const month = startTime.toISOString().slice(0, 7);
+        if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
+        uniqueUsersByMonth.get(month).add(deviceId);
+      }
+    });
+
+    // Calculate metrics
+    const dau = uniqueUsersByDay.size > 0 ? 
+      Math.max(...Array.from(uniqueUsersByDay.values()).map(set => set.size)) : 0;
+    const wau = uniqueUsersByWeek.size > 0 ?
+      Math.max(...Array.from(uniqueUsersByWeek.values()).map(set => set.size)) : 0;
+    const mau = uniqueUsersByMonth.size > 0 ?
+      Math.max(...Array.from(uniqueUsersByMonth.values()).map(set => set.size)) : 0;
+
+    // Calculate retention
+    const retention = {
+      daily: 0,
+      weekly: 0,
+      monthly: 0
+    };
+
+    if (uniqueUsersByDay.size >= 2) {
+      const days = Array.from(uniqueUsersByDay.keys()).sort();
+      const firstDay = uniqueUsersByDay.get(days[0]);
+      const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
+      retention.daily = lastDay.size / firstDay.size * 100;
+    }
+
+    if (uniqueUsersByWeek.size >= 2) {
+      const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
+      const firstWeek = uniqueUsersByWeek.get(weeks[0]);
+      const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
+      retention.weekly = lastWeek.size / firstWeek.size * 100;
+    }
+
+    if (uniqueUsersByMonth.size >= 2) {
+      const months = Array.from(uniqueUsersByMonth.keys()).sort();
+      const firstMonth = uniqueUsersByMonth.get(months[0]);
+      const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
+      retention.monthly = lastMonth.size / firstMonth.size * 100;
+    }
+
+    return {
+      dau,
+      wau,
+      mau,
+      retention
+    };
+  };
+
+  const processGeographicalData = (analytics) => {
+    const geoData = {
+      countries: {},
+      regions: {},
+      cities: {},
+      topCountries: [],
+      topRegions: [],
+      topCities: []
+    };
+
+    // Process countries
+    if (analytics.countries) {
+      geoData.countries = analytics.countries;
+      geoData.topCountries = Object.entries(analytics.countries)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([country, count]) => ({ country, count }));
+    }
+
+    // Process regions
+    if (analytics.regions) {
+      geoData.regions = analytics.regions;
+      geoData.topRegions = Object.entries(analytics.regions)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([region, count]) => ({ region, count }));
+    }
+
+    // Process cities
+    if (analytics.cities) {
+      geoData.cities = analytics.cities;
+      geoData.topCities = Object.entries(analytics.cities)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([city, count]) => ({ city, count }));
+    }
+
+    return geoData;
+  };
+
+  const processTrafficSources = (analytics) => {
+    const trafficData = {
+      sources: analytics.trafficSources || {},
+      referrers: analytics.topReferrers || [],
+      campaigns: {
+        sources: analytics.utmSources || {},
+        mediums: analytics.utmMediums || {},
+        campaigns: analytics.utmCampaigns || {},
+        topSources: [],
+        topMediums: [],
+        topCampaigns: []
+      }
+    };
+
+    // Process UTM data
+    if (analytics.utmSources) {
+      trafficData.campaigns.topSources = Object.entries(analytics.utmSources)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([source, count]) => ({ source, count }));
+    }
+
+    if (analytics.utmMediums) {
+      trafficData.campaigns.topMediums = Object.entries(analytics.utmMediums)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([medium, count]) => ({ medium, count }));
+    }
+
+    if (analytics.utmCampaigns) {
+      trafficData.campaigns.topCampaigns = Object.entries(analytics.utmCampaigns)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([campaign, count]) => ({ campaign, count }));
+    }
+
+    return trafficData;
+  };
+
+  // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
     if (!analytics || Object.keys(analytics).length === 0) {
       console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
 
-    // Helper function to format date objects in sessions
-    const formatDate = (dateStr) => {
-      try {
-        return new Date(dateStr).toISOString();
-      } catch (e) {
-        return dateStr;
-      }
-    };
-
-    // Helper function to format session data
-    const formatSessions = (sessions) => {
-      if (!sessions || !Array.isArray(sessions)) return [];
-      return sessions.map(session => ({
-        startTime: formatDate(session.startTime),
-        endTime: formatDate(session.endTime),
-        duration: session.duration,
-        pages: session.pages,
-        referrer: session.referrer,
-        utm: {
-          source: session.utmSource,
-          medium: session.utmMedium,
-          campaign: session.utmCampaign,
-          term: session.utmTerm,
-          content: session.utmContent
-        },
-        device: session.device,
-        browser: session.browser,
-        os: session.os,
-        country: session.country,
-        region: session.region,
-        city: session.city
-      }));
-    };
-
-    // Format page views data
-    const pageViewsData = analytics.pageViews || {};
-    const totalPageViews = Object.values(pageViewsData).reduce((sum, views) => sum + views, 0);
-    const pageViewsByPath = Object.entries(pageViewsData).map(([path, views]) => ({
-      path,
-      views
-    }));
-
-    // Format traffic sources
-    const trafficSources = analytics.trafficSources || {};
+    // Process retention and user metrics
+    const userMetrics = calculateRetentionMetrics(analytics.sessions);
     
-    // Format wallet data
-    const walletData = {
-      totalWallets: analytics.walletsConnected || 0,
-      uniqueWallets: analytics.uniqueWallets || [],
-      walletTypes: analytics.walletTypes || {},
-      web3Visitors: analytics.web3Visitors || 0,
-      chainInteractions: analytics.chainInteractions || {}
-    };
+    // Process geographical data
+    const geoData = processGeographicalData(analytics);
+    
+    // Process traffic sources
+    const trafficData = processTrafficSources(analytics);
 
-    // Compile complete analytics summary
+    // Compile complete analytics summary with computed metrics
     const fullAnalytics = {
       overview: {
-        totalPageViews,
+        totalPageViews: Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0),
         uniqueVisitors: analytics.uniqueVisitors || 0,
         averageSessionDuration: analytics.averageSessionDuration || 0,
         bounceRate: analytics.bounceRate || 0
       },
-      pageViews: {
-        total: totalPageViews,
-        byPath: pageViewsByPath
+      userMetrics: {
+        dau: userMetrics.dau,
+        wau: userMetrics.wau,
+        mau: userMetrics.mau,
+        retention: userMetrics.retention
       },
-      sessions: {
-        total: analytics.sessions?.length || 0,
-        details: formatSessions(analytics.sessions)
-      },
-      traffic: {
-        sources: trafficSources,
-        topReferrers: analytics.topReferrers || [],
-        utmSources: analytics.utmSources || {},
-        utmMediums: analytics.utmMediums || {},
-        utmCampaigns: analytics.utmCampaigns || {}
-      },
+      geography: geoData,
+      traffic: trafficData,
       web3Data: {
-        ...walletData,
+        totalWallets: analytics.walletsConnected || 0,
+        uniqueWallets: analytics.uniqueWallets || [],
+        walletTypes: analytics.walletTypes || {},
+        web3Visitors: analytics.web3Visitors || 0,
+        chainInteractions: analytics.chainInteractions || {},
         transactions: analytics.transactions || [],
         contractInteractions: analytics.contractInteractions || []
       },
-      geography: {
-        countries: analytics.countries || {},
-        regions: analytics.regions || {},
-        cities: analytics.cities || {}
+      engagement: {
+        timeOnPage: analytics.timeOnPage || {},
+        exitPages: analytics.exitPages || {},
+        entryPages: analytics.entryPages || {},
+        customEvents: analytics.customEvents || []
       },
       technology: {
         browsers: analytics.browsers || {},
         devices: analytics.devices || {},
         operatingSystems: analytics.operatingSystems || {}
-      },
-      customEvents: analytics.customEvents || [],
-      timeOnPage: analytics.timeOnPage || {},
-      exitPages: analytics.exitPages || {},
-      entryPages: analytics.entryPages || {}
+      }
     };
 
-    console.log("========== ANALYTICS CONTEXT BEING SENT TO GEMINI ==========");
-    console.log("Raw Analytics Object:", analytics);
+    console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
     console.log("Processed Analytics Data:", fullAnalytics);
-    console.log("==========================================================");
+    console.log("==============================================");
 
     // Enhanced prompt structure with Web3 marketing expert context
     const systemContext = `
