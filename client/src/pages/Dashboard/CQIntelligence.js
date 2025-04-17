@@ -3,6 +3,74 @@ import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { motion, AnimatePresence } from 'framer-motion';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Box, Sphere } from '@react-three/drei';
+
+// 3D Cube Component for Loading Animation
+const LoadingCube = () => {
+  const meshRef = useRef();
+  
+  useFrame((state) => {
+    meshRef.current.rotation.x += 0.01;
+    meshRef.current.rotation.y += 0.01;
+  });
+
+  return (
+    <Box ref={meshRef} args={[1, 1, 1]}>
+      <meshStandardMaterial
+        color="#caa968"
+        metalness={0.7}
+        roughness={0.2}
+        emissive="#553a20"
+        emissiveIntensity={0.2}
+      />
+    </Box>
+  );
+};
+
+// Blockchain Node Component
+const BlockchainNode = ({ position, color }) => {
+  const meshRef = useRef();
+  
+  useFrame((state) => {
+    meshRef.current.rotation.y += 0.005;
+  });
+
+  return (
+    <group position={position}>
+      <Box ref={meshRef} args={[1, 1, 1]}>
+        <meshStandardMaterial
+          color={color}
+          metalness={0.8}
+          roughness={0.2}
+          emissive={color}
+          emissiveIntensity={0.2}
+        />
+      </Box>
+    </group>
+  );
+};
+
+// Background Blockchain Animation
+const BlockchainBackground = () => {
+  const nodes = [
+    { pos: [-4, 2, -5], color: "#1d0c46" },
+    { pos: [4, -2, -5], color: "#caa968" },
+    { pos: [-2, -3, -5], color: "#553a20" },
+    { pos: [3, 3, -5], color: "#1d0c46" },
+  ];
+
+  return (
+    <>
+      <ambientLight intensity={0.5} />
+      <pointLight position={[10, 10, 10]} intensity={1} />
+      {nodes.map((node, i) => (
+        <BlockchainNode key={i} position={node.pos} color={node.color} />
+      ))}
+    </>
+  );
+};
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -471,9 +539,52 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     );
   };
 
-  // Update the CSS styles in the component
+  // Styles for 3D and futuristic design
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
+
+    .futuristic-container {
+      background: linear-gradient(135deg, rgba(29, 12, 70, 0.05) 0%, rgba(202, 169, 104, 0.05) 100%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .blockchain-input {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .blockchain-input:focus {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #caa968;
+      box-shadow: 0 0 15px rgba(202, 169, 104, 0.2);
+    }
+
+    .message-container {
+      position: relative;
+      z-index: 1;
+    }
+
+    .message-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(29, 12, 70, 0.05) 0%, rgba(202, 169, 104, 0.05) 100%);
+      border-radius: inherit;
+      z-index: -1;
+    }
+
+    .loading-container {
+      width: 100px;
+      height: 100px;
+      perspective: 1000px;
+    }
 
     .markdown-content {
       font-family: 'Poppins', sans-serif;
@@ -585,70 +696,54 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Add the styles to the document
   useEffect(() => {
-    // Add font preload links for better performance
-    const fontPreloads = [
-      { href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', rel: 'preload', as: 'style' },
-      { href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap', rel: 'preload', as: 'style' }
-    ];
-
-    fontPreloads.forEach(font => {
-      const link = document.createElement('link');
-      link.href = font.href;
-      link.rel = font.rel;
-      link.as = font.as;
-      document.head.appendChild(link);
-    });
-
-    // Add the actual font stylesheets
-    fontPreloads.forEach(font => {
-      const link = document.createElement('link');
-      link.href = font.href;
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    });
-
-    // Add component styles
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
     document.head.appendChild(styleSheet);
-
-    // Cleanup function
-    return () => {
-      document.head.removeChild(styleSheet);
-      // Remove font links on cleanup
-      const links = document.head.getElementsByTagName('link');
-      for (let i = links.length - 1; i >= 0; i--) {
-        const link = links[i];
-        if (link.href.includes('fonts.googleapis.com')) {
-          document.head.removeChild(link);
-        }
-      }
-    };
+    return () => document.head.removeChild(styleSheet);
   }, []);
 
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
-      <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
-        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
+      <div className="flex-1 p-6 bg-gradient-to-br from-gray-900 to-gray-800 overflow-hidden">
+        <div className="max-w-7xl mx-auto futuristic-container rounded-xl h-full flex flex-col relative overflow-hidden">
+          {/* 3D Background */}
+          <div className="absolute inset-0 opacity-30">
+            <Canvas>
+              <BlockchainBackground />
+            </Canvas>
+          </div>
+
           {/* Header with Website Selector */}
-          <div className="p-6 border-b">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 border-b border-gray-800"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Bot className="text-[#caa968]" size={24} />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Bot className="text-[#caa968]" size={24} />
+                </motion.div>
                 <div>
-                  <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
-                  <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+                  <h1 className="text-2xl font-bold text-white">CQ Intelligence</h1>
+                  <p className="text-gray-400 mt-1">Ask anything about your website's analytics and performance</p>
                 </div>
               </div>
               
               {/* Website Selector */}
-              <div className="flex items-center gap-2 min-w-[300px]">
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className="flex items-center gap-2 min-w-[300px]"
+              >
                 <select
                   value={selectedSite}
                   onChange={handleSiteChange}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                  className="w-full p-2 blockchain-input rounded-lg text-white focus:outline-none text-sm bg-opacity-20"
                 >
                   <option value="">Select a website</option>
                   {websiteArray.map(website => (
@@ -657,91 +752,102 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Chat Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-                <Bot size={64} className="mb-6 text-[#caa968]" />
-                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-                <p className="text-gray-600 max-w-md mb-8">
-                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                  <button 
-                    onClick={() => {
-                      setInput("What are the top pages on my website?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    What are the top pages on my website?
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("How is my website performing?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    How is my website performing?
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("Show me my Web3 user analytics");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    Show me my Web3 user analytics
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("What are my traffic sources?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    What are my traffic sources?
-                  </button>
-                </div>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            <AnimatePresence>
+              {messages.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-12"
                 >
-                  {renderMessage(message)}
-                </div>
-              ))
-            )}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 p-4 rounded-lg">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                  <div className="w-24 h-24 mb-6">
+                    <Canvas>
+                      <ambientLight intensity={0.5} />
+                      <pointLight position={[10, 10, 10]} />
+                      <LoadingCube />
+                    </Canvas>
                   </div>
-                </div>
-              </div>
-            )}
-            {error && (
-              <div className="flex justify-start">
-                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
-                  {error}
-                </div>
-              </div>
-            )}
+                  <h2 className="text-xl font-semibold text-white mb-2">Welcome to CQ Intelligence</h2>
+                  <p className="text-gray-400 max-w-md mb-8">
+                    I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                    {['What are the top pages on my website?',
+                      'How is my website performing?',
+                      'Show me my Web3 user analytics',
+                      'What are my traffic sources?'].map((question, index) => (
+                      <motion.button
+                        key={index}
+                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(202, 169, 104, 0.1)' }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          setInput(question);
+                          setTimeout(() => handleSend(), 100);
+                        }}
+                        className="p-4 blockchain-input rounded-lg text-left hover:text-white transition-colors"
+                      >
+                        {question}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                messages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`message-container max-w-[90%] p-4 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-[#1d0c46] text-white'
+                        : 'bg-white/10 text-white'
+                    }`}>
+                      <div className="prose prose-sm max-w-none">
+                        {message.role === 'assistant' ? (
+                          <div className="markdown-content whitespace-pre-wrap">
+                            {message.content}
+                          </div>
+                        ) : (
+                          message.content
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
+                  <div className="loading-container">
+                    <Canvas>
+                      <ambientLight intensity={0.5} />
+                      <pointLight position={[10, 10, 10]} />
+                      <LoadingCube />
+                    </Canvas>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <div className="p-6 border-t bg-gray-50">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 border-t border-gray-800 bg-gray-900/50"
+          >
             <div className="flex gap-3">
               <input
                 type="text"
@@ -750,22 +856,24 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
                 disabled={!selectedSite || isLoading}
-                className="flex-1 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
+                className="flex-1 p-4 blockchain-input rounded-lg text-white placeholder-gray-500 focus:outline-none disabled:opacity-50"
               />
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
                 className={`px-8 rounded-lg flex items-center gap-2 ${
                   isLoading || !input.trim() || !selectedSite
-                    ? 'bg-gray-200 text-gray-400'
-                    : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
+                    ? 'bg-gray-700 text-gray-400'
+                    : 'bg-[#caa968] text-white hover:bg-[#caa968]/90'
                 }`}
               >
                 <Send size={20} />
                 <span>Send</span>
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
