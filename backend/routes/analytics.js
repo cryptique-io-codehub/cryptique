@@ -12,7 +12,7 @@ const corsOptions = {
   maxAge: 86400 // 24 hours
 };
 
-// Middleware to ensure CORS headers are set
+// Middleware to ensure CORS headers are set .
 const setCorsHeaders = (req, res, next) => {
   const origin = req.headers.origin;
   if (corsOptions.origin.includes(origin)) {
