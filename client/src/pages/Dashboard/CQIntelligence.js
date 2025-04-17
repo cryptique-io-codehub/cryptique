@@ -471,7 +471,23 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     );
   };
 
-  // Update the CSS styles in the component
+  // Add the 3D Cube Loading component
+  const LoadingCube = () => {
+    return (
+      <div className="cube-wrapper">
+        <div className="cube">
+          <div className="cube-face front"></div>
+          <div className="cube-face back"></div>
+          <div className="cube-face right"></div>
+          <div className="cube-face left"></div>
+          <div className="cube-face top"></div>
+          <div className="cube-face bottom"></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Update the styles
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
 
@@ -581,6 +597,70 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       font-weight: 600;
       color: #caa968;
     }
+
+    /* 3D Cube Animation */
+    .cube-wrapper {
+      width: 60px;
+      height: 60px;
+      perspective: 600px;
+      margin: 1rem;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: rotate 2s infinite linear;
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #caa968, #1d0c46);
+      opacity: 0.9;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .front  { transform: rotateY(0deg) translateZ(30px); }
+    .back   { transform: rotateY(180deg) translateZ(30px); }
+    .right  { transform: rotateY(90deg) translateZ(30px); }
+    .left   { transform: rotateY(-90deg) translateZ(30px); }
+    .top    { transform: rotateX(90deg) translateZ(30px); }
+    .bottom { transform: rotateX(-90deg) translateZ(30px); }
+
+    @keyframes rotate {
+      0% { transform: rotateX(0deg) rotateY(0deg); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    /* Loading State Styles */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: rgba(29, 12, 70, 0.03);
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .loading-text {
+      margin-top: 1rem;
+      color: #1d0c46;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 500;
+      font-size: 0.875rem;
+      letter-spacing: 0.025em;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   `;
 
   // Add the styles to the document
@@ -626,6 +706,90 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
   }, []);
 
+  // Update the loading state in the chat area
+  const renderLoadingState = () => (
+    <div className="flex justify-start">
+      <div className="loading-container">
+        <LoadingCube />
+        <div className="loading-text">Processing your request...</div>
+      </div>
+    </div>
+  );
+
+  // Update the chat area section to use the new loading state
+  const ChatArea = () => (
+    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+          <Bot size={64} className="mb-6 text-[#caa968]" />
+          <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+          <p className="text-gray-600 max-w-md mb-8">
+            I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            {/* Example questions buttons */}
+            <button 
+              onClick={() => {
+                setInput("What are the top pages on my website?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are the top pages on my website?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("How is my website performing?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              How is my website performing?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("Show me my Web3 user analytics");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              Show me my Web3 user analytics
+            </button>
+            <button 
+              onClick={() => {
+                setInput("What are my traffic sources?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are my traffic sources?
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {renderMessage(message)}
+            </div>
+          ))}
+          {isLoading && renderLoadingState()}
+          {error && (
+            <div className="flex justify-start">
+              <div className="bg-red-100 text-red-600 p-4 rounded-lg">
+                {error}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
@@ -662,83 +826,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           </div>
 
           {/* Chat Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-                <Bot size={64} className="mb-6 text-[#caa968]" />
-                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-                <p className="text-gray-600 max-w-md mb-8">
-                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                  <button 
-                    onClick={() => {
-                      setInput("What are the top pages on my website?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    What are the top pages on my website?
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("How is my website performing?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    How is my website performing?
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("Show me my Web3 user analytics");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    Show me my Web3 user analytics
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setInput("What are my traffic sources?");
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-                  >
-                    What are my traffic sources?
-                  </button>
-                </div>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {renderMessage(message)}
-                </div>
-              ))
-            )}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 p-4 rounded-lg">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-                  </div>
-                </div>
-              </div>
-            )}
-            {error && (
-              <div className="flex justify-start">
-                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
-                  {error}
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+          <ChatArea />
 
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
