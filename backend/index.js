@@ -27,15 +27,28 @@ const mainCorsOptions = {
   credentials: true
 };
 
+// SDK CORS configuration with explicit headers
 const sdkCorsOptions = {
-  origin: true, // Allow all origins for SDK
+  origin: '*', // Allow all origins for SDK
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
-  credentials: false
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  credentials: false,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Apply main CORS configuration
-app.use(cors(mainCorsOptions));
+// Global middleware to handle OPTIONS requests for SDK routes
+app.options('/api/sdk/*', cors(sdkCorsOptions));
+
+// Apply main CORS configuration for non-SDK routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/sdk/')) {
+    cors(sdkCorsOptions)(req, res, next);
+  } else {
+    cors(mainCorsOptions)(req, res, next);
+  }
+});
 
 app.use(bodyParser.json());
 
@@ -76,8 +89,7 @@ console.log('Loading routes...');
 
 app.use("/api/auth", userRouter);
 app.use("/api/team", require("./routes/teamRouter"));
-// Apply SDK-specific CORS for the SDK route
-app.use("/api/sdk", cors(sdkCorsOptions), require("./routes/sdkRouter"));
+app.use("/api/sdk", require("./routes/sdkRouter"));
 app.use("/api/website", require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
 
