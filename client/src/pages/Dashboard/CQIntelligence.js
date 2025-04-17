@@ -228,55 +228,28 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Cross-chain user journeys
       - Web2 to Web3 conversion funnels
       
-      FORMAT YOUR RESPONSE AS A PROFESSIONAL CONSULTANT:
-      
-      1. Use "### " for section headers
-      2. Format metrics as "**Metric Name:** \`value\`"
-      3. Use bullet points (*) for insights
-      4. Use blockquotes (>) for strategic recommendations
-      5. Use *italics* for trend analysis
-      6. Use \`code\` for specific values and metrics
-      7. Use **bold** for key findings and critical points
-      
-      REQUIRED SECTIONS:
-      1. ### Executive Summary
-      Brief overview of key findings and critical areas for attention
-      
-      2. ### Performance Analysis
-      Detailed breakdown of metrics with Web3-specific context
-      
-      3. ### Market Position & Trends
-      Analysis of performance relative to Web3 industry standards
-      
-      4. ### Strategic Recommendations
-      Actionable Web3 marketing strategies and improvements
-      
-      5. ### Implementation Roadmap
-      Prioritized steps for executing recommendations
-      
-      EXAMPLE ANALYSIS STRUCTURE:
-      ### Executive Summary
-      Professional summary of key findings and immediate priorities
-      
-      ---
+      FORMATTING INSTRUCTIONS:
+      1. Always keep metrics and their values on the same line
+      2. Format metrics as "**Metric Name:** \`value\`" (no line breaks)
+      3. Format page metrics as "**Page (`/path`):** \`value\` views"
+      4. Keep contextual information on the same line as its metric
+      5. Use proper spacing between different metrics
+      6. Format percentages inline as \`X%\`
+      7. Keep parenthetical information on the same line
+      8. Use bullet points (*) for insights, keeping all related text on same line
+      9. Use consistent formatting for all numerical values
+      10. Maintain proper section spacing with single blank lines
+
+      EXAMPLE FORMAT:
       ### Performance Analysis
-      **Key Metric:** \`value\`
-      * *Web3-Specific Context:* Analysis...
+      **Total Views:** \`100\` | **Unique Visitors:** \`50\` | **Bounce Rate:** \`25%\`
+      **Top Pages:** \`/home\`: 30 views, \`/about\`: 20 views
       
-      ---
-      ### Market Position & Trends
-      * *Industry Trend:* Comparative analysis...
-      
-      ---
-      ### Strategic Recommendations
-      > **Priority Initiative**
-      Detailed Web3 strategy with implementation steps
-      
-      ---
-      ### Implementation Roadmap
-      1. Immediate actions (0-30 days)
-      2. Short-term initiatives (30-90 days)
-      3. Long-term strategies (90+ days)
+      * *Key Insight:* Current engagement rate of \`25%\` indicates strong user interest with \`5.2\` minutes average session duration
+      * *Performance Note:* Conversion rate of \`3.5%\` shows room for improvement
+
+      > **Strategic Initiative**
+      > Implement targeted improvements to increase conversion from \`25%\` to \`40%\`
 
       [ANALYTICS DATA]
       ${JSON.stringify(fullAnalytics, null, 2)}
@@ -359,26 +332,36 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const formatResponse = (response) => {
-    let formattedText = response.trim()
-      // Remove excessive newlines
+    let formattedText = response
+      .trim()
+      // Format metrics to be on the same line
+      .replace(/([^:]+):\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '$1: $2')
+      // Format page metrics
+      .replace(/(`[^`]+`):\s*\n+(\d+)\s*\n+views/g, '$1: $2 views')
+      // Clean up multiple newlines
       .replace(/\n{3,}/g, '\n\n')
-      // Ensure consistent spacing around backticks
-      .replace(/\s+`/g, ' `')
-      .replace(/`\s+/g, '` ')
-      // Format headers with single newline
+      // Format metrics with their context
+      .replace(/(\d+)\s*\n+\(([^)]+)\)/g, '$1 ($2)')
+      // Format headers properly
       .replace(/###\s*(.*?)(?=\n)/g, '### $1')
       // Format metrics consistently
-      .replace(/\*\*(.*?):\*\*/g, '**$1:**')
-      // Format blockquotes consistently
-      .replace(/>\s*(.*?)(?=\n|$)/g, '> $1')
+      .replace(/\*\*(.*?):\*\*\s*`(.*?)`/g, '**$1:** `$2`')
+      // Clean up spacing around parentheses
+      .replace(/\s*\(\s*/g, ' (')
+      .replace(/\s*\)\s*/g, ') ')
       // Format bullet points consistently
-      .replace(/^\s*\*\s+/gm, '* ')
-      // Ensure single newline after horizontal rules
-      .replace(/---\s*/g, '---\n')
-      // Remove extra spaces at start of lines
+      .replace(/^\* (.*?)$/gm, '* $1')
+      // Ensure proper spacing around sections
+      .replace(/---\s*/g, '\n---\n')
+      // Remove extra spaces at line starts
       .replace(/^\s+/gm, '')
-      // Ensure single newlines between items
-      .replace(/\n\n+/g, '\n\n');
+      // Clean up multiple newlines between sections
+      .replace(/\n{3,}/g, '\n\n')
+      // Format inline metrics properly
+      .replace(/(\d+)\s*\n+([a-zA-Z])/g, '$1 $2')
+      // Clean up spacing around backticks
+      .replace(/\s+`/g, ' `')
+      .replace(/`\s+/g, '` ');
 
     return formattedText;
   };
