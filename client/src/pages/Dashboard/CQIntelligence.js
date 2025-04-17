@@ -210,6 +210,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Web3 funnel optimization
       - Blockchain-specific user journey mapping
       
+      IMPORTANT: Your primary focus is to directly answer the user's specific question through the lens of a Web3 marketing expert. While you have access to various analytics and metrics, always prioritize addressing exactly what was asked. Avoid following rigid templates or providing unnecessary information that wasn't requested. Instead, draw upon your expertise to provide targeted, relevant insights that specifically answer the user's query.
+      
       Your role is to analyze the provided analytics data through the lens of a Web3 marketing expert and provide:
       1. Professional insights on current performance
       2. Strategic recommendations based on Web3 industry best practices
@@ -226,6 +228,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - Token holder behavior
       - Cross-chain user journeys
       - Web2 to Web3 conversion funnels
+
+      Remember: Focus on answering the specific question asked, using your expertise to provide relevant insights and recommendations. Don't feel constrained by formatting templates - let your expert knowledge guide the structure of your response while maintaining professional clarity.
     `;
 
     const formattingInstructions = `
@@ -240,17 +244,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       8. Use bullet points (*) for insights, keeping all related text on same line
       9. Use consistent formatting for all numerical values
       10. Maintain proper section spacing with single blank lines
-
-      EXAMPLE FORMAT:
-      ### Performance Analysis
-      **Total Views:** \`100\` | **Unique Visitors:** \`50\` | **Bounce Rate:** \`25%\`
-      **Top Pages:** \`/home\`: 30 views, \`/about\`: 20 views
-      
-      * *Key Insight:* Current engagement rate of \`25%\` indicates strong user interest with \`5.2\` minutes average session duration
-      * *Performance Note:* Conversion rate of \`3.5%\` shows room for improvement
-
-      > **Strategic Initiative**
-      > Implement targeted improvements to increase conversion from \`25%\` to \`40%\`
     `;
 
     return `
