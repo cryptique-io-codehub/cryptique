@@ -1,6 +1,38 @@
 const express = require('express');
 const router = express.Router();
+const cors = require('cors');
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
+
+// Configure CORS for analytics endpoints
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://app.cryptique.io'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
+
+// Middleware to ensure CORS headers are set
+const setCorsHeaders = (req, res, next) => {
+  const origin = req.headers.origin;
+  if (corsOptions.origin.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+  }
+  next();
+};
+
+// Apply CORS and headers middleware
+router.use(cors(corsOptions));
+router.use(setCorsHeaders);
+
+// Handle preflight requests
+router.options('*', (req, res) => {
+  res.status(204).end();
+});
 
 // Get chart data
 router.get('/chart', async (req, res) => {

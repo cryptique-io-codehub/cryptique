@@ -24,7 +24,8 @@ const mainCorsOptions = {
   origin: ["http://localhost:3000", "https://app.cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  maxAge: 86400
 };
 
 // SDK CORS configuration with explicit headers
@@ -38,15 +39,35 @@ const sdkCorsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Global middleware to handle OPTIONS requests for SDK routes
-app.options('/api/sdk/*', cors(sdkCorsOptions));
-
-// Apply main CORS configuration for non-SDK routes
-app.use((req, res, next) => {
+// Global middleware to handle OPTIONS requests
+app.options('*', (req, res, next) => {
   if (req.path.startsWith('/api/sdk/')) {
     cors(sdkCorsOptions)(req, res, next);
   } else {
     cors(mainCorsOptions)(req, res, next);
+  }
+});
+
+// Apply CORS configuration based on route
+app.use((req, res, next) => {
+  // Set common security headers
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('X-Frame-Options', 'DENY');
+  res.header('X-XSS-Protection', '1; mode=block');
+  
+  if (req.path.startsWith('/api/sdk/')) {
+    cors(sdkCorsOptions)(req, res, next);
+  } else {
+    // For all other routes, including analytics
+    const origin = req.headers.origin;
+    if (mainCorsOptions.origin.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', mainCorsOptions.methods.join(', '));
+      res.header('Access-Control-Allow-Headers', mainCorsOptions.allowedHeaders.join(', '));
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
+    }
+    next();
   }
 });
 
