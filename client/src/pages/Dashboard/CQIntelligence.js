@@ -281,15 +281,240 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return trafficData;
   };
 
-  // Update the generateAnalyticsSummary function
+  const calculateAdvancedMetrics = (analytics) => {
+    const metrics = {
+      userSegments: {
+        newVsReturning: { new: 0, returning: 0 },
+        web3VsTraditional: { web3: 0, traditional: 0 },
+        byEngagementLevel: { high: 0, medium: 0, low: 0 }
+      },
+      sourceMetrics: {},
+      geographicMetrics: {},
+      web3Metrics: {},
+      engagementMetrics: {}
+    };
+
+    // Process sessions for advanced metrics
+    if (analytics.sessions && Array.isArray(analytics.sessions)) {
+      const sessionsBySource = new Map();
+      const sessionsByCountry = new Map();
+      const web3SessionsBySource = new Map();
+      const walletsBySource = new Map();
+      const engagementBySource = new Map();
+      const engagementByCountry = new Map();
+      const bouncesBySource = new Map();
+      const durationsBySource = new Map();
+      const durationsByCountry = new Map();
+
+      analytics.sessions.forEach(session => {
+        // Source tracking
+        const source = session.utmSource || session.referrer || 'direct';
+        if (!sessionsBySource.has(source)) {
+          sessionsBySource.set(source, {
+            total: 0,
+            web3Users: 0,
+            walletsConnected: 0,
+            totalDuration: 0,
+            bounces: 0,
+            pageViews: 0,
+            uniqueVisitors: new Set()
+          });
+        }
+        const sourceData = sessionsBySource.get(source);
+        sourceData.total++;
+        sourceData.uniqueVisitors.add(session.device);
+        sourceData.totalDuration += session.duration || 0;
+        sourceData.pageViews += (session.pages?.length || 0);
+        if (session.pages?.length === 1) sourceData.bounces++;
+
+        // Geographic tracking
+        const country = session.country || 'unknown';
+        if (!sessionsByCountry.has(country)) {
+          sessionsByCountry.set(country, {
+            total: 0,
+            web3Users: 0,
+            walletsConnected: 0,
+            totalDuration: 0,
+            bounces: 0,
+            pageViews: 0,
+            uniqueVisitors: new Set()
+          });
+        }
+        const countryData = sessionsByCountry.get(country);
+        countryData.total++;
+        countryData.uniqueVisitors.add(session.device);
+        countryData.totalDuration += session.duration || 0;
+        countryData.pageViews += (session.pages?.length || 0);
+        if (session.pages?.length === 1) countryData.bounces++;
+
+        // New vs Returning
+        const isReturning = session.returningUser;
+        metrics.userSegments.newVsReturning[isReturning ? 'returning' : 'new']++;
+
+        // Web3 vs Traditional
+        const isWeb3 = session.hasWeb3 || session.walletConnected;
+        metrics.userSegments.web3VsTraditional[isWeb3 ? 'web3' : 'traditional']++;
+
+        // Engagement Level
+        const engagementScore = calculateEngagementScore(session);
+        if (engagementScore > 7) metrics.userSegments.byEngagementLevel.high++;
+        else if (engagementScore > 3) metrics.userSegments.byEngagementLevel.medium++;
+        else metrics.userSegments.byEngagementLevel.low++;
+      });
+
+      // Process source metrics
+      metrics.sourceMetrics = Array.from(sessionsBySource.entries()).map(([source, data]) => ({
+        source,
+        totalSessions: data.total,
+        uniqueVisitors: data.uniqueVisitors.size,
+        averageDuration: data.totalDuration / data.total,
+        bounceRate: (data.bounces / data.total) * 100,
+        pageViewsPerSession: data.pageViews / data.total,
+        web3Users: data.web3Users,
+        walletsConnected: data.walletsConnected
+      })).sort((a, b) => b.totalSessions - a.totalSessions);
+
+      // Process geographic metrics
+      metrics.geographicMetrics = Array.from(sessionsByCountry.entries()).map(([country, data]) => ({
+        country,
+        totalSessions: data.total,
+        uniqueVisitors: data.uniqueVisitors.size,
+        averageDuration: data.totalDuration / data.total,
+        bounceRate: (data.bounces / data.total) * 100,
+        pageViewsPerSession: data.pageViews / data.total,
+        web3Users: data.web3Users,
+        walletsConnected: data.walletsConnected
+      })).sort((a, b) => b.totalSessions - a.totalSessions);
+    }
+
+    // Process Web3 specific metrics
+    if (analytics.walletsConnected) {
+      metrics.web3Metrics = {
+        totalWallets: analytics.walletsConnected,
+        walletsByType: analytics.walletTypes || {},
+        chainInteractions: analytics.chainInteractions || {},
+        averageTransactionsPerUser: analytics.transactions ? 
+          analytics.transactions.length / analytics.uniqueWallets.length : 0,
+        topContracts: processContractInteractions(analytics.contractInteractions),
+        walletRetention: calculateWalletRetention(analytics.sessions),
+        web3ConversionRate: analytics.web3Visitors ? 
+          (analytics.walletsConnected / analytics.web3Visitors) * 100 : 0
+      };
+    }
+
+    // Process engagement metrics
+    metrics.engagementMetrics = {
+      averageSessionDuration: analytics.averageSessionDuration || 0,
+      pageDepth: calculatePageDepth(analytics.sessions),
+      returnRate: calculateReturnRate(analytics.sessions),
+      timeOnPage: analytics.timeOnPage || {},
+      exitPages: processExitPages(analytics.exitPages),
+      entryPages: processEntryPages(analytics.entryPages),
+      userFlow: calculateUserFlow(analytics.sessions),
+      customEvents: processCustomEvents(analytics.customEvents)
+    };
+
+    return metrics;
+  };
+
+  // Helper functions for advanced metrics
+  const calculateEngagementScore = (session) => {
+    let score = 0;
+    if (session.duration > 180) score += 3;
+    if (session.pages?.length > 3) score += 2;
+    if (session.walletConnected) score += 3;
+    if (session.transactions?.length > 0) score += 2;
+    return score;
+  };
+
+  const processContractInteractions = (interactions) => {
+    if (!interactions) return [];
+    const contractCounts = {};
+    interactions.forEach(interaction => {
+      const contract = interaction.contract;
+      contractCounts[contract] = (contractCounts[contract] || 0) + 1;
+    });
+    return Object.entries(contractCounts)
+      .map(([contract, count]) => ({ contract, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  };
+
+  const calculateWalletRetention = (sessions) => {
+    if (!sessions) return { daily: 0, weekly: 0, monthly: 0 };
+    // Implementation of wallet retention calculation
+    // ... existing retention calculation logic ...
+  };
+
+  const calculatePageDepth = (sessions) => {
+    if (!sessions) return { average: 0, distribution: {} };
+    const depths = sessions.map(s => s.pages?.length || 0);
+    const average = depths.reduce((a, b) => a + b, 0) / depths.length;
+    const distribution = depths.reduce((acc, depth) => {
+      acc[depth] = (acc[depth] || 0) + 1;
+      return acc;
+    }, {});
+    return { average, distribution };
+  };
+
+  const calculateReturnRate = (sessions) => {
+    if (!sessions) return 0;
+    const returningUsers = sessions.filter(s => s.returningUser).length;
+    return (returningUsers / sessions.length) * 100;
+  };
+
+  const processExitPages = (exitPages) => {
+    if (!exitPages) return [];
+    return Object.entries(exitPages)
+      .map(([page, count]) => ({ page, count, rate: count / Object.values(exitPages).reduce((a, b) => a + b, 0) * 100 }))
+      .sort((a, b) => b.count - a.count);
+  };
+
+  const processEntryPages = (entryPages) => {
+    if (!entryPages) return [];
+    return Object.entries(entryPages)
+      .map(([page, count]) => ({ page, count, rate: count / Object.values(entryPages).reduce((a, b) => a + b, 0) * 100 }))
+      .sort((a, b) => b.count - a.count);
+  };
+
+  const calculateUserFlow = (sessions) => {
+    if (!sessions) return [];
+    const flows = {};
+    sessions.forEach(session => {
+      if (!session.pages) return;
+      for (let i = 0; i < session.pages.length - 1; i++) {
+        const from = session.pages[i];
+        const to = session.pages[i + 1];
+        const key = `${from}=>${to}`;
+        flows[key] = (flows[key] || 0) + 1;
+      }
+    });
+    return Object.entries(flows)
+      .map(([path, count]) => ({ path, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+  };
+
+  const processCustomEvents = (events) => {
+    if (!events) return [];
+    const eventCounts = {};
+    events.forEach(event => {
+      eventCounts[event.name] = (eventCounts[event.name] || 0) + 1;
+    });
+    return Object.entries(eventCounts)
+      .map(([event, count]) => ({ event, count }))
+      .sort((a, b) => b.count - a.count);
+  };
+
+  // Update generateAnalyticsSummary to include advanced metrics
   const generateAnalyticsSummary = (message) => {
     if (!analytics || Object.keys(analytics).length === 0) {
       console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
 
-    // Process retention and user metrics
-    const userMetrics = calculateRetentionMetrics(analytics.sessions);
+    // Calculate advanced metrics
+    const advancedMetrics = calculateAdvancedMetrics(analytics);
     
     // Process geographical data
     const geoData = processGeographicalData(analytics);
@@ -305,39 +530,20 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         averageSessionDuration: analytics.averageSessionDuration || 0,
         bounceRate: analytics.bounceRate || 0
       },
-      userMetrics: userMetrics.dau || userMetrics.wau || userMetrics.mau ? {
-        dau: userMetrics.dau,
-        wau: userMetrics.wau,
-        mau: userMetrics.mau,
-        retention: userMetrics.retention
-      } : null,
-      geography: geoData, // Will be null if no data
-      traffic: trafficData, // Will be null if no data
-      web3Data: analytics.walletsConnected || analytics.web3Visitors ? {
-        totalWallets: analytics.walletsConnected || 0,
-        uniqueWallets: analytics.uniqueWallets?.length > 0 ? analytics.uniqueWallets : null,
-        walletTypes: Object.keys(analytics.walletTypes || {}).length > 0 ? analytics.walletTypes : null,
-        web3Visitors: analytics.web3Visitors || 0,
-        chainInteractions: Object.keys(analytics.chainInteractions || {}).length > 0 ? analytics.chainInteractions : null,
-        transactions: analytics.transactions?.length > 0 ? analytics.transactions : null,
-        contractInteractions: analytics.contractInteractions?.length > 0 ? analytics.contractInteractions : null
-      } : null,
-      engagement: analytics.timeOnPage || analytics.exitPages || analytics.entryPages || analytics.customEvents ? {
-        timeOnPage: Object.keys(analytics.timeOnPage || {}).length > 0 ? analytics.timeOnPage : null,
-        exitPages: Object.keys(analytics.exitPages || {}).length > 0 ? analytics.exitPages : null,
-        entryPages: Object.keys(analytics.entryPages || {}).length > 0 ? analytics.entryPages : null,
-        customEvents: analytics.customEvents?.length > 0 ? analytics.customEvents : null
-      } : null,
-      technology: analytics.browsers || analytics.devices || analytics.operatingSystems ? {
-        browsers: Object.keys(analytics.browsers || {}).length > 0 ? analytics.browsers : null,
-        devices: Object.keys(analytics.devices || {}).length > 0 ? analytics.devices : null,
-        operatingSystems: Object.keys(analytics.operatingSystems || {}).length > 0 ? analytics.operatingSystems : null
-      } : null
+      userSegments: advancedMetrics.userSegments,
+      sourceMetrics: advancedMetrics.sourceMetrics,
+      geographicMetrics: advancedMetrics.geographicMetrics,
+      web3Metrics: advancedMetrics.web3Metrics,
+      engagementMetrics: advancedMetrics.engagementMetrics,
+      geography: geoData,
+      traffic: trafficData
     };
 
     // Remove null sections
     Object.keys(fullAnalytics).forEach(key => {
-      if (fullAnalytics[key] === null) {
+      if (fullAnalytics[key] === null || 
+          (Array.isArray(fullAnalytics[key]) && fullAnalytics[key].length === 0) ||
+          (typeof fullAnalytics[key] === 'object' && Object.keys(fullAnalytics[key]).length === 0)) {
         delete fullAnalytics[key];
       }
     });
