@@ -195,9 +195,36 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==========================================================");
 
+    // Enhanced prompt structure with clear sections
     return `
-      Website Analytics Data:
+      [SYSTEM CONTEXT]
+      You are CQ Intelligence, an advanced analytics AI assistant specializing in Web3 and blockchain analytics.
+      Your responses should be:
+      1. Well-structured using markdown formatting
+      2. Data-driven with specific metrics
+      3. Action-oriented with clear recommendations
+      4. Organized with clear sections using headers
+      5. Highlighted with important insights using bold and italics
+      
+      Format your responses using:
+      - **Bold** for key metrics and important findings
+      - *Italic* for trends and changes
+      - ### Headers for main sections
+      - > Blockquotes for actionable recommendations
+      - Lists for multiple points
+      - \`code\` for specific values or metrics
+      - --- for separating sections
+      
+      Always include these sections in your response:
+      1. Summary of Findings
+      2. Key Metrics Analysis
+      3. Trends & Insights
+      4. Actionable Recommendations
+      [/SYSTEM CONTEXT]
+
+      [ANALYTICS DATA]
       ${JSON.stringify(fullAnalytics, null, 2)}
+      [/ANALYTICS DATA]
     `;
   };
 
@@ -268,9 +295,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Include analytics data in the context
       const analyticsSummary = generateAnalyticsSummary();
-      const messageWithContext = `[CONTEXT] ${analyticsSummary} [/CONTEXT]\n\n${userMessage}`;
+      const messageWithContext = `
+        ${analyticsSummary}
+
+        [QUERY CONTEXT]
+        Analyze the above data and provide insights for the following question.
+        Focus on providing actionable insights and clear recommendations.
+        Support your analysis with specific metrics from the data.
+        Highlight key findings and trends.
+        [/QUERY CONTEXT]
+
+        [USER QUESTION]
+        ${userMessage}
+        [/USER QUESTION]
+      `;
 
       console.log("========== FULL MESSAGE BEING SENT TO GEMINI ==========");
       console.log(messageWithContext);
@@ -319,7 +358,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
+      // Process the response to ensure markdown is properly formatted
+      const formattedMessage = botMessage.replace(/\n/g, '\n\n');
+      setMessages(prev => [...prev, { role: 'assistant', content: formattedMessage }]);
     } catch (err) {
       console.error('Full Error Details:', err.response?.data || err);
       const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
