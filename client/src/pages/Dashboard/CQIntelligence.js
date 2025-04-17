@@ -4,73 +4,6 @@ import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { motion, AnimatePresence } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Box, Sphere } from '@react-three/drei';
-
-// 3D Cube Component for Loading Animation
-const LoadingCube = () => {
-  const meshRef = useRef();
-  
-  useFrame((state) => {
-    meshRef.current.rotation.x += 0.01;
-    meshRef.current.rotation.y += 0.01;
-  });
-
-  return (
-    <Box ref={meshRef} args={[1, 1, 1]}>
-      <meshStandardMaterial
-        color="#caa968"
-        metalness={0.7}
-        roughness={0.2}
-        emissive="#553a20"
-        emissiveIntensity={0.2}
-      />
-    </Box>
-  );
-};
-
-// Blockchain Node Component
-const BlockchainNode = ({ position, color }) => {
-  const meshRef = useRef();
-  
-  useFrame((state) => {
-    meshRef.current.rotation.y += 0.005;
-  });
-
-  return (
-    <group position={position}>
-      <Box ref={meshRef} args={[1, 1, 1]}>
-        <meshStandardMaterial
-          color={color}
-          metalness={0.8}
-          roughness={0.2}
-          emissive={color}
-          emissiveIntensity={0.2}
-        />
-      </Box>
-    </group>
-  );
-};
-
-// Background Blockchain Animation
-const BlockchainBackground = () => {
-  const nodes = [
-    { pos: [-4, 2, -5], color: "#1d0c46" },
-    { pos: [4, -2, -5], color: "#caa968" },
-    { pos: [-2, -3, -5], color: "#553a20" },
-    { pos: [3, 3, -5], color: "#1d0c46" },
-  ];
-
-  return (
-    <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} intensity={1} />
-      {nodes.map((node, i) => (
-        <BlockchainNode key={i} position={node.pos} color={node.color} />
-      ))}
-    </>
-  );
-};
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -539,28 +472,28 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     );
   };
 
-  // Styles for 3D and futuristic design
+  // Styles for futuristic design
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
 
     .futuristic-container {
-      background: linear-gradient(135deg, rgba(29, 12, 70, 0.05) 0%, rgba(202, 169, 104, 0.05) 100%);
+      background: linear-gradient(135deg, rgba(29, 12, 70, 0.95) 0%, rgba(29, 12, 70, 0.8) 100%);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(202, 169, 104, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     }
 
     .blockchain-input {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(5px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(202, 169, 104, 0.2);
       transition: all 0.3s ease;
     }
 
     .blockchain-input:focus {
       background: rgba(255, 255, 255, 0.1);
       border-color: #caa968;
-      box-shadow: 0 0 15px rgba(202, 169, 104, 0.2);
+      box-shadow: 0 0 15px rgba(202, 169, 104, 0.3);
     }
 
     .message-container {
@@ -575,122 +508,106 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       left: 0;
       right: 0;
       bottom: 0;
-      background: linear-gradient(135deg, rgba(29, 12, 70, 0.05) 0%, rgba(202, 169, 104, 0.05) 100%);
+      background: linear-gradient(135deg, rgba(29, 12, 70, 0.7) 0%, rgba(202, 169, 104, 0.1) 100%);
       border-radius: inherit;
       z-index: -1;
     }
 
-    .loading-container {
-      width: 100px;
-      height: 100px;
-      perspective: 1000px;
+    .loading-cube {
+      width: 40px;
+      height: 40px;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: rotate 2s infinite linear;
+    }
+
+    .loading-cube-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: #caa968;
+      opacity: 0.8;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .loading-cube-face:nth-child(1) { transform: translateZ(20px); }
+    .loading-cube-face:nth-child(2) { transform: rotateY(180deg) translateZ(20px); }
+    .loading-cube-face:nth-child(3) { transform: rotateY(90deg) translateZ(20px); }
+    .loading-cube-face:nth-child(4) { transform: rotateY(-90deg) translateZ(20px); }
+    .loading-cube-face:nth-child(5) { transform: rotateX(90deg) translateZ(20px); }
+    .loading-cube-face:nth-child(6) { transform: rotateX(-90deg) translateZ(20px); }
+
+    @keyframes rotate {
+      0% { transform: rotateX(0) rotateY(0); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    .blockchain-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(202, 169, 104, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(202, 169, 104, 0.1) 1px, transparent 1px);
+      background-size: 30px 30px;
+      transform: perspective(500px) rotateX(60deg);
+      transform-origin: top;
+      animation: grid-move 20s linear infinite;
+      opacity: 0.2;
+    }
+
+    @keyframes grid-move {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 30px; }
+    }
+
+    .glow-effect {
+      position: relative;
+    }
+
+    .glow-effect::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(45deg, #caa968, transparent, #1d0c46);
+      filter: blur(5px);
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .glow-effect:hover::after {
+      opacity: 1;
     }
 
     .markdown-content {
       font-family: 'Poppins', sans-serif;
-      font-weight: 400;
       line-height: 1.6;
+      color: rgba(255, 255, 255, 0.9);
     }
 
     .markdown-content h3 {
       font-family: 'Montserrat', sans-serif;
       font-size: 1.25rem;
       font-weight: 600;
-      margin: 2rem 0 1rem;
-      color: #1d0c46;
-      letter-spacing: -0.02em;
-      border-bottom: 2px solid #f3f4f6;
+      margin: 1.5rem 0 1rem;
+      color: #caa968;
+      border-bottom: 2px solid rgba(202, 169, 104, 0.2);
       padding-bottom: 0.5rem;
     }
 
-    .markdown-content h3:first-child {
-      margin-top: 0;
-    }
-
-    .markdown-content p {
-      margin: 0.75rem 0;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 400;
-    }
-
-    .markdown-content strong {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-      color: #1d0c46;
-    }
-
-    .markdown-content ul {
-      margin: 0.75rem 0;
-      padding-left: 1.5rem;
-      list-style-type: none;
-    }
-
-    .markdown-content ul li {
-      margin: 0.5rem 0;
-      position: relative;
-    }
-
-    .markdown-content ul li::before {
-      content: "•";
+    .markdown-content code {
+      background: rgba(202, 169, 104, 0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
       color: #caa968;
-      font-weight: bold;
-      position: absolute;
-      left: -1rem;
+      font-family: 'Poppins', sans-serif;
     }
 
     .markdown-content blockquote {
       border-left: 4px solid #caa968;
       padding: 0.5rem 0 0.5rem 1rem;
       margin: 0.75rem 0;
-      background-color: #f8f9fa;
-      font-family: 'Poppins', sans-serif;
-    }
-
-    .markdown-content blockquote p {
-      margin: 0;
-    }
-
-    .markdown-content code {
-      background-color: #f3f4f6;
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
-      font-size: 0.875rem;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 500;
-      color: #1d0c46;
-    }
-
-    .markdown-content hr {
-      margin: 1.5rem 0;
-      border: 0;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .markdown-content em {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 400;
-      font-style: italic;
-      color: #4b5563;
-    }
-
-    .markdown-content blockquote strong {
-      display: block;
-      margin-bottom: 0.25rem;
-    }
-
-    .markdown-content blockquote:not(:last-child) {
-      margin-bottom: 1rem;
-    }
-
-    /* Number the recommendations */
-    .markdown-content blockquote {
-      counter-increment: recommendation;
-    }
-
-    .markdown-content blockquote strong::before {
-      content: counter(recommendation) ". ";
-      font-weight: 600;
-      color: #caa968;
+      background: rgba(202, 169, 104, 0.1);
     }
   `;
 
@@ -706,28 +623,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
-      <div className="flex-1 p-6 bg-gradient-to-br from-gray-900 to-gray-800 overflow-hidden">
+      <div className="flex-1 p-6 bg-[#0a0520] overflow-hidden">
         <div className="max-w-7xl mx-auto futuristic-container rounded-xl h-full flex flex-col relative overflow-hidden">
-          {/* 3D Background */}
-          <div className="absolute inset-0 opacity-30">
-            <Canvas>
-              <BlockchainBackground />
-            </Canvas>
-          </div>
+          {/* Blockchain Grid Background */}
+          <div className="blockchain-grid"></div>
 
           {/* Header with Website Selector */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-b border-gray-800"
+            className="p-6 border-b border-[rgba(202,169,104,0.2)]"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="text-[#caa968]"
                 >
-                  <Bot className="text-[#caa968]" size={24} />
+                  <Bot size={24} />
                 </motion.div>
                 <div>
                   <h1 className="text-2xl font-bold text-white">CQ Intelligence</h1>
@@ -735,7 +649,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 </div>
               </div>
               
-              {/* Website Selector */}
               <motion.div 
                 whileHover={{ scale: 1.02 }}
                 className="flex items-center gap-2 min-w-[300px]"
@@ -743,7 +656,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 <select
                   value={selectedSite}
                   onChange={handleSiteChange}
-                  className="w-full p-2 blockchain-input rounded-lg text-white focus:outline-none text-sm bg-opacity-20"
+                  className="w-full p-2 blockchain-input rounded-lg text-white focus:outline-none text-sm"
                 >
                   <option value="">Select a website</option>
                   {websiteArray.map(website => (
@@ -766,12 +679,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-12"
                 >
-                  <div className="w-24 h-24 mb-6">
-                    <Canvas>
-                      <ambientLight intensity={0.5} />
-                      <pointLight position={[10, 10, 10]} />
-                      <LoadingCube />
-                    </Canvas>
+                  <div className="mb-6">
+                    <div className="loading-cube">
+                      <div className="loading-cube-face"></div>
+                      <div className="loading-cube-face"></div>
+                      <div className="loading-cube-face"></div>
+                      <div className="loading-cube-face"></div>
+                      <div className="loading-cube-face"></div>
+                      <div className="loading-cube-face"></div>
+                    </div>
                   </div>
                   <h2 className="text-xl font-semibold text-white mb-2">Welcome to CQ Intelligence</h2>
                   <p className="text-gray-400 max-w-md mb-8">
@@ -790,7 +706,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                           setInput(question);
                           setTimeout(() => handleSend(), 100);
                         }}
-                        className="p-4 blockchain-input rounded-lg text-left hover:text-white transition-colors"
+                        className="p-4 blockchain-input rounded-lg text-left hover:text-white transition-colors glow-effect"
                       >
                         {question}
                       </motion.button>
@@ -807,8 +723,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   >
                     <div className={`message-container max-w-[90%] p-4 rounded-lg ${
                       message.role === 'user'
-                        ? 'bg-[#1d0c46] text-white'
-                        : 'bg-white/10 text-white'
+                        ? 'bg-[#caa968] text-white'
+                        : 'bg-[rgba(29,12,70,0.7)] text-white'
                     }`}>
                       <div className="prose prose-sm max-w-none">
                         {message.role === 'assistant' ? (
@@ -829,12 +745,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   animate={{ opacity: 1 }}
                   className="flex justify-start"
                 >
-                  <div className="loading-container">
-                    <Canvas>
-                      <ambientLight intensity={0.5} />
-                      <pointLight position={[10, 10, 10]} />
-                      <LoadingCube />
-                    </Canvas>
+                  <div className="loading-cube">
+                    <div className="loading-cube-face"></div>
+                    <div className="loading-cube-face"></div>
+                    <div className="loading-cube-face"></div>
+                    <div className="loading-cube-face"></div>
+                    <div className="loading-cube-face"></div>
+                    <div className="loading-cube-face"></div>
                   </div>
                 </motion.div>
               )}
@@ -846,7 +763,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-t border-gray-800 bg-gray-900/50"
+            className="p-6 border-t border-[rgba(202,169,104,0.2)] bg-[rgba(10,5,32,0.8)]"
           >
             <div className="flex gap-3">
               <input
@@ -863,7 +780,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
-                className={`px-8 rounded-lg flex items-center gap-2 ${
+                className={`px-8 rounded-lg flex items-center gap-2 glow-effect ${
                   isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-700 text-gray-400'
                     : 'bg-[#caa968] text-white hover:bg-[#caa968]/90'
