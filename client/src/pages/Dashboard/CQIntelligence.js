@@ -573,32 +573,33 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       
       <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
         <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
-          {/* Header */}
+          {/* Header with Website Selector */}
           <div className="p-6 border-b">
-            <div className="flex items-center gap-3">
-              <Bot className="text-[#caa968]" size={24} />
-              <div>
-                <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
-                <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bot className="text-[#caa968]" size={24} />
+                <div>
+                  <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
+                  <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
+                </div>
+              </div>
+              
+              {/* Website Selector */}
+              <div className="flex items-center gap-2 min-w-[300px]">
+                <select
+                  value={selectedSite}
+                  onChange={handleSiteChange}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                >
+                  <option value="">Select a website</option>
+                  {websiteArray.map(website => (
+                    <option key={website.siteId} value={website.siteId}>
+                      {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          </div>
-
-          {/* Website Selector */}
-          <div className="p-6 border-b bg-gray-50">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
-            <select
-              value={selectedSite}
-              onChange={handleSiteChange}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
-            >
-              <option value="">Select a website</option>
-              {websiteArray.map(website => (
-                <option key={website.siteId} value={website.siteId}>
-                  {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Chat Area */}
