@@ -287,25 +287,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   const formatResponse = (response) => {
     // Clean up any extra whitespace and line breaks
-    let formattedText = response.trim().replace(/\n{3,}/g, '\n\n');
+    let formattedText = response.trim()
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s+`/g, ' `')
+      .replace(/`\s+/g, '` ');
 
     // Format headers with proper spacing
-    formattedText = formattedText.replace(/###\s*(.*)/g, '\n\n### $1\n');
+    formattedText = formattedText.replace(/###\s*(.*)/g, '\n### $1\n');
 
     // Format metrics with proper spacing
-    formattedText = formattedText.replace(/\*\*(.*?):\*\*/g, '\n**$1:**');
+    formattedText = formattedText.replace(/\*\*(.*?):\*\*/g, '**$1:**');
 
     // Format blockquotes with proper spacing
-    formattedText = formattedText.replace(/>\s*(.*)/g, '\n> $1\n');
+    formattedText = formattedText.replace(/>\s*(.*)/g, '\n> $1');
 
     // Format bullet points with proper spacing
-    formattedText = formattedText.replace(/\*\s+(.*)/g, '\n* $1');
+    formattedText = formattedText.replace(/\*\s+(.*)/g, '* $1');
 
     // Add extra spacing around horizontal rules
-    formattedText = formattedText.replace(/---/g, '\n\n---\n\n');
-
-    // Ensure proper spacing around code blocks
-    formattedText = formattedText.replace(/`([^`]+)`/g, ' `$1` ');
+    formattedText = formattedText.replace(/---/g, '\n---\n');
 
     return formattedText;
   };
@@ -430,14 +430,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Update the message rendering in the JSX to preserve formatting
   const renderMessage = (message) => {
     return (
-      <div className={`max-w-[80%] p-4 rounded-lg ${
+      <div className={`max-w-[90%] p-4 rounded-lg ${
         message.role === 'user'
           ? 'bg-[#1d0c46] text-white'
-          : 'bg-gray-100 text-gray-800'
+          : 'bg-white shadow-sm border border-gray-100'
       }`}>
         <div className="prose prose-sm max-w-none">
           {message.role === 'assistant' ? (
-            <div className="markdown-content whitespace-pre-wrap">
+            <div className="markdown-content whitespace-pre-wrap" style={{ counterReset: 'recommendation' }}>
               {message.content}
             </div>
           ) : (
@@ -462,9 +462,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       font-family: 'Montserrat', sans-serif;
       font-size: 1.25rem;
       font-weight: 600;
-      margin: 1.5rem 0 1rem;
+      margin: 2rem 0 1rem;
       color: #1d0c46;
       letter-spacing: -0.02em;
+      border-bottom: 2px solid #f3f4f6;
+      padding-bottom: 0.5rem;
+    }
+
+    .markdown-content h3:first-child {
+      margin-top: 0;
     }
 
     .markdown-content p {
@@ -475,23 +481,39 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     .markdown-content strong {
       font-family: 'Poppins', sans-serif;
-      font-weight: 500;
+      font-weight: 600;
+      color: #1d0c46;
     }
 
     .markdown-content ul {
       margin: 0.75rem 0;
       padding-left: 1.5rem;
-      font-family: 'Poppins', sans-serif;
+      list-style-type: none;
+    }
+
+    .markdown-content ul li {
+      margin: 0.5rem 0;
+      position: relative;
+    }
+
+    .markdown-content ul li::before {
+      content: "•";
+      color: #caa968;
+      font-weight: bold;
+      position: absolute;
+      left: -1rem;
     }
 
     .markdown-content blockquote {
       border-left: 4px solid #caa968;
-      padding-left: 1rem;
-      margin: 1rem 0;
+      padding: 0.5rem 0 0.5rem 1rem;
+      margin: 0.75rem 0;
       background-color: #f8f9fa;
       font-family: 'Poppins', sans-serif;
-      font-weight: 300;
-      font-style: italic;
+    }
+
+    .markdown-content blockquote p {
+      margin: 0;
     }
 
     .markdown-content code {
@@ -501,26 +523,40 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       font-size: 0.875rem;
       font-family: 'Poppins', sans-serif;
       font-weight: 500;
+      color: #1d0c46;
     }
 
     .markdown-content hr {
-      margin: 2rem 0;
-      border-color: #e5e7eb;
+      margin: 1.5rem 0;
+      border: 0;
+      border-top: 1px solid #e5e7eb;
     }
 
     .markdown-content em {
       font-family: 'Poppins', sans-serif;
-      font-weight: 300;
-      color: #666;
-    }
-
-    .markdown-content li {
-      margin: 0.5rem 0;
+      font-weight: 400;
+      font-style: italic;
+      color: #4b5563;
     }
 
     .markdown-content blockquote strong {
-      color: #1d0c46;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .markdown-content blockquote:not(:last-child) {
+      margin-bottom: 1rem;
+    }
+
+    /* Number the recommendations */
+    .markdown-content blockquote {
+      counter-increment: recommendation;
+    }
+
+    .markdown-content blockquote strong::before {
+      content: counter(recommendation) ". ";
       font-weight: 600;
+      color: #caa968;
     }
   `;
 
