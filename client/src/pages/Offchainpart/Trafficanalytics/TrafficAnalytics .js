@@ -308,10 +308,10 @@ const AttributionJourneySankey = ({analytics}) => {
             {Object.entries(nodes).filter(([name]) => uniqueSources.includes(name)).map(([name, node]) => (
               <rect
                 key={`highlight-${name}`}
-                x={node.x - 10}
-                y={node.y - 10}
-                width="120"
-                height={node.height + 20}
+                x={node.x - 15}
+                y={node.y - 15}
+                width="130"
+                height={node.height + 30}
                 fill="#f8f9fa"
                 rx="12"
                 ry="12"
@@ -322,10 +322,10 @@ const AttributionJourneySankey = ({analytics}) => {
             {Object.entries(nodes).filter(([name]) => uniqueTargets.includes(name)).map(([name, node]) => (
               <rect
                 key={`highlight-${name}`}
-                x={node.x - 10}
-                y={node.y - 10}
-                width="110"
-                height={node.height + 20}
+                x={node.x - 15}
+                y={node.y - 15}
+                width="120"
+                height={node.height + 30}
                 fill="#f8f9fa"
                 rx="12"
                 ry="12"
@@ -375,10 +375,12 @@ const AttributionJourneySankey = ({analytics}) => {
                     y={node.y + node.height/2}
                     textAnchor={textAnchor}
                     alignmentBaseline="middle"
-                    className="text-sm md:text-base font-bold"
+                    fontFamily="sans-serif"
+                    fontSize="16"
+                    fontWeight="600"
                     style={{ 
                       fill: "#ffffff",
-                      filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.5))"
+                      filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.7))"
                     }}
                   >
                     {name}
@@ -389,13 +391,15 @@ const AttributionJourneySankey = ({analytics}) => {
                     <text
                       key={`visitors-${name}`}
                       x={textX}
-                      y={node.y + node.height/2 + 20}
+                      y={node.y + node.height/2 + 24}
                       textAnchor={textAnchor}
                       alignmentBaseline="middle"
-                      className="text-xs md:text-sm"
+                      fontFamily="sans-serif"
+                      fontSize="14"
+                      fontWeight="500"
                       style={{ 
                         fill: "#ffffff",
-                        filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.5))"
+                        filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.7))"
                       }}
                     >
                       ({node.totalVisitors} visitors)
@@ -417,10 +421,12 @@ const AttributionJourneySankey = ({analytics}) => {
                   y={centerY}
                   textAnchor="middle"
                   alignmentBaseline="middle"
-                  className="text-xs md:text-sm font-bold"
+                  fontFamily="sans-serif"
+                  fontSize="14"
+                  fontWeight="600"
                   style={{ 
                     fill: "#ffffff",
-                    filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.5))"
+                    filter: "drop-shadow(1px 1px 2px rgba(0,0,0,0.8))"
                   }}
                 >
                   {flow.value}
@@ -428,13 +434,31 @@ const AttributionJourneySankey = ({analytics}) => {
               );
             })}
             
-            {/* Legend */}
+            {/* Legend with improved typography */}
             <g transform="translate(20, 20)">
               <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-              <text x="20" y="12" className="text-xs" style={{ fill: "#333333" }}>Wallet Connected</text>
+              <text 
+                x="25" 
+                y="12" 
+                fontFamily="sans-serif"
+                fontSize="14"
+                fontWeight="500"
+                style={{ fill: "#333333" }}
+              >
+                Wallet Connected
+              </text>
               
-              <rect x="0" y="25" width="15" height="15" fill="#dc3545" />
-              <text x="20" y="37" className="text-xs" style={{ fill: "#333333" }}>No Wallet</text>
+              <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
+              <text 
+                x="25" 
+                y="42" 
+                fontFamily="sans-serif"
+                fontSize="14"
+                fontWeight="500"
+                style={{ fill: "#333333" }}
+              >
+                No Wallet
+              </text>
             </g>
           </svg>
         </div>
@@ -449,11 +473,11 @@ const AttributionJourneySankey = ({analytics}) => {
 // Helper component for responsive metric cards
 const MetricCard = ({ title, value, source }) => (
   <div className="bg-white rounded-lg shadow p-2 md:p-4 flex flex-col">
-    <div className="text-xs md:text-sm text-gray-500 mb-1">{title}</div>
-    <div className="text-lg md:text-xl font-bold mb-1 md:mb-2">{value}</div>
-    <div className="text-xs flex items-center text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
-      <span>Best source: </span>
-      <span className="flex items-center ml-1">{source}</span>
+    <div className="text-sm md:text-base text-gray-500 mb-1">{title}</div>
+    <div className="text-xl md:text-2xl font-bold mb-1 md:mb-2">{value}</div>
+    <div className="text-xs md:text-sm flex items-center text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+      <span className="font-medium">Best source: </span>
+      <span className="flex items-center ml-1 font-medium">{source}</span>
     </div>
   </div>
 );
@@ -882,14 +906,14 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     if (active && payload && payload.length) {
       const total = payload.reduce((sum, entry) => sum + entry.value, 0);
       return (
-        <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
-          <p className="font-semibold">{label}</p>
+        <div className="bg-white p-3 border border-gray-200 shadow-lg rounded text-sm md:text-base">
+          <p className="font-bold mb-1">{label}</p>
           {payload.map((entry, index) => (
-            <p key={index} style={{ color: entry.color }}>
+            <p key={index} className="py-1 font-medium" style={{ color: entry.color }}>
               {entry.name}: {entry.value} ({((entry.value / total) * 100).toFixed(1)}%)
             </p>
           ))}
-          <p className="font-semibold mt-1">Total: {total}</p>
+          <p className="font-bold mt-2 pt-1 border-t border-gray-100">Total: {total}</p>
         </div>
       );
     }
@@ -901,14 +925,16 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-2 border border-gray-200 shadow-md rounded text-xs md:text-sm">
-          <p className="font-semibold">{data.source}</p>
-          <p>Engagement: {data.engagement} mins</p>
-          <p>Conversion: {data.conversion}%</p>
-          <p>Bounce Rate: {data.bounceRate}%</p>
-          <p>Unique Users: {data.uniqueUsers}</p>
-          <p>Web3 Users: {data.web3Users}</p>
-          <p>Wallets: {data.wallets}</p>
+        <div className="bg-white p-3 border border-gray-200 shadow-lg rounded text-sm md:text-base">
+          <p className="font-bold mb-2">{data.source}</p>
+          <div className="space-y-1">
+            <p className="font-medium">Engagement: <span className="font-semibold">{data.engagement} mins</span></p>
+            <p className="font-medium">Conversion: <span className="font-semibold">{data.conversion}%</span></p>
+            <p className="font-medium">Bounce Rate: <span className="font-semibold">{data.bounceRate}%</span></p>
+            <p className="font-medium">Unique Users: <span className="font-semibold">{data.uniqueUsers}</span></p>
+            <p className="font-medium">Web3 Users: <span className="font-semibold">{data.web3Users}</span></p>
+            <p className="font-medium">Wallets: <span className="font-semibold">{data.wallets}</span></p>
+          </div>
         </div>
       );
     }
@@ -930,23 +956,87 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.sourceWithHighestBounce} />
       </div>
 
-      {/* Attribution Journey + Traffic Sources */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-6">
-        <div className="col-span-1 md:col-span-2 bg-white rounded-lg shadow">
-          <AttributionJourneySankey analytics={analytics} setanalytics={setanalytics} />
+      {/* Attribution Journey Sankey - Full Width */}
+      <div className="w-full bg-white rounded-lg shadow mb-4 md:mb-6">
+        <AttributionJourneySankey analytics={analytics} setanalytics={setanalytics} />
+      </div>
+
+      {/* Web3 Users by Medium (60%) + Traffic Sources (40%) - In one line */}
+      <div className="flex flex-col md:flex-row gap-4 mb-4 md:mb-6">
+        {/* Web3 Users by Medium - 60% width on md screens and up */}
+        <div className="w-full md:w-3/5 bg-white rounded-lg shadow p-2 md:p-4">
+          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
+          <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+            {isSampleData ? (
+              <span className="text-yellow-600">Sample Data - No real data available yet</span>
+            ) : (
+              "Distribution of Web3 Users Across Traffic Sources"
+            )}
+          </div>
+          {/* Increased height by 30% */}
+          <div className="h-64 md:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={web3UsersByTimeData} 
+                margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis 
+                  domain={[0, 'dataMax + 5']} 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                />
+                <Tooltip content={<Web3UsersTooltip />} />
+                <Legend 
+                  layout="horizontal" 
+                  verticalAlign="top" 
+                  align="center" 
+                  wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
+                  iconSize={8}
+                />
+                {Object.keys(webUsersColors).map((key) => (
+                  <Line 
+                    type="monotone" 
+                    dataKey={key} 
+                    stroke={webUsersColors[key]} 
+                    key={key}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                    name={key}
+                    strokeDasharray={isSampleData ? "5 5" : "0"}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="col-span-1 md:col-span-1">
-          <TrafficSourcesComponent 
-            analytics={analytics}
-            setanalytics={setanalytics}
-            trafficSources={trafficSources} 
-            setTrafficSources={setTrafficSources} 
-          />
+        
+        {/* Traffic Sources - 40% width on md screens and up */}
+        {/* Adding a fixed height that matches the Web3 Users card */}
+        <div className="w-full md:w-2/5 h-auto">
+          <div className="h-full" style={{ minHeight: 'calc(100% - 2rem)' }}>
+            <TrafficSourcesComponent 
+              analytics={analytics}
+              setanalytics={setanalytics}
+              trafficSources={trafficSources} 
+              setTrafficSources={setTrafficSources} 
+              className="h-full"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Traffic Quality Analysis */}
-      <div className="bg-white rounded-lg shadow p-2 md:p-4">
+      {/* Traffic Quality Analysis - Full Width */}
+      <div className="w-full bg-white rounded-lg shadow p-2 md:p-4">
         <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
         <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
           Value-Per-Traffic-Source (Engagement vs Conversion)
@@ -1011,64 +1101,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
           </div>
         )}
       </div>
-
-      {/* Web3 Users by Medium */}
-      <div className="bg-white rounded-lg shadow p-2 md:p-4">
-        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
-        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
-          {isSampleData ? (
-            <span className="text-yellow-600">Sample Data - No real data available yet</span>
-          ) : (
-            "Distribution of Web3 Users Across Traffic Sources"
-          )}
-        </div>
-        <div className="h-48 md:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart 
-              data={web3UsersByTimeData} 
-              margin={{ top: 10, right: 5, bottom: 20, left: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} />
-              <XAxis 
-                dataKey="time" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                domain={[0, 'dataMax + 5']} 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-              />
-              <Tooltip content={<Web3UsersTooltip />} />
-              <Legend 
-                layout="horizontal" 
-                verticalAlign="top" 
-                align="center" 
-                wrapperStyle={{ paddingBottom: '5px', fontSize: '0.7rem' }}
-                iconSize={8}
-              />
-              {Object.keys(webUsersColors).map((key) => (
-                <Line 
-                  type="monotone" 
-                  dataKey={key} 
-                  stroke={webUsersColors[key]} 
-                  key={key}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  name={key}
-                  strokeDasharray={isSampleData ? "5 5" : "0"}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
     </div>
   );
 };
-
 export default TrafficAnalytics;

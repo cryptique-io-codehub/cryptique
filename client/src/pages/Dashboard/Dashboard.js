@@ -138,7 +138,8 @@ const Dashboard = () => {
     const commonProps = {
       onMenuClick: () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
-      screenSize: screenSize
+      screenSize: screenSize,
+      selectedPage:{selectedPage}
     };
 
     switch (selectedPage) {
@@ -187,7 +188,6 @@ const Dashboard = () => {
         );
     }
   };
-
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Sidebar - conditionally rendered based on screen size and state */}

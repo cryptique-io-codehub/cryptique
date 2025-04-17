@@ -7,13 +7,14 @@ import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 
-const OnchainExplorer = ({ onMenuClick, screenSize }) => {
+const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
     const [selectedWebsite, setSelectedWebsite] = useState();
     const [selectedDate, setSelectedDate] = useState('Select Date');
     const [selectedFilters, setSelectedFilters] = useState('Select Filters');
     const [secondNavOpen, setSecondNavOpen] = useState(false);
     const [websitearray,setWebsitearray]=useState([]);
+    const[contractarray,setcontractarray]=useState([]);
     const [analytics,setanalytics]=useState({});
     const [idy,setidy]=useState(localStorage.getItem("idy"));
     const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,6 @@ const OnchainExplorer = ({ onMenuClick, screenSize }) => {
       { label: 'Market Insights' },
       { label: 'Wallet Insights' }
     ];
-    
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
     setSecondNavOpen(!secondNavOpen);
@@ -98,19 +98,25 @@ const OnchainExplorer = ({ onMenuClick, screenSize }) => {
                     {/* Main content section */}
                     {activeSection === 'Dashboard' && (
                       <>
-                        <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}/>
+                    <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                    
+
+                  />
                       <OnchainDashboard/>
                       </>
 
@@ -118,20 +124,23 @@ const OnchainExplorer = ({ onMenuClick, screenSize }) => {
                     
                     {activeSection === 'Traffic analytics' && (
                       <>
-                        <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}
-                        />
+                         <Filters 
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+                  />
                         <OnchainTraffic/>
                       </>
                     )}
@@ -139,19 +148,23 @@ const OnchainExplorer = ({ onMenuClick, screenSize }) => {
                     {activeSection === 'User Insights' && (
                       <>
                         <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}
-                        />
+                    websitearray={websitearray}
+                    setWebsitearray={setWebsitearray}
+                    contractarray={contractarray}
+                    setcontractarray={setcontractarray}
+                    analytics={analytics}
+                    setanalytics={setanalytics}
+                    selectedDate={selectedDate} 
+                    setSelectedDate={setSelectedDate} 
+                    selectedWebsite={selectedWebsite} 
+                    setSelectedWebsite={setSelectedWebsite}
+                    selectedFilters={selectedFilters} 
+                    setSelectedFilters={setSelectedFilters}
+                    idy={idy}
+                    setidy={setidy}
+                    selectedPage={selectedPage}
+
+                  />
                         <Onchainuserinsights/>
                       </>
                     )}
@@ -159,39 +172,47 @@ const OnchainExplorer = ({ onMenuClick, screenSize }) => {
                     {activeSection === 'Market Insights' && (
                       <>
                         <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}
-                        />
+                                           websitearray={websitearray}
+                                           setWebsitearray={setWebsitearray}
+                                           contractarray={contractarray}
+                                           setcontractarray={setcontractarray}
+                                           analytics={analytics}
+                                           setanalytics={setanalytics}
+                                           selectedDate={selectedDate} 
+                                           setSelectedDate={setSelectedDate} 
+                                           selectedWebsite={selectedWebsite} 
+                                           setSelectedWebsite={setSelectedWebsite}
+                                           selectedFilters={selectedFilters} 
+                                           setSelectedFilters={setSelectedFilters}
+                                           idy={idy}
+                                           setidy={setidy}
+                                           selectedPage={selectedPage}
+                       
+                                         />
                         <OnchainmarketInsights/>
                       </>
                     )}
 
                     {activeSection === 'Wallet Insights' && (
                       <>
-                        <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}
-                        />
+                         <Filters 
+                                            websitearray={websitearray}
+                                            setWebsitearray={setWebsitearray}
+                                            contractarray={contractarray}
+                                            setcontractarray={setcontractarray}
+                                            analytics={analytics}
+                                            setanalytics={setanalytics}
+                                            selectedDate={selectedDate} 
+                                            setSelectedDate={setSelectedDate} 
+                                            selectedWebsite={selectedWebsite} 
+                                            setSelectedWebsite={setSelectedWebsite}
+                                            selectedFilters={selectedFilters} 
+                                            setSelectedFilters={setSelectedFilters}
+                                            idy={idy}
+                                            setidy={setidy}
+                                            selectedPage={selectedPage}
+                        
+                                          />
                         <Onchainwalletinsights/>
                       </>
                     )}
