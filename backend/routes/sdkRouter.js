@@ -23,10 +23,11 @@ const setCorsHeaders = (req, res, next) => {
   next();
 };
 
-// Apply CORS middleware to all routes
+// Apply CORS and headers middleware to all routes
+router.use(cors(corsOptions));
 router.use(setCorsHeaders);
 
-// Handle preflight requests
+// Handle preflight requests explicitly
 router.options('*', (req, res) => {
   res.status(204).end();
 });
@@ -43,7 +44,6 @@ router.post('/track', async (req, res) => {
 
 router.get('/analytics/:siteId', async (req, res) => {
   try {
-    console.log('Fetching analytics for site:', req.params.siteId);
     await getAnalytics(req, res);
   } catch (error) {
     console.error('Error in analytics endpoint:', error);

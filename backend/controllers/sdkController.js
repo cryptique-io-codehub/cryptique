@@ -305,83 +305,39 @@ exports.postAnalytics = async (req, res) => {
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {
   try {
-    console.log('getAnalytics called with params:', req.params);
+    
     const { siteId } = req.params;
-    
     if (!siteId) {
-      console.log('No siteId provided');
-      return res.status(400).json({ message: "Site ID is required" });
+      return res.status(400).json({ message: "Required fields are missing" });
     }
-
-    console.log('Looking for analytics with siteId:', siteId);
     const analytics = await Analytics.findOne({ siteId: siteId });
-    
     if (!analytics) {
-      console.log('No analytics found for siteId:', siteId);
-      return res.status(404).json({ message: "Analytics not found" });
+      return res.json({ message: "Analytics not found" });
     }
-
     // Populate the sessions field with session data
-    console.log('Populating analytics data...');
-    await analytics.populate([
-      {
-        path: "sessions",
-        options: { sort: { startTime: -1 } }
-      },
-      {
-        path: "hourlyStats",
-        populate: {
-          path: "analyticsSnapshot.analyticsId",
-          populate: { path: "sessions" }
-        }
-      },
-      {
-        path: "dailyStats",
-        populate: {
-          path: "analyticsSnapshot.analyticsId",
-          populate: { path: "sessions" }
-        }
-      },
-      {
-        path: "weeklyStats",
-        populate: {
-          path: "analyticsSnapshot.analyticsId",
-          populate: { path: "sessions" }
-        }
-      },
-      {
-        path: "monthlyStats",
-        populate: {
-          path: "analyticsSnapshot.analyticsId",
-          populate: { path: "sessions" }
-        }
-      }
-    ]);
-
-    console.log('Analytics data populated successfully');
-    return res.status(200).json({
-      message: "Analytics fetched successfully",
-      analytics: {
-        siteId: analytics.siteId,
-        websiteUrl: analytics.websiteUrl,
-        totalVisitors: analytics.totalVisitors,
-        uniqueVisitors: analytics.uniqueVisitors,
-        web3Visitors: analytics.web3Visitors,
-        walletsConnected: analytics.walletsConnected,
-        pageViews: analytics.pageViews,
-        sessions: analytics.sessions,
-        hourlyStats: analytics.hourlyStats,
-        dailyStats: analytics.dailyStats,
-        weeklyStats: analytics.weeklyStats,
-        monthlyStats: analytics.monthlyStats
-      }
-    });
-  } catch (error) {
-    console.error("Error while fetching analytics:", error);
-    res.status(500).json({
-      message: "Error while fetching analytics",
-      error: error.message
-    });
+    console.log('t');
+    await analytics.populate("sessions");
+    await analytics.populate("hourlyStats");
+    await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("dailyStats");
+    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("weeklyStats");
+    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId.sessions");
+    await analytics.populate("monthlyStats");
+    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId");
+    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId.sessions");
+    console.log(analytics);
+    return res
+      .status(200)
+      .json({ message: "Analytics fetched successfully", analytics });
+  } catch (e) {
+    console.error("Error while fetching analytics", e);
+    res
+      .status(500)
+      .json({ message: "Error while fetching analytics", error: e.message });
   }
 };
 

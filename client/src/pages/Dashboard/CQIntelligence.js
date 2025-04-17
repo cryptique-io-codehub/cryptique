@@ -3,7 +3,6 @@ import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { motion, AnimatePresence } from 'framer-motion';
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
@@ -472,191 +471,184 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     );
   };
 
-  // Styles for futuristic design
+  // Update the CSS styles in the component
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
 
-    .futuristic-container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-
-    .blockchain-input {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .blockchain-input:focus {
-      background: rgba(255, 255, 255, 1);
-      border-color: #1d0c46;
-      box-shadow: 0 0 15px rgba(29, 12, 70, 0.1);
-    }
-
-    .message-container {
-      position: relative;
-      z-index: 1;
-    }
-
-    .message-container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 100%);
-      border-radius: inherit;
-      z-index: -1;
-    }
-
-    .loading-cube {
-      width: 40px;
-      height: 40px;
-      position: relative;
-      transform-style: preserve-3d;
-      animation: rotate 2s infinite linear;
-    }
-
-    .loading-cube-face {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: #1d0c46;
-      opacity: 0.8;
-      border: 2px solid rgba(255, 255, 255, 0.9);
-    }
-
-    .loading-cube-face:nth-child(1) { transform: translateZ(20px); }
-    .loading-cube-face:nth-child(2) { transform: rotateY(180deg) translateZ(20px); }
-    .loading-cube-face:nth-child(3) { transform: rotateY(90deg) translateZ(20px); }
-    .loading-cube-face:nth-child(4) { transform: rotateY(-90deg) translateZ(20px); }
-    .loading-cube-face:nth-child(5) { transform: rotateX(90deg) translateZ(20px); }
-    .loading-cube-face:nth-child(6) { transform: rotateX(-90deg) translateZ(20px); }
-
-    @keyframes rotate {
-      0% { transform: rotateX(0) rotateY(0); }
-      100% { transform: rotateX(360deg) rotateY(360deg); }
-    }
-
-    .blockchain-grid {
-      position: absolute;
-      inset: 0;
-      background-image: 
-        linear-gradient(rgba(29, 12, 70, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(29, 12, 70, 0.05) 1px, transparent 1px);
-      background-size: 30px 30px;
-      transform: perspective(500px) rotateX(60deg);
-      transform-origin: top;
-      animation: grid-move 20s linear infinite;
-      opacity: 0.2;
-    }
-
-    @keyframes grid-move {
-      0% { background-position: 0 0; }
-      100% { background-position: 0 30px; }
-    }
-
-    .glow-effect {
-      position: relative;
-    }
-
-    .glow-effect::after {
-      content: '';
-      position: absolute;
-      inset: -1px;
-      background: linear-gradient(45deg, #1d0c46, transparent, #1d0c46);
-      filter: blur(5px);
-      z-index: -1;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .glow-effect:hover::after {
-      opacity: 0.5;
-    }
-
     .markdown-content {
       font-family: 'Poppins', sans-serif;
+      font-weight: 400;
       line-height: 1.6;
-      color: rgba(0, 0, 0, 0.9);
     }
 
     .markdown-content h3 {
       font-family: 'Montserrat', sans-serif;
       font-size: 1.25rem;
       font-weight: 600;
-      margin: 1.5rem 0 1rem;
+      margin: 2rem 0 1rem;
       color: #1d0c46;
-      border-bottom: 2px solid rgba(29, 12, 70, 0.1);
+      letter-spacing: -0.02em;
+      border-bottom: 2px solid #f3f4f6;
       padding-bottom: 0.5rem;
     }
 
-    .markdown-content code {
-      background: rgba(29, 12, 70, 0.05);
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
-      color: #1d0c46;
+    .markdown-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .markdown-content p {
+      margin: 0.75rem 0;
       font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+    }
+
+    .markdown-content strong {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      color: #1d0c46;
+    }
+
+    .markdown-content ul {
+      margin: 0.75rem 0;
+      padding-left: 1.5rem;
+      list-style-type: none;
+    }
+
+    .markdown-content ul li {
+      margin: 0.5rem 0;
+      position: relative;
+    }
+
+    .markdown-content ul li::before {
+      content: "•";
+      color: #caa968;
+      font-weight: bold;
+      position: absolute;
+      left: -1rem;
     }
 
     .markdown-content blockquote {
-      border-left: 4px solid #1d0c46;
+      border-left: 4px solid #caa968;
       padding: 0.5rem 0 0.5rem 1rem;
       margin: 0.75rem 0;
-      background: rgba(29, 12, 70, 0.05);
+      background-color: #f8f9fa;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .markdown-content blockquote p {
+      margin: 0;
+    }
+
+    .markdown-content code {
+      background-color: #f3f4f6;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      color: #1d0c46;
+    }
+
+    .markdown-content hr {
+      margin: 1.5rem 0;
+      border: 0;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .markdown-content em {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+      font-style: italic;
+      color: #4b5563;
+    }
+
+    .markdown-content blockquote strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .markdown-content blockquote:not(:last-child) {
+      margin-bottom: 1rem;
+    }
+
+    /* Number the recommendations */
+    .markdown-content blockquote {
+      counter-increment: recommendation;
+    }
+
+    .markdown-content blockquote strong::before {
+      content: counter(recommendation) ". ";
+      font-weight: 600;
+      color: #caa968;
     }
   `;
 
   // Add the styles to the document
   useEffect(() => {
+    // Add font preload links for better performance
+    const fontPreloads = [
+      { href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', rel: 'preload', as: 'style' },
+      { href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap', rel: 'preload', as: 'style' }
+    ];
+
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = font.rel;
+      link.as = font.as;
+      document.head.appendChild(link);
+    });
+
+    // Add the actual font stylesheets
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    });
+
+    // Add component styles
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
     document.head.appendChild(styleSheet);
-    return () => document.head.removeChild(styleSheet);
+
+    // Cleanup function
+    return () => {
+      document.head.removeChild(styleSheet);
+      // Remove font links on cleanup
+      const links = document.head.getElementsByTagName('link');
+      for (let i = links.length - 1; i >= 0; i--) {
+        const link = links[i];
+        if (link.href.includes('fonts.googleapis.com')) {
+          document.head.removeChild(link);
+        }
+      }
+    };
   }, []);
 
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
-      <div className="flex-1 p-6 bg-white overflow-hidden">
-        <div className="max-w-7xl mx-auto futuristic-container rounded-xl h-full flex flex-col relative overflow-hidden">
-          {/* Blockchain Grid Background */}
-          <div className="blockchain-grid"></div>
-
+      <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
+        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
           {/* Header with Website Selector */}
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-b border-gray-200"
-          >
+          <div className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="text-[#1d0c46]"
-                >
-                  <Bot size={24} />
-                </motion.div>
+                <Bot className="text-[#caa968]" size={24} />
                 <div>
                   <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
-                  <p className="text-gray-600 mt-1">Ask anything about your website's analytics and performance</p>
+                  <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
                 </div>
               </div>
               
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                className="flex items-center gap-2 min-w-[300px]"
-              >
+              {/* Website Selector */}
+              <div className="flex items-center gap-2 min-w-[300px]">
                 <select
                   value={selectedSite}
                   onChange={handleSiteChange}
-                  className="w-full p-2 blockchain-input rounded-lg text-gray-800 focus:outline-none text-sm"
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
                 >
                   <option value="">Select a website</option>
                   {websiteArray.map(website => (
@@ -665,106 +657,91 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                     </option>
                   ))}
                 </select>
-              </motion.div>
+              </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Chat Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            <AnimatePresence>
-              {messages.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex flex-col items-center justify-center h-full text-center text-gray-600 py-12"
-                >
-                  <div className="mb-6">
-                    <div className="loading-cube">
-                      <div className="loading-cube-face"></div>
-                      <div className="loading-cube-face"></div>
-                      <div className="loading-cube-face"></div>
-                      <div className="loading-cube-face"></div>
-                      <div className="loading-cube-face"></div>
-                      <div className="loading-cube-face"></div>
-                    </div>
-                  </div>
-                  <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-                  <p className="text-gray-600 max-w-md mb-8">
-                    I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                    {['What are the top pages on my website?',
-                      'How is my website performing?',
-                      'Show me my Web3 user analytics',
-                      'What are my traffic sources?'].map((question, index) => (
-                      <motion.button
-                        key={index}
-                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(29, 12, 70, 0.05)' }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          setInput(question);
-                          setTimeout(() => handleSend(), 100);
-                        }}
-                        className="p-4 blockchain-input rounded-lg text-left hover:text-[#1d0c46] transition-colors glow-effect"
-                      >
-                        {question}
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                messages.map((message, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+                <Bot size={64} className="mb-6 text-[#caa968]" />
+                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+                <p className="text-gray-600 max-w-md mb-8">
+                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                  <button 
+                    onClick={() => {
+                      setInput("What are the top pages on my website?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
                   >
-                    <div className={`message-container max-w-[90%] p-4 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-[#1d0c46] text-white'
-                        : 'bg-white shadow-sm border border-gray-100'
-                    }`}>
-                      <div className="prose prose-sm max-w-none">
-                        {message.role === 'assistant' ? (
-                          <div className="markdown-content whitespace-pre-wrap">
-                            {message.content}
-                          </div>
-                        ) : (
-                          message.content
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-start"
+                    What are the top pages on my website?
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("How is my website performing?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    How is my website performing?
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("Show me my Web3 user analytics");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    Show me my Web3 user analytics
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInput("What are my traffic sources?");
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+                  >
+                    What are my traffic sources?
+                  </button>
+                </div>
+              </div>
+            ) : (
+              messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className="loading-cube">
-                    <div className="loading-cube-face"></div>
-                    <div className="loading-cube-face"></div>
-                    <div className="loading-cube-face"></div>
-                    <div className="loading-cube-face"></div>
-                    <div className="loading-cube-face"></div>
-                    <div className="loading-cube-face"></div>
+                  {renderMessage(message)}
+                </div>
+              ))
+            )}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 p-4 rounded-lg">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </div>
+            )}
+            {error && (
+              <div className="flex justify-start">
+                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
+                  {error}
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 border-t border-gray-200 bg-white"
-          >
+          <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
               <input
                 type="text"
@@ -773,14 +750,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
                 disabled={!selectedSite || isLoading}
-                className="flex-1 p-4 blockchain-input rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none disabled:opacity-50"
+                className="flex-1 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
               />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
-                className={`px-8 rounded-lg flex items-center gap-2 glow-effect ${
+                className={`px-8 rounded-lg flex items-center gap-2 ${
                   isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
@@ -788,9 +763,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               >
                 <Send size={20} />
                 <span>Send</span>
-              </motion.button>
+              </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

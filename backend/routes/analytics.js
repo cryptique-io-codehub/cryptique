@@ -3,7 +3,7 @@ const router = express.Router();
 const cors = require('cors');
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
 
-// Configure CORS for analytics endpoints new
+// Configure CORS for analytics endpoints
 const corsOptions = {
   origin: ['http://localhost:3000', 'https://app.cryptique.io'],
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -12,7 +12,7 @@ const corsOptions = {
   maxAge: 86400 // 24 hours
 };
 
-// Middleware to ensure CORS headers are set .
+// Middleware to ensure CORS headers are set
 const setCorsHeaders = (req, res, next) => {
   const origin = req.headers.origin;
   if (corsOptions.origin.includes(origin)) {
