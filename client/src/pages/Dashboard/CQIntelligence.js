@@ -285,6 +285,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
+  const formatResponse = (response) => {
+    // Clean up any extra whitespace and line breaks
+    let formattedText = response.trim().replace(/\n{3,}/g, '\n\n');
+
+    // Format headers with proper spacing
+    formattedText = formattedText.replace(/###\s*(.*)/g, '\n\n### $1\n');
+
+    // Format metrics with proper spacing
+    formattedText = formattedText.replace(/\*\*(.*?):\*\*/g, '\n**$1:**');
+
+    // Format blockquotes with proper spacing
+    formattedText = formattedText.replace(/>\s*(.*)/g, '\n> $1\n');
+
+    // Format bullet points with proper spacing
+    formattedText = formattedText.replace(/\*\s+(.*)/g, '\n* $1');
+
+    // Add extra spacing around horizontal rules
+    formattedText = formattedText.replace(/---/g, '\n\n---\n\n');
+
+    // Ensure proper spacing around code blocks
+    formattedText = formattedText.replace(/`([^`]+)`/g, ' `$1` ');
+
+    return formattedText;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -301,19 +326,30 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
         [QUERY CONTEXT]
         Analyze the above data and provide insights for the following question.
-        Focus on providing actionable insights and clear recommendations.
-        Support your analysis with specific metrics from the data.
-        Highlight key findings and trends.
+        Follow these formatting rules strictly:
+        1. Use proper spacing between sections (double line breaks)
+        2. Format metrics as "**Metric Name:** \`value\`"
+        3. Use bullet points for lists with proper indentation
+        4. Use blockquotes (>) for recommendations with proper spacing
+        5. Use italics (*) for trends and insights
+        6. Keep related information grouped together
+        7. Use horizontal rules (---) to separate major sections
+        8. Ensure each section has a clear header (###)
+        9. Format numbers and percentages consistently using \`backticks\`
+        10. Use sub-bullets where appropriate (indent with 2 spaces)
+
+        Structure your response in this order:
+        1. ### Summary of Findings (High-level overview)
+        2. ### Key Metrics (Formatted as "**Metric:** \`value\`")
+        3. ### Trends & Insights (Use bullets and italics)
+        4. ### Actionable Recommendations (Use numbered blockquotes)
+
         [/QUERY CONTEXT]
 
         [USER QUESTION]
         ${userMessage}
         [/USER QUESTION]
       `;
-
-      console.log("========== FULL MESSAGE BEING SENT TO GEMINI ==========");
-      console.log(messageWithContext);
-      console.log("====================================================");
 
       let botMessage;
 
@@ -358,9 +394,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
 
-      // Process the response to ensure markdown is properly formatted
-      const formattedMessage = botMessage.replace(/\n/g, '\n\n');
-      setMessages(prev => [...prev, { role: 'assistant', content: formattedMessage }]);
+      // Format the response before displaying
+      const formattedMessage = formatResponse(botMessage);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: formattedMessage,
+        timestamp: new Date().toISOString()
+      }]);
     } catch (err) {
       console.error('Full Error Details:', err.response?.data || err);
       const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
@@ -386,6 +426,146 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       { label: "Web3 Visitors", value: analytics.web3Visitors || 0 }
     ];
   };
+
+  // Update the message rendering in the JSX to preserve formatting
+  const renderMessage = (message) => {
+    return (
+      <div className={`max-w-[80%] p-4 rounded-lg ${
+        message.role === 'user'
+          ? 'bg-[#1d0c46] text-white'
+          : 'bg-gray-100 text-gray-800'
+      }`}>
+        <div className="prose prose-sm max-w-none">
+          {message.role === 'assistant' ? (
+            <div className="markdown-content whitespace-pre-wrap">
+              {message.content}
+            </div>
+          ) : (
+            message.content
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Update the CSS styles in the component
+  const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
+
+    .markdown-content {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .markdown-content h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 1.5rem 0 1rem;
+      color: #1d0c46;
+      letter-spacing: -0.02em;
+    }
+
+    .markdown-content p {
+      margin: 0.75rem 0;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 400;
+    }
+
+    .markdown-content strong {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+    }
+
+    .markdown-content ul {
+      margin: 0.75rem 0;
+      padding-left: 1.5rem;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .markdown-content blockquote {
+      border-left: 4px solid #caa968;
+      padding-left: 1rem;
+      margin: 1rem 0;
+      background-color: #f8f9fa;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 300;
+      font-style: italic;
+    }
+
+    .markdown-content code {
+      background-color: #f3f4f6;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+    }
+
+    .markdown-content hr {
+      margin: 2rem 0;
+      border-color: #e5e7eb;
+    }
+
+    .markdown-content em {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 300;
+      color: #666;
+    }
+
+    .markdown-content li {
+      margin: 0.5rem 0;
+    }
+
+    .markdown-content blockquote strong {
+      color: #1d0c46;
+      font-weight: 600;
+    }
+  `;
+
+  // Add the styles to the document
+  useEffect(() => {
+    // Add font preload links for better performance
+    const fontPreloads = [
+      { href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', rel: 'preload', as: 'style' },
+      { href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap', rel: 'preload', as: 'style' }
+    ];
+
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = font.rel;
+      link.as = font.as;
+      document.head.appendChild(link);
+    });
+
+    // Add the actual font stylesheets
+    fontPreloads.forEach(font => {
+      const link = document.createElement('link');
+      link.href = font.href;
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    });
+
+    // Add component styles
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+
+    // Cleanup function
+    return () => {
+      document.head.removeChild(styleSheet);
+      // Remove font links on cleanup
+      const links = document.head.getElementsByTagName('link');
+      for (let i = links.length - 1; i >= 0; i--) {
+        const link = links[i];
+        if (link.href.includes('fonts.googleapis.com')) {
+          document.head.removeChild(link);
+        }
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -485,15 +665,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   key={index}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className={`max-w-[80%] p-4 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-[#1d0c46] text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
+                  {renderMessage(message)}
                 </div>
               ))
             )}
