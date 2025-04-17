@@ -88,7 +88,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   // Generate comprehensive analytics summary for the AI context
-  const generateAnalyticsSummary = () => {
+  const generateAnalyticsSummary = (message) => {
     if (!analytics || Object.keys(analytics).length === 0) {
       console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
@@ -296,7 +296,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       [/QUERY CONTEXT]
 
       [USER QUESTION]
-      ${userMessage}
+      ${message}
       [/USER QUESTION]
     `;
   };
@@ -393,36 +393,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      const analyticsSummary = generateAnalyticsSummary();
-      const messageWithContext = `
-        ${analyticsSummary}
-
-        [QUERY CONTEXT]
-        Analyze the above data and provide insights for the following question.
-        Follow these formatting rules strictly:
-        1. Use proper spacing between sections (double line breaks)
-        2. Format metrics as "**Metric Name:** \`value\`"
-        3. Use bullet points for lists with proper indentation
-        4. Use blockquotes (>) for recommendations with proper spacing
-        5. Use italics (*) for trends and insights
-        6. Keep related information grouped together
-        7. Use horizontal rules (---) to separate major sections
-        8. Ensure each section has a clear header (###)
-        9. Format numbers and percentages consistently using \`backticks\`
-        10. Use sub-bullets where appropriate (indent with 2 spaces)
-
-        Structure your response in this order:
-        1. ### Summary of Findings (High-level overview)
-        2. ### Key Metrics (Formatted as "**Metric:** \`value\`")
-        3. ### Trends & Insights (Use bullets and italics)
-        4. ### Actionable Recommendations (Use numbered blockquotes)
-
-        [/QUERY CONTEXT]
-
-        [USER QUESTION]
-        ${userMessage}
-        [/USER QUESTION]
-      `;
+      const analyticsSummary = generateAnalyticsSummary(userMessage);
+      const messageWithContext = analyticsSummary;
 
       let botMessage;
 
