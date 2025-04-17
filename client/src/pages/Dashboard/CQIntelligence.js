@@ -216,22 +216,49 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return geoData;
   };
 
-  const processTrafficSources = (analytics) => {
-    // Check if we have any traffic source data
-    const hasTrafficData = (
-      (analytics.trafficSources && Object.keys(analytics.trafficSources).length > 0) ||
-      (analytics.topReferrers && analytics.topReferrers.length > 0) ||
-      (analytics.utmSources && Object.keys(analytics.utmSources).length > 0) ||
-      (analytics.utmMediums && Object.keys(analytics.utmMediums).length > 0) ||
-      (analytics.utmCampaigns && Object.keys(analytics.utmCampaigns).length > 0)
-    );
+  // Add helper function for source normalization
+  const normalizeTrafficSource = (session) => {
+    // First priority: UTM source
+    if (session.utmSource) {
+      return session.utmSource.toLowerCase();
+    }
 
-    if (!hasTrafficData) {
-      return null; // Return null instead of empty objects
+    // Second priority: Referrer
+    if (session.referrer) {
+      try {
+        // Parse the URL
+        const url = new URL(session.referrer);
+        // Get hostname and remove www. if present
+        let hostname = url.hostname.replace(/^www\./i, '');
+        // Extract domain without subdomain
+        const domainParts = hostname.split('.');
+        if (domainParts.length > 2) {
+          // If has subdomain, take last two parts
+          hostname = domainParts.slice(-2).join('.');
+        }
+        return hostname;
+      } catch (e) {
+        // If URL parsing fails, return the referrer as is, cleaned
+        return session.referrer.toLowerCase()
+          .replace(/^www\./i, '')
+          .replace(/^https?:\/\//i, '')
+          .split('/')[0];
+      }
+    }
+
+    // Default: direct
+    return 'direct';
+  };
+
+  // Update processTrafficSources function
+  const processTrafficSources = (analytics) => {
+    if (!analytics || !analytics.sessions || !Array.isArray(analytics.sessions)) {
+      return null;
     }
 
     const trafficData = {
       sources: {},
+      sourceTimeline: {},
       referrers: [],
       campaigns: {
         sources: {},
@@ -239,46 +266,140 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         campaigns: {},
         topSources: [],
         topMediums: [],
-        topCampaigns: []
+        topCampaigns: [],
+        timeline: {}
       }
     };
 
-    // Process traffic sources if they exist
-    if (analytics.trafficSources && Object.keys(analytics.trafficSources).length > 0) {
-      trafficData.sources = analytics.trafficSources;
-    }
+    // Process sessions for traffic data
+    const timeframes = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000
+    };
 
-    // Process referrers if they exist
-    if (analytics.topReferrers && analytics.topReferrers.length > 0) {
-      trafficData.referrers = analytics.topReferrers;
-    }
+    const now = new Date();
+    const sourceMetrics = new Map(); // Store detailed metrics per source
 
-    // Process UTM data if it exists
-    if (analytics.utmSources && Object.keys(analytics.utmSources).length > 0) {
-      trafficData.campaigns.sources = analytics.utmSources;
-      trafficData.campaigns.topSources = Object.entries(analytics.utmSources)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
-        .map(([source, count]) => ({ source, count }));
-    }
+    analytics.sessions.forEach(session => {
+      const source = normalizeTrafficSource(session);
+      const timestamp = new Date(session.startTime);
+      
+      // Initialize source metrics if not exists
+      if (!sourceMetrics.has(source)) {
+        sourceMetrics.set(source, {
+          total: 0,
+          uniqueVisitors: new Set(),
+          web3Users: 0,
+          walletsConnected: 0,
+          bounces: 0,
+          totalDuration: 0,
+          timeline: {
+            '24h': { visits: 0, web3: 0, wallets: 0 },
+            '7d': { visits: 0, web3: 0, wallets: 0 },
+            '30d': { visits: 0, web3: 0, wallets: 0 }
+          }
+        });
+      }
 
-    if (analytics.utmMediums && Object.keys(analytics.utmMediums).length > 0) {
-      trafficData.campaigns.mediums = analytics.utmMediums;
-      trafficData.campaigns.topMediums = Object.entries(analytics.utmMediums)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
-        .map(([medium, count]) => ({ medium, count }));
-    }
+      const metrics = sourceMetrics.get(source);
+      metrics.total++;
+      metrics.uniqueVisitors.add(session.device);
+      if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
+      if (session.walletConnected) metrics.walletsConnected++;
+      if (session.pages?.length === 1) metrics.bounces++;
+      if (session.duration) metrics.totalDuration += session.duration;
 
-    if (analytics.utmCampaigns && Object.keys(analytics.utmCampaigns).length > 0) {
-      trafficData.campaigns.campaigns = analytics.utmCampaigns;
-      trafficData.campaigns.topCampaigns = Object.entries(analytics.utmCampaigns)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
-        .map(([campaign, count]) => ({ campaign, count }));
-    }
+      // Update timeline metrics
+      Object.entries(timeframes).forEach(([period, ms]) => {
+        if ((now - timestamp) <= ms) {
+          metrics.timeline[period].visits++;
+          if (session.hasWeb3 || session.walletConnected) {
+            metrics.timeline[period].web3++;
+          }
+          if (session.walletConnected) {
+            metrics.timeline[period].wallets++;
+          }
+        }
+      });
 
-    return trafficData;
+      // Process UTM data if available
+      if (session.utmSource) {
+        const utmData = {
+          source: session.utmSource.toLowerCase(),
+          medium: session.utmMedium?.toLowerCase(),
+          campaign: session.utmCampaign?.toLowerCase()
+        };
+
+        // Update campaign metrics
+        ['source', 'medium', 'campaign'].forEach(type => {
+          if (utmData[type]) {
+            const key = `utm${type.charAt(0).toUpperCase() + type.slice(1)}s`;
+            trafficData.campaigns[key] = trafficData.campaigns[key] || {};
+            trafficData.campaigns[key][utmData[type]] = (trafficData.campaigns[key][utmData[type]] || 0) + 1;
+
+            // Update timeline
+            if (!trafficData.campaigns.timeline[type]) {
+              trafficData.campaigns.timeline[type] = {};
+            }
+            Object.entries(timeframes).forEach(([period, ms]) => {
+              if ((now - timestamp) <= ms) {
+                if (!trafficData.campaigns.timeline[type][period]) {
+                  trafficData.campaigns.timeline[type][period] = {};
+                }
+                trafficData.campaigns.timeline[type][period][utmData[type]] = 
+                  (trafficData.campaigns.timeline[type][period][utmData[type]] || 0) + 1;
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // Convert source metrics to final format
+    sourceMetrics.forEach((metrics, source) => {
+      if (metrics.total > 0) {
+        trafficData.sources[source] = {
+          visits: metrics.total,
+          uniqueVisitors: metrics.uniqueVisitors.size,
+          web3Users: metrics.web3Users,
+          walletsConnected: metrics.walletsConnected,
+          bounceRate: (metrics.bounces / metrics.total) * 100,
+          avgDuration: metrics.totalDuration / metrics.total
+        };
+
+        // Add timeline data
+        Object.entries(metrics.timeline).forEach(([period, data]) => {
+          if (data.visits > 0) {
+            if (!trafficData.sourceTimeline[period]) {
+              trafficData.sourceTimeline[period] = {};
+            }
+            trafficData.sourceTimeline[period][source] = data;
+          }
+        });
+      }
+    });
+
+    // Process top sources for each category
+    ['sources', 'mediums', 'campaigns'].forEach(type => {
+      const data = trafficData.campaigns[`utm${type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1)}`];
+      if (data && Object.keys(data).length > 0) {
+        trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
+          Object.entries(data)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+      }
+    });
+
+    // Clean up empty sections
+    Object.keys(trafficData).forEach(key => {
+      if (typeof trafficData[key] === 'object' && Object.keys(trafficData[key]).length === 0) {
+        delete trafficData[key];
+      }
+    });
+
+    return Object.keys(trafficData).length > 0 ? trafficData : null;
   };
 
   // Add utility function for value validation
@@ -383,8 +504,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const sessionsByCountry = new Map();
 
       validSessions.forEach(session => {
-        // Only process sessions with valid data
-        const source = session.utmSource || session.referrer || 'direct';
+        // Use normalized source
+        const source = normalizeTrafficSource(session);
         const country = session.country;
         
         // Skip if country is unknown or empty
