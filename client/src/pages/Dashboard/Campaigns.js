@@ -88,6 +88,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     setCampaignForm({
       website: selectedWebsite?.siteId || '',
       domain: selectedWebsite?.Domain || '',
+      path: '/',  // Reset path
       name: '',
       source: '',
       medium: '',
@@ -102,6 +103,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [campaignForm, setCampaignForm] = useState({
     website: selectedWebsite?.siteId || '',
     domain: selectedWebsite?.Domain || '',
+    path: '/',  // Add new path field with default value
     name: '',
     source: '',
     medium: '',
@@ -119,7 +121,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       setCampaignForm({
         ...campaignForm,
         website: value,
-        domain: selectedSite?.Domain || ''
+        domain: selectedSite?.Domain || '',
+        path: '/'  // Reset path when website changes
       });
     } else {
       setCampaignForm({
@@ -367,15 +370,25 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 </div>
                 
                 <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Domain</label>
+                  <label className="text-sm font-medium">Campaign Destination*</label>
                   <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="domain"
-                      value={campaignForm.domain}
-                      className="w-full p-2 border rounded bg-gray-50"
-                      disabled
-                    />
+                    <div className="flex items-center">
+                      <div className="bg-gray-50 p-2 border rounded-l text-gray-700 min-w-fit">
+                        {campaignForm.domain || 'Select a website'}
+                      </div>
+                      <input 
+                        type="text"
+                        name="path"
+                        value={campaignForm.path}
+                        onChange={handleFormChange}
+                        className="w-full p-2 border-y border-r rounded-r focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="/path"
+                        required
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter the path after domain (e.g. /page or / for root)
+                    </p>
                   </div>
                 </div>
                 
