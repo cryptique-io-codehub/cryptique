@@ -25,7 +25,7 @@ exports.postAnalytics = async (req, res) => {
       const existingSession = await Session.findOne({ sessionId: sessionId });
       
       // Handle wallet updates if present
-      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
+      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0 && wallet.walletAddress !== "No Wallet Detected") {
         const newWallet = {
           walletAddress: wallet.walletAddress,
           walletType: wallet.walletType,
@@ -128,7 +128,7 @@ exports.postAnalytics = async (req, res) => {
     
     // Handle payload events
     if (payload) {
-      const { siteId, websiteUrl, userId, pagePath, isWeb3User, sessionId } = payload;
+      const { siteId, websiteUrl, userId, pagePath, isWeb3User, walletConnected } = payload;
       const sanitizedPagePath = pagePath.replace(/\./g, "_");
       const analytics = await Analytics.findOne({ siteId: siteId });
       
@@ -140,20 +140,24 @@ exports.postAnalytics = async (req, res) => {
           userId: [userId],
           totalVisitors: 1,
           uniqueVisitors: 1,
-          web3Visitors: 0,
+          web3Visitors: isWeb3User ? 1 : 0,
           walletsConnected: 0,
           pageViews: { [sanitizedPagePath]: 1 },
           sessions: [],
         });
         await analytics.save();
         
-        // Create stats documents
+        // Create stats documents with both metrics
         const statstoCreate = {
           siteId: siteId,
           analyticsSnapshot: [
             {
               analyticsId: analytics._id,
-              hour: new Date(),
+              timestamp: new Date(),
+              visitors: 1,
+              web3Users: isWeb3User ? 1 : 0,
+              walletsConnected: 0,
+              pageViews: 1
             }
           ],
           lastSnapshotAt: new Date(),
@@ -175,10 +179,10 @@ exports.postAnalytics = async (req, res) => {
       } else {
         // Update existing analytics document
         if (isWeb3User) {
-          const walletIndex = analytics.web3UserId.findIndex(
-            (wallet) => wallet === userId
+          const web3Index = analytics.web3UserId.findIndex(
+            (id) => id === userId
           );
-          if (walletIndex === -1) {
+          if (web3Index === -1) {
             analytics.web3UserId.push(userId);
             analytics.web3Visitors += 1;
           }
@@ -345,7 +349,6 @@ exports.getAnalytics = async (req, res) => {
 //add a cron job to update the analytics data every hour of entire website i have in my db
 exports.updateHourlyAnalyticsStats = async (req,res) => {
   try {
-
     const allAnalytics = await Analytics.find({});
 
     for (const analytic of allAnalytics) {
@@ -355,8 +358,8 @@ exports.updateHourlyAnalyticsStats = async (req,res) => {
       const lastSnapshotDate = new Date(lastSnapshotAt);
       const now = new Date();
       const roundedHour = new Date(now);  
-      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5; // Convert milliseconds to hours
-      const alreadyUpdated = differenceInHours < 1; // Check if the last snapshot was taken in the last hour
+      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5;
+      const alreadyUpdated = differenceInHours < 1;
 
       if (alreadyUpdated) continue;
 
@@ -365,21 +368,23 @@ exports.updateHourlyAnalyticsStats = async (req,res) => {
         {
           $push: {
             analyticsSnapshot: {
-              $each: [{ analyticsId, hour: roundedHour }],
-              $sort: { hour: -1 },
+              $each: [{
+                analyticsId,
+                timestamp: roundedHour,
+                visitors: analytic.totalVisitors,
+                web3Users: analytic.web3Visitors,
+                walletsConnected: analytic.walletsConnected,
+                pageViews: analytic.totalPageViews
+              }],
+              $sort: { timestamp: -1 },
               $slice: 24,
             },
           },
-        },
-        { upsert: true }
-      );
-      await HourlyStats.updateOne(
-        { siteId },
-        {
           $set: {
             lastSnapshotAt: roundedHour,
           },
-        }
+        },
+        { upsert: true }
       );
     }
     console.log("Analytics stats updated successfully");
@@ -396,14 +401,14 @@ exports.updateDailyAnalyticsStats = async (req,res) => {
 
     for (const analytic of allAnalytics) {
       const { siteId, _id: analyticsId } = analytic;
-      const hourlyStats = await DailyStats.findOne({ siteId });
-      const lastSnapshotAt = hourlyStats && hourlyStats.lastSnapshotAt;
+      const dailyStats = await DailyStats.findOne({ siteId });
+      const lastSnapshotAt = dailyStats && dailyStats.lastSnapshotAt;
       const lastSnapshotDate = new Date(lastSnapshotAt);
 
       const now = new Date();
       const roundedHour = new Date(now);
-      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5; // Convert milliseconds to hours
-      const alreadyUpdated = differenceInHours < 24; // Check if the last snapshot was taken in the last hour
+      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5;
+      const alreadyUpdated = differenceInHours < 24;
 
       if (alreadyUpdated) continue;
 
@@ -412,21 +417,23 @@ exports.updateDailyAnalyticsStats = async (req,res) => {
         {
           $push: {
             analyticsSnapshot: {
-              $each: [{ analyticsId, hour: roundedHour }],
-              $sort: { hour: -1 },
+              $each: [{
+                analyticsId,
+                timestamp: roundedHour,
+                visitors: analytic.totalVisitors,
+                web3Users: analytic.web3Visitors,
+                walletsConnected: analytic.walletsConnected,
+                pageViews: analytic.totalPageViews
+              }],
+              $sort: { timestamp: -1 },
               $slice: 30,
             },
           },
-        },
-        { upsert: true }
-      );
-      await DailyStats.updateOne(
-        { siteId },
-        {
           $set: {
             lastSnapshotAt: roundedHour,
           },
-        }
+        },
+        { upsert: true }
       );
     }
     console.log("Analytics stats updated successfully");

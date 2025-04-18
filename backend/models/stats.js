@@ -22,7 +22,11 @@ const statsSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
-      wallets: {
+      web3Users: {
+        type: Number,
+        default: 0,
+      },
+      walletsConnected: {
         type: Number,
         default: 0,
       },
