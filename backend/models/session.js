@@ -58,8 +58,8 @@ sessionSchema.pre('save', function(next) {
     // Update pagesViewed based on visitedPages length
     this.pagesViewed = this.visitedPages.length;
     
-    // Update isBounce based on duration only
-    this.isBounce = this.duration < 30; // 30 seconds threshold
+    // Update isBounce based on EITHER duration >= 30 seconds OR more than 1 page view
+    this.isBounce = this.duration < 30 && this.pagesViewed <= 1;
     
     next();
 });
@@ -75,7 +75,8 @@ sessionSchema.methods.updateActivity = function() {
 // Method to add a page view
 sessionSchema.methods.addPageView = async function(pagePath) {
     this.pagesViewed++;
-    this.isBounce = this.pagesViewed <= 1;
+    // Update isBounce based on EITHER duration >= 30 seconds OR more than 1 page view
+    this.isBounce = this.duration < 30 && this.pagesViewed <= 1;
     this.visitedPages.push({
         path: pagePath,
         timestamp: new Date(),
