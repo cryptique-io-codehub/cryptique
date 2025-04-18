@@ -17,9 +17,10 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [showAddCampaignModal, setShowAddCampaignModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [campaigns, setCampaigns] = useState([]);
   
   // Sample data - In a real app, you might fetch this from an API
-  const campaigns = [
+  const campaignsData = [
     { name: 'test', budget: '$1,000' },
     { name: 'presale', budget: '$2,000' },
     { name: 'tradingpromo', budget: '-' },
@@ -69,9 +70,42 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     fetchWebsites();
   }, []);
 
+  // Function to generate UTM URL
+  const generateUtmUrl = (campaign) => {
+    const baseUrl = `${campaign.domain}${campaign.path}`;
+    const params = new URLSearchParams();
+    
+    if (campaign.source) params.append('utm_source', campaign.source);
+    if (campaign.medium) params.append('utm_medium', campaign.medium);
+    if (campaign.campaign) params.append('utm_campaign', campaign.campaign);
+    if (campaign.content) params.append('utm_content', campaign.content);
+    if (campaign.term) params.append('utm_term', campaign.term);
+
+    const queryString = params.toString();
+    return `https://${baseUrl}${queryString ? '?' + queryString : ''}`;
+  };
+
+  // Function to copy text to clipboard
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You might want to add a toast notification here
+      console.log('Copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   const handleCopyClick = (index, event) => {
     event.stopPropagation();
     setActivePopup(activePopup === index ? null : index);
+  };
+
+  const handleCopyUrl = async (campaign, type, event) => {
+    event.stopPropagation();
+    const urlToCopy = type === 'long' ? campaign.longUrl : campaign.shortUrl;
+    await copyToClipboard(urlToCopy);
+    setActivePopup(null);
   };
 
   const handleClickOutside = () => {
@@ -138,8 +172,44 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Add logic to save the campaign
-    console.log('New campaign data:', campaignForm);
+    
+    // Create new campaign object
+    const newCampaign = {
+      id: Date.now(), // Temporary ID until we integrate with backend
+      name: campaignForm.name,
+      domain: campaignForm.domain,
+      path: campaignForm.path,
+      source: campaignForm.source,
+      medium: campaignForm.medium,
+      campaign: campaignForm.campaign,
+      term: campaignForm.term,
+      content: campaignForm.content,
+      budget: campaignForm.budgetAmount ? `${campaignForm.budgetCurrency} ${campaignForm.budgetAmount}` : '-',
+      shortenedDomain: campaignForm.shortenedDomain,
+      longUrl: '',
+      shortUrl: '',
+      stats: {
+        visitors: '-',
+        webUsers: '-',
+        uniqueWallets: '-',
+        transactedUsers: '-',
+        visitDuration: '-',
+        conversions: '-',
+        conversionsValue: '-',
+        cac: '-',
+        roi: '-'
+      }
+    };
+
+    // Generate the long URL with UTM parameters
+    newCampaign.longUrl = generateUtmUrl(newCampaign);
+    // For now, we'll use a placeholder for short URL
+    newCampaign.shortUrl = `https://${campaignForm.shortenedDomain}/xyz123`;
+
+    // Add the new campaign to the list
+    setCampaigns(prevCampaigns => [newCampaign, ...prevCampaigns]);
+
+    // Close the modal and reset form
     closeAddCampaignModal();
   };
 
@@ -288,7 +358,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     
                     {/* Campaign rows */}
                     {campaigns.map((campaign, index) => (
-                      <div key={index} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
+                      <div key={campaign.id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
                         <div className="flex items-center px-2">
                           <span>{campaign.name}</span>
                           <div className="ml-2 flex space-x-1">
@@ -305,13 +375,22 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           
                           {/* Popup menu - only shown when the copy icon is clicked */}
                           {activePopup === index && (
-                            <div className="absolute left-16 top-8 z-10 bg-white shadow-lg rounded border" onClick={e => e.stopPropagation()}>
+                            <div 
+                              className="absolute left-16 top-8 z-10 bg-white shadow-lg rounded border" 
+                              onClick={e => e.stopPropagation()}
+                            >
                               <div className="flex flex-col divide-y text-sm">
-                                <button className="flex items-center px-3 py-2 hover:bg-gray-50">
+                                <button 
+                                  className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                  onClick={(e) => handleCopyUrl(campaign, 'short', e)}
+                                >
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy short URL
                                 </button>
-                                <button className="flex items-center px-3 py-2 hover:bg-gray-50">
+                                <button 
+                                  className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                  onClick={(e) => handleCopyUrl(campaign, 'long', e)}
+                                >
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy long URL
                                 </button>
@@ -319,16 +398,16 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                             </div>
                           )}
                         </div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
+                        <div className="px-2">{campaign.stats.visitors}</div>
+                        <div className="px-2">{campaign.stats.webUsers}</div>
+                        <div className="px-2">{campaign.stats.uniqueWallets}</div>
+                        <div className="px-2">{campaign.stats.transactedUsers}</div>
+                        <div className="px-2">{campaign.stats.visitDuration}</div>
+                        <div className="px-2">{campaign.stats.conversions}</div>
+                        <div className="px-2">{campaign.stats.conversionsValue}</div>
                         <div className="px-2 font-medium">{campaign.budget}</div>
-                        <div className="px-2">-</div>
-                        <div className="px-2">-</div>
+                        <div className="px-2">{campaign.stats.cac}</div>
+                        <div className="px-2">{campaign.stats.roi}</div>
                       </div>
                     ))}
                   </div>
