@@ -54,19 +54,28 @@ exports.getCampaigns = async (req, res) => {
 
     // For each campaign, get and process its sessions
     for (let campaign of campaigns) {
-      // Find all sessions with matching UTM campaign and UTM ID
-      const sessions = await Session.find({
+      // Build query based on whether utm_id exists
+      let sessionQuery = {
         siteId,
-        $and: [
-          { 'utmData.campaign': campaign.campaign },
-          { 'utmData.utm_id': campaign.utm_id }
-        ]
-      }).sort({ startTime: -1 }); // Sort by most recent first
+        'utmData.campaign': campaign.campaign
+      };
+
+      // If utm_id exists, add it to the query
+      if (campaign.utm_id) {
+        sessionQuery['utmData.utm_id'] = campaign.utm_id;
+      }
+
+      // Find all sessions with matching UTM parameters
+      const sessions = await Session.find(sessionQuery).sort({ startTime: -1 });
 
       console.log(`\n=== Campaign: ${campaign.name} ===`);
       console.log(`Campaign ID: ${campaign._id}`);
       console.log(`UTM Campaign Value: ${campaign.campaign}`);
-      console.log(`UTM_ID: ${campaign.utm_id}`);
+      if (campaign.utm_id) {
+        console.log(`UTM_ID: ${campaign.utm_id}`);
+      } else {
+        console.log('UTM_ID: Not set (legacy campaign)');
+      }
       console.log(`Total Active Sessions: ${sessions.length}`);
       
       if (sessions.length > 0) {
@@ -88,12 +97,6 @@ exports.getCampaigns = async (req, res) => {
         console.log('\nNo active sessions found for this campaign');
       }
       
-      console.log('\n=== Session Stats Summary ===');
-      console.log('- Unique Visitors:', new Set(sessions.map(s => s.userId)).size);
-      console.log('- Web3 Users:', sessions.filter(s => s.wallet).length);
-      console.log('- Unique Wallets:', new Set(sessions.filter(s => s.wallet).map(s => s.wallet.walletAddress)).size);
-      console.log('=====================================\n');
-
       // Reset stats arrays
       campaign.stats.uniqueVisitors = [];
       campaign.stats.uniqueWeb3Users = [];
@@ -142,10 +145,11 @@ exports.getCampaigns = async (req, res) => {
       campaigns
     });
   } catch (error) {
-    console.error("Error fetching campaigns:", error);
+    console.error("Error in getCampaigns:", error);
     return res.status(500).json({
       message: "Error fetching campaigns",
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

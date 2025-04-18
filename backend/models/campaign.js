@@ -28,8 +28,8 @@ const campaignSchema = new mongoose.Schema({
   campaign: String,
   utm_id: {
     type: String,
-    required: true,
-    unique: true
+    sparse: true,
+    index: true
   },
   term: String,
   content: String,
