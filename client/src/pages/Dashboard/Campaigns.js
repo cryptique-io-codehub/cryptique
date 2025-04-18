@@ -70,6 +70,28 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     fetchWebsites();
   }, []);
 
+  // Add this useEffect to fetch campaigns when component mounts or website changes
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (!selectedWebsite?.siteId) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await axiosInstance.get(`/campaign/site/${selectedWebsite.siteId}`);
+        if (response.data.campaigns) {
+          setCampaigns(response.data.campaigns);
+        }
+      } catch (error) {
+        console.error("Error fetching campaigns:", error);
+        setError("Failed to load campaigns. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCampaigns();
+  }, [selectedWebsite]);
+
   // Function to generate UTM URL
   const generateUtmUrl = (campaign) => {
     const baseUrl = `${campaign.domain}${campaign.path}`;
@@ -170,47 +192,70 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     
-    // Create new campaign object
-    const newCampaign = {
-      id: Date.now(), // Temporary ID until we integrate with backend
-      name: campaignForm.name,
-      domain: campaignForm.domain,
-      path: campaignForm.path,
-      source: campaignForm.source,
-      medium: campaignForm.medium,
-      campaign: campaignForm.campaign,
-      term: campaignForm.term,
-      content: campaignForm.content,
-      budget: campaignForm.budgetAmount ? `${campaignForm.budgetCurrency} ${campaignForm.budgetAmount}` : '-',
-      shortenedDomain: campaignForm.shortenedDomain,
-      longUrl: '',
-      shortUrl: '',
-      stats: {
-        visitors: '-',
-        webUsers: '-',
-        uniqueWallets: '-',
-        transactedUsers: '-',
-        visitDuration: '-',
-        conversions: '-',
-        conversionsValue: '-',
-        cac: '-',
-        roi: '-'
+    try {
+      // Create campaign object
+      const newCampaign = {
+        siteId: selectedWebsite.siteId,
+        name: campaignForm.name,
+        domain: campaignForm.domain,
+        path: campaignForm.path,
+        source: campaignForm.source,
+        medium: campaignForm.medium,
+        campaign: campaignForm.campaign,
+        term: campaignForm.term,
+        content: campaignForm.content,
+        budget: {
+          currency: campaignForm.budgetCurrency,
+          amount: parseFloat(campaignForm.budgetAmount) || 0
+        },
+        shortenedDomain: campaignForm.shortenedDomain,
+        longUrl: generateUtmUrl({
+          domain: campaignForm.domain,
+          path: campaignForm.path,
+          source: campaignForm.source,
+          medium: campaignForm.medium,
+          campaign: campaignForm.campaign,
+          term: campaignForm.term,
+          content: campaignForm.content
+        }),
+        shortUrl: `https://${campaignForm.shortenedDomain}/${Math.random().toString(36).substring(7)}`
+      };
+
+      // Send to backend
+      const response = await axiosInstance.post('/campaign', newCampaign);
+      
+      if (response.data.campaign) {
+        // Add the new campaign to the list
+        setCampaigns(prevCampaigns => [response.data.campaign, ...prevCampaigns]);
+        
+        // Close the modal and reset form
+        closeAddCampaignModal();
       }
-    };
+    } catch (error) {
+      console.error("Error creating campaign:", error);
+      setError("Failed to create campaign. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Generate the long URL with UTM parameters
-    newCampaign.longUrl = generateUtmUrl(newCampaign);
-    // For now, we'll use a placeholder for short URL
-    newCampaign.shortUrl = `https://${campaignForm.shortenedDomain}/xyz123`;
+  // Add delete campaign functionality
+  const handleDeleteCampaign = async (campaignId) => {
+    if (!window.confirm("Are you sure you want to delete this campaign?")) {
+      return;
+    }
 
-    // Add the new campaign to the list
-    setCampaigns(prevCampaigns => [newCampaign, ...prevCampaigns]);
-
-    // Close the modal and reset form
-    closeAddCampaignModal();
+    try {
+      await axiosInstance.delete(`/campaign/${campaignId}`);
+      setCampaigns(prevCampaigns => prevCampaigns.filter(camp => camp._id !== campaignId));
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      setError("Failed to delete campaign. Please try again.");
+    }
   };
 
   // Currency options
@@ -358,11 +403,14 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     
                     {/* Campaign rows */}
                     {campaigns.map((campaign, index) => (
-                      <div key={campaign.id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
+                      <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
                         <div className="flex items-center px-2">
                           <span>{campaign.name}</span>
                           <div className="ml-2 flex space-x-1">
-                            <button className="text-gray-400 hover:text-gray-600">
+                            <button 
+                              className="text-gray-400 hover:text-gray-600"
+                              onClick={() => handleDeleteCampaign(campaign._id)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                             <button 
@@ -398,16 +446,16 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                             </div>
                           )}
                         </div>
-                        <div className="px-2">{campaign.stats.visitors}</div>
-                        <div className="px-2">{campaign.stats.webUsers}</div>
-                        <div className="px-2">{campaign.stats.uniqueWallets}</div>
-                        <div className="px-2">{campaign.stats.transactedUsers}</div>
-                        <div className="px-2">{campaign.stats.visitDuration}</div>
-                        <div className="px-2">{campaign.stats.conversions}</div>
-                        <div className="px-2">{campaign.stats.conversionsValue}</div>
-                        <div className="px-2 font-medium">{campaign.budget}</div>
-                        <div className="px-2">{campaign.stats.cac}</div>
-                        <div className="px-2">{campaign.stats.roi}</div>
+                        <div className="px-2">{campaign.stats.visitors || '-'}</div>
+                        <div className="px-2">{campaign.stats.webUsers || '-'}</div>
+                        <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
+                        <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
+                        <div className="px-2">{campaign.stats.visitDuration || '-'}</div>
+                        <div className="px-2">{campaign.stats.conversions || '-'}</div>
+                        <div className="px-2">{campaign.stats.conversionsValue || '-'}</div>
+                        <div className="px-2">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
+                        <div className="px-2">{campaign.stats.cac || '-'}</div>
+                        <div className="px-2">{campaign.stats.roi || '-'}</div>
                       </div>
                     ))}
                   </div>
