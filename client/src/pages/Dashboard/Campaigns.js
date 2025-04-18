@@ -387,8 +387,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 {/* Campaign rows */}
                 <div className="max-h-96 overflow-y-auto">
                   {campaigns.map((campaign, index) => (
-                    <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
-                      <div className="flex items-center px-2">
+                    <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative min-h-[4rem]">
+                      <div className="flex items-center px-2 relative">
                         <span>{campaign.name}</span>
                         <div className="ml-2 flex space-x-1">
                           <button 
@@ -405,22 +405,22 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           </button>
                         </div>
                         
-                        {/* Popup menu - Modified positioning */}
+                        {/* Popup menu */}
                         {activePopup === index && (
                           <div 
-                            className="absolute left-full ml-2 top-0 z-10 bg-white shadow-lg rounded border" 
+                            className="absolute left-0 top-full mt-1 z-10 bg-white shadow-lg rounded border" 
                             onClick={e => e.stopPropagation()}
                           >
                             <div className="flex flex-col divide-y text-sm">
                               <button 
-                                className="flex items-center px-3 py-2 hover:bg-gray-50 whitespace-nowrap"
+                                className="flex items-center px-4 py-2 hover:bg-gray-50 whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'short', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
                                 Copy short URL
                               </button>
                               <button 
-                                className="flex items-center px-3 py-2 hover:bg-gray-50 whitespace-nowrap"
+                                className="flex items-center px-4 py-2 hover:bg-gray-50 whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'long', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
@@ -430,16 +430,16 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           </div>
                         )}
                       </div>
-                      <div className="px-2">{campaign.stats.visitors || '-'}</div>
-                      <div className="px-2">{campaign.stats.web3Users || '-'}</div>
-                      <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
-                      <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
-                      <div className="px-2">{formatDuration(campaign.stats.visitDuration)}</div>
-                      <div className="px-2">{campaign.stats.conversions || '-'}</div>
-                      <div className="px-2">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
-                      <div className="px-2">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
-                      <div className="px-2">{campaign.stats.cac ? `$${campaign.stats.cac}` : '-'}</div>
-                      <div className="px-2">{campaign.stats.roi ? `${campaign.stats.roi}%` : '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.visitors || '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.web3Users || '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.uniqueWallets || '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.transactedUsers || '-'}</div>
+                      <div className="px-2 flex items-center">{formatDuration(campaign.stats.visitDuration)}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.conversions || '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.cac ? `$${campaign.stats.cac}` : '-'}</div>
+                      <div className="px-2 flex items-center">{campaign.stats.roi ? `${campaign.stats.roi}%` : '-'}</div>
                     </div>
                   ))}
                 </div>
