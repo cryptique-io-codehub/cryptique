@@ -30,7 +30,7 @@ const mainCorsOptions = {
 
 // SDK CORS configuration with explicit headers
 const sdkCorsOptions = {
-  origin: '*', // Allow all origins for SDK
+  origin: true, // Allow all origins for SDK
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
@@ -40,15 +40,6 @@ const sdkCorsOptions = {
 };
 
 // Global middleware to handle OPTIONS requests
-app.options('*', (req, res, next) => {
-  if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
-  } else {
-    cors(mainCorsOptions)(req, res, next);
-  }
-});
-
-// Apply CORS configuration based on route
 app.use((req, res, next) => {
   // Set common security headers
   res.header('X-Content-Type-Options', 'nosniff');
@@ -56,7 +47,15 @@ app.use((req, res, next) => {
   res.header('X-XSS-Protection', '1; mode=block');
   
   if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
+    // For SDK routes, allow all origins
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+    res.header('Access-Control-Max-Age', '86400');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
   } else {
     // For all other routes, including analytics
     const origin = req.headers.origin;
@@ -67,8 +66,8 @@ app.use((req, res, next) => {
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
     }
-    next();
   }
+  next();
 });
 
 app.use(bodyParser.json());
