@@ -417,6 +417,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      e.g. newsletter, twitter, google, etc.
+                    </p>
                   </div>
                 </div>
                 
@@ -431,6 +434,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      e.g. email, social, cpc, etc.
+                    </p>
                   </div>
                 </div>
                 
@@ -444,6 +450,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       onChange={handleFormChange}
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      e.g. promotion, sale, etc.
+                    </p>
                   </div>
                 </div>
                 
@@ -457,6 +466,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       onChange={handleFormChange}
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Keywords for your paid search campaigns
+                    </p>
                   </div>
                 </div>
                 
@@ -470,6 +482,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       onChange={handleFormChange}
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Any call-to-action or headline, e.g. buy-now
+                    </p>
                   </div>
                 </div>
                 
