@@ -26,6 +26,11 @@ const campaignSchema = new mongoose.Schema({
     required: true,
   },
   campaign: String,
+  utm_id: {
+    type: String,
+    required: true,
+    unique: true
+  },
   term: String,
   content: String,
   budget: {

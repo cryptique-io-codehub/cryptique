@@ -103,6 +103,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     if (campaign.campaign) params.append('utm_campaign', campaign.campaign);
     if (campaign.content) params.append('utm_content', campaign.content);
     if (campaign.term) params.append('utm_term', campaign.term);
+    if (campaign.utm_id) params.append('utm_id', campaign.utm_id);
 
     const queryString = params.toString();
     return `https://${baseUrl}${queryString ? '?' + queryString : ''}`;
@@ -139,7 +140,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     const uniqueId = generateUniqueCampaignId();
     setCampaignForm(prev => ({
       ...prev,
-      campaignUniqueId: uniqueId
+      utm_id: uniqueId
     }));
     setShowAddCampaignModal(true);
   };
@@ -155,7 +156,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       source: '',
       medium: '',
       campaign: '',
-      campaignUniqueId: '',
+      utm_id: uuidv4().split('-')[0].toUpperCase(),
       term: '',
       content: '',
       budgetCurrency: 'USD',
@@ -173,7 +174,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     source: '',
     medium: '',
     campaign: '',
-    campaignUniqueId: '',
+    utm_id: uuidv4().split('-')[0].toUpperCase(),
     term: '',
     content: '',
     budgetCurrency: 'USD',
@@ -206,21 +207,11 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     return uuidv4().split('-')[0].toUpperCase();
   };
 
-  // Function to get the full campaign value with unique ID
-  const getFullCampaignValue = () => {
-    if (!campaignForm.campaignUniqueId) return '';
-    return campaignForm.campaign 
-      ? `${campaignForm.campaign}-${campaignForm.campaignUniqueId}`
-      : campaignForm.campaignUniqueId;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      const fullCampaignValue = getFullCampaignValue();
-      
       // Create campaign object
       const newCampaign = {
         siteId: selectedWebsite.siteId,
@@ -229,7 +220,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
         path: campaignForm.path,
         source: campaignForm.source,
         medium: campaignForm.medium,
-        campaign: fullCampaignValue,
+        campaign: campaignForm.campaign,
+        utm_id: campaignForm.utm_id,
         term: campaignForm.term,
         content: campaignForm.content,
         budget: {
@@ -242,7 +234,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
           path: campaignForm.path,
           source: campaignForm.source,
           medium: campaignForm.medium,
-          campaign: fullCampaignValue,
+          campaign: campaignForm.campaign,
+          utm_id: campaignForm.utm_id,
           term: campaignForm.term,
           content: campaignForm.content
         }),
@@ -573,21 +566,28 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 <div className="grid grid-cols-4 items-center">
                   <label className="text-sm font-medium">Campaign</label>
                   <div className="col-span-3">
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="text"
-                        name="campaign"
-                        value={campaignForm.campaign}
-                        onChange={handleFormChange}
-                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        placeholder="e.g. summer_sale"
-                      />
-                      <div className="bg-gray-100 px-3 py-2 rounded text-sm font-mono">
-                        {campaignForm.campaignUniqueId}
-                      </div>
+                    <input 
+                      type="text"
+                      name="campaign"
+                      value={campaignForm.campaign}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. summer_sale"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      The campaign name for UTM tracking
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center">
+                  <label className="text-sm font-medium">Campaign ID</label>
+                  <div className="col-span-3">
+                    <div className="bg-gray-100 px-3 py-2 rounded text-sm font-mono">
+                      {campaignForm.utm_id}
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Final UTM Campaign value will be: {getFullCampaignValue() || 'Generated unique ID'}
+                      Unique identifier for this campaign (UTM_ID parameter)
                     </p>
                   </div>
                 </div>

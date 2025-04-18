@@ -54,15 +54,19 @@ exports.getCampaigns = async (req, res) => {
 
     // For each campaign, get and process its sessions
     for (let campaign of campaigns) {
-      // Find all sessions with matching UTM campaign
+      // Find all sessions with matching UTM campaign and UTM ID
       const sessions = await Session.find({
         siteId,
-        'utmData.campaign': campaign.campaign
+        $and: [
+          { 'utmData.campaign': campaign.campaign },
+          { 'utmData.utm_id': campaign.utm_id }
+        ]
       }).sort({ startTime: -1 }); // Sort by most recent first
 
       console.log(`\n=== Campaign: ${campaign.name} ===`);
       console.log(`Campaign ID: ${campaign._id}`);
       console.log(`UTM Campaign Value: ${campaign.campaign}`);
+      console.log(`UTM_ID: ${campaign.utm_id}`);
       console.log(`Total Active Sessions: ${sessions.length}`);
       
       if (sessions.length > 0) {
