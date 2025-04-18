@@ -292,6 +292,12 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     { code: 'INR', symbol: '₹' },
   ];
 
+  // Function to format duration in minutes
+  const formatDuration = (minutes) => {
+    if (!minutes || minutes === 0) return '-';
+    return `${minutes.toFixed(2)} min${minutes !== 1 ? 's' : ''}`;
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <div className="flex flex-col w-full h-screen">
@@ -359,7 +365,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     {campaigns.reduce((sum, camp) => sum + (camp.stats.transactedUsers || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    {(campaigns.reduce((sum, camp) => sum + (camp.stats.visitDuration || 0), 0) / campaigns.length || 0).toFixed(2)}
+                    {formatDuration(campaigns.reduce((sum, camp) => sum + (camp.stats.visitDuration || 0), 0) / campaigns.length)}
                   </div>
                   <div className="px-4 font-medium">
                     {campaigns.reduce((sum, camp) => sum + (camp.stats.conversions || 0), 0)}
@@ -428,7 +434,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       <div className="px-2">{campaign.stats.webUsers || '-'}</div>
                       <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
                       <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
-                      <div className="px-2">{campaign.stats.visitDuration || '-'}</div>
+                      <div className="px-2">{formatDuration(campaign.stats.visitDuration)}</div>
                       <div className="px-2">{campaign.stats.conversions || '-'}</div>
                       <div className="px-2">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
                       <div className="px-2">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>

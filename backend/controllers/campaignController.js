@@ -55,6 +55,19 @@ exports.getCampaigns = async (req, res) => {
         'utmData.campaign': campaign.campaign
       });
 
+      // Log sessions for debugging
+      console.log(`\nSessions for campaign "${campaign.name}" (${campaign.campaign}):`);
+      console.log('Total sessions found:', sessions.length);
+      sessions.forEach((session, index) => {
+        console.log(`\nSession ${index + 1}:`);
+        console.log('- User ID:', session.userId);
+        console.log('- UTM Data:', session.utmData);
+        console.log('- Duration (seconds):', session.duration);
+        console.log('- Wallet:', session.wallet?.walletAddress);
+        console.log('- Start Time:', session.startTime);
+        console.log('- End Time:', session.endTime);
+      });
+
       // Reset stats arrays
       campaign.stats.uniqueVisitors = [];
       campaign.stats.uniqueWebUsers = [];
@@ -80,7 +93,7 @@ exports.getCampaigns = async (req, res) => {
           campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
         }
 
-        // Add to total duration
+        // Add to total duration (convert from seconds to minutes)
         if (session.duration) {
           totalDuration += session.duration;
         }
@@ -90,7 +103,8 @@ exports.getCampaigns = async (req, res) => {
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
       campaign.stats.webUsers = campaign.stats.uniqueWebUsers.length;
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
-      campaign.stats.visitDuration = sessions.length > 0 ? totalDuration / sessions.length : 0;
+      // Convert total duration from seconds to minutes
+      campaign.stats.visitDuration = sessions.length > 0 ? (totalDuration / sessions.length) / 60 : 0;
 
       // Save updated campaign stats
       await campaign.save();
@@ -130,6 +144,14 @@ exports.updateCampaignStats = async (req, res) => {
       });
     }
 
+    // Log session for debugging
+    console.log(`\nUpdating stats for campaign "${campaign.name}" with new session:`);
+    console.log('- Session ID:', session._id);
+    console.log('- User ID:', session.userId);
+    console.log('- UTM Data:', session.utmData);
+    console.log('- Duration (seconds):', session.duration);
+    console.log('- Wallet:', session.wallet?.walletAddress);
+
     // Verify this session belongs to this campaign
     if (session.utmData?.campaign !== campaign.campaign) {
       return res.status(400).json({
@@ -166,10 +188,10 @@ exports.updateCampaignStats = async (req, res) => {
       statsUpdated = true;
     }
 
-    // Update visit duration
+    // Update visit duration (convert from seconds to minutes)
     if (session.duration) {
-      const totalDuration = (campaign.stats.visitDuration * (campaign.stats.visitors - 1)) + session.duration;
-      campaign.stats.visitDuration = totalDuration / campaign.stats.visitors;
+      const totalDurationInSeconds = (campaign.stats.visitDuration * 60 * (campaign.stats.visitors - 1)) + session.duration;
+      campaign.stats.visitDuration = (totalDurationInSeconds / campaign.stats.visitors) / 60;
       statsUpdated = true;
     }
 
