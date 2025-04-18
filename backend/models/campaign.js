@@ -4,53 +4,45 @@ const campaignSchema = new mongoose.Schema({
   siteId: {
     type: String,
     required: true,
-    index: true
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   domain: {
     type: String,
-    required: true
+    required: true,
   },
   path: {
     type: String,
-    required: true
+    required: true,
   },
   source: {
     type: String,
-    required: true
+    required: true,
   },
   medium: {
     type: String,
-    required: true
+    required: true,
   },
   campaign: String,
   term: String,
   content: String,
   budget: {
-    currency: {
-      type: String,
-      default: 'USD'
-    },
+    currency: String,
     amount: Number
   },
   shortenedDomain: {
     type: String,
-    required: true
+    required: true,
   },
   longUrl: {
     type: String,
-    required: true
+    required: true,
   },
   shortUrl: {
     type: String,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+    required: true,
   },
   stats: {
     visitors: {
@@ -93,13 +85,22 @@ const campaignSchema = new mongoose.Schema({
   sessions: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Session"
-  }]
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-// Index for efficient querying
-campaignSchema.index({ siteId: 1, name: 1 });
-campaignSchema.index({ shortUrl: 1 }, { unique: true });
-campaignSchema.index({ createdAt: 1 });
+// Update the updatedAt timestamp before saving
+campaignSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 
