@@ -10,10 +10,10 @@ exports.createCampaign = async (req, res) => {
     campaignData.stats = {
       visitors: 0,
       uniqueVisitors: [], // Array to store unique user IDs
-      webUsers: 0,
-      uniqueWebUsers: [], // Array to store unique web user IDs
+      web3Users: 0,
+      uniqueWeb3Users: [],
       uniqueWallets: 0,
-      uniqueWalletAddresses: [], // Array to store unique wallet addresses
+      uniqueWalletAddresses: [],
       transactedUsers: 0,
       visitDuration: 0,
       conversions: 0,
@@ -70,7 +70,7 @@ exports.getCampaigns = async (req, res) => {
 
       // Reset stats arrays
       campaign.stats.uniqueVisitors = [];
-      campaign.stats.uniqueWebUsers = [];
+      campaign.stats.uniqueWeb3Users = [];
       campaign.stats.uniqueWalletAddresses = [];
 
       let totalDuration = 0;
@@ -82,9 +82,9 @@ exports.getCampaigns = async (req, res) => {
           campaign.stats.uniqueVisitors.push(session.userId);
         }
 
-        // Count unique web users (users who have logged in)
-        if (session.userId && !campaign.stats.uniqueWebUsers.includes(session.userId)) {
-          campaign.stats.uniqueWebUsers.push(session.userId);
+        // Count unique web3 users (users who have connected a wallet)
+        if (session.wallet?.walletAddress && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
+          campaign.stats.uniqueWeb3Users.push(session.userId);
         }
 
         // Count unique wallets
@@ -101,7 +101,7 @@ exports.getCampaigns = async (req, res) => {
 
       // Update campaign stats
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
-      campaign.stats.webUsers = campaign.stats.uniqueWebUsers.length;
+      campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
       // Convert total duration from seconds to minutes
       campaign.stats.visitDuration = sessions.length > 0 ? (totalDuration / sessions.length) / 60 : 0;
@@ -161,7 +161,7 @@ exports.updateCampaignStats = async (req, res) => {
 
     // Initialize arrays if they don't exist
     if (!campaign.stats.uniqueVisitors) campaign.stats.uniqueVisitors = [];
-    if (!campaign.stats.uniqueWebUsers) campaign.stats.uniqueWebUsers = [];
+    if (!campaign.stats.uniqueWeb3Users) campaign.stats.uniqueWeb3Users = [];
     if (!campaign.stats.uniqueWalletAddresses) campaign.stats.uniqueWalletAddresses = [];
 
     let statsUpdated = false;
@@ -173,10 +173,10 @@ exports.updateCampaignStats = async (req, res) => {
       statsUpdated = true;
     }
 
-    // Update unique web users
-    if (session.userId && !campaign.stats.uniqueWebUsers.includes(session.userId)) {
-      campaign.stats.uniqueWebUsers.push(session.userId);
-      campaign.stats.webUsers = campaign.stats.uniqueWebUsers.length;
+    // Update unique web3 users
+    if (session.wallet?.walletAddress && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
+      campaign.stats.uniqueWeb3Users.push(session.userId);
+      campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       statsUpdated = true;
     }
 

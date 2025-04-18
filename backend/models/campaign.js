@@ -52,11 +52,11 @@ const campaignSchema = new mongoose.Schema({
     uniqueVisitors: [{
       type: String
     }],
-    webUsers: {
+    web3Users: {
       type: Number,
       default: 0
     },
-    uniqueWebUsers: [{
+    uniqueWeb3Users: [{
       type: String
     }],
     uniqueWallets: {

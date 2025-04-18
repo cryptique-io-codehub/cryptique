@@ -338,7 +338,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 <div className="grid grid-cols-11 text-xs text-gray-500 p-4 border-b bg-gray-50 sticky top-0">
                   <div className="px-4">CAMPAIGN NAME</div>
                   <div className="px-4">VISITORS</div>
-                  <div className="px-4">WEB USERS</div>
+                  <div className="px-4">WEB3 USERS</div>
                   <div className="px-4">UNIQUE WALLETS</div>
                   <div className="px-4">TRANSACTED USERS</div>
                   <div className="px-4">VISIT DURATION (MINS)</div>
@@ -356,7 +356,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     {campaigns.reduce((sum, camp) => sum + (camp.stats.visitors || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    {campaigns.reduce((sum, camp) => sum + (camp.stats.webUsers || 0), 0)}
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.web3Users || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
                     {campaigns.reduce((sum, camp) => sum + (camp.stats.uniqueWallets || 0), 0)}
@@ -431,7 +431,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                         )}
                       </div>
                       <div className="px-2">{campaign.stats.visitors || '-'}</div>
-                      <div className="px-2">{campaign.stats.webUsers || '-'}</div>
+                      <div className="px-2">{campaign.stats.web3Users || '-'}</div>
                       <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
                       <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
                       <div className="px-2">{formatDuration(campaign.stats.visitDuration)}</div>
