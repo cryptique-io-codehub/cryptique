@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Copy, Trash2, Plus, X } from 'lucide-react';
 import Header from '../../components/Header';
 import Filters from '../Offchainpart/Filters';
+import axiosInstance from '../../axiosInstance';
 
-export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
-  const[contractarray,setcontractarray]=useState([]);
+export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
+  const [contractarray, setcontractarray] = useState([]);
   const [isCustomExpanded, setIsCustomExpanded] = useState(true);
   const [activePopup, setActivePopup] = useState(null);
   const [selectedWebsite, setSelectedWebsite] = useState();
@@ -14,6 +15,8 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
   const [analytics, setanalytics] = useState({});
   const [idy, setidy] = useState(localStorage.getItem("idy"));
   const [showAddCampaignModal, setShowAddCampaignModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Sample data - In a real app, you might fetch this from an API
   const campaigns = [
@@ -24,6 +27,47 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
     { name: 'airdrop', budget: '-' },
     { name: 'airdropsummer', budget: '-' }
   ];
+
+  // Fetch websites when component mounts
+  useEffect(() => {
+    const fetchWebsites = async () => {
+      setIsLoading(true);
+      try {
+        const selectedTeam = localStorage.getItem("selectedTeam");
+        const response = await axiosInstance.post('/website/getWebsites', {
+          teamName: selectedTeam
+        });
+        
+        if (response.status === 200 && response.data.websites) {
+          setWebsitearray(response.data.websites);
+          
+          // If there's a currently selected website in localStorage, use it
+          const savedWebsiteId = localStorage.getItem("idy");
+          if (savedWebsiteId) {
+            const currentWebsite = response.data.websites.find(
+              website => website.siteId === savedWebsiteId
+            );
+            if (currentWebsite) {
+              setSelectedWebsite(currentWebsite);
+              // Update the campaign form with the selected website
+              setCampaignForm(prev => ({
+                ...prev,
+                website: currentWebsite.siteId,
+                domain: currentWebsite.Domain
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching websites:", error);
+        setError("Failed to load websites. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWebsites();
+  }, []);
 
   const handleCopyClick = (index, event) => {
     event.stopPropagation();
@@ -40,12 +84,24 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
 
   const closeAddCampaignModal = () => {
     setShowAddCampaignModal(false);
+    // Reset form state when closing modal
+    setCampaignForm({
+      website: selectedWebsite?.siteId || '',
+      domain: selectedWebsite?.Domain || '',
+      name: '',
+      source: '',
+      medium: '',
+      campaign: '',
+      term: '',
+      content: '',
+      budget: ''
+    });
   };
 
   // Form state for new campaign
   const [campaignForm, setCampaignForm] = useState({
-    website: '',
-    domain: '',
+    website: selectedWebsite?.siteId || '',
+    domain: selectedWebsite?.Domain || '',
     name: '',
     source: '',
     medium: '',
@@ -57,10 +113,20 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setCampaignForm({
-      ...campaignForm,
-      [name]: value
-    });
+    if (name === 'website') {
+      // When website is changed, update both website and domain
+      const selectedSite = websitearray.find(site => site.siteId === value);
+      setCampaignForm({
+        ...campaignForm,
+        website: value,
+        domain: selectedSite?.Domain || ''
+      });
+    } else {
+      setCampaignForm({
+        ...campaignForm,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = (e) => {
@@ -256,7 +322,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
       {/* Add Campaign Modal */}
       {showAddCampaignModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-100 p-6 rounded-lg shadow-lg w-full max-w-2xl relative">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 relative">
             {/* Close (X) button */}
             <button 
               onClick={closeAddCampaignModal}
@@ -271,30 +337,45 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Select Website</label>
+                  <label className="text-sm font-medium">Select Website*</label>
                   <div className="col-span-3">
-                    <select 
-                      name="website"
-                      value={campaignForm.website}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
-                    >
-                      <option value="">Select...</option>
-                    </select>
+                    {isLoading ? (
+                      <div className="w-full p-2 border rounded bg-gray-50">
+                        Loading websites...
+                      </div>
+                    ) : error ? (
+                      <div className="w-full p-2 border rounded bg-red-50 text-red-600">
+                        {error}
+                      </div>
+                    ) : (
+                      <select 
+                        name="website"
+                        value={campaignForm.website}
+                        onChange={handleFormChange}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Select a website...</option>
+                        {websitearray.map(website => (
+                          <option key={website.siteId} value={website.siteId}>
+                            {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Choose Domain</label>
+                  <label className="text-sm font-medium">Domain</label>
                   <div className="col-span-3">
-                    <select 
+                    <input 
+                      type="text"
                       name="domain"
                       value={campaignForm.domain}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
-                    >
-                      <option value="">Select...</option>
-                    </select>
+                      className="w-full p-2 border rounded bg-gray-50"
+                      disabled
+                    />
                   </div>
                 </div>
                 
@@ -306,7 +387,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="name"
                       value={campaignForm.name}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -320,7 +401,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="source"
                       value={campaignForm.source}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -334,7 +415,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="medium"
                       value={campaignForm.medium}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -348,7 +429,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="campaign"
                       value={campaignForm.campaign}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -361,7 +442,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="term"
                       value={campaignForm.term}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -374,7 +455,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="content"
                       value={campaignForm.content}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -387,7 +468,7 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                       name="budget"
                       value={campaignForm.budget}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -398,8 +479,9 @@ export default function Campaigns({ onMenuClick, screenSize,selectedPage  }) {
                 <button 
                   type="submit"
                   className="bg-indigo-900 text-amber-300 font-bold py-3 px-8 rounded-md hover:bg-indigo-800 transition-colors"
+                  disabled={isLoading}
                 >
-                  Create Link
+                  Create Campaign
                 </button>
               </div>
             </form>
