@@ -308,9 +308,10 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
             {/* Table header with metrics */}
             <div className="overflow-x-auto">
               <div className="min-w-max">
-                <div className="grid grid-cols-11 text-xs text-gray-500 p-4 border-b">
+                <div className="grid grid-cols-11 text-xs text-gray-500 p-4 border-b bg-gray-50 sticky top-0">
+                  <div className="px-4">CAMPAIGN NAME</div>
                   <div className="px-4">VISITORS</div>
-                  <div className="px-4">WEBS USERS</div>
+                  <div className="px-4">WEB USERS</div>
                   <div className="px-4">UNIQUE WALLETS</div>
                   <div className="px-4">TRANSACTED USERS</div>
                   <div className="px-4">VISIT DURATION (MINS)</div>
@@ -319,147 +320,102 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                   <div className="px-4">BUDGET</div>
                   <div className="px-4">CAC</div>
                   <div className="px-4">ROI</div>
-                  <div className="px-4"></div>
                 </div>
                 
                 {/* Summary row */}
                 <div className="grid grid-cols-11 text-sm p-4 border-b bg-gray-50">
+                  <div className="px-4 font-medium">Total</div>
                   <div className="px-4 font-medium">
-                    total: -
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.visitors || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    total: -
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.webUsers || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    total: -
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.uniqueWallets || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    total: -
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.transactedUsers || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    mins: -
+                    {(campaigns.reduce((sum, camp) => sum + (camp.stats.visitDuration || 0), 0) / campaigns.length || 0).toFixed(2)}
                   </div>
                   <div className="px-4 font-medium">
-                    % of total: -
+                    {campaigns.reduce((sum, camp) => sum + (camp.stats.conversions || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    $: -
+                    ${campaigns.reduce((sum, camp) => sum + (camp.stats.conversionsValue || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    $13,000<br />
-                    % of total: 100%
+                    ${campaigns.reduce((sum, camp) => sum + (camp.budget?.amount || 0), 0)}
                   </div>
                   <div className="px-4 font-medium">
-                    Budget/Transacted Users: -
+                    ${(campaigns.reduce((sum, camp) => sum + (camp.stats.cac || 0), 0) / campaigns.length || 0).toFixed(2)}
                   </div>
                   <div className="px-4 font-medium">
-                    CAC/LTV: -
+                    {(campaigns.reduce((sum, camp) => sum + (camp.stats.roi || 0), 0) / campaigns.length || 0).toFixed(2)}%
                   </div>
-                  <div className="px-4"></div>
                 </div>
                 
-                {/* Custom section header */}
-                <div 
-                  className="flex items-center p-4 border-b cursor-pointer hover:bg-gray-50"
-                  onClick={() => setIsCustomExpanded(!isCustomExpanded)}
-                >
-                  {isCustomExpanded ? 
-                    <ChevronDown className="h-4 w-4 mr-2 text-gray-500" /> : 
-                    <ChevronRight className="h-4 w-4 mr-2 text-gray-500" />
-                  }
-                  <span className="font-medium">Custom</span>
-                  <div className="ml-auto">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4 font-medium">3,000</div>
-                  <div className="px-4">-</div>
-                  <div className="px-4">-</div>
-                </div>
-                
-                {/* Campaign table when expanded */}
-                {isCustomExpanded && (
-                  <div className="max-h-96 overflow-y-auto">
-                    {/* Campaign table header */}
-                    <div className="grid grid-cols-11 text-xs text-gray-500 p-3 border-b bg-gray-50 sticky top-0">
+                {/* Campaign rows */}
+                <div className="max-h-96 overflow-y-auto">
+                  {campaigns.map((campaign, index) => (
+                    <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
                       <div className="flex items-center px-2">
-                        <span>CAMPAIGN NAME</span>
-                        <ChevronDown className="h-3 w-3 ml-1" />
-                      </div>
-                      <div className="px-2">VISITORS</div>
-                      <div className="px-2">WEB USERS</div>
-                      <div className="px-2">UNIQUE WALLETS</div>
-                      <div className="px-2">TRANSACTED USERS</div>
-                      <div className="px-2">VISIT DURATION</div>
-                      <div className="px-2">CONVERSIONS</div>
-                      <div className="px-2">CONVERSIONS VALUE</div>
-                      <div className="px-2">BUDGET</div>
-                      <div className="px-2">CAC ($)</div>
-                      <div className="px-2">ROI</div>
-                    </div>
-                    
-                    {/* Campaign rows */}
-                    {campaigns.map((campaign, index) => (
-                      <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative">
-                        <div className="flex items-center px-2">
-                          <span>{campaign.name}</span>
-                          <div className="ml-2 flex space-x-1">
-                            <button 
-                              className="text-gray-400 hover:text-gray-600"
-                              onClick={() => handleDeleteCampaign(campaign._id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                            <button 
-                              className="text-gray-400 hover:text-gray-600"
-                              onClick={(e) => handleCopyClick(index, e)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
-                          </div>
-                          
-                          {/* Popup menu - only shown when the copy icon is clicked */}
-                          {activePopup === index && (
-                            <div 
-                              className="absolute left-16 top-8 z-10 bg-white shadow-lg rounded border" 
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <div className="flex flex-col divide-y text-sm">
-                                <button 
-                                  className="flex items-center px-3 py-2 hover:bg-gray-50"
-                                  onClick={(e) => handleCopyUrl(campaign, 'short', e)}
-                                >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Copy short URL
-                                </button>
-                                <button 
-                                  className="flex items-center px-3 py-2 hover:bg-gray-50"
-                                  onClick={(e) => handleCopyUrl(campaign, 'long', e)}
-                                >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Copy long URL
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                        <span>{campaign.name}</span>
+                        <div className="ml-2 flex space-x-1">
+                          <button 
+                            className="text-gray-400 hover:text-gray-600"
+                            onClick={() => handleDeleteCampaign(campaign._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            className="text-gray-400 hover:text-gray-600"
+                            onClick={(e) => handleCopyClick(index, e)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
                         </div>
-                        <div className="px-2">{campaign.stats.visitors || '-'}</div>
-                        <div className="px-2">{campaign.stats.webUsers || '-'}</div>
-                        <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
-                        <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
-                        <div className="px-2">{campaign.stats.visitDuration || '-'}</div>
-                        <div className="px-2">{campaign.stats.conversions || '-'}</div>
-                        <div className="px-2">{campaign.stats.conversionsValue || '-'}</div>
-                        <div className="px-2">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
-                        <div className="px-2">{campaign.stats.cac || '-'}</div>
-                        <div className="px-2">{campaign.stats.roi || '-'}</div>
+                        
+                        {/* Popup menu */}
+                        {activePopup === index && (
+                          <div 
+                            className="absolute left-16 top-8 z-10 bg-white shadow-lg rounded border" 
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <div className="flex flex-col divide-y text-sm">
+                              <button 
+                                className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                onClick={(e) => handleCopyUrl(campaign, 'short', e)}
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Copy short URL
+                              </button>
+                              <button 
+                                className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                onClick={(e) => handleCopyUrl(campaign, 'long', e)}
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Copy long URL
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="px-2">{campaign.stats.visitors || '-'}</div>
+                      <div className="px-2">{campaign.stats.webUsers || '-'}</div>
+                      <div className="px-2">{campaign.stats.uniqueWallets || '-'}</div>
+                      <div className="px-2">{campaign.stats.transactedUsers || '-'}</div>
+                      <div className="px-2">{campaign.stats.visitDuration || '-'}</div>
+                      <div className="px-2">{campaign.stats.conversions || '-'}</div>
+                      <div className="px-2">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
+                      <div className="px-2">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
+                      <div className="px-2">{campaign.stats.cac ? `$${campaign.stats.cac}` : '-'}</div>
+                      <div className="px-2">{campaign.stats.roi ? `${campaign.stats.roi}%` : '-'}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
