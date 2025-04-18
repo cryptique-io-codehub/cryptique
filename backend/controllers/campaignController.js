@@ -47,26 +47,48 @@ exports.getCampaigns = async (req, res) => {
     // Get all campaigns for the site
     const campaigns = await Campaign.find({ siteId }).sort({ createdAt: -1 });
 
+    console.log('\n=== Campaign Session Monitoring Start ===');
+    console.log(`Site ID: ${siteId}`);
+    console.log(`Total Campaigns Found: ${campaigns.length}`);
+    console.log('=====================================\n');
+
     // For each campaign, get and process its sessions
     for (let campaign of campaigns) {
       // Find all sessions with matching UTM campaign
       const sessions = await Session.find({
         siteId,
         'utmData.campaign': campaign.campaign
-      });
+      }).sort({ startTime: -1 }); // Sort by most recent first
 
-      // Log sessions for debugging
-      console.log(`\nSessions for campaign "${campaign.name}" (${campaign.campaign}):`);
-      console.log('Total sessions found:', sessions.length);
-      sessions.forEach((session, index) => {
-        console.log(`\nSession ${index + 1}:`);
-        console.log('- User ID:', session.userId);
-        console.log('- UTM Data:', session.utmData);
-        console.log('- Duration (seconds):', session.duration);
-        console.log('- Wallet:', session.wallet?.walletAddress);
-        console.log('- Start Time:', session.startTime);
-        console.log('- End Time:', session.endTime);
-      });
+      console.log(`\n=== Campaign: ${campaign.name} ===`);
+      console.log(`Campaign ID: ${campaign._id}`);
+      console.log(`UTM Campaign Value: ${campaign.campaign}`);
+      console.log(`Total Active Sessions: ${sessions.length}`);
+      
+      if (sessions.length > 0) {
+        console.log('\nDetailed Session Information:');
+        sessions.forEach((session, index) => {
+          console.log(`\nSession ${index + 1}:`);
+          console.log('- Session ID:', session._id);
+          console.log('- User ID:', session.userId);
+          console.log('- Start Time:', new Date(session.startTime).toLocaleString());
+          console.log('- End Time:', session.endTime ? new Date(session.endTime).toLocaleString() : 'Active');
+          console.log('- Duration:', session.duration ? `${session.duration} seconds` : 'Ongoing');
+          console.log('- UTM Data:', JSON.stringify(session.utmData, null, 2));
+          console.log('- Wallet Connected:', session.wallet ? 'Yes' : 'No');
+          if (session.wallet) {
+            console.log('  - Wallet Address:', session.wallet.walletAddress);
+          }
+        });
+      } else {
+        console.log('\nNo active sessions found for this campaign');
+      }
+      
+      console.log('\n=== Session Stats Summary ===');
+      console.log('- Unique Visitors:', new Set(sessions.map(s => s.userId)).size);
+      console.log('- Web3 Users:', sessions.filter(s => s.wallet).length);
+      console.log('- Unique Wallets:', new Set(sessions.filter(s => s.wallet).map(s => s.wallet.walletAddress)).size);
+      console.log('=====================================\n');
 
       // Reset stats arrays
       campaign.stats.uniqueVisitors = [];
@@ -103,12 +125,13 @@ exports.getCampaigns = async (req, res) => {
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
       campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
-      // Convert total duration from seconds to minutes
       campaign.stats.visitDuration = sessions.length > 0 ? (totalDuration / sessions.length) / 60 : 0;
 
       // Save updated campaign stats
       await campaign.save();
     }
+
+    console.log('\n=== Campaign Session Monitoring Complete ===\n');
 
     return res.status(200).json({
       message: "Campaigns fetched successfully",
