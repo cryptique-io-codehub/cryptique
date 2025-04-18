@@ -14,9 +14,9 @@ const sessionSchema = new mongoose.Schema({
         utm_id: { type: String }
     },
     wallet: {
-        walletAddress: { type: String },
-        walletType: { type: String },
-        chainName: { type: String },
+        walletAddress: { type: String, default: "" },
+        walletType: { type: String, default: "" },
+        chainName: { type: String, default: "" }
     },
     startTime: { type: Date, required: true },
     endTime: { type: Date },
@@ -33,6 +33,7 @@ const sessionSchema = new mongoose.Schema({
         type: { type: String },
         os: { type: String },
     },
+    isWeb3User: { type: Boolean, default: false },
     // Track visited pages
     visitedPages: [{
         path: { type: String },
@@ -46,6 +47,32 @@ sessionSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
 
 // Pre-save middleware to update session data
 sessionSchema.pre('save', function(next) {
+    // First check wallet data to determine isWeb3User
+    if (this.wallet) {
+        const hasValidWallet = 
+            this.wallet.walletAddress && 
+            this.wallet.walletAddress !== "" && 
+            this.wallet.walletAddress !== "No Wallet Detected" &&
+            this.wallet.walletType && 
+            this.wallet.walletType !== "" && 
+            this.wallet.walletType !== "No Wallet Detected" &&
+            this.wallet.chainName && 
+            this.wallet.chainName !== "" && 
+            this.wallet.chainName !== "No Wallet Detected";
+        
+        this.isWeb3User = hasValidWallet;
+    }
+
+    // Calculate duration if we have both start and end times
+    if (this.startTime && this.endTime) {
+        const startDate = new Date(this.startTime);
+        const endDate = new Date(this.endTime);
+        this.duration = Math.round((endDate - startDate) / 1000);
+    }
+
+    // Update isBounce based on duration and pages viewed
+    this.isBounce = this.duration < 30 && this.pagesViewed <= 1;
+
     // Always use lastActivity for duration calculation if available
     if (this.lastActivity) {
         this.duration = Math.floor((this.lastActivity - this.startTime) / 1000);
@@ -57,9 +84,6 @@ sessionSchema.pre('save', function(next) {
     
     // Update pagesViewed based on visitedPages length
     this.pagesViewed = this.visitedPages.length;
-    
-    // Update isBounce based on EITHER duration >= 30 seconds OR more than 1 page view
-    this.isBounce = this.duration < 30 && this.pagesViewed <= 1;
     
     next();
 });

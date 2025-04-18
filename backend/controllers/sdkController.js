@@ -41,6 +41,9 @@ exports.postAnalytics = async (req, res) => {
           analytics.walletsConnected += 1;
           await analytics.save();
         }
+
+        // Update session with wallet data
+        sessionData.wallet = newWallet;
       }
       
       // If session doesn't exist, create it
