@@ -405,22 +405,22 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           </button>
                         </div>
                         
-                        {/* Popup menu */}
+                        {/* Popup menu - Modified positioning */}
                         {activePopup === index && (
                           <div 
-                            className="absolute left-16 top-8 z-10 bg-white shadow-lg rounded border" 
+                            className="absolute left-full ml-2 top-0 z-10 bg-white shadow-lg rounded border" 
                             onClick={e => e.stopPropagation()}
                           >
                             <div className="flex flex-col divide-y text-sm">
                               <button 
-                                className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                className="flex items-center px-3 py-2 hover:bg-gray-50 whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'short', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
                                 Copy short URL
                               </button>
                               <button 
-                                className="flex items-center px-3 py-2 hover:bg-gray-50"
+                                className="flex items-center px-3 py-2 hover:bg-gray-50 whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'long', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
