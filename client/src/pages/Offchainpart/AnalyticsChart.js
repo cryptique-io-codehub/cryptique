@@ -66,7 +66,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     console.log('Sessions:', analytics.sessions);
     console.log('Wallets:', analytics.wallets);
 
-    // Generate empty buckets for all time slots in the selected timeframe
+    // Generate time range based on current time
     const now = new Date();
     const startDate = new Date(now.getTime() - (
       timeframe === 'daily' ? 24 * 60 * 60 * 1000 :
@@ -75,6 +75,20 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       timeframe === 'yearly' ? 365 * 24 * 60 * 60 * 1000 :
       24 * 60 * 60 * 1000
     ));
+
+    // Filter sessions within the selected time range first
+    const filteredSessions = analytics.sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      return sessionDate >= startDate && sessionDate <= now;
+    });
+
+    console.log('Filtered sessions for timeframe:', {
+      timeframe,
+      startDate: startDate.toISOString(),
+      endDate: now.toISOString(),
+      totalSessions: analytics.sessions.length,
+      filteredCount: filteredSessions.length
+    });
 
     // Create buckets for all time slots based on timeframe
     let currentDate = new Date(startDate);
@@ -106,8 +120,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     }
 
-    // Process sessions data and wallet connections
-    analytics.sessions.forEach(session => {
+    // Process only the filtered sessions
+    filteredSessions.forEach(session => {
       const date = new Date(session.startTime);
       const timeKey = formatTimeKey(date, timeframe);
       
@@ -127,16 +141,13 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     });
 
-    // Clear any previous wallet processing code
-    console.log('Sessions-based wallet connection data:', finalData);
-    
     // Convert Sets to counts
     Object.keys(finalData).forEach(key => {
       finalData[key].visitors = finalData[key].visitors.size;
       finalData[key].walletConnects = finalData[key].walletConnects.size;
     });
     
-    console.log('Final data after wallet processing:', finalData);
+    console.log('Final data after processing:', finalData);
 
     // Convert to array and sort by timestamp
     const sortedData = Object.entries(finalData)
