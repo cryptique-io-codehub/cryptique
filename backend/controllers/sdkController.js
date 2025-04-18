@@ -107,8 +107,7 @@ exports.postAnalytics = async (req, res) => {
           utmData: originalUtmData,
           pageVisits: combinedPageVisits,
           pagesViewed: combinedPageVisits.length,
-          duration: duration,
-          isBounce: combinedPageVisits.length <= 1
+          duration: duration
         };
         
         const updatedSession = await Session.findByIdAndUpdate(
@@ -252,8 +251,7 @@ exports.postAnalytics = async (req, res) => {
             utmData: originalUtmData,
             pageVisits: combinedPageVisits,
             pagesViewed: combinedPageVisits.length,
-            duration: duration,
-            isBounce: combinedPageVisits.length <= 1
+            duration: duration
           };
           
           const updatedSession = await Session.findByIdAndUpdate(
