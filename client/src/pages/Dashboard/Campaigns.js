@@ -88,14 +88,15 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     setCampaignForm({
       website: selectedWebsite?.siteId || '',
       domain: selectedWebsite?.Domain || '',
-      path: '/',  // Reset path
+      path: '/',
       name: '',
       source: '',
       medium: '',
       campaign: '',
       term: '',
       content: '',
-      budget: ''
+      budgetCurrency: 'USD',
+      budgetAmount: ''
     });
   };
 
@@ -103,14 +104,15 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [campaignForm, setCampaignForm] = useState({
     website: selectedWebsite?.siteId || '',
     domain: selectedWebsite?.Domain || '',
-    path: '/',  // Add new path field with default value
+    path: '/',
     name: '',
     source: '',
     medium: '',
     campaign: '',
     term: '',
     content: '',
-    budget: ''
+    budgetCurrency: 'USD',
+    budgetAmount: ''
   });
 
   const handleFormChange = (e) => {
@@ -122,7 +124,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
         ...campaignForm,
         website: value,
         domain: selectedSite?.Domain || '',
-        path: '/'  // Reset path when website changes
+        path: '/'
       });
     } else {
       setCampaignForm({
@@ -138,6 +140,19 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     console.log('New campaign data:', campaignForm);
     closeAddCampaignModal();
   };
+
+  // Currency options
+  const currencies = [
+    { code: 'USD', symbol: '$' },
+    { code: 'EUR', symbol: '€' },
+    { code: 'GBP', symbol: '£' },
+    { code: 'JPY', symbol: '¥' },
+    { code: 'AUD', symbol: 'A$' },
+    { code: 'CAD', symbol: 'C$' },
+    { code: 'CHF', symbol: 'CHF' },
+    { code: 'CNY', symbol: '¥' },
+    { code: 'INR', symbol: '₹' },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -403,6 +418,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      e.g. summer_sale_2024, black_friday_promo, new_year_campaign
+                    </p>
                   </div>
                 </div>
                 
@@ -489,16 +507,35 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 </div>
                 
                 <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Budget*</label>
+                  <label className="text-sm font-medium">Budget</label>
                   <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="budget"
-                      value={campaignForm.budget}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      required
-                    />
+                    <div className="flex gap-2">
+                      <select
+                        name="budgetCurrency"
+                        value={campaignForm.budgetCurrency}
+                        onChange={handleFormChange}
+                        className="w-24 p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                      >
+                        {currencies.map(currency => (
+                          <option key={currency.code} value={currency.code}>
+                            {currency.symbol} {currency.code}
+                          </option>
+                        ))}
+                      </select>
+                      <input 
+                        type="number"
+                        name="budgetAmount"
+                        value={campaignForm.budgetAmount}
+                        onChange={handleFormChange}
+                        placeholder="Enter amount"
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Optional: Enter your campaign budget with currency
+                    </p>
                   </div>
                 </div>
               </div>
