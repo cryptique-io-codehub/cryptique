@@ -5,24 +5,15 @@ const Session = require("../models/session");
 exports.createCampaign = async (req, res) => {
   try {
     const campaignData = req.body;
-
-    // Validate required fields
-    const requiredFields = ['siteId', 'name', 'domain', 'path', 'source', 'medium', 'shortenedDomain', 'longUrl', 'shortUrl'];
-    const missingFields = requiredFields.filter(field => !campaignData[field]);
     
-    if (missingFields.length > 0) {
-      return res.status(400).json({
-        message: "Missing required fields",
-        fields: missingFields
-      });
-    }
-
-    // Initialize stats object with uniqueVisitors array
+    // Initialize stats object
     campaignData.stats = {
       visitors: 0,
       uniqueVisitors: [], // Array to store unique user IDs
       webUsers: 0,
+      uniqueWebUsers: [], // Array to store unique web user IDs
       uniqueWallets: 0,
+      uniqueWalletAddresses: [], // Array to store unique wallet addresses
       transactedUsers: 0,
       visitDuration: 0,
       conversions: 0,
@@ -31,27 +22,13 @@ exports.createCampaign = async (req, res) => {
       roi: 0
     };
 
-    // Initialize sessions array if not provided
-    if (!campaignData.sessions) {
-      campaignData.sessions = [];
-    }
-
     // Create new campaign
     const campaign = new Campaign(campaignData);
-    
-    // Save campaign and wait for the operation to complete
-    const savedCampaign = await campaign.save();
-
-    // Verify the campaign was saved by fetching it from the database
-    const verifiedCampaign = await Campaign.findById(savedCampaign._id);
-    
-    if (!verifiedCampaign) {
-      throw new Error("Campaign failed to persist in database");
-    }
+    await campaign.save();
 
     return res.status(200).json({
       message: "Campaign created successfully",
-      campaign: verifiedCampaign
+      campaign
     });
   } catch (error) {
     console.error("Error creating campaign:", error);
@@ -67,9 +44,57 @@ exports.getCampaigns = async (req, res) => {
   try {
     const { siteId } = req.params;
     
-    const campaigns = await Campaign.find({ siteId })
-      .populate('sessions')
-      .sort({ createdAt: -1 });
+    // Get all campaigns for the site
+    const campaigns = await Campaign.find({ siteId }).sort({ createdAt: -1 });
+
+    // For each campaign, get and process its sessions
+    for (let campaign of campaigns) {
+      // Find all sessions with matching UTM campaign
+      const sessions = await Session.find({
+        siteId,
+        'utmData.campaign': campaign.campaign
+      });
+
+      // Reset stats arrays
+      campaign.stats.uniqueVisitors = [];
+      campaign.stats.uniqueWebUsers = [];
+      campaign.stats.uniqueWalletAddresses = [];
+
+      let totalDuration = 0;
+
+      // Process each session
+      sessions.forEach(session => {
+        // Count unique visitors
+        if (session.userId && !campaign.stats.uniqueVisitors.includes(session.userId)) {
+          campaign.stats.uniqueVisitors.push(session.userId);
+        }
+
+        // Count unique web users (users who have logged in)
+        if (session.userId && !campaign.stats.uniqueWebUsers.includes(session.userId)) {
+          campaign.stats.uniqueWebUsers.push(session.userId);
+        }
+
+        // Count unique wallets
+        if (session.wallet?.walletAddress && 
+            !campaign.stats.uniqueWalletAddresses.includes(session.wallet.walletAddress)) {
+          campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
+        }
+
+        // Add to total duration
+        if (session.duration) {
+          totalDuration += session.duration;
+        }
+      });
+
+      // Update campaign stats
+      campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
+      campaign.stats.webUsers = campaign.stats.uniqueWebUsers.length;
+      campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
+      campaign.stats.visitDuration = sessions.length > 0 ? totalDuration / sessions.length : 0;
+
+      // Save updated campaign stats
+      await campaign.save();
+    }
 
     return res.status(200).json({
       message: "Campaigns fetched successfully",
@@ -84,7 +109,7 @@ exports.getCampaigns = async (req, res) => {
   }
 };
 
-// Update campaign stats
+// Update campaign stats when a new session is created or updated
 exports.updateCampaignStats = async (req, res) => {
   try {
     const { campaignId } = req.params;
@@ -105,37 +130,51 @@ exports.updateCampaignStats = async (req, res) => {
       });
     }
 
-    // Initialize uniqueVisitors array if it doesn't exist
-    if (!campaign.stats.uniqueVisitors) {
-      campaign.stats.uniqueVisitors = [];
+    // Verify this session belongs to this campaign
+    if (session.utmData?.campaign !== campaign.campaign) {
+      return res.status(400).json({
+        message: "Session does not belong to this campaign"
+      });
     }
 
-    // Check if this user has already visited this campaign
-    const isNewVisitor = !campaign.stats.uniqueVisitors.includes(session.userId);
-    
-    // If this is a new visitor, update the stats
-    if (isNewVisitor) {
+    // Initialize arrays if they don't exist
+    if (!campaign.stats.uniqueVisitors) campaign.stats.uniqueVisitors = [];
+    if (!campaign.stats.uniqueWebUsers) campaign.stats.uniqueWebUsers = [];
+    if (!campaign.stats.uniqueWalletAddresses) campaign.stats.uniqueWalletAddresses = [];
+
+    let statsUpdated = false;
+
+    // Update unique visitors
+    if (session.userId && !campaign.stats.uniqueVisitors.includes(session.userId)) {
       campaign.stats.uniqueVisitors.push(session.userId);
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
-      
-      // Add session to campaign if not already present
-      if (!campaign.sessions.includes(sessionId)) {
-        campaign.sessions.push(sessionId);
-      }
+      statsUpdated = true;
+    }
 
-      // Update other stats as needed
-      if (session.userId) campaign.stats.webUsers += 1;
-      if (session.wallet) campaign.stats.uniqueWallets += 1;
-      if (session.transactions && session.transactions.length > 0) {
-        campaign.stats.transactedUsers += 1;
-      }
+    // Update unique web users
+    if (session.userId && !campaign.stats.uniqueWebUsers.includes(session.userId)) {
+      campaign.stats.uniqueWebUsers.push(session.userId);
+      campaign.stats.webUsers = campaign.stats.uniqueWebUsers.length;
+      statsUpdated = true;
+    }
 
-      // Update average visit duration
-      if (session.duration) {
-        const totalDuration = (campaign.stats.visitDuration * (campaign.stats.visitors - 1)) + session.duration;
-        campaign.stats.visitDuration = totalDuration / campaign.stats.visitors;
-      }
+    // Update unique wallets
+    if (session.wallet?.walletAddress && 
+        !campaign.stats.uniqueWalletAddresses.includes(session.wallet.walletAddress)) {
+      campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
+      campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
+      statsUpdated = true;
+    }
 
+    // Update visit duration
+    if (session.duration) {
+      const totalDuration = (campaign.stats.visitDuration * (campaign.stats.visitors - 1)) + session.duration;
+      campaign.stats.visitDuration = totalDuration / campaign.stats.visitors;
+      statsUpdated = true;
+    }
+
+    // Save changes if any updates were made
+    if (statsUpdated) {
       await campaign.save();
     }
 

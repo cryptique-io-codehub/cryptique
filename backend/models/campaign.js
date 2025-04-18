@@ -50,17 +50,22 @@ const campaignSchema = new mongoose.Schema({
       default: 0
     },
     uniqueVisitors: [{
-      type: String,
-      unique: true
+      type: String
     }],
     webUsers: {
       type: Number,
       default: 0
     },
+    uniqueWebUsers: [{
+      type: String
+    }],
     uniqueWallets: {
       type: Number,
       default: 0
     },
+    uniqueWalletAddresses: [{
+      type: String
+    }],
     transactedUsers: {
       type: Number,
       default: 0
