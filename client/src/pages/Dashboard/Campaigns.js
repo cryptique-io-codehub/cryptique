@@ -96,7 +96,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       term: '',
       content: '',
       budgetCurrency: 'USD',
-      budgetAmount: ''
+      budgetAmount: '',
+      shortenedDomain: ''
     });
   };
 
@@ -112,7 +113,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     term: '',
     content: '',
     budgetCurrency: 'USD',
-    budgetAmount: ''
+    budgetAmount: '',
+    shortenedDomain: ''
   });
 
   const handleFormChange = (e) => {
@@ -535,6 +537,24 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
                       Optional: Enter your campaign budget with currency
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center">
+                  <label className="text-sm font-medium">Shortened Domain*</label>
+                  <div className="col-span-3">
+                    <select
+                      name="shortenedDomain"
+                      value={campaignForm.shortenedDomain}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                      required
+                    >
+                      <option value="">No shortened domains available</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Select the domain that will be used for the shortened URL
                     </p>
                   </div>
                 </div>
