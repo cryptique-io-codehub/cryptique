@@ -17,20 +17,19 @@ exports.createCampaign = async (req, res) => {
       });
     }
 
-    // Initialize stats object if not provided
-    if (!campaignData.stats) {
-      campaignData.stats = {
-        visitors: 0,
-        webUsers: 0,
-        uniqueWallets: 0,
-        transactedUsers: 0,
-        visitDuration: 0,
-        conversions: 0,
-        conversionsValue: 0,
-        cac: 0,
-        roi: 0
-      };
-    }
+    // Initialize stats object with uniqueVisitors array
+    campaignData.stats = {
+      visitors: 0,
+      uniqueVisitors: [], // Array to store unique user IDs
+      webUsers: 0,
+      uniqueWallets: 0,
+      transactedUsers: 0,
+      visitDuration: 0,
+      conversions: 0,
+      conversionsValue: 0,
+      cac: 0,
+      roi: 0
+    };
 
     // Initialize sessions array if not provided
     if (!campaignData.sessions) {
@@ -98,20 +97,43 @@ exports.updateCampaignStats = async (req, res) => {
       });
     }
 
-    // Add session to campaign if not already present
-    if (sessionId && !campaign.sessions.includes(sessionId)) {
-      campaign.sessions.push(sessionId);
+    // Get session data
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        message: "Session not found"
+      });
+    }
+
+    // Initialize uniqueVisitors array if it doesn't exist
+    if (!campaign.stats.uniqueVisitors) {
+      campaign.stats.uniqueVisitors = [];
+    }
+
+    // Check if this user has already visited this campaign
+    const isNewVisitor = !campaign.stats.uniqueVisitors.includes(session.userId);
+    
+    // If this is a new visitor, update the stats
+    if (isNewVisitor) {
+      campaign.stats.uniqueVisitors.push(session.userId);
+      campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
       
-      // Update campaign stats
-      const session = await Session.findById(sessionId);
-      if (session) {
-        campaign.stats.visitors += 1;
-        if (session.userId) campaign.stats.webUsers += 1;
-        if (session.wallet) campaign.stats.uniqueWallets += 1;
-        if (session.transactions && session.transactions.length > 0) {
-          campaign.stats.transactedUsers += 1;
-        }
-        campaign.stats.visitDuration = (campaign.stats.visitDuration * (campaign.stats.visitors - 1) + session.duration) / campaign.stats.visitors;
+      // Add session to campaign if not already present
+      if (!campaign.sessions.includes(sessionId)) {
+        campaign.sessions.push(sessionId);
+      }
+
+      // Update other stats as needed
+      if (session.userId) campaign.stats.webUsers += 1;
+      if (session.wallet) campaign.stats.uniqueWallets += 1;
+      if (session.transactions && session.transactions.length > 0) {
+        campaign.stats.transactedUsers += 1;
+      }
+
+      // Update average visit duration
+      if (session.duration) {
+        const totalDuration = (campaign.stats.visitDuration * (campaign.stats.visitors - 1)) + session.duration;
+        campaign.stats.visitDuration = totalDuration / campaign.stats.visitors;
       }
 
       await campaign.save();

@@ -49,6 +49,10 @@ const campaignSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
+    uniqueVisitors: [{
+      type: String,
+      unique: true
+    }],
     webUsers: {
       type: Number,
       default: 0
