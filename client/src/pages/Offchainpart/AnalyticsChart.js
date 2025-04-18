@@ -83,8 +83,8 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       finalData[timeKey] = {
         timestamp: currentDate.getTime(),
         time: timeKey,
-        visitors: 0,
-        walletConnects: 0
+        visitors: new Set(),
+        walletConnects: new Set()
       };
 
       // Increment date based on timeframe
@@ -107,18 +107,18 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     }
 
     // Process sessions data and wallet connections
-    const connectedWallets = new Set();
-    
     analytics.sessions.forEach(session => {
       const date = new Date(session.startTime);
       const timeKey = formatTimeKey(date, timeframe);
       
       if (finalData[timeKey]) {
-        finalData[timeKey].visitors++;
+        // Add unique visitor ID (using device or userId)
+        const visitorId = session.device || session.userId;
+        finalData[timeKey].visitors.add(visitorId);
         
         // Check if this session has a wallet connection
         if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
-          finalData[timeKey].walletConnects++;
+          finalData[timeKey].walletConnects.add(session.wallet.walletAddress);
           console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
             address: session.wallet.walletAddress,
             sessionTime: date.toString()
@@ -130,11 +130,10 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
     // Clear any previous wallet processing code
     console.log('Sessions-based wallet connection data:', finalData);
     
-    // Ensure all time slots have walletConnects initialized
+    // Convert Sets to counts
     Object.keys(finalData).forEach(key => {
-      if (finalData[key].walletConnects === undefined) {
-        finalData[key].walletConnects = 0;
-      }
+      finalData[key].visitors = finalData[key].visitors.size;
+      finalData[key].walletConnects = finalData[key].walletConnects.size;
     });
     
     console.log('Final data after wallet processing:', finalData);
