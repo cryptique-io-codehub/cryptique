@@ -5,14 +5,54 @@ const Session = require("../models/session");
 exports.createCampaign = async (req, res) => {
   try {
     const campaignData = req.body;
+
+    // Validate required fields
+    const requiredFields = ['siteId', 'name', 'domain', 'path', 'source', 'medium', 'shortenedDomain', 'longUrl', 'shortUrl'];
+    const missingFields = requiredFields.filter(field => !campaignData[field]);
     
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: "Missing required fields",
+        fields: missingFields
+      });
+    }
+
+    // Initialize stats object if not provided
+    if (!campaignData.stats) {
+      campaignData.stats = {
+        visitors: 0,
+        webUsers: 0,
+        uniqueWallets: 0,
+        transactedUsers: 0,
+        visitDuration: 0,
+        conversions: 0,
+        conversionsValue: 0,
+        cac: 0,
+        roi: 0
+      };
+    }
+
+    // Initialize sessions array if not provided
+    if (!campaignData.sessions) {
+      campaignData.sessions = [];
+    }
+
     // Create new campaign
     const campaign = new Campaign(campaignData);
-    await campaign.save();
+    
+    // Save campaign and wait for the operation to complete
+    const savedCampaign = await campaign.save();
+
+    // Verify the campaign was saved by fetching it from the database
+    const verifiedCampaign = await Campaign.findById(savedCampaign._id);
+    
+    if (!verifiedCampaign) {
+      throw new Error("Campaign failed to persist in database");
+    }
 
     return res.status(200).json({
       message: "Campaign created successfully",
-      campaign
+      campaign: verifiedCampaign
     });
   } catch (error) {
     console.error("Error creating campaign:", error);
