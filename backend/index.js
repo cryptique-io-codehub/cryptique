@@ -3,6 +3,7 @@ const { connect } = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 const userRouter = require("./routes/userRouter");
+const campaignRouter = require("./routes/campaignRouter");
 const bodyParser = require("body-parser");
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -72,6 +73,7 @@ app.use((req, res, next) => {
 });
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Debug endpoint to check environment variables
 app.get("/debug/env", (req, res) => {
@@ -114,6 +116,7 @@ app.use("/api/sdk", require("./routes/sdkRouter"));
 app.use("/api/website", require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/onchain", require("./routes/onChainRouter"));
+app.use("/api/campaign", campaignRouter);
 
 // Load AI router with explicit error handling
 try {
