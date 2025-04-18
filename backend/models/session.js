@@ -11,6 +11,7 @@ const sessionSchema = new mongoose.Schema({
         campaign: { type: String },
         term: { type: String },
         content: { type: String },
+        utm_id: { type: String }
     },
     wallet: {
         walletAddress: { type: String },
