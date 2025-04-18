@@ -50,15 +50,9 @@ sessionSchema.pre('save', function(next) {
     // First check wallet data to determine isWeb3User
     if (this.wallet) {
         const hasValidWallet = 
-            this.wallet.walletAddress && 
-            this.wallet.walletAddress !== "" && 
-            this.wallet.walletAddress !== "No Wallet Detected" &&
-            this.wallet.walletType && 
-            this.wallet.walletType !== "" && 
-            this.wallet.walletType !== "No Wallet Detected" &&
-            this.wallet.chainName && 
-            this.wallet.chainName !== "" && 
-            this.wallet.chainName !== "No Wallet Detected";
+            (this.wallet.walletAddress && this.wallet.walletAddress !== "" && this.wallet.walletAddress !== "No Wallet Detected") ||
+            (this.wallet.walletType && this.wallet.walletType !== "" && this.wallet.walletType !== "No Wallet Detected") ||
+            (this.wallet.chainName && this.wallet.chainName !== "" && this.wallet.chainName !== "No Wallet Detected");
         
         this.isWeb3User = hasValidWallet;
     }
