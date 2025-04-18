@@ -1,0 +1,116 @@
+const mongoose = require("mongoose");
+
+const campaignSchema = new mongoose.Schema({
+  siteId: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  domain: {
+    type: String,
+    required: true,
+  },
+  path: {
+    type: String,
+    required: true,
+  },
+  source: {
+    type: String,
+    required: true,
+  },
+  medium: {
+    type: String,
+    required: true,
+  },
+  campaign: String,
+  term: String,
+  content: String,
+  budget: {
+    currency: String,
+    amount: Number
+  },
+  shortenedDomain: {
+    type: String,
+    required: true,
+  },
+  longUrl: {
+    type: String,
+    required: true,
+  },
+  shortUrl: {
+    type: String,
+    required: true,
+  },
+  stats: {
+    visitors: {
+      type: Number,
+      default: 0
+    },
+    uniqueVisitors: [{
+      type: String
+    }],
+    web3Users: {
+      type: Number,
+      default: 0
+    },
+    uniqueWeb3Users: [{
+      type: String
+    }],
+    uniqueWallets: {
+      type: Number,
+      default: 0
+    },
+    uniqueWalletAddresses: [{
+      type: String
+    }],
+    transactedUsers: {
+      type: Number,
+      default: 0
+    },
+    visitDuration: {
+      type: Number,
+      default: 0
+    },
+    conversions: {
+      type: Number,
+      default: 0
+    },
+    conversionsValue: {
+      type: Number,
+      default: 0
+    },
+    cac: {
+      type: Number,
+      default: 0
+    },
+    roi: {
+      type: Number,
+      default: 0
+    }
+  },
+  sessions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Session"
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Update the updatedAt timestamp before saving
+campaignSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+const Campaign = mongoose.model("Campaign", campaignSchema);
+
+module.exports = Campaign; 
