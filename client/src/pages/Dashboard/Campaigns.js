@@ -97,7 +97,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       content: '',
       budgetCurrency: 'USD',
       budgetAmount: '',
-      shortenedDomain: ''
+      shortenedDomain: 'link.cryptique.io'  // Reset to default value
     });
   };
 
@@ -114,7 +114,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     content: '',
     budgetCurrency: 'USD',
     budgetAmount: '',
-    shortenedDomain: ''
+    shortenedDomain: 'link.cryptique.io'  // Set default value
   });
 
   const handleFormChange = (e) => {
@@ -542,19 +542,13 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 </div>
 
                 <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Shortened Domain*</label>
+                  <label className="text-sm font-medium">Shortened Domain</label>
                   <div className="col-span-3">
-                    <select
-                      name="shortenedDomain"
-                      value={campaignForm.shortenedDomain}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-                      required
-                    >
-                      <option value="">No shortened domains available</option>
-                    </select>
+                    <div className="w-full p-2 border rounded bg-gray-50 text-gray-700">
+                      link.cryptique.io
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Select the domain that will be used for the shortened URL
+                      Default Cryptique URL shortener domain (custom domains coming soon)
                     </p>
                   </div>
                 </div>
