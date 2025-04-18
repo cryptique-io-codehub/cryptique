@@ -3,6 +3,6 @@ const { sendSmartContractData } = require('../controllers/onChainController');
 const router = express.Router();
 
 
-router.get('/smart-contracts',sendSmartContractData);
+router.post('/smart-contracts',sendSmartContractData);
 
 module.exports = router;
