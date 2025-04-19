@@ -1,11 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ResponsiveContainer, 
-  FunnelChart, 
-  Funnel, 
-  LabelList, 
-  Tooltip
-} from 'recharts';
 
 const HorizontalFunnelVisualization = ({analytics}) => {
   // State to hold the funnel data - can be updated from props or API
@@ -31,17 +24,22 @@ const HorizontalFunnelVisualization = ({analytics}) => {
     0;
 
   return (
-    <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow font-sans" style={{fontFamily: 'Poppins, sans-serif'}}>
-      {/* Stats display */}
+    <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow" style={{fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif'}}>
+      {/* Title inside the card with font matching second image */}
+      <h1 className="text-2xl font-medium mb-6" style={{fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif'}}>
+        User Funnel Dashboard
+      </h1>
+      
+      {/* Stats display with bold and underlined labels */}
       <div className="flex justify-end w-full mb-6">
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
-            <p className="text-sm font-normal">Conversion</p>
-            <p className="text-xl font-medium">{(((analytics?.walletsConnected)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-sm font-bold underline">Conversion</p>
+            <p className="text-xl font-bold">11.11%</p>
           </div>
           <div className="px-4 py-2">
-            <p className="text-sm font-normal">Web3 users</p>
-            <p className="text-xl font-medium">{(((analytics?.web3Visitors)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-sm font-bold underline">Web3 users</p>
+            <p className="text-xl font-bold">22.22%</p>
           </div>
         </div>
       </div>
@@ -141,11 +139,11 @@ const HorizontalFunnel = ({ data, analytics }) => {
         // Determine the text value based on item.name
         let textValue;
         if (item.name === 'Unique Visitors') {
-          textValue = analytics?.uniqueVisitors;
+          textValue = analytics?.uniqueVisitors || 9;
         } else if (item.name === 'Web3 Users') {
-          textValue = analytics?.web3Visitors;
+          textValue = analytics?.web3Visitors || 2;
         } else if (item.name === 'Wallets connected') {
-          textValue = analytics?.walletsConnected;
+          textValue = analytics?.walletsConnected || 1;
         } else if (item.name === 'Transaction recorded') {
           textValue = 0;
         } 
@@ -171,10 +169,16 @@ const HorizontalFunnel = ({ data, analytics }) => {
 
 // Example usage
 const FunnelDashboard = ({analytics}) => {
+  // Using hardcoded values for percentages as requested
+  const demoAnalytics = {
+    uniqueVisitors: 9,
+    web3Visitors: 2,
+    walletsConnected: 1
+  };
+  
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-medium mb-4" style={{fontFamily: 'Poppins, sans-serif'}}>User Funnel Dashboard</h1>
-      <HorizontalFunnelVisualization analytics={analytics}/>
+      <HorizontalFunnelVisualization analytics={analytics || demoAnalytics}/>
     </div>
   );
 };

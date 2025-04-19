@@ -430,10 +430,10 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
 // Metric Card Component
 const MetricCard = ({ title, value, country, flag }) => {
   return (
-    <div className="bg-white rounded-xl p-3 md:p-4 shadow-sm h-full">
+    <div className="bg-white rounded-xl p-3 md:p-4 shadow-sm h-full flex flex-col items-center justify-center text-center">
       <h3 className="text-xs md:text-sm font-montserrat font-medium mb-1 md:mb-2">{title}</h3>
       <div className="text-lg md:text-2xl font-montserrat font-bold mb-1">{value}</div>
-      <div className="flex items-center text-xs text-gray-600 truncate">
+      <div className="flex items-center justify-center text-xs text-gray-600 truncate">
         <span className="mr-1">{flag}</span>
         <span className="truncate">{country}</span>
       </div>

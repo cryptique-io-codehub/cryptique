@@ -34,7 +34,7 @@ const countryCodeToName = {
   "SG": "Singapore"
 };
 
-const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
+const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry ,activeSection}) => {
   const getMetricsPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryMetrics = new Map();
@@ -130,7 +130,7 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
     <div className="w-full bg-white rounded-2xl p-6 mt-4 mb-0">
       {/* Standardized header text */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold">Users by country</h2>
+        <h2 className="text-2xl font-semibold">Unique Users by country</h2>
         <div className="relative">
           <select className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-base appearance-none">
             <option>This Month</option>
@@ -146,18 +146,34 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
       </div>
 
       {/* World Map */}
-      <div className="mb-6">
-        <WorldMap
-          color="blue"
-          title="Unique Users by Country"
-          valueSuffix=" users"
-          size="lg"
-          data={mapData}
-          onClickFunction={({ countryName, countryCode, countryValue }) => {
-            setSelectedCountry(countryCode.toUpperCase());
-          }}
-        />
-      </div>
+      {activeSection==='Dashboard' ?(
+      <div className="mb-6 overflow-hidden">
+    <div className="transform scale-x-125 origin-left">
+    <WorldMap
+      color="blue"
+      title=""
+      valueSuffix="users"
+      size="xl"
+      data={mapData}
+      onClickFunction={({ countryName, countryCode, countryValue }) => {
+        setSelectedCountry(countryCode.toUpperCase());
+      }}
+    />
+  </div>
+</div>):(
+  <div className="mb-6">
+  <WorldMap
+    color="blue"
+    title=""
+    valueSuffix=" users"
+    size="lg"
+    data={mapData}
+    onClickFunction={({ countryName, countryCode, countryValue }) => {
+      setSelectedCountry(countryCode.toUpperCase());
+    }}
+  />
+</div>
+)}
 
       {/* Top Countries List with standardized text */}
       <div className="pb-0">

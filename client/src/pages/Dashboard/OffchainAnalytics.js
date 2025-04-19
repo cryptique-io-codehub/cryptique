@@ -137,6 +137,7 @@ function formatDuration(seconds) {
   
   console.log(totalSessions);
   console.log(totalPageViews);
+  console.log(activeSection);
   // const [analyticsData, setAnalyticsData] = useState({
   //   uniqueVisitors:analytics.uniqueVisitors,
   //   totalPageView:totalPageViews,
@@ -198,7 +199,7 @@ function formatDuration(seconds) {
   
   // Updated AnalyticsCard to be responsive with Montserrat for headings and Poppins for body
   const AnalyticsCard = ({ label, data, bgColor, textColor }) => (
-    <div className={`${bgColor} ${textColor} p-4 rounded-lg shadow-sm`}>
+    <div className={`${bgColor} ${textColor} p-4 rounded-lg shadow-sm text-center`}>
       <h3 className="text-base font-semibold mb-2">{label}</h3>
       <p className="text-base font-bold">{data}</p>
     </div>
@@ -653,6 +654,7 @@ return (
                                   selectedCountry={selectedCountry} 
                                   setSelectedCountry={setSelectedCountry}
                                   className="h-96 w-full"
+                                  activeSection={activeSection}
                                 />
                               </div>
                             </div>

@@ -5,8 +5,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [showAddContractModal, setShowAddContractModal] = useState(false);
   const [newContractAddress, setNewContractAddress] = useState('');
   const [newContractName, setNewContractName] = useState('');
-  const [selectedChains, setSelectedChains] = useState([]);
+  const [selectedChain, setSelectedChain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedContracts, setSelectedContracts] = useState([]);
 
   const availableChains = [
     "Ethereum",
@@ -23,19 +24,47 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     "Btc"
   ];
 
+  useEffect(() => {
+    // Initialize selectedContracts with the currently selected contract if it exists
+    if (selectedContract && !selectedContracts.some(c => c.id === selectedContract.id)) {
+      setSelectedContracts([selectedContract]);
+    }
+  }, [selectedContract]);
+
   const handleDropdownToggle = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
   const handleSelectContract = (contract) => {
-    setSelectedContract(contract);
-    setIsDropdownOpen(false);
+    // Check if contract is already selected
+    const isAlreadySelected = selectedContracts.some(c => c.id === contract.id);
+    
+    if (isAlreadySelected) {
+      // If already selected, remove it from selection
+      setSelectedContracts(selectedContracts.filter(c => c.id !== contract.id));
+    } else {
+      // If not selected, add it to selection
+      setSelectedContracts([...selectedContracts, contract]);
+    }
+    
+    // Also update the parent component's selectedContract (for backwards compatibility)
+    // Using the last selected contract as the current one
+    if (!isAlreadySelected) {
+      setSelectedContract(contract);
+    } else if (selectedContracts.length > 1) {
+      // If removing a contract but others are selected, set the first remaining one
+      const remainingContracts = selectedContracts.filter(c => c.id !== contract.id);
+      setSelectedContract(remainingContracts[0]);
+    } else {
+      // If removing the only selected contract
+      setSelectedContract(null);
+    }
   };
 
   const handleOpenAddContractModal = () => {
     setShowAddContractModal(true);
     setIsDropdownOpen(false);
-    setSelectedChains([]); // Reset selected chains
+    setSelectedChain(''); // Reset selected chain
     setNewContractAddress('');
     setNewContractName('');
   };
@@ -44,18 +73,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowAddContractModal(false);
   };
 
-  const handleChainToggle = (chain) => {
-    if (selectedChains.includes(chain)) {
-      setSelectedChains(selectedChains.filter(c => c !== chain));
-    } else {
-      setSelectedChains([...selectedChains, chain]);
-    }
+  const handleChainSelect = (chain) => {
+    setSelectedChain(chain);
   };
 
   const handleAddContract = async (e) => {
     e.preventDefault();
     
-    if (!newContractAddress || selectedChains.length === 0) {
+    if (!newContractAddress || !selectedChain) {
       // Show validation error
       return;
     }
@@ -67,12 +92,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const newContract = {
         address: newContractAddress,
         name: newContractName || newContractAddress,
-        chains: selectedChains,
+        chains: [selectedChain], // Now using single chain in an array
         id: `contract-${Date.now()}`
       };
       
       // Update contract array
       setcontractarray([...contractarray, newContract]);
+      
+      // Add to selected contracts
+      setSelectedContracts([...selectedContracts, newContract]);
       
       // Set as selected contract
       setSelectedContract(newContract);
@@ -84,6 +112,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const isContractSelected = (contract) => {
+    return selectedContracts.some(c => c.id === contract.id);
   };
 
   return (
@@ -99,9 +131,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           onClick={handleDropdownToggle}
           disabled={isLoading}
         >
-          {selectedContract ? (
-            <div className="flex items-center">
-              <span className="text-gray-800 text-base">{selectedContract.name || selectedContract.address}</span>
+          {selectedContracts.length > 0 ? (
+            <div className="flex items-center truncate">
+              <span className="text-gray-800 text-base truncate">
+                {selectedContracts.length === 1 
+                  ? (selectedContracts[0].name || selectedContracts[0].address)
+                  : `${selectedContracts.length} contracts selected`}
+              </span>
             </div>
           ) : (
             <span className="text-gray-500 text-base">Select smart contract</span>
@@ -128,10 +164,21 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   <li key={contract.id || index}>
                     <button
                       type="button"
-                      className="flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100"
+                      className={`flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100 ${
+                        isContractSelected(contract) ? 'bg-blue-50' : ''
+                      }`}
                       onClick={() => handleSelectContract(contract)}
                     >
-                      <span className="text-base">{contract.name || contract.address}</span>
+                      <div className="flex items-center w-full">
+                        <input
+                          type="checkbox"
+                          className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          checked={isContractSelected(contract)}
+                          onChange={() => {}} // Handled by parent button click
+                          onClick={(e) => e.stopPropagation()} // Prevent double toggling
+                        />
+                        <span className="text-base">{contract.name || contract.address}</span>
+                      </div>
                     </button>
                   </li>
                 ))
@@ -195,19 +242,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       {availableChains.map((chain) => (
                         <div key={chain} className="flex items-center mb-2">
                           <input
-                            type="checkbox"
+                            type="radio"
                             id={`chain-${chain}`}
+                            name="chainSelection"
                             className="mr-2"
-                            checked={selectedChains.includes(chain)}
-                            onChange={() => handleChainToggle(chain)}
+                            checked={selectedChain === chain}
+                            onChange={() => handleChainSelect(chain)}
                           />
                           <label htmlFor={`chain-${chain}`} className="text-base">{chain}</label>
                         </div>
                       ))}
                     </div>
-                    {selectedChains.length === 0 && (
+                    {!selectedChain && (
                       <p className="mt-1 text-base text-red-500">
-                        Please select at least one chain
+                        Please select a chain
                       </p>
                     )}
                   </div>
@@ -216,7 +264,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 <button
                   type="submit"
                   className="w-full flex justify-center items-center px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-900 focus:outline-none font-['Montserrat']"
-                  disabled={isLoading || !newContractAddress || selectedChains.length === 0}
+                  disabled={isLoading || !newContractAddress || !selectedChain}
                 >
                   {isLoading ? (
                     <>

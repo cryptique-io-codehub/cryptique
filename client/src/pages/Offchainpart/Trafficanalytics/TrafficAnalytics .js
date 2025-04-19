@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Legend, ZAxis } from 'recharts';
 import TrafficSourcesComponent from '../TrafficSourcesComponent';
+
 const AttributionJourneySankey = ({analytics}) => {
   // Process analytics data to generate Sankey diagram data
   const processAnalyticsData = () => {
@@ -434,27 +435,29 @@ const AttributionJourneySankey = ({analytics}) => {
               );
             })}
             
-            {/* Legend with improved typography */}
-            <g transform="translate(20, 20)">
-              <rect x="0" y="0" width="15" height="15" fill="#28a745" />
+            {/* Legend moved to top right with larger size */}
+            <g transform="translate(650, 20)">
+              {/* First legend item - Wallet Connected */}
+              <rect x="0" y="0" width="20" height="20" fill="#28a745" rx="4" ry="4" />
               <text 
-                x="25" 
-                y="12" 
+                x="30" 
+                y="15" 
                 fontFamily="sans-serif"
-                fontSize="14"
-                fontWeight="500"
+                fontSize="16"
+                fontWeight="600"
                 style={{ fill: "#333333" }}
               >
                 Wallet Connected
               </text>
               
-              <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
+              {/* Second legend item - No Wallet */}
+              <rect x="0" y="35" width="20" height="20" fill="#dc3545" rx="4" ry="4" />
               <text 
-                x="25" 
-                y="42" 
+                x="30" 
+                y="50" 
                 fontFamily="sans-serif"
-                fontSize="14"
-                fontWeight="500"
+                fontSize="16"
+                fontWeight="600"
                 style={{ fill: "#333333" }}
               >
                 No Wallet
@@ -468,11 +471,12 @@ const AttributionJourneySankey = ({analytics}) => {
 };
 
 
+
       
 
 // Helper component for responsive metric cards
 const MetricCard = ({ title, value, source }) => (
-  <div className="bg-white rounded-lg shadow p-2 md:p-4 flex flex-col">
+  <div className="bg-white rounded-lg shadow p-2 md:p-4 flex flex-col items-center justify-center text-center">
     <div className="text-sm md:text-base text-gray-500 mb-1">{title}</div>
     <div className="text-xl md:text-2xl font-bold mb-1 md:mb-2">{value}</div>
     <div className="text-xs md:text-sm flex items-center text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
@@ -481,7 +485,6 @@ const MetricCard = ({ title, value, source }) => (
     </div>
   </div>
 );
-
 
 const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficSources }) => {
   // State for metrics
