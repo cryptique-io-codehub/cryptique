@@ -214,6 +214,7 @@ class AnalyticsProcessor {
 
       // Process traffic sources data
       const sources = new Map();
+      const campaigns = new Map(); // Track campaigns separately
       
       filteredSnapshots.forEach(snapshot => {
         if (snapshot.analyticsId && snapshot.analyticsId.sessions) {
@@ -221,8 +222,32 @@ class AnalyticsProcessor {
             let source = 'Direct';
             
             // Determine source from UTM data or referrer
-            if (session.utmData && session.utmData.source) {
-              source = session.utmData.source;
+            if (session.utmData) {
+              if (session.utmData.source) {
+                source = session.utmData.source;
+              }
+              
+              // Track campaign data if available
+              if (session.utmData.campaign) {
+                const campaignKey = session.utmData.utm_id ? 
+                  `${session.utmData.campaign}:${session.utmData.utm_id}` : 
+                  session.utmData.campaign;
+                
+                if (!campaigns.has(campaignKey)) {
+                  campaigns.set(campaignKey, {
+                    name: session.utmData.campaign,
+                    utm_id: session.utmData.utm_id || null,
+                    visitors: 0,
+                    wallets: 0
+                  });
+                }
+                
+                const campaignData = campaigns.get(campaignKey);
+                campaignData.visitors++;
+                if (session.wallet && session.wallet.walletAddress) {
+                  campaignData.wallets++;
+                }
+              }
             } else if (session.referrer) {
               source = this.normalizeReferrer(session.referrer);
             }
@@ -247,15 +272,25 @@ class AnalyticsProcessor {
         }
       });
 
-      // Convert to array format
-      return Array.from(sources.entries()).map(([source, data]) => ({
-        source,
-        visitors: data.visitors,
-        wallets: data.wallets
-      }));
+      return {
+        sources: Array.from(sources.entries()).map(([source, data]) => ({
+          source,
+          visitors: data.visitors,
+          wallets: data.wallets
+        })),
+        campaigns: Array.from(campaigns.entries()).map(([key, data]) => ({
+          name: data.name,
+          utm_id: data.utm_id,
+          visitors: data.visitors,
+          wallets: data.wallets
+        }))
+      };
     } catch (error) {
-      console.error('Error getting traffic sources:', error);
-      return [];
+      console.error('Error in getTrafficSources:', error);
+      return {
+        sources: [],
+        campaigns: []
+      };
     }
   }
 

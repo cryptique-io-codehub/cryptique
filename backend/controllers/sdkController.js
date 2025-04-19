@@ -25,11 +25,11 @@ exports.postAnalytics = async (req, res) => {
       const existingSession = await Session.findOne({ sessionId: sessionId });
       
       // Handle wallet updates if present
-      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0) {
+      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0 && wallet.walletAddress !== "No Wallet Detected") {
         const newWallet = {
           walletAddress: wallet.walletAddress,
-          walletType: wallet.walletType,
-          chainName: wallet.chainName,
+          walletType: wallet.walletType || "Unknown",
+          chainName: wallet.chainName || "Unknown",
         };
         
         const walletExists = analytics.wallets.some(
@@ -41,6 +41,9 @@ exports.postAnalytics = async (req, res) => {
           analytics.walletsConnected += 1;
           await analytics.save();
         }
+
+        // Update session with wallet data
+        sessionData.wallet = newWallet;
       }
       
       // If session doesn't exist, create it
@@ -107,8 +110,7 @@ exports.postAnalytics = async (req, res) => {
           utmData: originalUtmData,
           pageVisits: combinedPageVisits,
           pagesViewed: combinedPageVisits.length,
-          duration: duration,
-          isBounce: combinedPageVisits.length <= 1
+          duration: duration
         };
         
         const updatedSession = await Session.findByIdAndUpdate(
@@ -126,36 +128,47 @@ exports.postAnalytics = async (req, res) => {
     
     // Handle payload events
     if (payload) {
-      const { siteId, websiteUrl, userId, pagePath, isWeb3User, sessionId } = payload;
-      const sanitizedPagePath = pagePath.replace(/\./g, "_");
+      console.log("Processing payload event:", payload);
+      const { siteId, websiteUrl, userId, pagePath } = payload;
+      
+      if (!siteId || !userId) {
+        return res.status(400).json({ error: 'Site ID and User ID are required' });
+      }
+
+      const sanitizedPagePath = pagePath ? pagePath.replace(/\./g, "_") : "";
       const analytics = await Analytics.findOne({ siteId: siteId });
       
       if (!analytics) {
         // Create new analytics document
-        const analytics = new Analytics({
+        const newAnalytics = new Analytics({
           siteId: siteId,
           websiteUrl: websiteUrl,
           userId: [userId],
           totalVisitors: 1,
           uniqueVisitors: 1,
-          web3Visitors: 0,
+          web3Visitors: payload.isWeb3User ? 1 : 0,
           walletsConnected: 0,
-          pageViews: { [sanitizedPagePath]: 1 },
+          pageViews: sanitizedPagePath ? { [sanitizedPagePath]: 1 } : {},
           sessions: [],
         });
-        await analytics.save();
+        await newAnalytics.save();
         
-        // Create stats documents
+        // Create stats documents with both metrics
         const statstoCreate = {
           siteId: siteId,
           analyticsSnapshot: [
             {
-              analyticsId: analytics._id,
-              hour: new Date(),
+              analyticsId: newAnalytics._id,
+              timestamp: new Date(),
+              visitors: 1,
+              web3Users: payload.isWeb3User ? 1 : 0,
+              walletsConnected: 0,
+              pageViews: 1
             }
           ],
           lastSnapshotAt: new Date(),
         };
+
         const newHourlyStats = new HourlyStats(statstoCreate);
         await newHourlyStats.save();
         const newDailyStats = new DailyStats(statstoCreate);
@@ -165,129 +178,60 @@ exports.postAnalytics = async (req, res) => {
         const newMonthlyStats = new MonthlyStats(statstoCreate);
         await newMonthlyStats.save();
         
-        analytics.hourlyStats = newHourlyStats._id;
-        analytics.dailyStats = newDailyStats._id;
-        analytics.weeklyStats = newWeeklyStats._id;
-        analytics.monthlyStats = newMonthlyStats._id;
-        await analytics.save();
-      } else {
-        // Update existing analytics document
-        if (isWeb3User) {
-          const walletIndex = analytics.web3UserId.findIndex(
-            (wallet) => wallet === userId
-          );
-          if (walletIndex === -1) {
-            analytics.web3UserId.push(userId);
-            analytics.web3Visitors += 1;
-          }
-        }
+        newAnalytics.hourlyStats = newHourlyStats._id;
+        newAnalytics.dailyStats = newDailyStats._id;
+        newAnalytics.weeklyStats = newWeeklyStats._id;
+        newAnalytics.monthlyStats = newMonthlyStats._id;
+        await newAnalytics.save();
 
-        if (!analytics.userId.includes(userId)) {
-          analytics.userId.push(userId);
-          analytics.uniqueVisitors += 1;
-          analytics.totalVisitors += 1;
-          analytics.pageViews.set(
-            sanitizedPagePath,
-            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
-          );
-        } else {
-          analytics.totalVisitors += 1;
+        return res.status(200).json({ 
+          message: "New analytics created", 
+          analytics: newAnalytics 
+        });
+      } 
+      
+      // Update existing analytics document
+      if (payload.isWeb3User) {
+        const web3Index = analytics.web3UserId.findIndex(
+          (id) => id === userId
+        );
+        if (web3Index === -1) {
+          analytics.web3UserId.push(userId);
+          analytics.web3Visitors += 1;
+        }
+      }
+
+      if (!analytics.userId.includes(userId)) {
+        analytics.userId.push(userId);
+        analytics.uniqueVisitors += 1;
+        analytics.totalVisitors += 1;
+        if (sanitizedPagePath) {
           analytics.pageViews.set(
             sanitizedPagePath,
             (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
           );
         }
-        
-        analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
-          (a, b) => a + b,
-          0
-        );
-        analytics.newVisitors = analytics.userId.length;
-        analytics.returningVisitors = analytics.totalVisitors - analytics.newVisitors;
-        
-        await analytics.save();
+      } else {
+        analytics.totalVisitors += 1;
+        if (sanitizedPagePath) {
+          analytics.pageViews.set(
+            sanitizedPagePath,
+            (analytics.pageViews.get(sanitizedPagePath) || 0) + 1
+          );
+        }
       }
       
-      // Check if a session with this ID already exists before creating a new one
-      if (sessionData && sessionId) {
-        const existingSession = await Session.findOne({ sessionId: sessionId });
-        
-        if (existingSession) {
-          // Update existing session instead of creating a new one
-          
-          // Extract page visits from existing session
-          let combinedPageVisits = existingSession.pageVisits || [];
-          
-          // Add new page visit if it doesn't exist
-          if (sessionData.pageVisits && Array.isArray(sessionData.pageVisits)) {
-            sessionData.pageVisits.forEach(newVisit => {
-              const exists = combinedPageVisits.some(
-                existingVisit => existingVisit.url === newVisit.url
-              );
-              
-              if (!exists) {
-                combinedPageVisits.push(newVisit);
-              }
-            });
-          }
-          
-          // Ensure we keep the original startTime and referrer from the first page
-          const originalStartTime = existingSession.startTime || sessionData.startTime;
-          const originalReferrer = existingSession.referrer || sessionData.referrer;
-          const originalUtmData = existingSession.utmData || sessionData.utmData;
-          
-          // Calculate correct duration
-          let duration = 0;
-          if (originalStartTime && sessionData.endTime) {
-            const startDate = new Date(originalStartTime);
-            const endDate = new Date(sessionData.endTime);
-            duration = Math.round((endDate - startDate) / 1000);
-          }
-          
-          // Update session with combined data
-          const updatedData = {
-            ...sessionData,
-            startTime: originalStartTime,
-            referrer: originalReferrer,
-            utmData: originalUtmData,
-            pageVisits: combinedPageVisits,
-            pagesViewed: combinedPageVisits.length,
-            duration: duration,
-            isBounce: combinedPageVisits.length <= 1
-          };
-          
-          const updatedSession = await Session.findByIdAndUpdate(
-            existingSession._id,
-            updatedData,
-            { new: true }
-          );
-          
-          return res.status(200).json({ 
-            message: "Session updated successfully", 
-            analytics 
-          });
-        } else {
-          // Create new session if none exists
-          // Set the referrer as "direct" if not specified and no UTM data
-          if (!sessionData.referrer && 
-              (!sessionData.utmData || !sessionData.utmData.source)) {
-            sessionData.referrer = "direct";
-          }
-          
-          const newSession = new Session(sessionData);
-          await newSession.save();
-          analytics.sessions.push(newSession._id);
-          await analytics.save();
-          
-          return res.status(200).json({ 
-            message: "New session created", 
-            analytics 
-          });
-        }
-      }
+      analytics.totalPageViews = Array.from(analytics.pageViews.values()).reduce(
+        (a, b) => a + b,
+        0
+      );
+      analytics.newVisitors = analytics.userId.length;
+      analytics.returningVisitors = analytics.totalVisitors - analytics.newVisitors;
+      
+      await analytics.save();
       
       return res.status(200).json({ 
-        message: "Data processed successfully", 
+        message: "Analytics updated", 
         analytics 
       });
     }
@@ -297,7 +241,8 @@ exports.postAnalytics = async (req, res) => {
     console.error("Error in postAnalytics:", e);
     res.status(500).json({ 
       message: "Error processing analytics data", 
-      error: e.message 
+      error: e.message,
+      stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
   }
 };
@@ -344,7 +289,6 @@ exports.getAnalytics = async (req, res) => {
 //add a cron job to update the analytics data every hour of entire website i have in my db
 exports.updateHourlyAnalyticsStats = async (req,res) => {
   try {
-
     const allAnalytics = await Analytics.find({});
 
     for (const analytic of allAnalytics) {
@@ -354,8 +298,8 @@ exports.updateHourlyAnalyticsStats = async (req,res) => {
       const lastSnapshotDate = new Date(lastSnapshotAt);
       const now = new Date();
       const roundedHour = new Date(now);  
-      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5; // Convert milliseconds to hours
-      const alreadyUpdated = differenceInHours < 1; // Check if the last snapshot was taken in the last hour
+      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5;
+      const alreadyUpdated = differenceInHours < 1;
 
       if (alreadyUpdated) continue;
 
@@ -364,21 +308,23 @@ exports.updateHourlyAnalyticsStats = async (req,res) => {
         {
           $push: {
             analyticsSnapshot: {
-              $each: [{ analyticsId, hour: roundedHour }],
-              $sort: { hour: -1 },
+              $each: [{
+                analyticsId,
+                timestamp: roundedHour,
+                visitors: analytic.totalVisitors,
+                web3Users: analytic.web3Visitors,
+                walletsConnected: analytic.walletsConnected,
+                pageViews: analytic.totalPageViews
+              }],
+              $sort: { timestamp: -1 },
               $slice: 24,
             },
           },
-        },
-        { upsert: true }
-      );
-      await HourlyStats.updateOne(
-        { siteId },
-        {
           $set: {
             lastSnapshotAt: roundedHour,
           },
-        }
+        },
+        { upsert: true }
       );
     }
     console.log("Analytics stats updated successfully");
@@ -395,14 +341,14 @@ exports.updateDailyAnalyticsStats = async (req,res) => {
 
     for (const analytic of allAnalytics) {
       const { siteId, _id: analyticsId } = analytic;
-      const hourlyStats = await DailyStats.findOne({ siteId });
-      const lastSnapshotAt = hourlyStats && hourlyStats.lastSnapshotAt;
+      const dailyStats = await DailyStats.findOne({ siteId });
+      const lastSnapshotAt = dailyStats && dailyStats.lastSnapshotAt;
       const lastSnapshotDate = new Date(lastSnapshotAt);
 
       const now = new Date();
       const roundedHour = new Date(now);
-      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5; // Convert milliseconds to hours
-      const alreadyUpdated = differenceInHours < 24; // Check if the last snapshot was taken in the last hour
+      const differenceInHours = Math.abs(roundedHour - lastSnapshotDate) / 36e5;
+      const alreadyUpdated = differenceInHours < 24;
 
       if (alreadyUpdated) continue;
 
@@ -411,21 +357,23 @@ exports.updateDailyAnalyticsStats = async (req,res) => {
         {
           $push: {
             analyticsSnapshot: {
-              $each: [{ analyticsId, hour: roundedHour }],
-              $sort: { hour: -1 },
+              $each: [{
+                analyticsId,
+                timestamp: roundedHour,
+                visitors: analytic.totalVisitors,
+                web3Users: analytic.web3Visitors,
+                walletsConnected: analytic.walletsConnected,
+                pageViews: analytic.totalPageViews
+              }],
+              $sort: { timestamp: -1 },
               $slice: 30,
             },
           },
-        },
-        { upsert: true }
-      );
-      await DailyStats.updateOne(
-        { siteId },
-        {
           $set: {
             lastSnapshotAt: roundedHour,
           },
-        }
+        },
+        { upsert: true }
       );
     }
     console.log("Analytics stats updated successfully");
