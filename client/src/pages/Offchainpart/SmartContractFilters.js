@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import axiosInstance from '../../axiosInstance.js';
 const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract, setSelectedContract }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showAddContractModal, setShowAddContractModal] = useState(false);
@@ -77,7 +77,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setSelectedChain(chain);
   };
 
-  const handleAddContract = async (e) => {
+  // New function to handle verification and send API request
+  const handleVerify = async (e) => {
     e.preventDefault();
     
     if (!newContractAddress || !selectedChain) {
@@ -88,31 +89,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setIsLoading(true);
     
     try {
-      // Here you would make an API call to add the contract
-      const newContract = {
-        address: newContractAddress,
-        name: newContractName || newContractAddress,
-        chains: [selectedChain], // Now using single chain in an array
-        id: `contract-${Date.now()}`
-      };
+      // Send the POST request to verify the contract
+      console.log({newContractAddress,selectedChain});
+      const response = await axiosInstance.post('/onchain/smart-contracts', {
+        contractAddress: newContractAddress,
+        chainName: selectedChain
+      });
+      console.log(response);
+      // If successful, proceed with adding the contract
+      // await handleAddContract();
       
-      // Update contract array
-      setcontractarray([...contractarray, newContract]);
-      
-      // Add to selected contracts
-      setSelectedContracts([...selectedContracts, newContract]);
-      
-      // Set as selected contract
-      setSelectedContract(newContract);
-      
-      // Close modal
-      setShowAddContractModal(false);
     } catch (error) {
-      console.error("Error adding contract:", error);
+      console.error("Error verifying contract:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // const handleAddContract = async () => {
+  //   try {
+  //     // Here you would make an API call to add the contract
+  //     const newContract = {
+  //       address: newContractAddress,
+  //       name: newContractName || newContractAddress,
+  //       chains: [selectedChain], // Now using single chain in an array
+  //       id: `contract-${Date.now()}`
+  //     };
+      
+  //     // Update contract array
+  //     setcontractarray([...contractarray, newContract]);
+      
+  //     // Add to selected contracts
+  //     setSelectedContracts([...selectedContracts, newContract]);
+      
+  //     // Set as selected contract
+  //     setSelectedContract(newContract);
+      
+  //     // Close modal
+  //     setShowAddContractModal(false);
+  //   } catch (error) {
+  //     console.error("Error adding contract:", error);
+  //   }
+  // };
 
   const isContractSelected = (contract) => {
     return selectedContracts.some(c => c.id === contract.id);
@@ -220,7 +238,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 </button>
               </div>
               
-              <form onSubmit={handleAddContract}>
+              <form onSubmit={handleVerify}>
                 <div className="mb-4">
                   <label className="block font-['Montserrat'] font-medium text-gray-700 mb-2">Enter Your Smart Contract Address</label>
                   <input

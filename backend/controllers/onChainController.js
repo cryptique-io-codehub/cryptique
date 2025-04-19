@@ -2,7 +2,9 @@ const axios = require('axios');
 
 exports.sendSmartContractData = async (req, res) => {
     try {
+      console.log(req.body);
         const { contractAddress,chainName } = req.body;
+        
         console.log("Fetching smart contract data from Dune...");;
         const queryId = 4992459; // Replace with your Dune query ID
         const duneApiKey = process.env.DUNE_API_KEY;
