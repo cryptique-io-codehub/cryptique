@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract, setSelectedContract }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showAddContractModal, setShowAddContractModal] = useState(false);
   const [newContractAddress, setNewContractAddress] = useState('');
   const [newContractName, setNewContractName] = useState('');
-  const [selectedChains, setSelectedChains] = useState([]);
+  const [selectedChain, setSelectedChain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedContracts, setSelectedContracts] = useState([]);
+
+  // Initialize selectedContracts with the current selectedContract if it exists
+  useEffect(() => {
+    if (selectedContract && !selectedContracts.some(c => c.id === selectedContract.id)) {
+      setSelectedContracts([selectedContract]);
+    }
+  }, [selectedContract]);
 
   const availableChains = [
     "Ethereum",
@@ -16,11 +26,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     "Bnb",
     "Arbitrum",
     "Avalanche",
-    "Tron",
-    "Sui",
     "Optimism",
-    "Near",
-    "Btc"
   ];
 
   const handleDropdownToggle = () => {
@@ -28,62 +34,111 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   };
 
   const handleSelectContract = (contract) => {
+    // Set as primary selected contract
     setSelectedContract(contract);
+    
+    // Add to multi-select list if not already there
+    if (!selectedContracts.some(c => c.id === contract.id)) {
+      setSelectedContracts([...selectedContracts, contract]);
+    }
+    
     setIsDropdownOpen(false);
+  };
+
+  const handleRemoveContract = (contractId, e) => {
+    e.stopPropagation(); // Prevent dropdown from toggling
+    
+    const updatedContracts = selectedContracts.filter(c => c.id !== contractId);
+    setSelectedContracts(updatedContracts);
+    
+    // If the primary selected contract was removed, update it
+    if (selectedContract && selectedContract.id === contractId) {
+      setSelectedContract(updatedContracts.length > 0 ? updatedContracts[0] : null);
+    }
   };
 
   const handleOpenAddContractModal = () => {
     setShowAddContractModal(true);
     setIsDropdownOpen(false);
-    setSelectedChains([]); // Reset selected chains
+    setSelectedChain(''); // Reset selected chain
     setNewContractAddress('');
     setNewContractName('');
+    setErrorMessage('');
   };
 
   const handleCloseAddContractModal = () => {
     setShowAddContractModal(false);
   };
 
-  const handleChainToggle = (chain) => {
-    if (selectedChains.includes(chain)) {
-      setSelectedChains(selectedChains.filter(c => c !== chain));
-    } else {
-      setSelectedChains([...selectedChains, chain]);
+  const verifySmartContract = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+    
+    try {
+      // Call backend to verify the contract via Dune API
+      const response = await axios.post('https://cryptique-backend.vercel.app/api/onchain/smart-contracts', {
+        contractAddress: newContractAddress,
+        chainName: selectedChain
+      });
+      
+      // If successful, add the contract
+      const newContract = {
+        address: newContractAddress,
+        name: newContractName || newContractAddress,
+        chain: selectedChain,
+        chains: [selectedChain], // Keep the previous format for compatibility
+        id: `contract-${Date.now()}`
+      };
+      
+      // Update contract array
+      const updatedContractArray = [...contractarray, newContract];
+      setcontractarray(updatedContractArray);
+      
+      // Add to selected contracts
+      setSelectedContracts([...selectedContracts, newContract]);
+      
+      // Set as primary selected contract
+      setSelectedContract(newContract);
+      
+      // Close modal
+      setShowAddContractModal(false);
+    } catch (error) {
+      console.error("Error verifying contract:", error);
+      setErrorMessage(
+        error.response?.data?.error || 
+        "Failed to verify smart contract. Please check the address and chain."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleAddContract = async (e) => {
     e.preventDefault();
     
-    if (!newContractAddress || selectedChains.length === 0) {
-      // Show validation error
+    if (!newContractAddress || !selectedChain) {
+      setErrorMessage("Please enter a contract address and select a chain");
       return;
     }
-
-    setIsLoading(true);
     
-    try {
-      // Here you would make an API call to add the contract
-      const newContract = {
-        address: newContractAddress,
-        name: newContractName || newContractAddress,
-        chains: selectedChains,
-        id: `contract-${Date.now()}`
-      };
-      
-      // Update contract array
-      setcontractarray([...contractarray, newContract]);
-      
-      // Set as selected contract
-      setSelectedContract(newContract);
-      
-      // Close modal
-      setShowAddContractModal(false);
-    } catch (error) {
-      console.error("Error adding contract:", error);
-    } finally {
-      setIsLoading(false);
+    // Validate contract address format (basic validation for EVM chains)
+    if (selectedChain !== "Solana" && !/^0x[a-fA-F0-9]{40}$/.test(newContractAddress)) {
+      setErrorMessage("Please enter a valid contract address (0x followed by 40 hex characters)");
+      return;
     }
+    
+    verifySmartContract();
+  };
+
+  // Function to format contract display
+  const formatContractDisplay = (contract) => {
+    const addressDisplay = contract.address.length > 10 
+      ? `${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`
+      : contract.address;
+      
+    return contract.name 
+      ? `${contract.name} (${addressDisplay})`
+      : addressDisplay;
   };
 
   return (
@@ -99,13 +154,25 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           onClick={handleDropdownToggle}
           disabled={isLoading}
         >
-          {selectedContract ? (
-            <div className="flex items-center">
-              <span className="text-gray-800 text-base">{selectedContract.name || selectedContract.address}</span>
-            </div>
-          ) : (
-            <span className="text-gray-500 text-base">Select smart contract</span>
-          )}
+          <div className="flex items-center flex-wrap gap-1">
+            {selectedContracts.length > 0 ? (
+              selectedContracts.map(contract => (
+                <div key={contract.id} className="flex items-center bg-purple-100 px-2 py-0.5 rounded-full mr-1 my-0.5">
+                  <span className="text-sm text-purple-800">{formatContractDisplay(contract)}</span>
+                  <button 
+                    onClick={(e) => handleRemoveContract(contract.id, e)}
+                    className="ml-1 text-purple-600 hover:text-purple-800"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              ))
+            ) : (
+              <span className="text-gray-500 text-base">Select smart contract</span>
+            )}
+          </div>
           
           {isLoading ? (
             <svg className="animate-spin h-4 w-4 ml-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -128,10 +195,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   <li key={contract.id || index}>
                     <button
                       type="button"
-                      className="flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100"
+                      className={`flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100 ${
+                        selectedContracts.some(c => c.id === contract.id) ? 'bg-purple-50' : ''
+                      }`}
                       onClick={() => handleSelectContract(contract)}
                     >
                       <span className="text-base">{contract.name || contract.address}</span>
+                      {contract.chain && (
+                        <span className="ml-2 text-xs bg-gray-200 rounded-full px-2 py-0.5">{contract.chain}</span>
+                      )}
+                      {selectedContracts.some(c => c.id === contract.id) && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-auto text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
                     </button>
                   </li>
                 ))
@@ -179,10 +256,23 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   <input
                     type="text"
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder=""
+                    placeholder="0x..."
                     value={newContractAddress}
                     onChange={(e) => setNewContractAddress(e.target.value)}
                     required
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-['Montserrat'] font-medium text-gray-700 mb-2">
+                    Optional: Contract Name
+                  </label>
+                  <input
+                    type="text"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="My Contract"
+                    value={newContractName}
+                    onChange={(e) => setNewContractName(e.target.value)}
                   />
                 </div>
                 
@@ -190,33 +280,29 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   <label className="block font-['Montserrat'] font-medium text-gray-700 mb-2">
                     What Chain is your smart contract on
                   </label>
-                  <div className="relative">
-                    <div className="bg-white border border-gray-300 rounded-md p-2 max-h-40 overflow-y-auto">
-                      {availableChains.map((chain) => (
-                        <div key={chain} className="flex items-center mb-2">
-                          <input
-                            type="checkbox"
-                            id={`chain-${chain}`}
-                            className="mr-2"
-                            checked={selectedChains.includes(chain)}
-                            onChange={() => handleChainToggle(chain)}
-                          />
-                          <label htmlFor={`chain-${chain}`} className="text-base">{chain}</label>
-                        </div>
-                      ))}
-                    </div>
-                    {selectedChains.length === 0 && (
-                      <p className="mt-1 text-base text-red-500">
-                        Please select at least one chain
-                      </p>
-                    )}
-                  </div>
+                  <select
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedChain}
+                    onChange={(e) => setSelectedChain(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a chain</option>
+                    {availableChains.map((chain) => (
+                      <option key={chain} value={chain}>{chain}</option>
+                    ))}
+                  </select>
                 </div>
+                
+                {errorMessage && (
+                  <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                    {errorMessage}
+                  </div>
+                )}
                 
                 <button
                   type="submit"
                   className="w-full flex justify-center items-center px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-900 focus:outline-none font-['Montserrat']"
-                  disabled={isLoading || !newContractAddress || selectedChains.length === 0}
+                  disabled={isLoading || !newContractAddress || !selectedChain}
                 >
                   {isLoading ? (
                     <>
@@ -224,11 +310,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Adding...
+                      Verifying...
                     </>
                   ) : (
                     <>
-                      Verify
+                      Verify Smart Contract
                     </>
                   )}
                 </button>
