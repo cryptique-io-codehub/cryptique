@@ -90,12 +90,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Use Etherscan APIs for EVM chains
       let apiBaseUrl;
-      let apiKey = ''; // You can add API keys for higher rate limits
+      let apiKey = ''; // Default empty API key
       
-      // Map chain to explorer API
+      // Map chain to explorer API - focusing primarily on Ethereum and BNB
       switch(contract.chain) {
         case 'Ethereum':
           apiBaseUrl = 'https://api.etherscan.io/api';
+          break;
+        case 'Bnb':
+          apiBaseUrl = 'https://api.bscscan.com/api';
+          apiKey = '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'; 
           break;
         case 'Polygon':
           apiBaseUrl = 'https://api.polygonscan.com/api';
@@ -112,22 +116,19 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Avalanche':
           apiBaseUrl = 'https://api.snowtrace.io/api';
           break;
-        case 'Bnb':
-          apiBaseUrl = 'https://api.bscscan.com/api';
-          apiKey = '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'; // You should replace this with a real BscScan API key
-          break;
         default:
           console.log(`No explorer API available for ${contract.chain}`);
           setIsLoadingTransactions(false);
           return;
       }
       
-      console.log(`Using explorer API: ${apiBaseUrl}`);
+      console.log(`Using explorer API: ${apiBaseUrl} with contract: ${contractAddress}`);
       
-      // Fetch normal transactions - handle different rate limits and requirements
+      // Fetch normal transactions
       let transactions = [];
       
       try {
+        // First, try to get regular transactions
         const normalTxResponse = await axios.get(apiBaseUrl, {
           params: {
             module: 'account',
@@ -141,6 +142,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             apikey: apiKey
           }
         });
+        
+        console.log("API Response:", normalTxResponse.data);
         
         // Check for API errors
         if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
@@ -158,15 +161,120 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         } else {
           console.warn('API returned status other than 1:', normalTxResponse.data.message || 'Unknown error');
           
-          // If the error is due to rate limiting or API key issues, try a fallback approach
-          if (normalTxResponse.data.message && 
-              (normalTxResponse.data.message.includes('rate limit') || 
-               normalTxResponse.data.message.includes('Invalid API Key'))) {
-            console.log("Using alternative approach due to API limitations");
+          if (normalTxResponse.data.message === 'No transactions found') {
+            console.log("No regular transactions found for this contract, will try token transfers");
           }
         }
       } catch (fetchError) {
         console.error(`Error fetching transactions from ${apiBaseUrl}:`, fetchError);
+      }
+      
+      // Try to get token/NFT transfers if no regular transactions were found
+      if (transactions.length === 0) {
+        try {
+          console.log("Fetching token transfers instead");
+          
+          // For BNB Chain specifically, adjust the endpoint
+          let tokenTxAction = 'tokentx'; // Default ERC-20 token transfers
+          
+          if (contract.chain === 'Bnb') {
+            console.log("Using BNB-specific token transfer endpoint");
+            // BscScan supports BEP-20 token transfers with the same endpoint
+            tokenTxAction = 'tokentx'; 
+          }
+          
+          console.log(`Using token transfer action: ${tokenTxAction} for ${contract.chain}`);
+          
+          const tokenTxResponse = await axios.get(apiBaseUrl, {
+            params: {
+              module: 'account',
+              action: tokenTxAction,
+              address: contractAddress,
+              page: 1,
+              offset: 50,
+              sort: 'desc',
+              apikey: apiKey
+            }
+          });
+          
+          console.log("Token TX Response:", tokenTxResponse.data);
+          
+          if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
+            const tokenTransfers = tokenTxResponse.data.result.map(tx => {
+              // Log a full token transfer record to help identify field structure
+              if (contract.chain === 'Bnb') {
+                console.log("Example BEP-20 token transfer:", tx);
+              }
+              
+              // Handle possible missing fields for different explorers
+              const decimals = tx.tokenDecimal || tx.decimals || '18';
+              const symbol = tx.tokenSymbol || tx.symbol || 'tokens';
+              const name = tx.tokenName || tx.name || 'Unknown Token';
+              
+              return {
+                tx_hash: tx.hash,
+                block_number: parseInt(tx.blockNumber),
+                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                from_address: tx.from,
+                to_address: tx.to,
+                value_eth: `${(Number(tx.value) / Math.pow(10, parseInt(decimals))).toFixed(6)} ${symbol}`,
+                token_name: name,
+                token_symbol: symbol,
+                gas_used: tx.gasUsed,
+                status: 'Success', // Token transfers are typically successful
+                tx_type: 'Token Transfer'
+              };
+            });
+            
+            transactions = tokenTransfers;
+            console.log("Found token transfers:", tokenTransfers.length);
+          } else {
+            console.log("No token transfers found either:", tokenTxResponse.data.message || 'Unknown reason');
+          }
+        } catch (tokenError) {
+          console.error("Error fetching token transfers:", tokenError);
+        }
+      }
+      
+      // If still no transactions, try internal transactions as last resort
+      if (transactions.length === 0) {
+        try {
+          console.log("Fetching internal transactions as last resort");
+          const internalTxResponse = await axios.get(apiBaseUrl, {
+            params: {
+              module: 'account',
+              action: 'txlistinternal',
+              address: contractAddress,
+              page: 1,
+              offset: 50,
+              sort: 'desc',
+              apikey: apiKey
+            }
+          });
+          
+          console.log("Internal TX Response:", internalTxResponse.data);
+          
+          if (internalTxResponse.data.status === '1' && Array.isArray(internalTxResponse.data.result)) {
+            const internalTxs = internalTxResponse.data.result.map(tx => ({
+              tx_hash: tx.hash,
+              block_number: parseInt(tx.blockNumber),
+              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+              from_address: tx.from,
+              to_address: tx.to,
+              value_eth: (parseInt(tx.value) / 1e18).toString(),
+              gas_used: '0', // Internal transactions don't have separate gas
+              status: 'Success', // Internal txs are typically successful operations
+              tx_type: 'Internal'
+            }));
+            
+            transactions = internalTxs;
+            console.log("Found internal transactions:", internalTxs.length);
+          } else {
+            console.log("No internal transactions found either:", internalTxResponse.data.message || 'Unknown reason');
+          }
+        } catch (internalError) {
+          console.error("Error fetching internal transactions:", internalError);
+        }
       }
       
       // Update state with the transactions
@@ -184,85 +292,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       });
       
       if (transactions.length === 0) {
-        console.log("No transactions found for this contract");
-      }
-      
-      // Try to get token/NFT transfers if no regular transactions were found
-      if (transactions.length === 0) {
-        try {
-          const tokenTxResponse = await axios.get(apiBaseUrl, {
-            params: {
-              module: 'account',
-              action: 'tokentx', // ERC-20 token transfers
-              address: contractAddress,
-              page: 1,
-              offset: 50,
-              sort: 'desc',
-              apikey: apiKey
-            }
-          });
-          
-          if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
-            const tokenTransfers = tokenTxResponse.data.result.map(tx => ({
-              tx_hash: tx.hash,
-              block_number: parseInt(tx.blockNumber),
-              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-              from_address: tx.from,
-              to_address: tx.to,
-              value_eth: `${tx.value / Math.pow(10, parseInt(tx.tokenDecimal))} ${tx.tokenSymbol}`,
-              token_name: tx.tokenName,
-              token_symbol: tx.tokenSymbol,
-              gas_used: tx.gasUsed,
-              status: 'Success', // Token transfers are typically successful
-              tx_type: 'Token Transfer'
-            }));
-            
-            setContractTransactions(tokenTransfers);
-            console.log("Found token transfers:", tokenTransfers.length);
-          }
-        } catch (tokenError) {
-          console.error("Error fetching token transfers:", tokenError);
-        }
-      }
-      
-      // After fetching from Etherscan, try to get additional analytics from Dune API
-      // using public queries without query management
-      try {
-        console.log("Attempting to fetch analytics from Dune API for", contractAddress);
-        
-        // Use verified public query IDs that work with the free tier
-        // These are non-parameterized queries that work with the basic API tier
-        const queryId = 1215383; // Ethereum/ERC20 token transfers query, known to work
-        
-        console.log(`Using Dune free tier available query ID: ${queryId}`);
-        
-        // Execute an existing query
-        const executeResponse = await axios.get(
-          `https://api.dune.com/api/v1/query/${queryId}/last`,
-          {
-            headers: {
-              "x-dune-api-key": DUNE_API_KEY
-            }
-          }
-        );
-        
-        // Check if we got results
-        if (executeResponse.data && executeResponse.data.result) {
-          console.log("Dune Analytics Results (from last execution):", executeResponse.data);
-          console.log(`Found ${executeResponse.data.result.rows ? executeResponse.data.result.rows.length : 0} data points from Dune`);
-        } else {
-          console.log("No Dune results available for this query");
-        }
-      } catch (error) {
-        console.error("Error fetching Dune analytics:", error);
-        if (error.response) {
-          console.error("Dune API error details:", {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            data: error.response.data
-          });
-        }
-        // Continue without Dune analytics
+        console.log("No transactions found for this contract after trying all methods");
       }
     } catch (error) {
       console.error("Error in transaction fetching process:", error);
