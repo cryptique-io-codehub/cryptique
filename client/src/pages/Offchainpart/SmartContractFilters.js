@@ -147,17 +147,72 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Check for API errors
         if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
-          transactions = normalTxResponse.data.result.map(tx => ({
-            tx_hash: tx.hash,
-            block_number: parseInt(tx.blockNumber),
-            block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-            from_address: tx.from,
-            to_address: tx.to,
-            value_eth: (parseInt(tx.value) / 1e18).toString(),
-            gas_used: tx.gasUsed,
-            status: tx.isError === '0' ? 'Success' : 'Failed',
-            tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
-          }));
+          transactions = normalTxResponse.data.result.map(tx => {
+            // Check if this is a token transfer transaction (has function name and 0 BNB value)
+            const isTokenTransfer = 
+              tx.functionName && 
+              tx.functionName.includes('transfer') && 
+              tx.value === '0' && 
+              contract.chain === 'Bnb';
+            
+            if (isTokenTransfer) {
+              console.log("Found token transfer in regular transactions:", tx);
+              
+              // This looks like a token transfer, so let's check if we can decode the token info
+              let tokenValue = "Unknown";
+              let tokenType = "BEP-20 Token";
+              
+              // Attempt to parse input data
+              if (tx.input && tx.input.length > 10) {
+                console.log("Token transfer input data:", tx.input);
+                // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
+                if (tx.input.startsWith('0xa9059cbb')) {
+                  try {
+                    // Extract the amount from the input data, which is the last 64 characters
+                    const amountHex = tx.input.substring(tx.input.length - 64);
+                    const amountBigInt = BigInt('0x' + amountHex);
+                    // Assume decimal places (usually 18 for most tokens)
+                    const decimals = 18;
+                    // Convert to readable form
+                    const readableAmount = Number(amountBigInt / BigInt(10**16)) / 100;
+                    tokenValue = `${readableAmount.toFixed(6)} tokens`;
+                    console.log("Decoded token amount:", tokenValue);
+                  } catch (error) {
+                    console.error("Error decoding token amount:", error);
+                  }
+                }
+              }
+              
+              // Create a special token transfer record
+              return {
+                tx_hash: tx.hash,
+                block_number: parseInt(tx.blockNumber),
+                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                from_address: tx.from,
+                to_address: tx.to,
+                value_eth: tokenValue,
+                gas_used: tx.gasUsed,
+                status: tx.isError === '0' ? 'Success' : 'Failed',
+                tx_type: 'Token Transfer',
+                contract_address: tx.to, // The token contract is likely the "to" address
+                token_name: 'BEP-20 Token',
+                token_symbol: 'TOKEN'
+              };
+            } else {
+              // Regular transaction
+              return {
+                tx_hash: tx.hash,
+                block_number: parseInt(tx.blockNumber),
+                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                from_address: tx.from,
+                to_address: tx.to,
+                value_eth: (parseInt(tx.value) / 1e18).toString(),
+                gas_used: tx.gasUsed,
+                status: tx.isError === '0' ? 'Success' : 'Failed',
+                tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
+              };
+            }
+          });
         } else {
           console.warn('API returned status other than 1:', normalTxResponse.data.message || 'Unknown error');
           
