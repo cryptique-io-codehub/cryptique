@@ -1089,7 +1089,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       let bigValue = "0";
                       for (let i = 0; i < significantHex.length; i++) {
                         const digitValue = parseInt(significantHex[i], 16);
-                        bigValue = (BigInt(bigValue) * BigInt(16) + BigInt(digitValue)).toString();
+                        // Instead of BigInt, use a manual string math helper function
+                        bigValue = multiplyStrByBase16AndAdd(bigValue, digitValue);
                       }
                       
                       // Now we have a decimal string representation of the big number
@@ -1204,7 +1205,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         let bigValue = "0";
                         for (let i = 0; i < significantHex.length; i++) {
                           const digitValue = parseInt(significantHex[i], 16);
-                          bigValue = (BigInt(bigValue) * BigInt(16) + BigInt(digitValue)).toString();
+                          // Instead of BigInt, use a manual string math helper function
+                          bigValue = multiplyStrByBase16AndAdd(bigValue, digitValue);
                         }
                         
                         // Apply token decimals
@@ -1819,6 +1821,39 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       logTx(txArray[txArray.length-2], `#${txArray.length-1}`);
       logTx(txArray[txArray.length-1], `#${txArray.length}`);
     }
+  };
+
+  // Helper function for safe large number operations without BigInt
+  const multiplyStrByBase16AndAdd = (numStr, digitValue) => {
+    // Multiply large number string by 16 and add a digit
+    // This emulates what BigInt(numStr) * BigInt(16) + BigInt(digitValue) would do
+    
+    // Step 1: Multiply by 16 (simple with decimal - just add a 0 to the end in hex, or *10 in decimal)
+    // In decimal, multiplying by 16 is more complex, so we'll do it digit by digit
+    let result = "";
+    let carry = 0;
+    
+    // Multiply each digit by 16
+    for (let i = 0; i < numStr.length; i++) {
+      const digit = parseInt(numStr[i], 10);
+      const product = digit * 16 + carry;
+      result += (product % 10).toString();
+      carry = Math.floor(product / 10);
+    }
+    
+    // Add any remaining carry
+    if (carry > 0) {
+      result += carry.toString();
+    }
+    
+    // Reverse since we calculated from right to left
+    result = result.split("").reverse().join("");
+    
+    // Step 2: Add the new digit value
+    // Simple decimal addition
+    const sum = (parseInt(result || "0", 10) + digitValue).toString();
+    
+    return sum;
   };
 
   return (
