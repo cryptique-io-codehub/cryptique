@@ -307,6 +307,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     params.contractaddress = contractAddress;
                   }
                   
+                  // Limit to a safe page size (avoid "Result window is too large" error)
+                  // Ensure PageNo x Offset <= 10000
+                  if (page * params.offset > 10000) {
+                    params.offset = Math.floor(10000 / page);
+                    console.log(`Adjusted offset to ${params.offset} for page ${page} to avoid window size error`);
+                  }
+                  
                   console.log("Request params:", params);
                   
                   const response = await axios.get('https://api.bscscan.com/api', { params });
@@ -487,25 +494,43 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 
                 // Process and format transfers to match our format
                 const formattedTransfers = allTransactions.map(tx => {
+                  // Create a structured object with appropriate default values
                   return {
                     transactionHash: tx.hash,
-                    blockNumber: parseInt(tx.blockNumber),
+                    blockNumber: parseInt(tx.blockNumber) || 0,
                     returnValues: {
-                      from: tx.from,
-                      to: tx.to,
-                      value: tx.value
+                      from: tx.from || '0x0000000000000000000000000000000000000000',
+                      to: tx.to || '0x0000000000000000000000000000000000000000',
+                      value: tx.value || '0'
                     },
                     // Add additional data we can use later
                     raw: {
-                      timeStamp: tx.timeStamp,
-                      tokenDecimal: tx.tokenDecimal,
-                      tokenSymbol: tx.tokenSymbol,
-                      tokenName: tx.tokenName
+                      timeStamp: tx.timeStamp || Math.floor(Date.now()/1000).toString(),
+                      tokenDecimal: tx.tokenDecimal || '18',
+                      tokenSymbol: tx.tokenSymbol || tokenInfo?.symbol || 'UNK',
+                      tokenName: tx.tokenName || tokenInfo?.name || 'Unknown Token'
                     }
                   };
                 });
                 
-                transactions = formattedTransfers;
+                transactions = formattedTransfers.map(transfer => {
+                  // Convert to the format expected by the rest of the code
+                  return {
+                    tx_hash: transfer.transactionHash,
+                    block_number: transfer.blockNumber,
+                    block_time: new Date(parseInt(transfer.raw.timeStamp) * 1000).toISOString(),
+                    from_address: transfer.returnValues.from,
+                    to_address: transfer.returnValues.to,
+                    value_eth: formatTokenAmount(transfer.returnValues.value, transfer.raw.tokenDecimal, transfer.raw.tokenSymbol),
+                    gas_used: '0', // Will be populated later if needed
+                    status: 'Success',
+                    tx_type: 'Token Transfer',
+                    token_name: transfer.raw.tokenName,
+                    token_symbol: transfer.raw.tokenSymbol,
+                    contract_address: contractAddress
+                  };
+                });
+                
                 console.log(`Successfully formatted ${transactions.length} token transfers`);
               } else {
                 console.log("No transactions found for this contract after trying all methods");
@@ -626,9 +651,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 // Log transaction summary to console
                 console.log("TRANSACTION SUMMARY:");
                 console.log(`Total transactions: ${totalCount}`);
-                console.log(`First transaction block: ${transactions[transactions.length-1].block_number}`);
-                console.log(`Latest transaction block: ${transactions[0].block_number}`);
-                console.log(`Block range covered: ${transactions[transactions.length-1].block_number} to ${transactions[0].block_number}`);
+                
+                // Safely log block numbers with error handling
+                try {
+                  const firstBlock = transactions[transactions.length-1]?.block_number || 'unknown';
+                  const latestBlock = transactions[0]?.block_number || 'unknown';
+                  console.log(`First transaction block: ${firstBlock}`);
+                  console.log(`Latest transaction block: ${latestBlock}`);
+                  console.log(`Block range covered: ${firstBlock} to ${latestBlock}`);
+                } catch (error) {
+                  console.error("Error logging block range:", error);
+                  console.log("Block range information unavailable");
+                }
                 
                 // Log some example transactions at different positions
                 console.log("Sample transactions:");
@@ -1194,15 +1228,44 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       : addressDisplay;
   };
 
+  // Helper function to format token amounts with appropriate decimals
+  const formatTokenAmount = (value, decimals, symbol) => {
+    try {
+      const decimalValue = parseInt(decimals) || 18;
+      const divisor = Math.pow(10, decimalValue);
+      const amount = parseFloat(value) / divisor;
+      return `${amount.toFixed(6)} ${symbol || ''}`.trim();
+    } catch (error) {
+      console.error("Error formatting token amount:", error);
+      return `0 ${symbol || ''}`.trim();
+    }
+  };
+
   // Helper function to log sample transactions from different parts of the array
   const logSampleTransactions = (txArray) => {
     if (!txArray || txArray.length === 0) return;
     
     const logTx = (tx, position) => {
-      console.log(`${position}: Block ${tx.block_number} | ${tx.from_address.substring(0, 6)}...${tx.from_address.substring(38)} → ${tx.to_address.substring(0, 6)}...${tx.to_address.substring(38)} | ${tx.value_eth}`);
+      try {
+        // Safely access properties with fallbacks to avoid errors
+        const blockNumber = tx.block_number || 'unknown';
+        const fromAddress = tx.from_address || 'unknown';
+        const toAddress = tx.to_address || 'unknown';
+        const value = tx.value_eth || '0';
+        
+        // Format addresses safely with fallbacks
+        const fromShort = fromAddress.length >= 42 ? 
+          `${fromAddress.substring(0, 6)}...${fromAddress.substring(38)}` : fromAddress;
+        const toShort = toAddress.length >= 42 ? 
+          `${toAddress.substring(0, 6)}...${toAddress.substring(38)}` : toAddress;
+        
+        console.log(`${position}: Block ${blockNumber} | ${fromShort} → ${toShort} | ${value}`);
+      } catch (error) {
+        console.error("Error logging transaction:", error, tx);
+        console.log(`${position}: [Error displaying transaction]`);
+      }
     };
     
-    // Log first 2 transactions
     console.log("Most recent transactions:");
     for (let i = 0; i < Math.min(2, txArray.length); i++) {
       logTx(txArray[i], `#${i+1}`);
@@ -1213,7 +1276,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.log("Middle transactions:");
       const mid = Math.floor(txArray.length / 2);
       logTx(txArray[mid], `#${mid+1}`);
-      logTx(txArray[mid+1], `#${mid+2}`);
+      if (txArray.length > mid + 1) {
+        logTx(txArray[mid+1], `#${mid+2}`);
+      }
     }
     
     // Log oldest transactions
