@@ -771,38 +771,121 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       let apiBaseUrl;
       let apiKey = ''; // Default empty API key
       
-      // Map chain to explorer API - focusing primarily on Ethereum and BNB
+      // API Explorer Keys - You'll need to register on each explorer's website to get your own API keys
+      // Below are the API key configuration objects for each supported blockchain
+      const explorerApiKeys = {
+        // Get key at: https://etherscan.io/myapikey
+        Ethereum: 'QZ7B5DMPPPBNUK8RCX2U9CG5ZGF71RJ38D', // Replace with your Etherscan API key
+        
+        // Get key at: https://bscscan.com/myapikey
+        Bnb: '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1', // Current BscScan API key
+        
+        // Get key at: https://polygonscan.com/myapikey
+        Polygon: '7AMPDVT7P2VYW45J746UY5FBS18S1JIPVV', // Replace with your Polygonscan API key
+        
+        // Get key at: https://arbiscan.io/myapikey
+        Arbitrum: 'RQZ5AXVKRWK26VFCMGF1EVKMSXQZ7YDKCP', // Replace with your Arbiscan API key
+        
+        // Get key at: https://optimistic.etherscan.io/myapikey
+        Optimism: 'UGD6EXG3QFK4K6VQ7DFIEI55P8CHS6ZTKD', // Replace with your Optimism Etherscan API key
+        
+        // Get key at: https://basescan.org/myapikey
+        Base: 'Q2NXNU8H6BXRI39QQIU575GBT7VIN4FQ8K', // Replace with your Basescan API key
+        
+        // Avalanche (Snowtrace) - Free tier works without API key
+        Avalanche: '', // API key is optional for free tier
+        
+        // Get key at: https://celoscan.io/myapikey
+        Celo: 'W1FFFB7J4DQQPBHW8DFIFE524DQWK9V2X9', // Replace with your Celoscan API key
+      };
+      
+      // Map chain to explorer API with proper endpoints
       switch(contract.chain) {
         case 'Ethereum':
           apiBaseUrl = 'https://api.etherscan.io/api';
+          apiKey = explorerApiKeys.Ethereum;
           break;
         case 'Bnb':
           apiBaseUrl = 'https://api.bscscan.com/api';
-          apiKey = '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'; 
+          apiKey = explorerApiKeys.Bnb;
           break;
         case 'Polygon':
           apiBaseUrl = 'https://api.polygonscan.com/api';
+          apiKey = explorerApiKeys.Polygon;
           break;
         case 'Arbitrum':
           apiBaseUrl = 'https://api.arbiscan.io/api';
+          apiKey = explorerApiKeys.Arbitrum;
           break;
         case 'Optimism':
           apiBaseUrl = 'https://api-optimistic.etherscan.io/api';
+          apiKey = explorerApiKeys.Optimism;
           break;
         case 'Base':
           apiBaseUrl = 'https://api.basescan.org/api';
+          apiKey = explorerApiKeys.Base;
           break;
         case 'Avalanche':
           apiBaseUrl = 'https://api.snowtrace.io/api';
+          apiKey = explorerApiKeys.Avalanche; // Optional for Avalanche
+          break;
+        case 'Celo':
+          apiBaseUrl = 'https://api.celoscan.io/api';
+          apiKey = explorerApiKeys.Celo;
           break;
         default:
           console.log(`No explorer API available for ${contract.chain}`);
+          
+          // Special handling for chains without standard explorers
+          if (contract.chain === 'Solana') {
+            // Solana has a different API structure
+            console.log("Solana chain detected - would need to use SolScan or similar API");
+            setStatusMessage("Solana explorer integration not implemented yet");
+          } else if (contract.chain === 'ZKsync') {
+            console.log("ZKsync chain detected - would need to use block explorer API");
+            setStatusMessage("ZKsync explorer integration not implemented yet");
+          } else if (contract.chain === 'Starknet') {
+            console.log("Starknet chain detected - would need Starknet specific API");
+            setStatusMessage("Starknet explorer integration not implemented yet");
+          }
+          
           setIsLoadingTransactions(false);
           return;
       }
       
       console.log(`Using explorer API: ${apiBaseUrl} with contract: ${contractAddress}`);
-      
+      if (contract.chain !== 'Avalanche' && (!apiKey || apiKey.startsWith('Your'))) {
+        console.warn(`WARNING: Using default or empty API key for ${contract.chain}. This may result in rate limiting.`);
+        console.warn(`To fix this, please register for an API key at the ${contract.chain} block explorer and update the explorerApiKeys object.`);
+      }
+
+      /**
+       * IMPORTANT NOTE ON EXPLORER API KEYS:
+       * 
+       * Most blockchain explorers have free API tiers that require registration to obtain API keys.
+       * The current implementation includes placeholders for these API keys that you should replace with your own.
+       * 
+       * Registration links for supported explorers:
+       * - Ethereum (Etherscan): https://etherscan.io/myapikey
+       * - BNB Chain (BscScan): https://bscscan.com/myapikey
+       * - Polygon (PolygonScan): https://polygonscan.com/myapikey
+       * - Arbitrum (Arbiscan): https://arbiscan.io/myapikey
+       * - Optimism: https://optimistic.etherscan.io/myapikey
+       * - Base: https://basescan.org/myapikey
+       * - Avalanche (Snowtrace): API key optional for free tier
+       * - Celo (CeloScan): https://celoscan.io/myapikey
+       * 
+       * Free tier API keys typically allow:
+       * - 5 calls/second
+       * - Up to 10,000 results per query
+       * - Daily request limits (varies by explorer)
+       * 
+       * For high-volume usage, consider:
+       * 1. Implementing more aggressive rate limiting
+       * 2. Using Web3 direct queries where possible (as implemented in this component)
+       * 3. Upgrading to paid API plans for production use
+       */
+
       // Fetch normal transactions
       let transactions = [];
       
@@ -1296,6 +1379,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     "Arbitrum",
     "Avalanche",
     "Optimism",
+    "Celo",
+    "ZKsync",
+    "Starknet"
   ];
 
   const handleDropdownToggle = () => {
