@@ -251,56 +251,239 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               console.log("Fetching all transactions using BscScan API pagination...");
               setStatusMessage("Fetching complete transaction history... Please wait.");
               
-              // Keep fetching pages until we've got everything
-              while (hasMorePages) {
-                console.log(`Fetching BscScan API page ${page} (${allTransactions.length} transactions so far)`);
-                
-                const response = await axios.get('https://api.bscscan.com/api', {
+              // First, try the key API approach - use tokentx with contractaddress
+              console.log("First attempt: Querying token transfers directly using contractaddress parameter");
+              
+              try {
+                const directTokenResponse = await axios.get('https://api.bscscan.com/api', {
                   params: {
                     module: 'account',
                     action: 'tokentx',
-                    address: contractAddress,
-                    page: page,
-                    offset: perPage,
+                    contractaddress: contractAddress, // This is the key - we're looking for transfers of this token
+                    page: 1,
+                    offset: 10000,
                     sort: 'desc',
                     apikey: '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'
                   }
                 });
                 
-                // Check if we got valid results
-                if (response.data.status === '1' && Array.isArray(response.data.result)) {
-                  const pageResults = response.data.result;
-                  console.log(`Found ${pageResults.length} transactions on page ${page}`);
-                  
-                  // Add this page's results to our collection
-                  allTransactions = [...allTransactions, ...pageResults];
-                  
-                  // Update UI with progress
-                  setStatusMessage(`Found ${allTransactions.length} transactions so far... Fetching more.`);
-                  
-                  // Check if we need to fetch more pages (if we got a full page, there might be more)
-                  if (pageResults.length < perPage) {
-                    hasMorePages = false;
-                    console.log("Reached final page of results");
-                  } else {
-                    // Sleep briefly to avoid rate limiting
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    page++;
-                  }
+                if (directTokenResponse.data.status === '1' && Array.isArray(directTokenResponse.data.result)) {
+                  const tokenResults = directTokenResponse.data.result;
+                  console.log(`SUCCESS - Found ${tokenResults.length} transactions via direct token query`);
+                  allTransactions = [...allTransactions, ...tokenResults];
                 } else {
-                  // Handle API error
-                  console.log("BscScan API error:", response.data.message || "Unknown error");
-                  hasMorePages = false;
+                  console.log("Direct token query failed:", directTokenResponse.data.message || "Unknown error");
+                }
+              } catch (directError) {
+                console.error("Error in direct token query:", directError);
+              }
+              
+              // Then try both contract address and token address queries to ensure we get everything
+              const attempts = [
+                { type: 'token', desc: 'token contract itself' },
+                { type: 'account', desc: 'account activity for contract' }
+              ];
+              
+              for (const attempt of attempts) {
+                console.log(`Trying ${attempt.desc} query...`);
+                hasMorePages = true;
+                page = 1;
+                
+                while (hasMorePages) {
+                  console.log(`Fetching BscScan API page ${page} for ${attempt.desc} (${allTransactions.length} transactions so far)`);
                   
-                  // If we have some results already, use them
-                  if (allTransactions.length === 0) {
-                    console.log("No valid results from BscScan API, falling back to Web3");
+                  let params = {
+                    module: attempt.type === 'token' ? 'account' : 'account',
+                    action: attempt.type === 'token' ? 'tokentx' : 'txlist',
+                    address: contractAddress,
+                    page: page,
+                    offset: perPage,
+                    sort: 'desc',
+                    apikey: '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'
+                  };
+                  
+                  // Add contract address parameter for token query
+                  if (attempt.type === 'token') {
+                    params.contractaddress = contractAddress;
+                  }
+                  
+                  console.log("Request params:", params);
+                  
+                  const response = await axios.get('https://api.bscscan.com/api', { params });
+                  
+                  // Check if we got valid results
+                  if (response.data.status === '1' && Array.isArray(response.data.result)) {
+                    const pageResults = response.data.result;
+                    console.log(`Found ${pageResults.length} transactions on page ${page} for ${attempt.desc}`);
+                    
+                    // Filter out duplicates by hash when adding to the collection
+                    const existingHashes = new Set(allTransactions.map(tx => tx.hash));
+                    const newTransactions = pageResults.filter(tx => !existingHashes.has(tx.hash));
+                    
+                    console.log(`Adding ${newTransactions.length} new unique transactions`);
+                    allTransactions = [...allTransactions, ...newTransactions];
+                    
+                    // Update UI with progress
+                    setStatusMessage(`Found ${allTransactions.length} transactions so far... Fetching more.`);
+                    
+                    // Check if we need to fetch more pages (if we got a full page, there might be more)
+                    if (pageResults.length < perPage) {
+                      hasMorePages = false;
+                      console.log(`Reached final page of results for ${attempt.desc}`);
+                    } else {
+                      // Sleep briefly to avoid rate limiting
+                      await new Promise(resolve => setTimeout(resolve, 200));
+                      page++;
+                    }
+                  } else {
+                    // Handle API error
+                    console.log(`BscScan API error for ${attempt.desc}:`, response.data.message || "Unknown error");
+                    hasMorePages = false;
                   }
                 }
               }
               
+              // Third attempt - try getlogs if we didn't find enough transactions
+              if (allTransactions.length < 100) {
+                console.log("Trying with logs API for Transfer events...");
+                
+                try {
+                  // Try to get Transfer event logs directly
+                  const logsResponse = await axios.get('https://api.bscscan.com/api', {
+                    params: {
+                      module: 'logs',
+                      action: 'getLogs',
+                      address: contractAddress,
+                      fromBlock: '0',
+                      toBlock: 'latest',
+                      topic0: '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // Transfer event topic
+                      apikey: '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'
+                    }
+                  });
+                  
+                  if (logsResponse.data.status === '1' && Array.isArray(logsResponse.data.result)) {
+                    const logResults = logsResponse.data.result;
+                    console.log(`Found ${logResults.length} transfer logs`);
+                    
+                    // Format logs into transaction format
+                    const logTransactions = logResults.map(log => {
+                      // Extract from/to from topics (for Transfer events)
+                      let from = '0x0000000000000000000000000000000000000000';
+                      let to = '0x0000000000000000000000000000000000000000';
+                      let value = '0';
+                      
+                      try {
+                        if (log.topics.length > 1) {
+                          // Get the sender address (remove padding)
+                          from = '0x' + log.topics[1].substring(26);
+                        }
+                        if (log.topics.length > 2) {
+                          // Get the recipient address (remove padding)
+                          to = '0x' + log.topics[2].substring(26);
+                        }
+                        if (log.data && log.data !== '0x') {
+                          value = log.data;
+                        }
+                      } catch (err) {
+                        console.error("Error parsing log topics:", err);
+                      }
+                      
+                      return {
+                        hash: log.transactionHash,
+                        blockNumber: parseInt(log.blockNumber, 16).toString(),
+                        timeStamp: (Date.now() / 1000).toString(), // Approximate timestamp
+                        from: from,
+                        to: to,
+                        value: value,
+                        tokenName: tokenInfo?.name || 'Unknown Token',
+                        tokenSymbol: tokenInfo?.symbol || 'UNK',
+                        tokenDecimal: tokenInfo?.decimals || '18',
+                        logIndex: log.logIndex
+                      };
+                    });
+                    
+                    // Add to our collection (avoiding duplicates)
+                    const existingHashes = new Set(allTransactions.map(tx => tx.hash));
+                    const newLogTransactions = logTransactions.filter(tx => !existingHashes.has(tx.hash));
+                    console.log(`Adding ${newLogTransactions.length} new unique log transactions`);
+                    
+                    allTransactions = [...allTransactions, ...newLogTransactions];
+                  }
+                } catch (logsError) {
+                  console.error("Error fetching logs:", logsError);
+                }
+              }
+              
+              // Fourth attempt - direct query to BSC node using Web3
+              if (allTransactions.length < 100 && web3Instances[contract.chain]) {
+                console.log("Attempting direct query to BSC node for transactions...");
+                
+                try {
+                  const web3 = web3Instances[contract.chain];
+                  const latestBlockWeb3 = await web3.eth.getBlockNumber();
+                  console.log(`Latest block from Web3: ${latestBlockWeb3}`);
+                  
+                  // Use 10 blocks per chunk for deep scanning
+                  for (let i = 0; i < 100; i++) {  // Look at 100 recent chunks
+                    const endBlock = latestBlockWeb3 - (i * 100);
+                    const startBlock = Math.max(0, endBlock - 100);
+                    
+                    console.log(`Scanning blocks ${startBlock} to ${endBlock} for transactions...`);
+                    
+                    try {
+                      // Get any Transfer events directly
+                      const tokenContract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+                      const events = await tokenContract.getPastEvents('Transfer', {
+                        fromBlock: startBlock,
+                        toBlock: endBlock
+                      });
+                      
+                      console.log(`Found ${events.length} Transfer events in blocks ${startBlock}-${endBlock}`);
+                      
+                      if (events.length > 0) {
+                        // Format these events
+                        const webTransactions = events.map(event => {
+                          return {
+                            hash: event.transactionHash,
+                            blockNumber: event.blockNumber.toString(),
+                            timeStamp: (Date.now() / 1000).toString(),
+                            from: event.returnValues.from,
+                            to: event.returnValues.to,
+                            value: event.returnValues.value.toString(),
+                            tokenName: tokenInfo?.name || 'Unknown Token',
+                            tokenSymbol: tokenInfo?.symbol || 'UNK',
+                            tokenDecimal: tokenInfo?.decimals || '18'
+                          };
+                        });
+                        
+                        // Add to our collection
+                        const existingHashes = new Set(allTransactions.map(tx => tx.hash));
+                        const newWebTransactions = webTransactions.filter(tx => !existingHashes.has(tx.hash));
+                        console.log(`Adding ${newWebTransactions.length} new unique web3 transactions`);
+                        
+                        allTransactions = [...allTransactions, ...newWebTransactions];
+                        
+                        if (allTransactions.length > 1000) {
+                          console.log("Found sufficient transactions, stopping web3 scan");
+                          break;
+                        }
+                      }
+                      
+                      // Small delay to avoid rate limits
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (blockError) {
+                      console.error(`Error scanning blocks ${startBlock}-${endBlock}:`, blockError);
+                    }
+                  }
+                } catch (web3QueryError) {
+                  console.error("Error in direct Web3 query:", web3QueryError);
+                }
+              }
+              
+              console.log(`Retrieved a total of ${allTransactions.length} transactions across all methods`);
+              
               if (allTransactions.length > 0) {
-                console.log(`Successfully retrieved ${allTransactions.length} total transactions via BscScan API`);
+                console.log(`Successfully retrieved ${allTransactions.length} total transactions`);
                 
                 // Process and format transfers to match our format
                 const formattedTransfers = allTransactions.map(tx => {
@@ -325,142 +508,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 transactions = formattedTransfers;
                 console.log(`Successfully formatted ${transactions.length} token transfers`);
               } else {
-                // If BscScan API failed, try Web3 approach
-                console.log("No transactions found via BscScan API, trying Web3 method");
-                
-                // Try to fetch in smaller chunks to avoid timeouts
-                const CHUNK_SIZE = 500000; // 500k blocks per request
-                let allEvents = [];
-                
-                // Get the genesis block for this token, if available
-                const chainGenesisBlocks = {
-                  'Ethereum': 0, 
-                  'Bnb': 0, // BSC started around block 0
-                  'Polygon': 0,
-                  'Arbitrum': 0,
-                  'Optimism': 0,
-                  'Base': 0,
-                  'Avalanche': 0
-                };
-                
-                const startBlock = chainGenesisBlocks[contract.chain] || 0;
-                let endBlock = latestBlockNum;
-                let currentBlock = Math.max(startBlock, endBlock - CHUNK_SIZE);
-                
-                console.log(`Starting chunked transfer event fetch from block ${currentBlock} to ${endBlock}`);
-                setStatusMessage(`Fetching transaction history in chunks. Scanning blocks ${currentBlock} to ${endBlock}...`);
-                
-                // We'll process in chunks, going backward in time
-                // Continue until we reach the start block, with no limit on number of transactions
-                let keepFetching = true;
-                let failedAttempts = 0;
-                
-                while (keepFetching && currentBlock >= startBlock && failedAttempts < 5) {
-                  try {
-                    console.log(`Fetching chunk: blocks ${currentBlock} to ${endBlock}`);
-                    const chunkEvents = await tokenContract.getPastEvents('Transfer', {
-                      fromBlock: currentBlock,
-                      toBlock: endBlock
-                    });
-                    
-                    console.log(`Found ${chunkEvents.length} Transfer events in blocks ${currentBlock}-${endBlock}`);
-                    allEvents = [...allEvents, ...chunkEvents];
-                    failedAttempts = 0; // Reset failed attempts counter
-                    
-                    // Move to the next chunk (going backward)
-                    endBlock = currentBlock - 1;
-                    currentBlock = Math.max(startBlock, endBlock - CHUNK_SIZE);
-                    
-                    // Update status with progress
-                    setStatusMessage(`Found ${allEvents.length} transactions. Scanning blocks ${currentBlock} to ${endBlock}...`);
-                    
-                    // If we've reached the start block, we're done
-                    if (currentBlock <= startBlock) {
-                      console.log(`Reached initial block ${startBlock}, finished scanning`);
-                      keepFetching = false;
-                    }
-                    
-                    // Add a small delay to prevent rate limiting
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                  } catch (chunkError) {
-                    failedAttempts++;
-                    console.error(`Error fetching chunk ${currentBlock}-${endBlock} (attempt ${failedAttempts}/5):`, chunkError);
-                    
-                    // If we get an error, try a smaller chunk
-                    const newChunkSize = Math.floor(CHUNK_SIZE / 2);
-                    if (newChunkSize < 1000) {
-                      console.log("Chunk size too small, will try a different approach");
-                      
-                      // Try again with a different strategy - skip this problematic range
-                      if (endBlock - currentBlock > 10000) {
-                        console.log("Skipping problematic block range and continuing");
-                        endBlock = currentBlock - 1;
-                        currentBlock = Math.max(startBlock, endBlock - CHUNK_SIZE);
-                        failedAttempts = 0; // Reset counter
-                      } else {
-                        keepFetching = false; // Stop if we can't reduce chunk size further
-                      }
-                    } else {
-                      console.log(`Reducing chunk size to ${newChunkSize} blocks and retrying`);
-                      currentBlock = Math.max(startBlock, endBlock - newChunkSize);
-                    }
-                  }
-                }
-                
-                if (allEvents.length > 0) {
-                  console.log(`Found ${allEvents.length} transactions via Web3 method`);
-                  
-                  // Process events into transactions
-                  transactions = allEvents.map(event => {
-                    try {
-                      const { blockNumber, transactionHash, returnValues } = event;
-                      
-                      // Convert BigInt values to strings before operations
-                      const valueString = returnValues.value.toString();
-                      const valueDecimal = parseInt(tokenInfo.decimals);
-                      const divisor = Math.pow(10, valueDecimal);
-                      // Use parseFloat to handle large numbers better than Number()
-                      const valueNumber = parseFloat(valueString) / divisor;
-                      
-                      return {
-                        tx_hash: transactionHash,
-                        block_number: typeof blockNumber === 'bigint' ? Number(blockNumber) : blockNumber,
-                        block_time: new Date().toISOString(), // We'll try to get actual timestamp later
-                        from_address: returnValues.from,
-                        to_address: returnValues.to,
-                        value_eth: valueNumber.toString(),
-                        gas_used: '0', // Will try to get from tx receipt
-                        status: 'Success',
-                        tx_type: 'Token Transfer',
-                        token_name: tokenInfo.name,
-                        token_symbol: tokenInfo.symbol,
-                        contract_address: contractAddress
-                      };
-                    } catch (parseError) {
-                      console.error('Error processing token transfer data:', parseError, event);
-                      // Provide fallback values
-                      return {
-                        tx_hash: event.transactionHash || 'unknown-hash',
-                        block_number: event.blockNumber ? (typeof event.blockNumber === 'bigint' ? Number(event.blockNumber) : event.blockNumber) : 0,
-                        block_time: new Date().toISOString(),
-                        from_address: event.returnValues?.from || 'Unknown',
-                        to_address: event.returnValues?.to || 'Unknown',
-                        value_eth: '0',
-                        gas_used: '0',
-                        status: 'Success',
-                        tx_type: 'Token Transfer',
-                        token_name: tokenInfo?.name || 'Unknown Token',
-                        token_symbol: tokenInfo?.symbol || 'UNK',
-                        contract_address: contractAddress
-                      };
-                    }
-                  });
-                }
-                
-                if (failedAttempts >= 5) {
-                  console.log("Too many failed attempts, stopping the scan");
-                  setStatusMessage(`Retrieved ${transactions.length} transactions. Some transaction history may be incomplete.`);
-                }
+                console.log("No transactions found for this contract after trying all methods");
               }
             } catch (apiError) {
               console.error("Error fetching transactions:", apiError);
