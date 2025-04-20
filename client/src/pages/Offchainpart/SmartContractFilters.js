@@ -70,6 +70,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [web3Instances, setWeb3Instances] = useState({});
   
+  // Utility function to safely handle potentially BigInt values
+  const safeNumber = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'bigint') return Number(value.toString());
+    if (typeof value === 'string') return parseFloat(value) || 0;
+    return value;
+  };
+  
   // Infura API key
   const INFURA_API_KEY = "47c732e2375c49f7abc412b96ccf87bc";
   
@@ -199,6 +207,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           const latestBlock = await web3.eth.getBlockNumber();
           console.log(`Latest block on ${contract.chain}: ${latestBlock}`);
           
+          // Convert block number to a regular number in case it's a BigInt
+          const latestBlockNum = Number(latestBlock);
+          
           // Check if this is potentially a token contract by trying to load it as an ERC20
           let isTokenContract = false;
           let tokenInfo = null;
@@ -229,41 +240,98 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             try {
               // We can only fetch a limited range of blocks due to Infura restrictions
               // So we'll get the most recent 10000 blocks or about 1-2 days worth
-              const fromBlock = Math.max(0, latestBlock - 10000);
+              // Convert to number to avoid BigInt math operations
+              const fromBlock = Math.max(0, latestBlockNum - 10000);
               
-              console.log(`Fetching Transfer events for token from block ${fromBlock} to ${latestBlock}`);
+              console.log(`Fetching Transfer events for token from block ${fromBlock} to ${latestBlockNum}`);
               
-              const events = await tokenContract.getPastEvents('Transfer', {
-                fromBlock,
-                toBlock: 'latest'
-              });
-              
-              console.log(`Found ${events.length} Transfer events`);
+              let events = [];
+              try {
+                events = await tokenContract.getPastEvents('Transfer', {
+                  fromBlock: fromBlock,
+                  toBlock: 'latest'
+                });
+                console.log(`Found ${events.length} Transfer events`);
+              } catch (transferEventsError) {
+                console.error("Error getting transfer events:", transferEventsError);
+                
+                // Try with a smaller block range if initial attempt fails
+                if (transferEventsError.message && transferEventsError.message.includes("BigInt")) {
+                  console.log("BigInt error detected, trying with a smaller block range");
+                  try {
+                    // Use a much smaller block range
+                    const smallerFromBlock = Math.max(0, latestBlockNum - 1000);
+                    console.log(`Retrying with smaller block range: ${smallerFromBlock} to ${latestBlockNum}`);
+                    
+                    events = await tokenContract.getPastEvents('Transfer', {
+                      fromBlock: smallerFromBlock,
+                      toBlock: 'latest'
+                    });
+                    console.log(`Found ${events.length} Transfer events with smaller range`);
+                  } catch (retryError) {
+                    console.error("Error on retry with smaller block range:", retryError);
+                    // Try one more time with an even smaller range
+                    try {
+                      const tinyFromBlock = Math.max(0, latestBlockNum - 100);
+                      console.log(`Final attempt with tiny block range: ${tinyFromBlock} to ${latestBlockNum}`);
+                      
+                      events = await tokenContract.getPastEvents('Transfer', {
+                        fromBlock: tinyFromBlock,
+                        toBlock: 'latest'
+                      });
+                      console.log(`Found ${events.length} Transfer events with tiny range`);
+                    } catch (finalError) {
+                      console.error("All attempts to get transfer events failed:", finalError);
+                      events = []; // Ensure events is an empty array
+                    }
+                  }
+                }
+              }
               
               // Process token transfer events
               transactions = events.map(event => {
-                const { blockNumber, transactionHash, returnValues } = event;
-                
-                // Convert BigInt values to strings before operations
-                const valueString = returnValues.value.toString();
-                const valueDecimal = parseInt(tokenInfo.decimals);
-                const divisor = Math.pow(10, valueDecimal);
-                const valueNumber = Number(valueString) / divisor;
-                
-                return {
-                  tx_hash: transactionHash,
-                  block_number: blockNumber,
-                  block_time: new Date().toISOString(), // We'll try to get actual timestamp later
-                  from_address: returnValues.from,
-                  to_address: returnValues.to,
-                  value_eth: valueNumber.toString(),
-                  gas_used: '0', // Will try to get from tx receipt
-                  status: 'Success',
-                  tx_type: 'Token Transfer',
-                  token_name: tokenInfo.name,
-                  token_symbol: tokenInfo.symbol,
-                  contract_address: contractAddress
-                };
+                try {
+                  const { blockNumber, transactionHash, returnValues } = event;
+                  
+                  // Convert BigInt values to strings before operations
+                  const valueString = returnValues.value.toString();
+                  const valueDecimal = parseInt(tokenInfo.decimals);
+                  const divisor = Math.pow(10, valueDecimal);
+                  // Use parseFloat to handle large numbers better than Number()
+                  const valueNumber = parseFloat(valueString) / divisor;
+                  
+                  return {
+                    tx_hash: transactionHash,
+                    block_number: typeof blockNumber === 'bigint' ? Number(blockNumber) : blockNumber,
+                    block_time: new Date().toISOString(), // We'll try to get actual timestamp later
+                    from_address: returnValues.from,
+                    to_address: returnValues.to,
+                    value_eth: valueNumber.toString(),
+                    gas_used: '0', // Will try to get from tx receipt
+                    status: 'Success',
+                    tx_type: 'Token Transfer',
+                    token_name: tokenInfo.name,
+                    token_symbol: tokenInfo.symbol,
+                    contract_address: contractAddress
+                  };
+                } catch (parseError) {
+                  console.error('Error processing token transfer data:', parseError);
+                  // Provide fallback values if parsing fails
+                  return {
+                    tx_hash: transactionHash,
+                    block_number: typeof blockNumber === 'bigint' ? Number(blockNumber) : blockNumber,
+                    block_time: new Date().toISOString(),
+                    from_address: returnValues.from || 'Unknown',
+                    to_address: returnValues.to || 'Unknown',
+                    value_eth: '0',
+                    gas_used: '0',
+                    status: 'Success',
+                    tx_type: 'Token Transfer',
+                    token_name: tokenInfo?.name || 'Unknown Token',
+                    token_symbol: tokenInfo?.symbol || 'UNK',
+                    contract_address: contractAddress
+                  };
+                }
               });
               
               // Enhance transfer data with timestamps and gas info
@@ -280,7 +348,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       const block = await web3.eth.getBlock(tx.block_number);
                       if (block) {
                         // Convert timestamp to a Number before multiplying
-                        const timestamp = Number(block.timestamp) * 1000;
+                        const timestamp = safeNumber(block.timestamp) * 1000;
                         tx.block_time = new Date(timestamp).toISOString();
                       }
                       
@@ -288,7 +356,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       const receipt = await web3.eth.getTransactionReceipt(tx.tx_hash);
                       if (receipt) {
                         // Ensure gas values are treated as strings/numbers
-                        tx.gas_used = receipt.gasUsed.toString();
+                        tx.gas_used = receipt.gasUsed ? receipt.gasUsed.toString() : '0';
                         tx.status = receipt.status ? 'Success' : 'Failed';
                       }
                       
@@ -320,8 +388,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               
               const blockNumbers = Array.from(
                 { length: blockCount }, 
-                (_, i) => latestBlock - i
-              ).filter(num => num >= 0);
+                (_, i) => {
+                  // Ensure we're using regular number arithmetic
+                  const result = Number(latestBlockNum) - i;
+                  return result >= 0 ? result : 0;
+                }
+              );
               
               const blocks = await Promise.all(
                 blockNumbers.map(blockNum => 
@@ -348,44 +420,49 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               console.log(`Found ${contractTxs.length} transactions in recent blocks`);
               
               // Format transactions
-              transactions = await Promise.all(contractTxs.map(async (tx) => {
-                let status = 'Unknown';
-                let gasUsed = '0';
-                let blockTimestamp = Date.now(); // Default to current time
-                
-                try {
-                  // Get transaction receipt
-                  const receipt = await web3.eth.getTransactionReceipt(tx.hash);
-                  if (receipt) {
-                    status = receipt.status ? 'Success' : 'Failed';
-                    gasUsed = receipt.gasUsed.toString();
+              try {
+                transactions = await Promise.all(contractTxs.map(async (tx) => {
+                  let status = 'Unknown';
+                  let gasUsed = '0';
+                  let blockTimestamp = Date.now(); // Default to current time
+                  
+                  try {
+                    // Get transaction receipt
+                    const receipt = await web3.eth.getTransactionReceipt(tx.hash);
+                    if (receipt) {
+                      status = receipt.status ? 'Success' : 'Failed';
+                      gasUsed = receipt.gasUsed ? receipt.gasUsed.toString() : '0';
+                    }
+                    
+                    // Get block timestamp if we have the block number
+                    if (tx.blockNumber) {
+                      const block = await web3.eth.getBlock(tx.blockNumber);
+                      if (block && block.timestamp) {
+                        // Convert timestamp to a Number before multiplying
+                        blockTimestamp = safeNumber(block.timestamp) * 1000; // Convert to milliseconds
+                      }
+                    }
+                  } catch (receiptError) {
+                    console.error(`Error getting receipt for ${tx.hash}:`, receiptError);
                   }
                   
-                  // Get block timestamp if we have the block number
-                  if (tx.blockNumber) {
-                    const block = await web3.eth.getBlock(tx.blockNumber);
-                    if (block && block.timestamp) {
-                      // Convert timestamp to a Number before multiplying
-                      blockTimestamp = Number(block.timestamp) * 1000; // Convert to milliseconds
-                    }
-                  }
-                } catch (receiptError) {
-                  console.error(`Error getting receipt for ${tx.hash}:`, receiptError);
-                }
-                
-                return {
-                  tx_hash: tx.hash,
-                  block_number: tx.blockNumber,
-                  block_time: new Date(blockTimestamp).toISOString(),
-                  from_address: tx.from,
-                  to_address: tx.to || 'Contract Creation',
-                  value_eth: web3.utils.fromWei(tx.value.toString(), 'ether'),
-                  gas_used: gasUsed,
-                  status: status,
-                  tx_type: tx.input && tx.input.length > 10 ? 'Contract Interaction' : 'Transfer',
-                  input_data: tx.input
-                };
-              }));
+                  return {
+                    tx_hash: tx.hash,
+                    block_number: safeNumber(tx.blockNumber),
+                    block_time: new Date(blockTimestamp).toISOString(),
+                    from_address: tx.from,
+                    to_address: tx.to || 'Contract Creation',
+                    value_eth: web3.utils.fromWei(tx.value ? tx.value.toString() : '0', 'ether'),
+                    gas_used: gasUsed,
+                    status: status,
+                    tx_type: tx.input && tx.input.length > 10 ? 'Contract Interaction' : 'Transfer',
+                    input_data: tx.input
+                  };
+                }));
+              } catch (formatError) {
+                console.error("Error formatting transactions:", formatError);
+                transactions = []; // Reset to empty array on error
+              }
             } catch (txError) {
               console.error('Error fetching contract transactions:', txError);
             }
