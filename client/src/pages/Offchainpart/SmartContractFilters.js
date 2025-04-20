@@ -244,13 +244,19 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               transactions = events.map(event => {
                 const { blockNumber, transactionHash, returnValues } = event;
                 
+                // Convert BigInt values to strings before operations
+                const valueString = returnValues.value.toString();
+                const valueDecimal = parseInt(tokenInfo.decimals);
+                const divisor = Math.pow(10, valueDecimal);
+                const valueNumber = Number(valueString) / divisor;
+                
                 return {
                   tx_hash: transactionHash,
                   block_number: blockNumber,
                   block_time: new Date().toISOString(), // We'll try to get actual timestamp later
                   from_address: returnValues.from,
                   to_address: returnValues.to,
-                  value_eth: (parseInt(returnValues.value) / (10 ** tokenInfo.decimals)).toString(),
+                  value_eth: valueNumber.toString(),
                   gas_used: '0', // Will try to get from tx receipt
                   status: 'Success',
                   tx_type: 'Token Transfer',
@@ -273,13 +279,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       // Get block for timestamp
                       const block = await web3.eth.getBlock(tx.block_number);
                       if (block) {
-                        tx.block_time = new Date(block.timestamp * 1000).toISOString();
+                        // Convert timestamp to a Number before multiplying
+                        const timestamp = Number(block.timestamp) * 1000;
+                        tx.block_time = new Date(timestamp).toISOString();
                       }
                       
                       // Get receipt for gas info and status
                       const receipt = await web3.eth.getTransactionReceipt(tx.tx_hash);
                       if (receipt) {
-                        tx.gas_used = receipt.gasUsed;
+                        // Ensure gas values are treated as strings/numbers
+                        tx.gas_used = receipt.gasUsed.toString();
                         tx.status = receipt.status ? 'Success' : 'Failed';
                       }
                       
@@ -349,14 +358,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   const receipt = await web3.eth.getTransactionReceipt(tx.hash);
                   if (receipt) {
                     status = receipt.status ? 'Success' : 'Failed';
-                    gasUsed = receipt.gasUsed;
+                    gasUsed = receipt.gasUsed.toString();
                   }
                   
                   // Get block timestamp if we have the block number
                   if (tx.blockNumber) {
                     const block = await web3.eth.getBlock(tx.blockNumber);
                     if (block && block.timestamp) {
-                      blockTimestamp = block.timestamp * 1000; // Convert to milliseconds
+                      // Convert timestamp to a Number before multiplying
+                      blockTimestamp = Number(block.timestamp) * 1000; // Convert to milliseconds
                     }
                   }
                 } catch (receiptError) {
@@ -369,7 +379,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   block_time: new Date(blockTimestamp).toISOString(),
                   from_address: tx.from,
                   to_address: tx.to || 'Contract Creation',
-                  value_eth: web3.utils.fromWei(tx.value, 'ether'),
+                  value_eth: web3.utils.fromWei(tx.value.toString(), 'ether'),
                   gas_used: gasUsed,
                   status: status,
                   tx_type: tx.input && tx.input.length > 10 ? 'Contract Interaction' : 'Transfer',
@@ -557,7 +567,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       const smallerHex = amountHex.substring(24); // Remove leading zeros
                       const rawAmount = parseInt('0x' + smallerHex, 16);
                       const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                      tokenAmount = rawAmount / 10**decimals; // Use actual decimals if available
+                      tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
                       readableAmount = tokenAmount.toFixed(6);
                     } else {
                       // For larger amounts, we'll make an approximation
@@ -616,7 +626,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
                 from_address: tx.from,
                 to_address: tx.to,
-                value_eth: (parseInt(tx.value) / 1e18).toString(),
+                value_eth: (parseFloat(tx.value) / 1e18).toString(),
                 gas_used: tx.gasUsed,
                 status: tx.isError === '0' ? 'Success' : 'Failed',
                 tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
@@ -676,13 +686,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               const symbol = tx.tokenSymbol || tx.symbol || 'tokens';
               const name = tx.tokenName || tx.name || 'Unknown Token';
               
+              // Convert value to a number safely
+              const rawValue = tx.value || '0';
+              const valueNum = parseFloat(rawValue);
+              const decimalNum = parseInt(decimals);
+              const divisor = Math.pow(10, decimalNum);
+              const formattedValue = (valueNum / divisor).toFixed(6);
+              
               return {
                 tx_hash: tx.hash,
                 block_number: parseInt(tx.blockNumber),
                 block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
                 from_address: tx.from,
                 to_address: tx.to,
-                value_eth: `${(Number(tx.value) / Math.pow(10, parseInt(decimals))).toFixed(6)} ${symbol}`,
+                value_eth: `${formattedValue} ${symbol}`,
                 token_name: name,
                 token_symbol: symbol,
                 gas_used: tx.gasUsed,
@@ -726,7 +743,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
               from_address: tx.from,
               to_address: tx.to,
-              value_eth: (parseInt(tx.value) / 1e18).toString(),
+              value_eth: (parseFloat(tx.value) / 1e18).toString(),
               gas_used: '0', // Internal transactions don't have separate gas
               status: 'Success', // Internal txs are typically successful operations
               tx_type: 'Internal'
