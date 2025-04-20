@@ -807,29 +807,81 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       let transactions = [];
       
       try {
-        // First, try to get regular transactions
-        const normalTxResponse = await axios.get(apiBaseUrl, {
-          params: {
-            module: 'account',
-            action: 'txlist',
-            address: contractAddress,
-            startblock: 0,
-            endblock: 99999999,
-            page: 1,
-            offset: 50, // Get up to 50 transactions
-            sort: 'desc',
-            apikey: apiKey
-          }
-        });
+        // First, try to get regular transactions with pagination
+        let allTxs = [];
+        let currentPage = 1;
+        const txsPerPage = 1000; // Increased from 50 to 1000
+        const maxPages = 10; // Limit to 10 pages to avoid too many requests
+        let hasMoreTxs = true;
         
-        console.log("API Response:", normalTxResponse.data);
+        console.log(`Fetching transactions with pagination (${txsPerPage} per page, max ${maxPages} pages)`);
+        setStatusMessage("Fetching transaction history... Please wait.");
+        
+        while (hasMoreTxs && currentPage <= maxPages) {
+          console.log(`Fetching transaction page ${currentPage}...`);
+          
+          // When using higher page numbers, we need to reduce the offset to avoid "Result window too large" errors
+          // Maximum allowed is typically 10,000 results (page * offset <= 10000)
+          let effectiveOffset = txsPerPage;
+          if (currentPage * txsPerPage > 10000) {
+            effectiveOffset = Math.floor(10000 / currentPage);
+            console.log(`Adjusted offset to ${effectiveOffset} for page ${currentPage} to stay under limit`);
+          }
+          
+          const normalTxResponse = await axios.get(apiBaseUrl, {
+            params: {
+              module: 'account',
+              action: 'txlist',
+              address: contractAddress,
+              startblock: 0,
+              endblock: 99999999,
+              page: currentPage,
+              offset: effectiveOffset,
+              sort: 'desc',
+              apikey: apiKey
+            }
+          });
+          
+          if (currentPage === 1) {
+            console.log("First page API Response:", normalTxResponse.data);
+          }
+          
+          // Check for API errors or empty results
+          if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
+            const pageTxs = normalTxResponse.data.result;
+            console.log(`Found ${pageTxs.length} transactions on page ${currentPage}`);
+            
+            // Add to our collection
+            allTxs = [...allTxs, ...pageTxs];
+            
+            // Update UI with progress
+            setStatusMessage(`Found ${allTxs.length} transactions so far...`);
+            
+            // Check if we should fetch more
+            if (pageTxs.length < effectiveOffset) {
+              // We got fewer transactions than requested, so there are no more
+              hasMoreTxs = false;
+              console.log("Reached end of transactions");
+            } else {
+              // Small delay to avoid rate limits
+              await new Promise(resolve => setTimeout(resolve, 200));
+              currentPage++;
+            }
+          } else {
+            // Error or no results
+            console.warn('API returned status other than 1:', normalTxResponse.data.message || 'Unknown error');
+            hasMoreTxs = false;
+          }
+        }
+        
+        console.log(`Total transactions found: ${allTxs.length}`);
         
         // When working with BNB chain, let's also get the token details for any contracts
         let tokenDetailsCache = {};
         
-        if (contract.chain === 'Bnb' && normalTxResponse.data.status === '1') {
+        if (contract.chain === 'Bnb' && allTxs.length > 0) {
           // Collect all potential token contract addresses
-          const potentialTokenAddresses = normalTxResponse.data.result
+          const potentialTokenAddresses = allTxs
             .filter(tx => tx.value === "0" && tx.functionName && tx.functionName.includes('transfer'))
             .map(tx => tx.to);
           
@@ -866,167 +918,194 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }
         }
         
-        // Check for API errors
-        if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
-          transactions = normalTxResponse.data.result.map(tx => {
-            // Check if this is a token transfer transaction (has function name and 0 BNB value)
-            const isTokenTransfer = 
-              tx.functionName && 
-              tx.functionName.includes('transfer') && 
-              tx.value === '0' && 
-              contract.chain === 'Bnb';
+        // Process all the transactions we found
+        transactions = allTxs.map(tx => {
+          // Check if this is a token transfer transaction (has function name and 0 BNB value)
+          const isTokenTransfer = 
+            tx.functionName && 
+            tx.functionName.includes('transfer') && 
+            tx.value === '0' && 
+            contract.chain === 'Bnb';
+          
+          if (isTokenTransfer) {
+            console.log("Found token transfer in regular transactions:", tx);
             
-            if (isTokenTransfer) {
-              console.log("Found token transfer in regular transactions:", tx);
-              
-              // This looks like a token transfer, so let's check if we can decode the token info
-              let tokenValue = "Unknown";
-              let tokenType = "BEP-20 Token";
-              let tokenName = "BEP-20 Token";
-              let tokenSymbol = "TOKEN";
-              let usdValue = null;
-              
-              // Check if we have cached token details
-              const tokenContractAddress = tx.to.toLowerCase();
-              if (tokenDetailsCache[tokenContractAddress]) {
-                const tokenInfo = tokenDetailsCache[tokenContractAddress];
-                tokenName = tokenInfo.name;
-                tokenSymbol = tokenInfo.symbol;
-                console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
-              }
-              
-              // Attempt to parse input data
-              if (tx.input && tx.input.length > 10) {
-                console.log("Token transfer input data:", tx.input);
-                // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
-                if (tx.input.startsWith('0xa9059cbb')) {
-                  try {
-                    // Extract the amount from the input data, which is the last 64 characters
-                    const amountHex = tx.input.substring(tx.input.length - 64);
-                    // Use parseInt for small numbers or a workaround for larger numbers
-                    // This is a simplified approach since BigInt isn't available
-                    let readableAmount = 0;
-                    let tokenAmount = 0;
+            // This looks like a token transfer, so let's check if we can decode the token info
+            let tokenValue = "Unknown";
+            let tokenType = "BEP-20 Token";
+            let tokenName = "BEP-20 Token";
+            let tokenSymbol = "TOKEN";
+            let usdValue = null;
+            
+            // Check if we have cached token details
+            const tokenContractAddress = tx.to.toLowerCase();
+            if (tokenDetailsCache[tokenContractAddress]) {
+              const tokenInfo = tokenDetailsCache[tokenContractAddress];
+              tokenName = tokenInfo.name;
+              tokenSymbol = tokenInfo.symbol;
+              console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
+            }
+            
+            // Attempt to parse input data
+            if (tx.input && tx.input.length > 10) {
+              console.log("Token transfer input data:", tx.input);
+              // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
+              if (tx.input.startsWith('0xa9059cbb')) {
+                try {
+                  // Extract the amount from the input data, which is the last 64 characters
+                  const amountHex = tx.input.substring(tx.input.length - 64);
+                  // Use parseInt for small numbers or a workaround for larger numbers
+                  // This is a simplified approach since BigInt isn't available
+                  let readableAmount = 0;
+                  let tokenAmount = 0;
+                  
+                  if (amountHex.startsWith('000000000000000000000000')) {
+                    // This is likely a small number we can parse directly
+                    const smallerHex = amountHex.substring(24); // Remove leading zeros
+                    const rawAmount = parseInt('0x' + smallerHex, 16);
+                    const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
+                    tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
+                    readableAmount = tokenAmount.toFixed(6);
+                  } else {
+                    // For larger amounts, we'll make an approximation
+                    // Count significant digits and make an estimate
+                    let significantHex = amountHex.replace(/^0+/, '');
+                    const magnitude = significantHex.length * 4; // Each hex char is 4 bits
                     
-                    if (amountHex.startsWith('000000000000000000000000')) {
-                      // This is likely a small number we can parse directly
-                      const smallerHex = amountHex.substring(24); // Remove leading zeros
-                      const rawAmount = parseInt('0x' + smallerHex, 16);
-                      const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                      tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
-                      readableAmount = tokenAmount.toFixed(6);
+                    // Get first few digits for approximation
+                    const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
+                    const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
+                    
+                    tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
+                    
+                    if (tokenAmount > 1000) {
+                      readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
                     } else {
-                      // For larger amounts, we'll make an approximation
-                      // Count significant digits and make an estimate
-                      let significantHex = amountHex.replace(/^0+/, '');
-                      const magnitude = significantHex.length * 4; // Each hex char is 4 bits
-                      
-                      // Get first few digits for approximation
-                      const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
-                      const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
-                      
-                      tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
-                      
-                      if (tokenAmount > 1000) {
-                        readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
-                      } else {
-                        readableAmount = tokenAmount.toFixed(6);
-                      }
+                      readableAmount = tokenAmount.toFixed(6);
                     }
-                    
-                    // Get token pricing information separately - can't use await in map function
-                    if (contract.chain === 'Bnb' && tokenContractAddress) {
-                      console.log(`Will check pricing for token ${tokenSymbol} later`);
-                      // Price info would need external API integration
-                    }
-                    
-                    tokenValue = `${readableAmount} ${tokenSymbol}`;
-                    console.log("Decoded token amount:", tokenValue);
-                  } catch (error) {
-                    console.error("Error decoding token amount:", error);
                   }
+                  
+                  // Get token pricing information separately - can't use await in map function
+                  if (contract.chain === 'Bnb' && tokenContractAddress) {
+                    console.log(`Will check pricing for token ${tokenSymbol} later`);
+                    // Price info would need external API integration
+                  }
+                  
+                  tokenValue = `${readableAmount} ${tokenSymbol}`;
+                  console.log("Decoded token amount:", tokenValue);
+                } catch (error) {
+                  console.error("Error decoding token amount:", error);
                 }
               }
+            }
+            
+            // Create a special token transfer record
+            return {
+              tx_hash: tx.hash,
+              block_number: parseInt(tx.blockNumber),
+              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+              from_address: tx.from,
+              to_address: tx.to,
+              value_eth: tokenValue,
+              gas_used: tx.gasUsed,
+              status: tx.isError === '0' ? 'Success' : 'Failed',
+              tx_type: 'Token Transfer',
+              contract_address: tx.to, // The token contract is likely the "to" address
+              token_name: tokenName,
+              token_symbol: tokenSymbol,
+              usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A'
+            };
+          } else {
+            // Regular transaction
+            return {
+              tx_hash: tx.hash,
+              block_number: parseInt(tx.blockNumber),
+              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+              from_address: tx.from,
+              to_address: tx.to,
+              value_eth: (parseFloat(tx.value) / 1e18).toString(),
+              gas_used: tx.gasUsed,
+              status: tx.isError === '0' ? 'Success' : 'Failed',
+              tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
+            };
+          }
+        });
+        
+        // If we found no regular transactions, try token transfers
+        if (transactions.length === 0) {
+          console.log("No regular transactions found, fetching token transfers instead");
+          
+          // Now try to get token transfers with proper pagination
+          let allTokenTxs = [];
+          currentPage = 1;
+          hasMoreTxs = true;
+          
+          while (hasMoreTxs && currentPage <= maxPages) {
+            console.log(`Fetching token transfer page ${currentPage}...`);
+            
+            // Same window size adjustment as with regular transactions
+            let effectiveOffset = txsPerPage;
+            if (currentPage * txsPerPage > 10000) {
+              effectiveOffset = Math.floor(10000 / currentPage);
+              console.log(`Adjusted offset to ${effectiveOffset} for page ${currentPage} to stay under limit`);
+            }
+            
+            // For BNB Chain specifically, adjust the endpoint
+            let tokenTxAction = 'tokentx'; // Default ERC-20 token transfers
+            
+            try {
+              const tokenTxResponse = await axios.get(apiBaseUrl, {
+                params: {
+                  module: 'account',
+                  action: tokenTxAction,
+                  address: contractAddress,
+                  page: currentPage,
+                  offset: effectiveOffset,
+                  sort: 'desc',
+                  apikey: apiKey
+                }
+              });
               
-              // Create a special token transfer record
-              return {
-                tx_hash: tx.hash,
-                block_number: parseInt(tx.blockNumber),
-                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                from_address: tx.from,
-                to_address: tx.to,
-                value_eth: tokenValue,
-                gas_used: tx.gasUsed,
-                status: tx.isError === '0' ? 'Success' : 'Failed',
-                tx_type: 'Token Transfer',
-                contract_address: tx.to, // The token contract is likely the "to" address
-                token_name: tokenName,
-                token_symbol: tokenSymbol,
-                usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A'
-              };
-            } else {
-              // Regular transaction
-              return {
-                tx_hash: tx.hash,
-                block_number: parseInt(tx.blockNumber),
-                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                from_address: tx.from,
-                to_address: tx.to,
-                value_eth: (parseFloat(tx.value) / 1e18).toString(),
-                gas_used: tx.gasUsed,
-                status: tx.isError === '0' ? 'Success' : 'Failed',
-                tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
-              };
-            }
-          });
-        } else {
-          console.warn('API returned status other than 1:', normalTxResponse.data.message || 'Unknown error');
-          
-          if (normalTxResponse.data.message === 'No transactions found') {
-            console.log("No regular transactions found for this contract, will try token transfers");
-          }
-        }
-      } catch (fetchError) {
-        console.error(`Error fetching transactions from ${apiBaseUrl}:`, fetchError);
-      }
-      
-      // Try to get token/NFT transfers if no regular transactions were found
-      if (transactions.length === 0) {
-        try {
-          console.log("Fetching token transfers instead");
-          
-          // For BNB Chain specifically, adjust the endpoint
-          let tokenTxAction = 'tokentx'; // Default ERC-20 token transfers
-          
-          if (contract.chain === 'Bnb') {
-            console.log("Using BNB-specific token transfer endpoint");
-            // BscScan supports BEP-20 token transfers with the same endpoint
-            tokenTxAction = 'tokentx'; 
-          }
-          
-          console.log(`Using token transfer action: ${tokenTxAction} for ${contract.chain}`);
-          
-          const tokenTxResponse = await axios.get(apiBaseUrl, {
-            params: {
-              module: 'account',
-              action: tokenTxAction,
-              address: contractAddress,
-              page: 1,
-              offset: 50,
-              sort: 'desc',
-              apikey: apiKey
-            }
-          });
-          
-          console.log("Token TX Response:", tokenTxResponse.data);
-          
-          if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
-            const tokenTransfers = tokenTxResponse.data.result.map(tx => {
-              // Log a full token transfer record to help identify field structure
-              if (contract.chain === 'Bnb') {
-                console.log("Example BEP-20 token transfer:", tx);
+              if (currentPage === 1) {
+                console.log("Token TX First Page Response:", tokenTxResponse.data);
               }
               
+              if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
+                const pageTokenTxs = tokenTxResponse.data.result;
+                console.log(`Found ${pageTokenTxs.length} token transfers on page ${currentPage}`);
+                
+                // Add to our collection
+                allTokenTxs = [...allTokenTxs, ...pageTokenTxs];
+                
+                // Update UI with progress
+                setStatusMessage(`Found ${allTokenTxs.length} token transfers so far...`);
+                
+                // Check if we should fetch more
+                if (pageTokenTxs.length < effectiveOffset) {
+                  // We got fewer transactions than requested, so there are no more
+                  hasMoreTxs = false;
+                  console.log("Reached end of token transfers");
+                } else {
+                  // Small delay to avoid rate limits
+                  await new Promise(resolve => setTimeout(resolve, 200));
+                  currentPage++;
+                }
+              } else {
+                // Error or no results
+                console.warn('API returned status other than 1:', tokenTxResponse.data.message || 'Unknown error');
+                hasMoreTxs = false;
+              }
+            } catch (tokenError) {
+              console.error("Error fetching token transfers:", tokenError);
+              hasMoreTxs = false;
+            }
+          }
+          
+          console.log(`Total token transfers found: ${allTokenTxs.length}`);
+          
+          // Process token transfers
+          if (allTokenTxs.length > 0) {
+            const tokenTransfers = allTokenTxs.map(tx => {
               // Handle possible missing fields for different explorers
               const decimals = tx.tokenDecimal || tx.decimals || '18';
               const symbol = tx.tokenSymbol || tx.symbol || 'tokens';
@@ -1056,34 +1135,81 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             
             transactions = tokenTransfers;
             console.log("Found token transfers:", tokenTransfers.length);
-          } else {
-            console.log("No token transfers found either:", tokenTxResponse.data.message || 'Unknown reason');
           }
-        } catch (tokenError) {
-          console.error("Error fetching token transfers:", tokenError);
         }
-      }
-      
-      // If still no transactions, try internal transactions as last resort
-      if (transactions.length === 0) {
-        try {
-          console.log("Fetching internal transactions as last resort");
-          const internalTxResponse = await axios.get(apiBaseUrl, {
-            params: {
-              module: 'account',
-              action: 'txlistinternal',
-              address: contractAddress,
-              page: 1,
-              offset: 50,
-              sort: 'desc',
-              apikey: apiKey
+        
+        // If still no transactions, try internal transactions as last resort
+        if (transactions.length === 0) {
+          console.log("No regular or token transactions found, trying internal transactions as last resort");
+          
+          // Now try to get internal transactions with proper pagination
+          let allInternalTxs = [];
+          currentPage = 1;
+          hasMoreTxs = true;
+          
+          while (hasMoreTxs && currentPage <= maxPages) {
+            console.log(`Fetching internal transaction page ${currentPage}...`);
+            
+            // Same window size adjustment as with other transaction types
+            let effectiveOffset = txsPerPage;
+            if (currentPage * txsPerPage > 10000) {
+              effectiveOffset = Math.floor(10000 / currentPage);
+              console.log(`Adjusted offset to ${effectiveOffset} for page ${currentPage} to stay under limit`);
             }
-          });
+            
+            try {
+              const internalTxResponse = await axios.get(apiBaseUrl, {
+                params: {
+                  module: 'account',
+                  action: 'txlistinternal',
+                  address: contractAddress,
+                  page: currentPage,
+                  offset: effectiveOffset,
+                  sort: 'desc',
+                  apikey: apiKey
+                }
+              });
+              
+              if (currentPage === 1) {
+                console.log("Internal TX First Page Response:", internalTxResponse.data);
+              }
+              
+              if (internalTxResponse.data.status === '1' && Array.isArray(internalTxResponse.data.result)) {
+                const pageInternalTxs = internalTxResponse.data.result;
+                console.log(`Found ${pageInternalTxs.length} internal transfers on page ${currentPage}`);
+                
+                // Add to our collection
+                allInternalTxs = [...allInternalTxs, ...pageInternalTxs];
+                
+                // Update UI with progress
+                setStatusMessage(`Found ${allInternalTxs.length} internal transactions so far...`);
+                
+                // Check if we should fetch more
+                if (pageInternalTxs.length < effectiveOffset) {
+                  // We got fewer transactions than requested, so there are no more
+                  hasMoreTxs = false;
+                  console.log("Reached end of internal transactions");
+                } else {
+                  // Small delay to avoid rate limits
+                  await new Promise(resolve => setTimeout(resolve, 200));
+                  currentPage++;
+                }
+              } else {
+                // Error or no results
+                console.warn('API returned status other than 1:', internalTxResponse.data.message || 'Unknown error');
+                hasMoreTxs = false;
+              }
+            } catch (internalError) {
+              console.error("Error fetching internal transactions:", internalError);
+              hasMoreTxs = false;
+            }
+          }
           
-          console.log("Internal TX Response:", internalTxResponse.data);
+          console.log(`Total internal transactions found: ${allInternalTxs.length}`);
           
-          if (internalTxResponse.data.status === '1' && Array.isArray(internalTxResponse.data.result)) {
-            const internalTxs = internalTxResponse.data.result.map(tx => ({
+          // Process internal transactions
+          if (allInternalTxs.length > 0) {
+            const internalTxs = allInternalTxs.map(tx => ({
               tx_hash: tx.hash,
               block_number: parseInt(tx.blockNumber),
               block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
@@ -1097,30 +1223,52 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             
             transactions = internalTxs;
             console.log("Found internal transactions:", internalTxs.length);
-          } else {
-            console.log("No internal transactions found either:", internalTxResponse.data.message || 'Unknown reason');
           }
-        } catch (internalError) {
-          console.error("Error fetching internal transactions:", internalError);
         }
-      }
-      
-      // Update state with the transactions
-      setContractTransactions(transactions);
-      
-      // Log transactions to console
-      console.log("Smart Contract Transactions:", {
-        contract: {
-          address: contract.address,
-          name: contract.name || 'Unnamed Contract',
-          chain: contract.chain
-        },
-        transactionCount: transactions.length,
-        transactions: transactions
-      });
-      
-      if (transactions.length === 0) {
-        console.log("No transactions found for this contract after trying all methods");
+
+        // If we found a large number of transactions, display a message and limit what we show in the UI
+        const displayLimit = 1000;
+        if (transactions.length > displayLimit) {
+          console.log(`Found ${transactions.length} total transactions, showing ${displayLimit} most recent in UI`);
+          setStatusMessage(`Found ${transactions.length} total transactions. Showing ${displayLimit} most recent in UI.`);
+          // Limit what we display but keep all transactions for analysis
+          setContractTransactions(transactions.slice(0, displayLimit));
+        } else {
+          setContractTransactions(transactions);
+          setStatusMessage(`Showing all ${transactions.length} transactions found for this contract.`);
+        }
+        
+        // Log transactions to console
+        console.log("Smart Contract Transactions:", {
+          contract: {
+            address: contract.address,
+            name: contract.name || 'Unnamed Contract',
+            chain: contract.chain
+          },
+          transactionCount: transactions.length,
+          // Only log up to 100 transactions to avoid console overload
+          transactions: transactions.slice(0, 100)
+        });
+        
+        if (transactions.length === 0) {
+          console.log("No transactions found for this contract after trying all methods");
+          setStatusMessage("No transactions found for this contract.");
+        }
+        
+      } catch (error) {
+        console.error("Error in transaction fetching process:", error);
+        
+        if (error.response) {
+          console.error("API response details:", {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data
+          });
+        }
+        
+        setStatusMessage("Error retrieving transactions. Please try again later.");
+      } finally {
+        setIsLoadingTransactions(false);
       }
     } catch (error) {
       console.error("Error in transaction fetching process:", error);
@@ -1132,6 +1280,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           data: error.response.data
         });
       }
+      
+      setStatusMessage("Error retrieving transactions. Please try again later.");
     } finally {
       setIsLoadingTransactions(false);
     }
