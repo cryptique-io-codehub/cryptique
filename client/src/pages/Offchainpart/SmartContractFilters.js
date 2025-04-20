@@ -170,13 +170,36 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   try {
                     // Extract the amount from the input data, which is the last 64 characters
                     const amountHex = tx.input.substring(tx.input.length - 64);
-                    const amountBigInt = BigInt('0x' + amountHex);
-                    // Assume decimal places (usually 18 for most tokens)
-                    const decimals = 18;
-                    // Convert to readable form
-                    const readableAmount = Number(amountBigInt / BigInt(10**16)) / 100;
-                    tokenValue = `${readableAmount.toFixed(6)} tokens`;
-                    console.log("Decoded token amount:", tokenValue);
+                    // Use parseInt for small numbers or a workaround for larger numbers
+                    // This is a simplified approach since BigInt isn't available
+                    let readableAmount = 0;
+                    
+                    if (amountHex.startsWith('000000000000000000000000')) {
+                      // This is likely a small number we can parse directly
+                      const smallerHex = amountHex.substring(24); // Remove leading zeros
+                      const rawAmount = parseInt('0x' + smallerHex, 16);
+                      readableAmount = rawAmount / 10**18; // Assuming 18 decimals
+                    } else {
+                      // For larger amounts, we'll make an approximation
+                      // Count significant digits and make an estimate
+                      let significantHex = amountHex.replace(/^0+/, '');
+                      const magnitude = significantHex.length * 4; // Each hex char is 4 bits
+                      
+                      // Get first few digits for approximation
+                      const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
+                      const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
+                      
+                      readableAmount = firstDigits * 10**(scale - 6); // Scale to millions
+                      
+                      if (readableAmount > 1000) {
+                        readableAmount = Math.round(readableAmount) / 10**3 + 'K';
+                      } else {
+                        readableAmount = readableAmount.toFixed(6);
+                      }
+                    }
+                    
+                    tokenValue = `${readableAmount} tokens`;
+                    console.log("Decoded approximate token amount:", tokenValue);
                   } catch (error) {
                     console.error("Error decoding token amount:", error);
                   }
