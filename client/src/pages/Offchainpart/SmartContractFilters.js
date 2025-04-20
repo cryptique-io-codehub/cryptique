@@ -1003,25 +1003,121 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Process all the transactions we found
         transactions = allTxs.map(tx => {
-          // Check if this is a token transfer transaction (has function name and 0 BNB value)
-          const isTokenTransfer = 
+          // Check if this is a token transfer transaction (has function name and 0 value)
+          const isZeroValue = tx.value === "0" || parseFloat(tx.value) === 0;
+          const hasFunctionNameIndicatingTransfer = 
             tx.functionName && 
-            tx.functionName.includes('transfer') && 
-            tx.value === '0' && 
-            contract.chain === 'Bnb';
+            (tx.functionName.toLowerCase().includes('transfer') || 
+             tx.functionName.toLowerCase().includes('mint') ||
+             tx.functionName.toLowerCase().includes('approve'));
+            
+          const isTokenTransfer = isZeroValue && (hasFunctionNameIndicatingTransfer || (tx.input && tx.input.length > 10));
+          
+          // More aggressive detection for Base and other L2s where explorer data might be limited
+          if (isZeroValue && tx.input && tx.input.length >= 138) {
+            console.log(`Potential token transfer detected on ${contract.chain} - Transaction hash: ${tx.hash}`);
+            console.log(`Input data: ${tx.input.substring(0, 40)}...`);
+            
+            // Check if input matches ERC-20 transfer method signature (0xa9059cbb)
+            const isErc20Transfer = tx.input.startsWith('0xa9059cbb');
+            const isErc20TransferFrom = tx.input.startsWith('0x23b872dd');
+            const isErc20Approve = tx.input.startsWith('0x095ea7b3');
+            
+            if (isErc20Transfer || isErc20TransferFrom || isErc20Approve) {
+              console.log(`Confirmed ERC-20 method signature: ${tx.input.substring(0, 10)}`);
+              
+              try {
+                // For transfer (0xa9059cbb): recipient address starts at position 10, length 64
+                // For transferFrom (0x23b872dd): sender at 10, recipient at 74, length 64 each
+                // For approve (0x095ea7b3): spender address starts at position 10, length 64
+                
+                let recipientAddress = "0x";
+                let tokenMethod = "Unknown";
+                
+                if (isErc20Transfer) {
+                  // Extract recipient address (removing padding)
+                  const rawAddress = tx.input.substring(10, 74);
+                  recipientAddress = "0x" + rawAddress.substring(24); // Remove leading zeros
+                  tokenMethod = "transfer";
+                } else if (isErc20TransferFrom) {
+                  // Extract recipient address from second parameter
+                  const rawAddress = tx.input.substring(74, 138);
+                  recipientAddress = "0x" + rawAddress.substring(24); // Remove leading zeros
+                  tokenMethod = "transferFrom";
+                } else if (isErc20Approve) {
+                  // Extract spender address
+                  const rawAddress = tx.input.substring(10, 74);
+                  recipientAddress = "0x" + rawAddress.substring(24); // Remove leading zeros
+                  tokenMethod = "approve";
+                }
+                
+                // Extract amount (last 64 chars of input)
+                const amountHex = tx.input.substring(tx.input.length - 64);
+                
+                // Try to decode token details from contract if not provided by explorer
+                let tokenName = "ERC-20 Token";
+                let tokenSymbol = "TOKEN";
+                
+                // If we have token details cached, use those
+                const contractKey = tx.to ? tx.to.toLowerCase() : "";
+                if (tokenDetailsCache[contractKey]) {
+                  tokenName = tokenDetailsCache[contractKey].name;
+                  tokenSymbol = tokenDetailsCache[contractKey].symbol;
+                }
+                
+                // Parse amount with safer handling
+                let tokenAmount = "Unknown Amount";
+                try {
+                  // Remove leading zeros
+                  const significantHex = amountHex.replace(/^0+/, '');
+                  // If it's a small enough number, parse directly
+                  if (significantHex.length <= 14) { // ~48 bits should be safe
+                    const rawAmount = parseInt("0x" + significantHex, 16);
+                    // Assume 18 decimals for most tokens
+                    const decimals = 18;
+                    const readableAmount = rawAmount / Math.pow(10, decimals);
+                    tokenAmount = readableAmount.toFixed(6);
+                  } else {
+                    // For very large numbers, show a placeholder
+                    tokenAmount = "Large Amount";
+                  }
+                } catch (amountError) {
+                  console.error("Error parsing token amount:", amountError);
+                }
+                
+                // Create token transfer record
+                return {
+                  tx_hash: tx.hash,
+                  block_number: parseInt(tx.blockNumber),
+                  block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                  from_address: tx.from,
+                  to_address: recipientAddress,
+                  value_eth: `${tokenAmount} ${tokenSymbol}`,
+                  gas_used: tx.gasUsed,
+                  status: tx.isError === '0' ? 'Success' : 'Failed',
+                  tx_type: `Token ${tokenMethod}`,
+                  token_name: tokenName,
+                  token_symbol: tokenSymbol,
+                  contract_address: tx.to // The token contract address
+                };
+              } catch (decodeError) {
+                console.error("Error decoding ERC-20 transfer data:", decodeError);
+              }
+            }
+          }
           
           if (isTokenTransfer) {
             console.log("Found token transfer in regular transactions:", tx);
             
             // This looks like a token transfer, so let's check if we can decode the token info
             let tokenValue = "Unknown";
-            let tokenType = "BEP-20 Token";
-            let tokenName = "BEP-20 Token";
+            let tokenType = "ERC-20 Token";
+            let tokenName = "ERC-20 Token";
             let tokenSymbol = "TOKEN";
             let usdValue = null;
             
             // Check if we have cached token details
-            const tokenContractAddress = tx.to.toLowerCase();
+            const tokenContractAddress = tx.to ? tx.to.toLowerCase() : "";
             if (tokenDetailsCache[tokenContractAddress]) {
               const tokenInfo = tokenDetailsCache[tokenContractAddress];
               tokenName = tokenInfo.name;
@@ -1035,7 +1131,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
               if (tx.input.startsWith('0xa9059cbb')) {
                 try {
-                  // Extract the amount from the input data, which is the last 64 characters
+                  // Extract the recipient address from input data (second parameter)
+                  const addressHex = tx.input.substring(10, 74);
+                  const recipientAddress = "0x" + addressHex.substring(24); // Remove leading zeros
+                  
+                  // Extract the amount from the input data (third parameter)
                   const amountHex = tx.input.substring(tx.input.length - 64);
                   // Use parseInt for small numbers or a workaround for larger numbers
                   // This is a simplified approach since BigInt isn't available
@@ -1068,14 +1168,25 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     }
                   }
                   
-                  // Get token pricing information separately - can't use await in map function
-                  if (contract.chain === 'Bnb' && tokenContractAddress) {
-                    console.log(`Will check pricing for token ${tokenSymbol} later`);
-                    // Price info would need external API integration
-                  }
-                  
                   tokenValue = `${readableAmount} ${tokenSymbol}`;
                   console.log("Decoded token amount:", tokenValue);
+                  
+                  // Override the to_address with the actual recipient
+                  return {
+                    tx_hash: tx.hash,
+                    block_number: parseInt(tx.blockNumber),
+                    block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                    from_address: tx.from,
+                    to_address: recipientAddress, // Use decoded recipient address
+                    value_eth: tokenValue,
+                    gas_used: tx.gasUsed,
+                    status: tx.isError === '0' ? 'Success' : 'Failed',
+                    tx_type: 'Token Transfer',
+                    contract_address: tx.to, // The token contract
+                    token_name: tokenName,
+                    token_symbol: tokenSymbol,
+                    usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A'
+                  };
                 } catch (error) {
                   console.error("Error decoding token amount:", error);
                 }
