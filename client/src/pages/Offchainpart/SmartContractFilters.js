@@ -101,22 +101,82 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const chainId = chainMap[contract.chain] || "ethereum";
       const contractAddress = contract.address.toLowerCase();
       
-      // Define Dune query execution request
-      const executeQuery = async () => {
-        // Query ID for a Dune query that fetches contract transactions
-        // This would be a pre-created query in your Dune account
-        // For now, we'll use a generic transactions query (you should replace with your actual query ID)
-        const queryId = 3266405; // Example query ID - replace with your actual query ID
-        
+      console.log(`Making Dune API request for ${contractAddress} on ${chainId}`);
+      
+      // Create and execute a custom SQL query
+      const createQuery = async () => {
         try {
-          // Step 1: Execute query to get job ID
-          const executeResponse = await axios.post(
-            `https://api.dune.com/api/v1/query/${queryId}/execute`,
+          // SQL query to get transactions (adapting to different chains)
+          let sqlQuery;
+          
+          if (chainId === "ethereum" || chainId === "optimism" || chainId === "arbitrum" || chainId === "base" || chainId === "polygon") {
+            // For EVM chains
+            sqlQuery = `
+              SELECT
+                block_number,
+                block_time,
+                hash as tx_hash,
+                "from" as from_address,
+                "to" as to_address,
+                value / 1e18 as value_eth,
+                gas_used,
+                CASE 
+                  WHEN success = true THEN 'Success'
+                  ELSE 'Failed'
+                END as status
+              FROM ${chainId}.transactions
+              WHERE ("from" = '${contractAddress}' OR "to" = '${contractAddress}')
+              ORDER BY block_time DESC
+              LIMIT 100
+            `;
+          } else if (chainId === "solana") {
+            // For Solana
+            sqlQuery = `
+              SELECT
+                block_slot as block_number,
+                block_time,
+                tx_id as tx_hash,
+                signer as from_address,
+                null as to_address,
+                null as value_eth,
+                null as gas_used,
+                CASE 
+                  WHEN succeeded = true THEN 'Success'
+                  ELSE 'Failed'
+                END as status
+              FROM solana.transactions
+              WHERE instructions_has_program like '%${contractAddress}%'
+              ORDER BY block_time DESC
+              LIMIT 100
+            `;
+          } else {
+            // Default for other chains
+            sqlQuery = `
+              SELECT
+                block_number,
+                block_time,
+                hash as tx_hash,
+                "from" as from_address,
+                "to" as to_address,
+                value as value_eth,
+                gas_used,
+                'Unknown' as status
+              FROM ${chainId}.transactions
+              WHERE ("from" = '${contractAddress}' OR "to" = '${contractAddress}')
+              ORDER BY block_time DESC
+              LIMIT 100
+            `;
+          }
+          
+          console.log("Using SQL query:", sqlQuery);
+          
+          // Step 1: Create a new query
+          const createResponse = await axios.post(
+            "https://api.dune.com/api/v1/query",
             {
-              parameters: {
-                contract_address: contractAddress,
-                blockchain: chainId
-              }
+              name: `Contract Transactions - ${contractAddress}`,
+              query: sqlQuery,
+              description: `Transactions for contract ${contractAddress} on ${chainId}`,
             },
             {
               headers: {
@@ -126,14 +186,34 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             }
           );
           
-          // Get the execution ID from the response
+          // Check if query was created successfully
+          if (!createResponse.data || !createResponse.data.id) {
+            throw new Error("Failed to create query in Dune");
+          }
+          
+          const queryId = createResponse.data.id;
+          console.log(`Query created with ID: ${queryId}`);
+          
+          // Step 2: Execute the query
+          const executeResponse = await axios.post(
+            `https://api.dune.com/api/v1/query/${queryId}/execute`,
+            {},
+            {
+              headers: {
+                "x-dune-api-key": DUNE_API_KEY,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+          
+          // Get the execution ID
           const executionId = executeResponse.data.execution_id;
           console.log(`Query execution started with ID: ${executionId}`);
           
-          // Step 2: Poll for results
+          // Step 3: Poll for results
           return pollForResults(executionId);
         } catch (error) {
-          console.error("Error executing Dune query:", error);
+          console.error("Error creating or executing SQL query:", error);
           if (error.response) {
             console.error("API response:", error.response.data);
           }
@@ -143,7 +223,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Function to poll for query results
       const pollForResults = async (executionId) => {
-        const maxAttempts = 10;
+        const maxAttempts = 20;
         let attempts = 0;
         
         while (attempts < maxAttempts) {
@@ -189,13 +269,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       };
       
       // Execute the query and handle results
-      const results = await executeQuery();
+      const results = await createQuery();
       
       // Process and log results
       console.log("Dune API Results:", results);
       
       // Extract and format the transaction data
-      if (results && results.result && results.result.rows) {
+      if (results && results.result && results.result.rows && results.result.rows.length > 0) {
         const transactions = results.result.rows;
         setContractTransactions(transactions);
         
@@ -210,37 +290,19 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           transactions: transactions
         });
       } else {
-        console.log("No transactions found or invalid result format");
-        // If the API call succeeded but returned no results, use fallback data
-        const fallbackTransactions = generateFallbackTransactionData(contract);
-        setContractTransactions(fallbackTransactions);
-        
-        console.log("Using fallback transaction data:", {
-          contract: {
-            address: contract.address,
-            name: contract.name || 'Unnamed Contract',
-            chain: contract.chain
-          },
-          transactionCount: fallbackTransactions.length,
-          transactions: fallbackTransactions
-        });
+        console.log("No transactions found or empty result");
+        console.log("Raw result data:", results);
       }
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
       
-      // Use fallback data if the API call fails
-      const fallbackTransactions = generateFallbackTransactionData(contract);
-      setContractTransactions(fallbackTransactions);
-      
-      console.log("Using fallback transaction data due to API error:", {
-        contract: {
-          address: contract.address,
-          name: contract.name || 'Unnamed Contract',
-          chain: contract.chain
-        },
-        transactionCount: fallbackTransactions.length,
-        transactions: fallbackTransactions
-      });
+      if (error.response) {
+        console.error("API response details:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      }
     } finally {
       setIsLoadingTransactions(false);
     }
