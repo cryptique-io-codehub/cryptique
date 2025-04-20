@@ -14,7 +14,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Get the current team from localStorage
   const currentTeam = localStorage.getItem('selectedTeam') || 'default';
   
-  // Load contracts from localStorage on initial render
+  // Load contracts from localStorage on initial render without selecting any by default
   useEffect(() => {
     const loadContractsFromStorage = () => {
       try {
@@ -24,15 +24,22 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           const parsedContracts = JSON.parse(storedContracts);
           setcontractarray(parsedContracts);
           
-          // If a contract was previously selected, try to find and select it again
+          // Only restore selected contract if explicitly directed to (not on first load)
           const storedSelectedContractId = localStorage.getItem(`selectedContract_${currentTeam}`);
-          if (storedSelectedContractId && parsedContracts.length > 0) {
+          
+          // Check if we already have a selected contract from parent component
+          if (selectedContract) {
+            // Keep the current selection
+            return;
+          }
+          
+          // If no contract is currently selected but we have a stored selection
+          if (!selectedContract && storedSelectedContractId && parsedContracts.length > 0) {
             const foundContract = parsedContracts.find(c => c.id === storedSelectedContractId);
             if (foundContract) {
-              setSelectedContract(foundContract);
-            } else {
-              // If previously selected contract isn't found, select the first one
-              setSelectedContract(parsedContracts[0]);
+              // We have a stored selection, but we won't auto-select it on first load
+              // This satisfies the "no default selection" requirement
+              // The contract will be available in the dropdown for user selection
             }
           }
         }
@@ -42,7 +49,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     };
     
     loadContractsFromStorage();
-  }, [currentTeam, setcontractarray, setSelectedContract]);
+  }, [currentTeam, setcontractarray, selectedContract]);
   
   // Save contracts to localStorage whenever they change
   useEffect(() => {
@@ -55,6 +62,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   useEffect(() => {
     if (selectedContract) {
       localStorage.setItem(`selectedContract_${currentTeam}`, selectedContract.id);
+      // Fetch contract transactions when a contract is selected
+      fetchContractTransactions(selectedContract);
     }
   }, [selectedContract, currentTeam]);
 
@@ -64,6 +73,61 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setSelectedContracts([selectedContract]);
     }
   }, [selectedContract]);
+
+  // Function to fetch contract transactions using Dune API
+  const fetchContractTransactions = async (contract) => {
+    console.log(`Fetching transactions for contract: ${contract.address} on ${contract.chain}...`);
+    
+    try {
+      // In a real implementation, this would make an API call to Dune
+      // For now, we'll simulate it with sample data
+      const sampleTransactions = generateSampleTransactions(contract);
+      
+      // Log the transactions to the console
+      console.log("Smart Contract Transactions:", {
+        contract: {
+          address: contract.address,
+          name: contract.name || 'Unnamed Contract',
+          chain: contract.chain
+        },
+        transactions: sampleTransactions
+      });
+      
+      // In a real implementation, you could store these transactions in state
+      // and display them in the dashboard
+    } catch (error) {
+      console.error("Error fetching contract transactions:", error);
+    }
+  };
+
+  // Helper function to generate sample transaction data for demo purposes
+  const generateSampleTransactions = (contract) => {
+    const txTypes = ['Transfer', 'Swap', 'Mint', 'Burn', 'Approval'];
+    const accounts = [
+      '0x1234567890abcdef1234567890abcdef12345678',
+      '0xabcdef1234567890abcdef1234567890abcdef12',
+      '0x7890abcdef1234567890abcdef1234567890abcd',
+      '0xdef1234567890abcdef1234567890abcdef12345'
+    ];
+    
+    // Generate random transactions
+    return Array.from({ length: 15 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - Math.floor(Math.random() * 30)); // Random date within last 30 days
+      
+      return {
+        txHash: `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}`,
+        type: txTypes[Math.floor(Math.random() * txTypes.length)],
+        from: accounts[Math.floor(Math.random() * accounts.length)],
+        to: contract.address,
+        value: (Math.random() * 10).toFixed(4),
+        timestamp: date.toISOString(),
+        chain: contract.chain,
+        gasUsed: Math.floor(Math.random() * 1000000) + 21000,
+        status: Math.random() > 0.05 ? 'Success' : 'Failed', // 5% failure rate
+      };
+    }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort by date, newest first
+  };
 
   const availableChains = [
     "Ethereum",
