@@ -6,6 +6,7 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
+import SmartContractsSection from "../Onchainpart/SmartContractsSection";
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -28,7 +29,8 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       { label: 'Traffic analytics' },
       { label: 'User Insights' },
       { label: 'Market Insights' },
-      { label: 'Wallet Insights' }
+      { label: 'Wallet Insights' },
+      { label: 'Smart Contracts' }
     ];
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
@@ -217,12 +219,11 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                       </>
                     )}
                     
-                    {/* For all other sections, display placeholder content */}
+                    {activeSection === 'Smart Contracts' && (
+                      <SmartContractsSection />
+                    )}
                   </div>
-                
-    
-            </div>
-                
+                </div>
           </div>
         </div>
         
