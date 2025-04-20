@@ -315,14 +315,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     contract_address: contractAddress
                   };
                 } catch (parseError) {
-                  console.error('Error processing token transfer data:', parseError);
-                  // Provide fallback values if parsing fails
+                  console.error('Error processing token transfer data:', parseError, event);
+                  // Provide fallback values if parsing fails - use safely extract values from event
                   return {
-                    tx_hash: transactionHash,
-                    block_number: typeof blockNumber === 'bigint' ? Number(blockNumber) : blockNumber,
+                    tx_hash: event.transactionHash || 'unknown-hash',
+                    block_number: event.blockNumber ? (typeof event.blockNumber === 'bigint' ? Number(event.blockNumber) : event.blockNumber) : 0,
                     block_time: new Date().toISOString(),
-                    from_address: returnValues.from || 'Unknown',
-                    to_address: returnValues.to || 'Unknown',
+                    from_address: event.returnValues?.from || 'Unknown',
+                    to_address: event.returnValues?.to || 'Unknown',
                     value_eth: '0',
                     gas_used: '0',
                     status: 'Success',
