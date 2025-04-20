@@ -69,6 +69,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [web3Instances, setWeb3Instances] = useState({});
+  const [statusMessage, setStatusMessage] = useState('');
   
   // Utility function to safely handle potentially BigInt values
   const safeNumber = (value) => {
@@ -193,6 +194,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setIsLoadingTransactions(true);
     setContractTransactions([]);
     
+    // Keep track of rate limiting to prevent too many retries
+    let rateLimit = false;
+    
     try {
       const contractAddress = contract.address.toLowerCase();
       
@@ -241,7 +245,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               // We can only fetch a limited range of blocks due to Infura restrictions
               // So we'll get the most recent 10000 blocks or about 1-2 days worth
               // Convert to number to avoid BigInt math operations
-              const fromBlock = Math.max(0, latestBlockNum - 10000);
+              // Reduce block range to 2000 by default to avoid rate limiting
+              const fromBlock = Math.max(0, latestBlockNum - 2000);
               
               console.log(`Fetching Transfer events for token from block ${fromBlock} to ${latestBlockNum}`);
               
@@ -260,7 +265,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   console.log("BigInt error detected, trying with a smaller block range");
                   try {
                     // Use a much smaller block range
-                    const smallerFromBlock = Math.max(0, latestBlockNum - 1000);
+                    const smallerFromBlock = Math.max(0, latestBlockNum - 500);
                     console.log(`Retrying with smaller block range: ${smallerFromBlock} to ${latestBlockNum}`);
                     
                     events = await tokenContract.getPastEvents('Transfer', {
@@ -272,7 +277,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     console.error("Error on retry with smaller block range:", retryError);
                     // Try one more time with an even smaller range
                     try {
-                      const tinyFromBlock = Math.max(0, latestBlockNum - 100);
+                      const tinyFromBlock = Math.max(0, latestBlockNum - 50);
                       console.log(`Final attempt with tiny block range: ${tinyFromBlock} to ${latestBlockNum}`);
                       
                       events = await tokenContract.getPastEvents('Transfer', {
@@ -286,6 +291,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     }
                   }
                 }
+              }
+              
+              // Add pagination info to the UI to show limited view
+              if (events.length > 0) {
+                console.log(`Note: Showing most recent ${events.length} transfer events due to blockchain API limits`);
+                setStatusMessage(`Showing ${events.length} most recent transfer events (limited by blockchain API)`);
               }
               
               // Process token transfer events
@@ -336,13 +347,23 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               
               // Enhance transfer data with timestamps and gas info
               if (transactions.length > 0) {
-                // Get a sample of transactions to enhance (up to 20)
-                const sampleSize = Math.min(transactions.length, 20);
+                // Get a sample of transactions to enhance (up to 8)
+                const sampleSize = Math.min(transactions.length, 8); // Reduce from 20 to 8 to avoid rate limits
                 const sampleTransactions = transactions.slice(0, sampleSize);
                 
-                // Get block timestamps and transaction receipts
-                const enhancedTransactions = await Promise.all(
-                  sampleTransactions.map(async (tx) => {
+                console.log(`Enhancing ${sampleSize} transactions with details...`);
+                
+                // Add delay between API calls to avoid rate limiting
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                
+                // Get block timestamps and transaction receipts with delay between requests
+                const enhancedTransactions = [];
+                
+                for (const tx of sampleTransactions) {
+                  try {
+                    // Add delay between requests to avoid rate limiting
+                    await delay(200); // 200ms delay between requests
+                    
                     try {
                       // Get block for timestamp
                       const block = await web3.eth.getBlock(tx.block_number);
@@ -351,7 +372,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         const timestamp = safeNumber(block.timestamp) * 1000;
                         tx.block_time = new Date(timestamp).toISOString();
                       }
-                      
+                    } catch (blockError) {
+                      console.log(`Skipping block info for tx ${tx.tx_hash}: ${blockError.message}`);
+                    }
+                    
+                    await delay(200); // Another delay before the next API call
+                    
+                    try {
                       // Get receipt for gas info and status
                       const receipt = await web3.eth.getTransactionReceipt(tx.tx_hash);
                       if (receipt) {
@@ -359,20 +386,24 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         tx.gas_used = receipt.gasUsed ? receipt.gasUsed.toString() : '0';
                         tx.status = receipt.status ? 'Success' : 'Failed';
                       }
-                      
-                      return tx;
-                    } catch (error) {
-                      console.error(`Error enhancing transaction ${tx.tx_hash}:`, error);
-                      return tx;
+                    } catch (receiptError) {
+                      console.log(`Skipping receipt info for tx ${tx.tx_hash}: ${receiptError.message}`);
                     }
-                  })
-                );
+                    
+                    enhancedTransactions.push(tx);
+                  } catch (error) {
+                    console.error(`Error enhancing transaction ${tx.tx_hash}:`, error);
+                    enhancedTransactions.push(tx); // Still add the transaction even if enhancement fails
+                  }
+                }
                 
                 // Use enhanced transactions and keep any that couldn't be enhanced
                 transactions = [
                   ...enhancedTransactions,
                   ...transactions.slice(sampleSize)
                 ];
+                
+                console.log(`Enhanced ${enhancedTransactions.length} transactions, total: ${transactions.length}`);
               }
             } catch (eventsError) {
               console.error('Error fetching token Transfer events:', eventsError);
@@ -471,6 +502,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           // If we got transactions from Web3, use them and skip the explorer API
           if (transactions.length > 0) {
             console.log(`Using ${transactions.length} transactions from Web3`);
+            
+            // Add a note about limited data due to rate limiting
+            if (transactions.length === events.length) {
+              console.log("Note: Only showing limited recent transactions due to blockchain API rate limits");
+              setStatusMessage(`Showing ${transactions.length} transactions. Some transaction details may be limited due to rate limits.`);
+            }
+            
             setContractTransactions(transactions);
             
             // Log to console
@@ -492,6 +530,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         } catch (web3Error) {
           console.error(`Web3 error for ${contract.chain}:`, web3Error);
           console.log("Falling back to explorer API due to Web3 error");
+          
+          // Reduce block range even more if we hit rate limiting
+          if (web3Error.message && web3Error.message.includes("429")) {
+            console.log("Rate limiting detected, falling back to explorer API");
+            setStatusMessage("Rate limit exceeded. Showing limited transaction data from alternative source.");
+          }
         }
       } else {
         console.log(`No Web3 instance available for ${contract.chain}, using explorer API`);
@@ -1063,6 +1107,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             </svg>
           )}
         </button>
+        
+        {/* Status message */}
+        {statusMessage && (
+          <p className="mt-1 text-xs text-amber-600">
+            {statusMessage}
+          </p>
+        )}
         
         {/* Dropdown menu */}
         {isDropdownOpen && (
