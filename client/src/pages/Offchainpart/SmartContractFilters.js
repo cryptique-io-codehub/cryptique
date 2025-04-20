@@ -145,6 +145,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         console.log("API Response:", normalTxResponse.data);
         
+        // When working with BNB chain, let's also get the token details for any contracts
+        let tokenDetailsCache = {};
+        
+        if (contract.chain === 'Bnb' && normalTxResponse.data.status === '1') {
+          // Collect all potential token contract addresses
+          const potentialTokenAddresses = normalTxResponse.data.result
+            .filter(tx => tx.value === "0" && tx.functionName && tx.functionName.includes('transfer'))
+            .map(tx => tx.to);
+          
+          const uniqueTokenAddresses = [...new Set(potentialTokenAddresses)];
+          
+          // Fetch token details for each contract
+          for (const tokenAddress of uniqueTokenAddresses) {
+            try {
+              console.log(`Fetching token details for ${tokenAddress}`);
+              const tokenResponse = await axios.get(apiBaseUrl, {
+                params: {
+                  module: 'token',
+                  action: 'tokeninfo',
+                  contractaddress: tokenAddress,
+                  apikey: apiKey
+                }
+              });
+              
+              console.log("Token details response:", tokenResponse.data);
+              
+              if (tokenResponse.data.status === '1' && tokenResponse.data.result) {
+                // Store token details
+                const tokenInfo = tokenResponse.data.result[0] || tokenResponse.data.result;
+                tokenDetailsCache[tokenAddress.toLowerCase()] = {
+                  symbol: tokenInfo.symbol || 'UNKNOWN',
+                  name: tokenInfo.name || 'Unknown Token',
+                  decimals: tokenInfo.decimals || '18'
+                };
+                console.log(`Token at ${tokenAddress} is ${tokenDetailsCache[tokenAddress.toLowerCase()].name} (${tokenDetailsCache[tokenAddress.toLowerCase()].symbol})`);
+              }
+            } catch (tokenError) {
+              console.error(`Error fetching token details for ${tokenAddress}:`, tokenError);
+            }
+          }
+        }
+        
         // Check for API errors
         if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
           transactions = normalTxResponse.data.result.map(tx => {
@@ -161,6 +203,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               // This looks like a token transfer, so let's check if we can decode the token info
               let tokenValue = "Unknown";
               let tokenType = "BEP-20 Token";
+              let tokenName = "BEP-20 Token";
+              let tokenSymbol = "TOKEN";
+              let usdValue = null;
+              
+              // Check if we have cached token details
+              const tokenContractAddress = tx.to.toLowerCase();
+              if (tokenDetailsCache[tokenContractAddress]) {
+                const tokenInfo = tokenDetailsCache[tokenContractAddress];
+                tokenName = tokenInfo.name;
+                tokenSymbol = tokenInfo.symbol;
+                console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
+              }
               
               // Attempt to parse input data
               if (tx.input && tx.input.length > 10) {
@@ -173,12 +227,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     // Use parseInt for small numbers or a workaround for larger numbers
                     // This is a simplified approach since BigInt isn't available
                     let readableAmount = 0;
+                    let tokenAmount = 0;
                     
                     if (amountHex.startsWith('000000000000000000000000')) {
                       // This is likely a small number we can parse directly
                       const smallerHex = amountHex.substring(24); // Remove leading zeros
                       const rawAmount = parseInt('0x' + smallerHex, 16);
-                      readableAmount = rawAmount / 10**18; // Assuming 18 decimals
+                      const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
+                      tokenAmount = rawAmount / 10**decimals; // Use actual decimals if available
+                      readableAmount = tokenAmount.toFixed(6);
                     } else {
                       // For larger amounts, we'll make an approximation
                       // Count significant digits and make an estimate
@@ -189,17 +246,23 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
                       const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
                       
-                      readableAmount = firstDigits * 10**(scale - 6); // Scale to millions
+                      tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
                       
-                      if (readableAmount > 1000) {
-                        readableAmount = Math.round(readableAmount) / 10**3 + 'K';
+                      if (tokenAmount > 1000) {
+                        readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
                       } else {
-                        readableAmount = readableAmount.toFixed(6);
+                        readableAmount = tokenAmount.toFixed(6);
                       }
                     }
                     
-                    tokenValue = `${readableAmount} tokens`;
-                    console.log("Decoded approximate token amount:", tokenValue);
+                    // Get token pricing information separately - can't use await in map function
+                    if (contract.chain === 'Bnb' && tokenContractAddress) {
+                      console.log(`Will check pricing for token ${tokenSymbol} later`);
+                      // Price info would need external API integration
+                    }
+                    
+                    tokenValue = `${readableAmount} ${tokenSymbol}`;
+                    console.log("Decoded token amount:", tokenValue);
                   } catch (error) {
                     console.error("Error decoding token amount:", error);
                   }
@@ -218,8 +281,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 status: tx.isError === '0' ? 'Success' : 'Failed',
                 tx_type: 'Token Transfer',
                 contract_address: tx.to, // The token contract is likely the "to" address
-                token_name: 'BEP-20 Token',
-                token_symbol: 'TOKEN'
+                token_name: tokenName,
+                token_symbol: tokenSymbol,
+                usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A'
               };
             } else {
               // Regular transaction
