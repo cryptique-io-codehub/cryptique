@@ -1070,22 +1070,70 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 try {
                   // Remove leading zeros
                   const significantHex = amountHex.replace(/^0+/, '');
-                  // If it's a small enough number, parse directly
-                  if (significantHex.length <= 14) { // ~48 bits should be safe
-                    const rawAmount = parseInt("0x" + significantHex, 16);
-                    // Assume 18 decimals for most tokens
-                    const decimals = 18;
-                    const readableAmount = rawAmount / Math.pow(10, decimals);
-                    tokenAmount = readableAmount.toFixed(6);
+                  
+                  // Better handling for large numbers - use string operations for safety
+                  if (significantHex.length === 0) {
+                    tokenAmount = "0";
                   } else {
-                    // For very large numbers, show a placeholder
-                    tokenAmount = "Large Amount";
+                    // Convert to decimal without using parseInt which has limitations
+                    let decimalValue = 0;
+                    
+                    // For very large numbers, we need to handle them differently
+                    if (significantHex.length > 15) {
+                      // Use string manipulation and mathematical approach
+                      // Each hex digit represents 4 bits
+                      const hexValue = "0x" + significantHex;
+                      
+                      // Use scientific notation string operations for very large numbers
+                      // First convert to bigint-like string representation
+                      let bigValue = "0";
+                      for (let i = 0; i < significantHex.length; i++) {
+                        const digitValue = parseInt(significantHex[i], 16);
+                        bigValue = (BigInt(bigValue) * BigInt(16) + BigInt(digitValue)).toString();
+                      }
+                      
+                      // Now we have a decimal string representation of the big number
+                      console.log(`Big value (raw): ${bigValue}`);
+                      
+                      // Apply token decimals (usually 18)
+                      const decimals = 18;
+                      if (bigValue.length <= decimals) {
+                        // Value is smaller than 1 whole token
+                        decimalValue = Number("0." + "0".repeat(decimals - bigValue.length) + bigValue);
+                      } else {
+                        // Value has whole tokens
+                        const wholeTokens = bigValue.slice(0, bigValue.length - decimals);
+                        const fractionalPart = bigValue.slice(bigValue.length - decimals);
+                        decimalValue = Number(wholeTokens + "." + fractionalPart);
+                      }
+                    } else {
+                      // This is a number we can handle with standard JS
+                      const rawAmount = parseInt("0x" + significantHex, 16);
+                      // Assume 18 decimals for most tokens
+                      const decimals = 18;
+                      decimalValue = rawAmount / Math.pow(10, decimals);
+                    }
+                    
+                    // Format the final number with appropriate precision
+                    if (decimalValue > 1000000) {
+                      tokenAmount = decimalValue.toFixed(2);
+                    } else if (decimalValue > 1000) {
+                      tokenAmount = decimalValue.toFixed(4);
+                    } else if (decimalValue > 1) {
+                      tokenAmount = decimalValue.toFixed(6);
+                    } else if (decimalValue > 0.0001) {
+                      tokenAmount = decimalValue.toFixed(8);
+                    } else {
+                      tokenAmount = decimalValue.toExponential(4);
+                    }
                   }
                 } catch (amountError) {
                   console.error("Error parsing token amount:", amountError);
+                  console.log("Hex value that caused the error:", amountHex);
+                  tokenAmount = "Error";
                 }
                 
-                // Create token transfer record
+                // Create token transfer record with better value
                 return {
                   tx_hash: tx.hash,
                   block_number: parseInt(tx.blockNumber),
@@ -1137,35 +1185,64 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   
                   // Extract the amount from the input data (third parameter)
                   const amountHex = tx.input.substring(tx.input.length - 64);
-                  // Use parseInt for small numbers or a workaround for larger numbers
-                  // This is a simplified approach since BigInt isn't available
-                  let readableAmount = 0;
-                  let tokenAmount = 0;
+                  // Better parsing for token amounts of any size
+                  let readableAmount = "0";
                   
-                  if (amountHex.startsWith('000000000000000000000000')) {
-                    // This is likely a small number we can parse directly
-                    const smallerHex = amountHex.substring(24); // Remove leading zeros
-                    const rawAmount = parseInt('0x' + smallerHex, 16);
-                    const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                    tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
-                    readableAmount = tokenAmount.toFixed(6);
-                  } else {
-                    // For larger amounts, we'll make an approximation
-                    // Count significant digits and make an estimate
-                    let significantHex = amountHex.replace(/^0+/, '');
-                    const magnitude = significantHex.length * 4; // Each hex char is 4 bits
+                  try {
+                    // Remove leading zeros for clean processing
+                    const significantHex = amountHex.replace(/^0+/, '');
                     
-                    // Get first few digits for approximation
-                    const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
-                    const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
-                    
-                    tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
-                    
-                    if (tokenAmount > 1000) {
-                      readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
+                    if (significantHex.length === 0) {
+                      readableAmount = "0";
                     } else {
-                      readableAmount = tokenAmount.toFixed(6);
+                      // Convert to decimal using the better approach
+                      let decimalValue = 0;
+                      
+                      // For very large numbers, use string math
+                      if (significantHex.length > 15) {
+                        // Use string manipulation for very large numbers
+                        let bigValue = "0";
+                        for (let i = 0; i < significantHex.length; i++) {
+                          const digitValue = parseInt(significantHex[i], 16);
+                          bigValue = (BigInt(bigValue) * BigInt(16) + BigInt(digitValue)).toString();
+                        }
+                        
+                        // Apply token decimals
+                        const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
+                        
+                        if (bigValue.length <= decimals) {
+                          // Value is less than 1 token
+                          decimalValue = Number("0." + "0".repeat(decimals - bigValue.length) + bigValue);
+                        } else {
+                          // Value has whole tokens
+                          const wholeTokens = bigValue.slice(0, bigValue.length - decimals);
+                          const fractionalPart = bigValue.slice(bigValue.length - decimals);
+                          decimalValue = Number(wholeTokens + "." + fractionalPart);
+                        }
+                      } else {
+                        // Standard JS can handle this size
+                        const rawAmount = parseInt("0x" + significantHex, 16);
+                        const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
+                        decimalValue = rawAmount / Math.pow(10, decimals);
+                      }
+                      
+                      // Format with appropriate precision
+                      if (decimalValue > 1000000) {
+                        readableAmount = decimalValue.toFixed(2);
+                      } else if (decimalValue > 1000) {
+                        readableAmount = decimalValue.toFixed(4);
+                      } else if (decimalValue > 1) {
+                        readableAmount = decimalValue.toFixed(6);
+                      } else if (decimalValue > 0.0001) {
+                        readableAmount = decimalValue.toFixed(8);
+                      } else {
+                        readableAmount = decimalValue.toExponential(4);
+                      }
                     }
+                  } catch (amountError) {
+                    console.error("Error parsing token amount:", amountError);
+                    console.log("Hex value that caused the error:", amountHex);
+                    readableAmount = "Error";
                   }
                   
                   tokenValue = `${readableAmount} ${tokenSymbol}`;
