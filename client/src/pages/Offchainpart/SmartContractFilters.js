@@ -504,7 +504,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             console.log(`Using ${transactions.length} transactions from Web3`);
             
             // Add a note about limited data due to rate limiting
-            if (transactions.length === events.length) {
+            if (isTokenContract && transactions.length > 0) {
               console.log("Note: Only showing limited recent transactions due to blockchain API rate limits");
               setStatusMessage(`Showing ${transactions.length} transactions. Some transaction details may be limited due to rate limits.`);
             }
