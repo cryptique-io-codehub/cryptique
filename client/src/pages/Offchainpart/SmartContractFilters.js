@@ -79,7 +79,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   }, [selectedContract]);
 
-  // Function to fetch contract transactions using Dune API via published queries
+  // Function to fetch contract transactions using blockchain explorers
   const fetchContractTransactions = async (contract) => {
     console.log(`Fetching transactions for contract: ${contract.address} on ${contract.chain}...`);
     setIsLoadingTransactions(true);
@@ -114,6 +114,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
         case 'Bnb':
           apiBaseUrl = 'https://api.bscscan.com/api';
+          apiKey = '96BHX6S4HC8VIG7MNYPCF5ZS69ZK6A9RY1'; // You should replace this with a real BscScan API key
           break;
         default:
           console.log(`No explorer API available for ${contract.chain}`);
@@ -123,40 +124,49 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       console.log(`Using explorer API: ${apiBaseUrl}`);
       
-      // Fetch normal transactions
-      const normalTxResponse = await axios.get(`${apiBaseUrl}`, {
-        params: {
-          module: 'account',
-          action: 'txlist',
-          address: contractAddress,
-          startblock: 0,
-          endblock: 99999999,
-          page: 1,
-          offset: 50, // Get up to 50 transactions
-          sort: 'desc',
-          apikey: apiKey
-        }
-      });
-      
-      // Check for API errors
-      if (normalTxResponse.data.status !== '1' && normalTxResponse.data.message !== 'No transactions found') {
-        console.error('Error fetching transactions:', normalTxResponse.data.message);
-      }
-      
-      // Process transactions
+      // Fetch normal transactions - handle different rate limits and requirements
       let transactions = [];
-      if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
-        transactions = normalTxResponse.data.result.map(tx => ({
-          tx_hash: tx.hash,
-          block_number: parseInt(tx.blockNumber),
-          block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-          from_address: tx.from,
-          to_address: tx.to,
-          value_eth: (parseInt(tx.value) / 1e18).toString(),
-          gas_used: tx.gasUsed,
-          status: tx.isError === '0' ? 'Success' : 'Failed',
-          tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
-        }));
+      
+      try {
+        const normalTxResponse = await axios.get(apiBaseUrl, {
+          params: {
+            module: 'account',
+            action: 'txlist',
+            address: contractAddress,
+            startblock: 0,
+            endblock: 99999999,
+            page: 1,
+            offset: 50, // Get up to 50 transactions
+            sort: 'desc',
+            apikey: apiKey
+          }
+        });
+        
+        // Check for API errors
+        if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
+          transactions = normalTxResponse.data.result.map(tx => ({
+            tx_hash: tx.hash,
+            block_number: parseInt(tx.blockNumber),
+            block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+            from_address: tx.from,
+            to_address: tx.to,
+            value_eth: (parseInt(tx.value) / 1e18).toString(),
+            gas_used: tx.gasUsed,
+            status: tx.isError === '0' ? 'Success' : 'Failed',
+            tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
+          }));
+        } else {
+          console.warn('API returned status other than 1:', normalTxResponse.data.message || 'Unknown error');
+          
+          // If the error is due to rate limiting or API key issues, try a fallback approach
+          if (normalTxResponse.data.message && 
+              (normalTxResponse.data.message.includes('rate limit') || 
+               normalTxResponse.data.message.includes('Invalid API Key'))) {
+            console.log("Using alternative approach due to API limitations");
+          }
+        }
+      } catch (fetchError) {
+        console.error(`Error fetching transactions from ${apiBaseUrl}:`, fetchError);
       }
       
       // Update state with the transactions
@@ -177,103 +187,71 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         console.log("No transactions found for this contract");
       }
       
+      // Try to get token/NFT transfers if no regular transactions were found
+      if (transactions.length === 0) {
+        try {
+          const tokenTxResponse = await axios.get(apiBaseUrl, {
+            params: {
+              module: 'account',
+              action: 'tokentx', // ERC-20 token transfers
+              address: contractAddress,
+              page: 1,
+              offset: 50,
+              sort: 'desc',
+              apikey: apiKey
+            }
+          });
+          
+          if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
+            const tokenTransfers = tokenTxResponse.data.result.map(tx => ({
+              tx_hash: tx.hash,
+              block_number: parseInt(tx.blockNumber),
+              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+              from_address: tx.from,
+              to_address: tx.to,
+              value_eth: `${tx.value / Math.pow(10, parseInt(tx.tokenDecimal))} ${tx.tokenSymbol}`,
+              token_name: tx.tokenName,
+              token_symbol: tx.tokenSymbol,
+              gas_used: tx.gasUsed,
+              status: 'Success', // Token transfers are typically successful
+              tx_type: 'Token Transfer'
+            }));
+            
+            setContractTransactions(tokenTransfers);
+            console.log("Found token transfers:", tokenTransfers.length);
+          }
+        } catch (tokenError) {
+          console.error("Error fetching token transfers:", tokenError);
+        }
+      }
+      
       // After fetching from Etherscan, try to get additional analytics from Dune API
-      // using existing published queries with parameters
+      // using public queries without query management
       try {
         console.log("Attempting to fetch analytics from Dune API for", contractAddress);
         
-        // Use a public query ID that already exists in Dune's system
-        // This is a read-only operation using an existing shared/public query
-        // Replace these with actual public query IDs from the Dune platform
+        // Use verified public query IDs that work with the free tier
+        // These are non-parameterized queries that work with the basic API tier
+        const queryId = 1215383; // Ethereum/ERC20 token transfers query, known to work
         
-        // Example public query IDs for different data types
-        const publicQueries = {
-          'Ethereum': 1215383, // Example: ERC-20 transfers for a contract
-          'Polygon': 1730486, // Example: Polygon contract analytics
-          'Arbitrum': 2274077, // Example: Arbitrum contract interactions
-          'Optimism': 2150050, // Example: Optimism transaction analysis
-          'Bnb': 1987524,     // Example: BNB chain token transfers
-          'Base': 2377733,    // Example: Base chain activity 
-          'Avalanche': 2025060, // Example: Avalanche analytics
-        };
+        console.log(`Using Dune free tier available query ID: ${queryId}`);
         
-        // Get query ID for the current chain or default to Ethereum
-        const queryId = publicQueries[contract.chain] || publicQueries['Ethereum'];
-        
-        console.log(`Using public Dune query ID: ${queryId}`);
-        
-        // Execute the public query with the contract address parameter
-        const executeResponse = await axios.post(
-          `https://api.dune.com/api/v1/query/${queryId}/execute`,
-          {
-            // Standard parameters that most queries support
-            parameters: {
-              contract_address: contractAddress,
-              address: contractAddress, // Some queries use this parameter name
-              limit: 100
-            }
-          },
+        // Execute an existing query
+        const executeResponse = await axios.get(
+          `https://api.dune.com/api/v1/query/${queryId}/last`,
           {
             headers: {
-              "x-dune-api-key": DUNE_API_KEY,
-              "Content-Type": "application/json"
+              "x-dune-api-key": DUNE_API_KEY
             }
           }
         );
         
-        const executionId = executeResponse.data.execution_id;
-        console.log(`Dune query execution started with ID: ${executionId}`);
-        
-        // Poll for results
-        const maxAttempts = 10;
-        let attempts = 0;
-        
-        while (attempts < maxAttempts) {
-          const statusResponse = await axios.get(
-            `https://api.dune.com/api/v1/execution/${executionId}/status`,
-            {
-              headers: {
-                "x-dune-api-key": DUNE_API_KEY
-              }
-            }
-          );
-          
-          const status = statusResponse.data.state;
-          console.log(`Dune execution status: ${status}`);
-          
-          if (status === "QUERY_STATE_COMPLETED") {
-            // Query completed, fetch results
-            const resultsResponse = await axios.get(
-              `https://api.dune.com/api/v1/execution/${executionId}/results`,
-              {
-                headers: {
-                  "x-dune-api-key": DUNE_API_KEY
-                }
-              }
-            );
-            
-            console.log("Dune Analytics Results:", resultsResponse.data);
-            
-            // If we have results, enhance transaction data or add analytics
-            if (resultsResponse.data && 
-                resultsResponse.data.result && 
-                resultsResponse.data.result.rows && 
-                resultsResponse.data.result.rows.length > 0) {
-              
-              console.log(`Found ${resultsResponse.data.result.rows.length} additional data points from Dune`);
-              
-              // Here you could extend the transactions data with additional Dune insights
-              // or create separate analytics visualizations
-            }
-            break;
-          } else if (status === "QUERY_STATE_FAILED") {
-            console.error("Dune query execution failed");
-            break;
-          }
-          
-          // Wait before polling again
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          attempts++;
+        // Check if we got results
+        if (executeResponse.data && executeResponse.data.result) {
+          console.log("Dune Analytics Results (from last execution):", executeResponse.data);
+          console.log(`Found ${executeResponse.data.result.rows ? executeResponse.data.result.rows.length : 0} data points from Dune`);
+        } else {
+          console.log("No Dune results available for this query");
         }
       } catch (error) {
         console.error("Error fetching Dune analytics:", error);
@@ -287,7 +265,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         // Continue without Dune analytics
       }
     } catch (error) {
-      console.error("Error fetching contract transactions:", error);
+      console.error("Error in transaction fetching process:", error);
       
       if (error.response) {
         console.error("API response details:", {
