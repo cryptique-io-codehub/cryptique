@@ -79,157 +79,154 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   }, [selectedContract]);
 
-  // Function to fetch contract transactions using Dune API
+  // Function to fetch contract transactions using Dune API via published queries
   const fetchContractTransactions = async (contract) => {
     console.log(`Fetching transactions for contract: ${contract.address} on ${contract.chain}...`);
     setIsLoadingTransactions(true);
     setContractTransactions([]);
     
     try {
-      // Map chain name to Dune's chain identifier
-      const chainMap = {
-        "Ethereum": "ethereum",
-        "Polygon": "polygon",
-        "Arbitrum": "arbitrum",
-        "Optimism": "optimism",
-        "Base": "base",
-        "Avalanche": "avalanche",
-        "Bnb": "bnb",
-        "Solana": "solana",
-      };
-      
-      const chainId = chainMap[contract.chain] || "ethereum";
       const contractAddress = contract.address.toLowerCase();
       
-      console.log(`Making Dune API request for ${contractAddress} on ${chainId}`);
+      // Use Etherscan APIs for EVM chains
+      let apiBaseUrl;
+      let apiKey = ''; // You can add API keys for higher rate limits
       
-      // Create and execute a custom SQL query
-      const createQuery = async () => {
-        try {
-          // SQL query to get transactions (adapting to different chains)
-          let sqlQuery;
-          
-          if (chainId === "ethereum" || chainId === "optimism" || chainId === "arbitrum" || chainId === "base" || chainId === "polygon") {
-            // For EVM chains
-            sqlQuery = `
-              SELECT
-                block_number,
-                block_time,
-                hash as tx_hash,
-                "from" as from_address,
-                "to" as to_address,
-                value / 1e18 as value_eth,
-                gas_used,
-                CASE 
-                  WHEN success = true THEN 'Success'
-                  ELSE 'Failed'
-                END as status
-              FROM ${chainId}.transactions
-              WHERE ("from" = '${contractAddress}' OR "to" = '${contractAddress}')
-              ORDER BY block_time DESC
-              LIMIT 100
-            `;
-          } else if (chainId === "solana") {
-            // For Solana
-            sqlQuery = `
-              SELECT
-                block_slot as block_number,
-                block_time,
-                tx_id as tx_hash,
-                signer as from_address,
-                null as to_address,
-                null as value_eth,
-                null as gas_used,
-                CASE 
-                  WHEN succeeded = true THEN 'Success'
-                  ELSE 'Failed'
-                END as status
-              FROM solana.transactions
-              WHERE instructions_has_program like '%${contractAddress}%'
-              ORDER BY block_time DESC
-              LIMIT 100
-            `;
-          } else {
-            // Default for other chains
-            sqlQuery = `
-              SELECT
-                block_number,
-                block_time,
-                hash as tx_hash,
-                "from" as from_address,
-                "to" as to_address,
-                value as value_eth,
-                gas_used,
-                'Unknown' as status
-              FROM ${chainId}.transactions
-              WHERE ("from" = '${contractAddress}' OR "to" = '${contractAddress}')
-              ORDER BY block_time DESC
-              LIMIT 100
-            `;
-          }
-          
-          console.log("Using SQL query:", sqlQuery);
-          
-          // Step 1: Create a new query
-          const createResponse = await axios.post(
-            "https://api.dune.com/api/v1/query",
-            {
-              name: `Contract Transactions - ${contractAddress}`,
-              query: sqlQuery,
-              description: `Transactions for contract ${contractAddress} on ${chainId}`,
-            },
-            {
-              headers: {
-                "x-dune-api-key": DUNE_API_KEY,
-                "Content-Type": "application/json"
-              }
-            }
-          );
-          
-          // Check if query was created successfully
-          if (!createResponse.data || !createResponse.data.id) {
-            throw new Error("Failed to create query in Dune");
-          }
-          
-          const queryId = createResponse.data.id;
-          console.log(`Query created with ID: ${queryId}`);
-          
-          // Step 2: Execute the query
-          const executeResponse = await axios.post(
-            `https://api.dune.com/api/v1/query/${queryId}/execute`,
-            {},
-            {
-              headers: {
-                "x-dune-api-key": DUNE_API_KEY,
-                "Content-Type": "application/json"
-              }
-            }
-          );
-          
-          // Get the execution ID
-          const executionId = executeResponse.data.execution_id;
-          console.log(`Query execution started with ID: ${executionId}`);
-          
-          // Step 3: Poll for results
-          return pollForResults(executionId);
-        } catch (error) {
-          console.error("Error creating or executing SQL query:", error);
-          if (error.response) {
-            console.error("API response:", error.response.data);
-          }
-          throw error;
+      // Map chain to explorer API
+      switch(contract.chain) {
+        case 'Ethereum':
+          apiBaseUrl = 'https://api.etherscan.io/api';
+          break;
+        case 'Polygon':
+          apiBaseUrl = 'https://api.polygonscan.com/api';
+          break;
+        case 'Arbitrum':
+          apiBaseUrl = 'https://api.arbiscan.io/api';
+          break;
+        case 'Optimism':
+          apiBaseUrl = 'https://api-optimistic.etherscan.io/api';
+          break;
+        case 'Base':
+          apiBaseUrl = 'https://api.basescan.org/api';
+          break;
+        case 'Avalanche':
+          apiBaseUrl = 'https://api.snowtrace.io/api';
+          break;
+        case 'Bnb':
+          apiBaseUrl = 'https://api.bscscan.com/api';
+          break;
+        default:
+          console.log(`No explorer API available for ${contract.chain}`);
+          setIsLoadingTransactions(false);
+          return;
+      }
+      
+      console.log(`Using explorer API: ${apiBaseUrl}`);
+      
+      // Fetch normal transactions
+      const normalTxResponse = await axios.get(`${apiBaseUrl}`, {
+        params: {
+          module: 'account',
+          action: 'txlist',
+          address: contractAddress,
+          startblock: 0,
+          endblock: 99999999,
+          page: 1,
+          offset: 50, // Get up to 50 transactions
+          sort: 'desc',
+          apikey: apiKey
         }
-      };
+      });
       
-      // Function to poll for query results
-      const pollForResults = async (executionId) => {
-        const maxAttempts = 20;
+      // Check for API errors
+      if (normalTxResponse.data.status !== '1' && normalTxResponse.data.message !== 'No transactions found') {
+        console.error('Error fetching transactions:', normalTxResponse.data.message);
+      }
+      
+      // Process transactions
+      let transactions = [];
+      if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
+        transactions = normalTxResponse.data.result.map(tx => ({
+          tx_hash: tx.hash,
+          block_number: parseInt(tx.blockNumber),
+          block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+          from_address: tx.from,
+          to_address: tx.to,
+          value_eth: (parseInt(tx.value) / 1e18).toString(),
+          gas_used: tx.gasUsed,
+          status: tx.isError === '0' ? 'Success' : 'Failed',
+          tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
+        }));
+      }
+      
+      // Update state with the transactions
+      setContractTransactions(transactions);
+      
+      // Log transactions to console
+      console.log("Smart Contract Transactions:", {
+        contract: {
+          address: contract.address,
+          name: contract.name || 'Unnamed Contract',
+          chain: contract.chain
+        },
+        transactionCount: transactions.length,
+        transactions: transactions
+      });
+      
+      if (transactions.length === 0) {
+        console.log("No transactions found for this contract");
+      }
+      
+      // After fetching from Etherscan, try to get additional analytics from Dune API
+      // using existing published queries with parameters
+      try {
+        console.log("Attempting to fetch analytics from Dune API for", contractAddress);
+        
+        // This uses an existing published query - replace with your actual query ID
+        // that accepts parameters
+        const queryId = 2344619; // Example: a published query that takes contract_address parameter
+        
+        // Execute the existing query with parameters
+        const executeResponse = await axios.post(
+          `https://api.dune.com/api/v1/query/${queryId}/execute`,
+          {
+            // Parameters for the query
+            parameters: {
+              contract_address: contractAddress
+            }
+          },
+          {
+            headers: {
+              "x-dune-api-key": DUNE_API_KEY,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+        
+        const executionId = executeResponse.data.execution_id;
+        console.log(`Dune query execution started with ID: ${executionId}`);
+        
+        // Poll for results
+        const maxAttempts = 10;
         let attempts = 0;
         
         while (attempts < maxAttempts) {
-          try {
-            const statusResponse = await axios.get(
-              `https://api.dune.com/api/v1/execution/${executionId}/status`,
+          const statusResponse = await axios.get(
+            `https://api.dune.com/api/v1/execution/${executionId}/status`,
+            {
+              headers: {
+                "x-dune-api-key": DUNE_API_KEY
+              }
+            }
+          );
+          
+          const status = statusResponse.data.state;
+          console.log(`Dune execution status: ${status}`);
+          
+          if (status === "QUERY_STATE_COMPLETED") {
+            // Query completed, fetch results
+            const resultsResponse = await axios.get(
+              `https://api.dune.com/api/v1/execution/${executionId}/results`,
               {
                 headers: {
                   "x-dune-api-key": DUNE_API_KEY
@@ -237,61 +234,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               }
             );
             
-            const status = statusResponse.data.state;
-            console.log(`Execution status: ${status}`);
-            
-            if (status === "QUERY_STATE_COMPLETED") {
-              // Query completed, fetch results
-              const resultsResponse = await axios.get(
-                `https://api.dune.com/api/v1/execution/${executionId}/results`,
-                {
-                  headers: {
-                    "x-dune-api-key": DUNE_API_KEY
-                  }
-                }
-              );
-              
-              return resultsResponse.data;
-            } else if (status === "QUERY_STATE_FAILED") {
-              throw new Error("Query execution failed");
-            }
-            
-            // Wait before polling again (3 seconds)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            attempts++;
-          } catch (error) {
-            console.error("Error polling for results:", error);
-            throw error;
+            console.log("Dune Analytics Results:", resultsResponse.data);
+            break;
+          } else if (status === "QUERY_STATE_FAILED") {
+            console.error("Dune query execution failed");
+            break;
           }
+          
+          // Wait before polling again
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          attempts++;
         }
-        
-        throw new Error("Query execution timed out");
-      };
-      
-      // Execute the query and handle results
-      const results = await createQuery();
-      
-      // Process and log results
-      console.log("Dune API Results:", results);
-      
-      // Extract and format the transaction data
-      if (results && results.result && results.result.rows && results.result.rows.length > 0) {
-        const transactions = results.result.rows;
-        setContractTransactions(transactions);
-        
-        // Log transaction data in a nicer format
-        console.log("Smart Contract Transactions:", {
-          contract: {
-            address: contract.address,
-            name: contract.name || 'Unnamed Contract',
-            chain: contract.chain
-          },
-          transactionCount: transactions.length,
-          transactions: transactions
-        });
-      } else {
-        console.log("No transactions found or empty result");
-        console.log("Raw result data:", results);
+      } catch (error) {
+        console.error("Error fetching Dune analytics:", error);
+        // Continue without Dune analytics
       }
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
@@ -306,34 +262,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     } finally {
       setIsLoadingTransactions(false);
     }
-  };
-
-  // Helper function to generate fallback transaction data when API fails
-  const generateFallbackTransactionData = (contract) => {
-    const txTypes = ['Transfer', 'Swap', 'Mint', 'Burn', 'Approval'];
-    const accounts = [
-      '0x1234567890abcdef1234567890abcdef12345678',
-      '0xabcdef1234567890abcdef1234567890abcdef12',
-      '0x7890abcdef1234567890abcdef1234567890abcd',
-      '0xdef1234567890abcdef1234567890abcdef12345'
-    ];
-    
-    // Generate 25 random transactions
-    return Array.from({ length: 25 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - Math.floor(Math.random() * 30)); // Random date within last 30 days
-      
-      return {
-        tx_hash: `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}`,
-        block_time: date.toISOString(),
-        from_address: accounts[Math.floor(Math.random() * accounts.length)],
-        to_address: contract.address,
-        value: (Math.random() * 10).toFixed(4),
-        gas_used: Math.floor(Math.random() * 1000000) + 21000,
-        tx_type: txTypes[Math.floor(Math.random() * txTypes.length)],
-        status: Math.random() > 0.05 ? 'Success' : 'Failed' // 5% failure rate
-      };
-    }).sort((a, b) => new Date(b.block_time) - new Date(a.block_time)); // Sort by date, newest first
   };
 
   const availableChains = [
