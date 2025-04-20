@@ -513,25 +513,85 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   };
                 });
                 
-                transactions = formattedTransfers.map(transfer => {
-                  // Convert to the format expected by the rest of the code
-                  return {
-                    tx_hash: transfer.transactionHash,
-                    block_number: transfer.blockNumber,
-                    block_time: new Date(parseInt(transfer.raw.timeStamp) * 1000).toISOString(),
-                    from_address: transfer.returnValues.from,
-                    to_address: transfer.returnValues.to,
-                    value_eth: formatTokenAmount(transfer.returnValues.value, transfer.raw.tokenDecimal, transfer.raw.tokenSymbol),
-                    gas_used: '0', // Will be populated later if needed
-                    status: 'Success',
-                    tx_type: 'Token Transfer',
-                    token_name: transfer.raw.tokenName,
-                    token_symbol: transfer.raw.tokenSymbol,
-                    contract_address: contractAddress
-                  };
+                // Use a Map to group transactions by hash to handle multi-transfer transactions properly
+                const txGroups = new Map();
+                
+                formattedTransfers.forEach(transfer => {
+                  const hash = transfer.transactionHash;
+                  
+                  if (!txGroups.has(hash)) {
+                    // First time seeing this transaction hash
+                    txGroups.set(hash, {
+                      tx_hash: hash,
+                      block_number: transfer.blockNumber,
+                      block_time: new Date(parseInt(transfer.raw.timeStamp) * 1000).toISOString(),
+                      from_address: transfer.returnValues.from,
+                      // We'll build recipients array for multi-transfers
+                      recipients: [{
+                        to_address: transfer.returnValues.to,
+                        value: formatTokenAmount(transfer.returnValues.value, transfer.raw.tokenDecimal, transfer.raw.tokenSymbol)
+                      }],
+                      // These are common for all transfers in the transaction
+                      gas_used: '0', // Will be populated later if needed
+                      status: 'Success',
+                      tx_type: 'Token Transfer',
+                      token_name: transfer.raw.tokenName,
+                      token_symbol: transfer.raw.tokenSymbol,
+                      contract_address: contractAddress,
+                      is_multi_transfer: false
+                    });
+                  } else {
+                    // We've seen this transaction before - add this recipient
+                    const existingTx = txGroups.get(hash);
+                    existingTx.recipients.push({
+                      to_address: transfer.returnValues.to,
+                      value: formatTokenAmount(transfer.returnValues.value, transfer.raw.tokenDecimal, transfer.raw.tokenSymbol)
+                    });
+                    existingTx.is_multi_transfer = true;
+                  }
                 });
                 
-                console.log(`Successfully formatted ${transactions.length} token transfers`);
+                // Convert grouped transactions to our final format
+                const transactions = Array.from(txGroups.values()).map(groupedTx => {
+                  if (groupedTx.is_multi_transfer) {
+                    // For multi-transfers, create a special display format
+                    const recipientCount = groupedTx.recipients.length;
+                    return {
+                      tx_hash: groupedTx.tx_hash,
+                      block_number: groupedTx.block_number,
+                      block_time: groupedTx.block_time,
+                      from_address: groupedTx.from_address,
+                      to_address: `Multiple Recipients (${recipientCount})`,
+                      value_eth: `Multiple Transfers`,
+                      gas_used: groupedTx.gas_used,
+                      status: groupedTx.status,
+                      tx_type: 'Batch Token Transfer',
+                      token_name: groupedTx.token_name,
+                      token_symbol: groupedTx.token_symbol,
+                      contract_address: groupedTx.contract_address,
+                      // Store the full recipient details for UI expansion
+                      recipients: groupedTx.recipients
+                    };
+                  } else {
+                    // For single transfers, use the standard format
+                    return {
+                      tx_hash: groupedTx.tx_hash,
+                      block_number: groupedTx.block_number,
+                      block_time: groupedTx.block_time,
+                      from_address: groupedTx.from_address,
+                      to_address: groupedTx.recipients[0].to_address,
+                      value_eth: groupedTx.recipients[0].value,
+                      gas_used: groupedTx.gas_used,
+                      status: groupedTx.status,
+                      tx_type: 'Token Transfer',
+                      token_name: groupedTx.token_name,
+                      token_symbol: groupedTx.token_symbol,
+                      contract_address: groupedTx.contract_address
+                    };
+                  }
+                });
+                
+                console.log(`Successfully formatted ${transactions.length} unique transactions (from ${formattedTransfers.length} total transfers)`);
               } else {
                 console.log("No transactions found for this contract after trying all methods");
               }
@@ -1231,12 +1291,60 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Helper function to format token amounts with appropriate decimals
   const formatTokenAmount = (value, decimals, symbol) => {
     try {
+      if (value === undefined || value === null) {
+        return `0 ${symbol || ''}`.trim();
+      }
+      
       const decimalValue = parseInt(decimals) || 18;
+      let numericValue = 0;
+      
+      if (typeof value === 'string') {
+        // Handle scientific notation, hex strings, etc.
+        if (value.startsWith('0x')) {
+          // Hex string
+          try {
+            numericValue = parseInt(value, 16);
+          } catch (e) {
+            console.error("Error parsing hex value:", e);
+            numericValue = 0;
+          }
+        } else {
+          // Regular number string or scientific notation
+          try {
+            numericValue = parseFloat(value);
+          } catch (e) {
+            console.error("Error parsing float value:", e);
+            numericValue = 0;
+          }
+        }
+      } else if (typeof value === 'number') {
+        numericValue = value;
+      } else if (typeof value === 'bigint') {
+        // Convert BigInt to a number - this might lose precision for very large values
+        numericValue = Number(value);
+      }
+      
+      // Apply decimal division
       const divisor = Math.pow(10, decimalValue);
-      const amount = parseFloat(value) / divisor;
-      return `${amount.toFixed(6)} ${symbol || ''}`.trim();
+      const amount = numericValue / divisor;
+      
+      // Format with appropriate precision - use fewer decimals for large numbers
+      let formattedAmount;
+      if (amount > 1000000) {
+        formattedAmount = amount.toFixed(2);
+      } else if (amount > 1000) {
+        formattedAmount = amount.toFixed(4);
+      } else if (amount > 1) {
+        formattedAmount = amount.toFixed(6);
+      } else if (amount > 0.0001) {
+        formattedAmount = amount.toFixed(8);
+      } else {
+        formattedAmount = amount.toExponential(4);
+      }
+      
+      return `${formattedAmount} ${symbol || ''}`.trim();
     } catch (error) {
-      console.error("Error formatting token amount:", error);
+      console.error("Error formatting token amount:", error, "Value:", value, "Decimals:", decimals);
       return `0 ${symbol || ''}`.trim();
     }
   };
