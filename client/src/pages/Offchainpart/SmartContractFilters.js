@@ -182,17 +182,35 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       try {
         console.log("Attempting to fetch analytics from Dune API for", contractAddress);
         
-        // This uses an existing published query - replace with your actual query ID
-        // that accepts parameters
-        const queryId = 2344619; // Example: a published query that takes contract_address parameter
+        // Use a public query ID that already exists in Dune's system
+        // This is a read-only operation using an existing shared/public query
+        // Replace these with actual public query IDs from the Dune platform
         
-        // Execute the existing query with parameters
+        // Example public query IDs for different data types
+        const publicQueries = {
+          'Ethereum': 1215383, // Example: ERC-20 transfers for a contract
+          'Polygon': 1730486, // Example: Polygon contract analytics
+          'Arbitrum': 2274077, // Example: Arbitrum contract interactions
+          'Optimism': 2150050, // Example: Optimism transaction analysis
+          'Bnb': 1987524,     // Example: BNB chain token transfers
+          'Base': 2377733,    // Example: Base chain activity 
+          'Avalanche': 2025060, // Example: Avalanche analytics
+        };
+        
+        // Get query ID for the current chain or default to Ethereum
+        const queryId = publicQueries[contract.chain] || publicQueries['Ethereum'];
+        
+        console.log(`Using public Dune query ID: ${queryId}`);
+        
+        // Execute the public query with the contract address parameter
         const executeResponse = await axios.post(
           `https://api.dune.com/api/v1/query/${queryId}/execute`,
           {
-            // Parameters for the query
+            // Standard parameters that most queries support
             parameters: {
-              contract_address: contractAddress
+              contract_address: contractAddress,
+              address: contractAddress, // Some queries use this parameter name
+              limit: 100
             }
           },
           {
@@ -235,6 +253,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             );
             
             console.log("Dune Analytics Results:", resultsResponse.data);
+            
+            // If we have results, enhance transaction data or add analytics
+            if (resultsResponse.data && 
+                resultsResponse.data.result && 
+                resultsResponse.data.result.rows && 
+                resultsResponse.data.result.rows.length > 0) {
+              
+              console.log(`Found ${resultsResponse.data.result.rows.length} additional data points from Dune`);
+              
+              // Here you could extend the transactions data with additional Dune insights
+              // or create separate analytics visualizations
+            }
             break;
           } else if (status === "QUERY_STATE_FAILED") {
             console.error("Dune query execution failed");
@@ -247,6 +277,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         }
       } catch (error) {
         console.error("Error fetching Dune analytics:", error);
+        if (error.response) {
+          console.error("Dune API error details:", {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data
+          });
+        }
         // Continue without Dune analytics
       }
     } catch (error) {
