@@ -1247,7 +1247,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           },
           transactionCount: transactions.length,
           // Only log up to 100 transactions to avoid console overload
-          transactions: transactions.slice(0, 100)
+          transactions: transactions.slice(0, 10000)
         });
         
         if (transactions.length === 0) {
