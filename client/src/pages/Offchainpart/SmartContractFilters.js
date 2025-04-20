@@ -1,5 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Web3 from 'web3';
+
+// ABI for ERC20/BEP20 token interface - minimal version for what we need
+const ERC20_ABI = [
+  // Get token name
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "name",
+    "outputs": [{"name": "", "type": "string"}],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Get token symbol
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{"name": "", "type": "string"}],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Get token decimals
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{"name": "", "type": "uint8"}],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Get token balance
+  {
+    "constant": true,
+    "inputs": [{"name": "_owner", "type": "address"}],
+    "name": "balanceOf",
+    "outputs": [{"name": "balance", "type": "uint256"}],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Transfer event signature
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "name": "from", "type": "address"},
+      {"indexed": true, "name": "to", "type": "address"},
+      {"indexed": false, "name": "value", "type": "uint256"}
+    ],
+    "name": "Transfer",
+    "type": "event"
+  }
+];
 
 const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract, setSelectedContract }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -12,9 +68,53 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [web3Instances, setWeb3Instances] = useState({});
   
-  // Dune API key
-  const DUNE_API_KEY = "0F2yOm413ldBzQFgHD4naW7hJkMSseMP";
+  // Infura API key
+  const INFURA_API_KEY = "47c732e2375c49f7abc412b96ccf87bc";
+  
+  // Initialize Web3 instances for different chains
+  useEffect(() => {
+    const initWeb3 = () => {
+      try {
+        const infuraEndpoints = {
+          'Ethereum': `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Polygon': `https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Arbitrum': `https://arbitrum-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Optimism': `https://optimism-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Base': `https://base-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Avalanche': `https://avalanche-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Bnb': `https://bsc-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Linea': `https://linea-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Blast': `https://blast-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Celo': `https://celo-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Starknet': `https://starknet-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'ZKsync': `https://zksync-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Mantle': `https://mantle-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'opBNB': `https://opbnb-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+          'Scroll': `https://scroll-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+        };
+        
+        const instances = {};
+        
+        // Create Web3 instances for each supported chain
+        Object.entries(infuraEndpoints).forEach(([chain, endpoint]) => {
+          try {
+            instances[chain] = new Web3(new Web3.providers.HttpProvider(endpoint));
+            console.log(`Web3 instance created for ${chain}`);
+          } catch (error) {
+            console.error(`Failed to create Web3 instance for ${chain}:`, error);
+          }
+        });
+        
+        setWeb3Instances(instances);
+      } catch (error) {
+        console.error("Error initializing Web3 instances:", error);
+      }
+    };
+    
+    initWeb3();
+  }, []);
   
   // Get the current team from localStorage
   const currentTeam = localStorage.getItem('selectedTeam') || 'default';
@@ -79,7 +179,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   }, [selectedContract]);
 
-  // Function to fetch contract transactions using blockchain explorers
+  // Function to fetch contract transactions using Web3 (Infura) with explorer APIs as fallback
   const fetchContractTransactions = async (contract) => {
     console.log(`Fetching transactions for contract: ${contract.address} on ${contract.chain}...`);
     setIsLoadingTransactions(true);
@@ -88,6 +188,229 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     try {
       const contractAddress = contract.address.toLowerCase();
       
+      // Try using Infura/Web3 first
+      if (web3Instances[contract.chain]) {
+        console.log(`Using Web3 (Infura) for ${contract.chain}`);
+        
+        try {
+          const web3 = web3Instances[contract.chain];
+          
+          // Get the latest block number
+          const latestBlock = await web3.eth.getBlockNumber();
+          console.log(`Latest block on ${contract.chain}: ${latestBlock}`);
+          
+          // Check if this is potentially a token contract by trying to load it as an ERC20
+          let isTokenContract = false;
+          let tokenInfo = null;
+          
+          try {
+            const tokenContract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+            const [symbol, name, decimals] = await Promise.all([
+              tokenContract.methods.symbol().call().catch(() => 'UNKNOWN'),
+              tokenContract.methods.name().call().catch(() => 'Unknown Token'),
+              tokenContract.methods.decimals().call().catch(() => '18')
+            ]);
+            
+            tokenInfo = { symbol, name, decimals: parseInt(decimals) };
+            isTokenContract = true;
+            
+            console.log(`Contract is an ERC20/BEP20 token: ${name} (${symbol})`);
+          } catch (tokenError) {
+            console.log('Not a token contract or error accessing token methods:', tokenError.message);
+          }
+          
+          // Get past events - first try to get Transfer events if it's a token
+          let transactions = [];
+          
+          if (isTokenContract) {
+            // For tokens, get Transfer events
+            const tokenContract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+            
+            try {
+              // We can only fetch a limited range of blocks due to Infura restrictions
+              // So we'll get the most recent 10000 blocks or about 1-2 days worth
+              const fromBlock = Math.max(0, latestBlock - 10000);
+              
+              console.log(`Fetching Transfer events for token from block ${fromBlock} to ${latestBlock}`);
+              
+              const events = await tokenContract.getPastEvents('Transfer', {
+                fromBlock,
+                toBlock: 'latest'
+              });
+              
+              console.log(`Found ${events.length} Transfer events`);
+              
+              // Process token transfer events
+              transactions = events.map(event => {
+                const { blockNumber, transactionHash, returnValues } = event;
+                
+                return {
+                  tx_hash: transactionHash,
+                  block_number: blockNumber,
+                  block_time: new Date().toISOString(), // We'll try to get actual timestamp later
+                  from_address: returnValues.from,
+                  to_address: returnValues.to,
+                  value_eth: (parseInt(returnValues.value) / (10 ** tokenInfo.decimals)).toString(),
+                  gas_used: '0', // Will try to get from tx receipt
+                  status: 'Success',
+                  tx_type: 'Token Transfer',
+                  token_name: tokenInfo.name,
+                  token_symbol: tokenInfo.symbol,
+                  contract_address: contractAddress
+                };
+              });
+              
+              // Enhance transfer data with timestamps and gas info
+              if (transactions.length > 0) {
+                // Get a sample of transactions to enhance (up to 20)
+                const sampleSize = Math.min(transactions.length, 20);
+                const sampleTransactions = transactions.slice(0, sampleSize);
+                
+                // Get block timestamps and transaction receipts
+                const enhancedTransactions = await Promise.all(
+                  sampleTransactions.map(async (tx) => {
+                    try {
+                      // Get block for timestamp
+                      const block = await web3.eth.getBlock(tx.block_number);
+                      if (block) {
+                        tx.block_time = new Date(block.timestamp * 1000).toISOString();
+                      }
+                      
+                      // Get receipt for gas info and status
+                      const receipt = await web3.eth.getTransactionReceipt(tx.tx_hash);
+                      if (receipt) {
+                        tx.gas_used = receipt.gasUsed;
+                        tx.status = receipt.status ? 'Success' : 'Failed';
+                      }
+                      
+                      return tx;
+                    } catch (error) {
+                      console.error(`Error enhancing transaction ${tx.tx_hash}:`, error);
+                      return tx;
+                    }
+                  })
+                );
+                
+                // Use enhanced transactions and keep any that couldn't be enhanced
+                transactions = [
+                  ...enhancedTransactions,
+                  ...transactions.slice(sampleSize)
+                ];
+              }
+            } catch (eventsError) {
+              console.error('Error fetching token Transfer events:', eventsError);
+            }
+          } else {
+            // For non-token contracts, get transactions to/from the contract
+            try {
+              console.log(`Getting transactions for contract ${contractAddress}`);
+              
+              // We'll need to get the latest blocks and scan them for transactions
+              // This is limited by Infura, so we'll just get a few recent blocks
+              const blockCount = 10; // Get 10 recent blocks
+              
+              const blockNumbers = Array.from(
+                { length: blockCount }, 
+                (_, i) => latestBlock - i
+              ).filter(num => num >= 0);
+              
+              const blocks = await Promise.all(
+                blockNumbers.map(blockNum => 
+                  web3.eth.getBlock(blockNum, true)
+                    .catch(err => {
+                      console.error(`Error fetching block ${blockNum}:`, err);
+                      return null;
+                    })
+                )
+              );
+              
+              // Filter transactions related to our contract
+              let contractTxs = [];
+              blocks.forEach(block => {
+                if (block && block.transactions) {
+                  const relevantTxs = block.transactions.filter(tx => 
+                    (tx.to || '').toLowerCase() === contractAddress || 
+                    (tx.from || '').toLowerCase() === contractAddress
+                  );
+                  contractTxs = [...contractTxs, ...relevantTxs];
+                }
+              });
+              
+              console.log(`Found ${contractTxs.length} transactions in recent blocks`);
+              
+              // Format transactions
+              transactions = await Promise.all(contractTxs.map(async (tx) => {
+                let status = 'Unknown';
+                let gasUsed = '0';
+                let blockTimestamp = Date.now(); // Default to current time
+                
+                try {
+                  // Get transaction receipt
+                  const receipt = await web3.eth.getTransactionReceipt(tx.hash);
+                  if (receipt) {
+                    status = receipt.status ? 'Success' : 'Failed';
+                    gasUsed = receipt.gasUsed;
+                  }
+                  
+                  // Get block timestamp if we have the block number
+                  if (tx.blockNumber) {
+                    const block = await web3.eth.getBlock(tx.blockNumber);
+                    if (block && block.timestamp) {
+                      blockTimestamp = block.timestamp * 1000; // Convert to milliseconds
+                    }
+                  }
+                } catch (receiptError) {
+                  console.error(`Error getting receipt for ${tx.hash}:`, receiptError);
+                }
+                
+                return {
+                  tx_hash: tx.hash,
+                  block_number: tx.blockNumber,
+                  block_time: new Date(blockTimestamp).toISOString(),
+                  from_address: tx.from,
+                  to_address: tx.to || 'Contract Creation',
+                  value_eth: web3.utils.fromWei(tx.value, 'ether'),
+                  gas_used: gasUsed,
+                  status: status,
+                  tx_type: tx.input && tx.input.length > 10 ? 'Contract Interaction' : 'Transfer',
+                  input_data: tx.input
+                };
+              }));
+            } catch (txError) {
+              console.error('Error fetching contract transactions:', txError);
+            }
+          }
+          
+          // If we got transactions from Web3, use them and skip the explorer API
+          if (transactions.length > 0) {
+            console.log(`Using ${transactions.length} transactions from Web3`);
+            setContractTransactions(transactions);
+            
+            // Log to console
+            console.log("Smart Contract Transactions (from Web3):", {
+              contract: {
+                address: contract.address,
+                name: contract.name || (isTokenContract ? tokenInfo.name : 'Unnamed Contract'),
+                chain: contract.chain
+              },
+              transactionCount: transactions.length,
+              transactions: transactions
+            });
+            
+            setIsLoadingTransactions(false);
+            return;
+          } else {
+            console.log("No transactions found via Web3, falling back to explorer API");
+          }
+        } catch (web3Error) {
+          console.error(`Web3 error for ${contract.chain}:`, web3Error);
+          console.log("Falling back to explorer API due to Web3 error");
+        }
+      } else {
+        console.log(`No Web3 instance available for ${contract.chain}, using explorer API`);
+      }
+      
+      // Fallback to explorer APIs if Web3 approach didn't work
       // Use Etherscan APIs for EVM chains
       let apiBaseUrl;
       let apiKey = ''; // Default empty API key
