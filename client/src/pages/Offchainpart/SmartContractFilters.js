@@ -10,6 +10,53 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedContracts, setSelectedContracts] = useState([]);
+  
+  // Get the current team from localStorage
+  const currentTeam = localStorage.getItem('selectedTeam') || 'default';
+  
+  // Load contracts from localStorage on initial render
+  useEffect(() => {
+    const loadContractsFromStorage = () => {
+      try {
+        // Get team-specific contracts from localStorage
+        const storedContracts = localStorage.getItem(`contracts_${currentTeam}`);
+        if (storedContracts) {
+          const parsedContracts = JSON.parse(storedContracts);
+          setcontractarray(parsedContracts);
+          
+          // If a contract was previously selected, try to find and select it again
+          const storedSelectedContractId = localStorage.getItem(`selectedContract_${currentTeam}`);
+          if (storedSelectedContractId && parsedContracts.length > 0) {
+            const foundContract = parsedContracts.find(c => c.id === storedSelectedContractId);
+            if (foundContract) {
+              setSelectedContract(foundContract);
+            } else {
+              // If previously selected contract isn't found, select the first one
+              setSelectedContract(parsedContracts[0]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading contracts from localStorage:", error);
+      }
+    };
+    
+    loadContractsFromStorage();
+  }, [currentTeam, setcontractarray, setSelectedContract]);
+  
+  // Save contracts to localStorage whenever they change
+  useEffect(() => {
+    if (contractarray && contractarray.length > 0) {
+      localStorage.setItem(`contracts_${currentTeam}`, JSON.stringify(contractarray));
+    }
+  }, [contractarray, currentTeam]);
+  
+  // Save selected contract to localStorage when it changes
+  useEffect(() => {
+    if (selectedContract) {
+      localStorage.setItem(`selectedContract_${currentTeam}`, selectedContract.id);
+    }
+  }, [selectedContract, currentTeam]);
 
   // Initialize selectedContracts with the current selectedContract if it exists
   useEffect(() => {
@@ -48,12 +95,29 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const handleRemoveContract = (contractId, e) => {
     e.stopPropagation(); // Prevent dropdown from toggling
     
+    // Update selected contracts in component state
     const updatedContracts = selectedContracts.filter(c => c.id !== contractId);
     setSelectedContracts(updatedContracts);
+    
+    // Remove from main contract array
+    const updatedContractArray = contractarray.filter(c => c.id !== contractId);
+    setcontractarray(updatedContractArray);
     
     // If the primary selected contract was removed, update it
     if (selectedContract && selectedContract.id === contractId) {
       setSelectedContract(updatedContracts.length > 0 ? updatedContracts[0] : null);
+      
+      // Clear from localStorage if no contracts left
+      if (updatedContracts.length === 0) {
+        localStorage.removeItem(`selectedContract_${currentTeam}`);
+      }
+    }
+    
+    // Update localStorage
+    if (updatedContractArray.length > 0) {
+      localStorage.setItem(`contracts_${currentTeam}`, JSON.stringify(updatedContractArray));
+    } else {
+      localStorage.removeItem(`contracts_${currentTeam}`);
     }
   };
 
@@ -78,13 +142,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // For demonstration purposes, since the actual API endpoint is returning 404
       // We'll simulate a successful verification instead of making the failing API call
       
-      // Create the new contract
+      // Create the new contract with a unique ID
       const newContract = {
         address: newContractAddress,
         name: newContractName || newContractAddress,
         chain: selectedChain,
         chains: [selectedChain], // Keep the previous format for compatibility
-        id: `contract-${Date.now()}`
+        id: `contract-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` // More unique ID
       };
       
       // Update contract array
@@ -96,6 +160,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Set as primary selected contract
       setSelectedContract(newContract);
+      
+      // Save to localStorage
+      localStorage.setItem(`contracts_${currentTeam}`, JSON.stringify(updatedContractArray));
+      localStorage.setItem(`selectedContract_${currentTeam}`, newContract.id);
       
       // Close modal
       setShowAddContractModal(false);
@@ -121,6 +189,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     // Validate contract address format (basic validation for EVM chains)
     if (selectedChain !== "Solana" && !/^0x[a-fA-F0-9]{40}$/.test(newContractAddress)) {
       setErrorMessage("Please enter a valid contract address (0x followed by 40 hex characters)");
+      return;
+    }
+    
+    // Check if contract already exists for this team
+    const contractExists = contractarray.some(
+      c => c.address.toLowerCase() === newContractAddress.toLowerCase() && c.chain === selectedChain
+    );
+    
+    if (contractExists) {
+      setErrorMessage("This contract has already been added");
       return;
     }
     
@@ -307,7 +385,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Verifying...
+                      Adding...
                     </>
                   ) : (
                     <>
