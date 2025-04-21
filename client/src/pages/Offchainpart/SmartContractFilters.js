@@ -971,52 +971,37 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     isTokenTransfer = true;
                     tokenRecipient = decodedData.to;
                     
-                    // Convert the raw token amount based on decimals
-                    // Default to 18 decimals if we don't know
+                    // Process the token value
                     const rawValue = decodedData.value;
-                    const decimals = 18;
+                    const decimals = 18; // Most ERC-20 tokens use 18 decimals
                     
                     try {
-                      // Format token value more clearly for Base ERC-20 tokens
-                      // Use string-based math instead of BigInt to handle large numbers
-                      const rawValue = decodedData.value;
-                      const decimals = 18;
-                      
-                      // If the raw value is small enough, we can use normal number conversion
-                      if (rawValue.length < 15) {
-                        const numericValue = Number(rawValue);
-                        const divisor = Math.pow(10, decimals);
-                        tokenValue = (numericValue / divisor).toString();
+                      // Check if we have a hex string
+                      if (typeof rawValue === 'string' && rawValue.startsWith('0x')) {
+                        // Convert hex to decimal
+                        const hexValue = rawValue.substring(2); // Remove '0x'
+                        const decimalValue = parseInt(rawValue, 16).toString();
+                        tokenValue = formatTokenWithDecimals(decimalValue, decimals);
+                      }
+                      // Check if it's a large number marker
+                      else if (typeof rawValue === 'string' && rawValue.startsWith('LARGE_NUMBER:')) {
+                        // For large numbers, use a simplified display
+                        // Extract the significant hex part
+                        const hexPart = rawValue.substring(13);
                         
-                        // Format with appropriate decimals
-                        if (tokenValue.includes('.')) {
-                          const parts = tokenValue.split('.');
-                          tokenValue = parts[0] + '.' + parts[1].substring(0, 6).replace(/0+$/, '');
-                          if (tokenValue.endsWith('.')) tokenValue = tokenValue.substring(0, tokenValue.length - 1);
-                        }
-                      } else {
-                        // For large numbers, we'll do manual division with string manipulation
-                        // This avoids precision issues with large numbers
-                        
-                        // Implement a simple string-based division by 10^decimals
-                        if (rawValue.length <= decimals) {
-                          // Value is smaller than 1
-                          const paddedValue = '0'.repeat(decimals - rawValue.length) + rawValue;
-                          tokenValue = '0.' + paddedValue.replace(/0+$/, '');
+                        // For common token amounts, try a reasonable conversion
+                        if (hexPart.length <= 16) {
+                          // This covers most realistic token amounts
+                          const approxValue = parseInt('0x' + hexPart, 16) / Math.pow(10, 18);
+                          tokenValue = approxValue.toString();
                         } else {
-                          // Value is at least 1
-                          const wholePart = rawValue.slice(0, -decimals) || '0';
-                          let decimalPart = rawValue.slice(-decimals);
-                          
-                          // Remove trailing zeros from decimal part
-                          decimalPart = decimalPart.replace(/0+$/, '');
-                          
-                          if (decimalPart.length > 0) {
-                            tokenValue = wholePart + '.' + decimalPart;
-                          } else {
-                            tokenValue = wholePart;
-                          }
+                          // For very large amounts, display a simple approximation
+                          tokenValue = hexPart.length * 4 > 40 ? "Trillions+" : "Millions+";
                         }
+                      }
+                      // Regular number string
+                      else {
+                        tokenValue = formatTokenWithDecimals(rawValue, decimals);
                       }
                       
                       console.log(`Decoded Base ERC-20 token amount: ${tokenValue}`);
@@ -1669,22 +1654,55 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Extract the token amount: 3rd parameter (offset 74, length 64)
         const amountHex = inputData.substring(74);
-        let tokenAmount = 0;
+        let tokenAmount = '0';
         
         // Convert hex to decimal (support large numbers)
         try {
-          // For very large numbers, we'll use a string-based approach
-          const bigAmount = `0x${amountHex}`;
+          // Convert hex to a decimal string
+          const hexWithoutPrefix = amountHex.replace(/^0+/, ''); // Remove leading zeros
           
-          // We can't use BigInt, so we'll convert with a different approach
-          // For values that fit in regular numbers
-          if (amountHex.replace(/^0+/, '').length <= 15) {
-            tokenAmount = parseInt(bigAmount).toString();
+          // Parse hex string to a decimal string
+          let decimalValue = '';
+          
+          // If it's a small enough hex, use parseInt directly
+          if (hexWithoutPrefix.length <= 12) {
+            decimalValue = parseInt('0x' + hexWithoutPrefix, 16).toString();
           } else {
-            // For large values, we'll keep the hex and decode later during formatting
-            tokenAmount = amountHex;
+            // For larger numbers, convert manually
+            // Since we're only handling ERC-20 tokens that are typically 18 decimals,
+            // we can make a simplification to get the value directly
+            
+            // Most ERC-20 transfers are whole numbers or have simple decimals
+            // 5000 tokens in hex for an 18 decimal token would be: 
+            // 5000 * 10^18 = 5000000000000000000000 or 0x4563918244f40000
+            
+            // Check if this might be a token amount by its typical format
+            if (amountHex.match(/^0{40,60}[0-9a-f]{4,24}$/i)) {
+              // Very likely a token amount with 18 decimals
+              // Get the actual significant digits
+              const significantPart = amountHex.replace(/^0+/, '');
+              
+              // For common token amounts (up to ~quadrillions)
+              if (significantPart.length <= 16) {
+                try {
+                  // Parse directly if possible
+                  decimalValue = parseInt('0x' + significantPart, 16).toString();
+                } catch (e) {
+                  console.log('Error directly parsing hex:', e);
+                  // Just store the hex for later display
+                  decimalValue = '0x' + significantPart;
+                }
+              } else {
+                // For very large amounts, just note we have a large number
+                decimalValue = 'LARGE_NUMBER:' + significantPart;
+              }
+            } else {
+              // Unusual format, just keep it as hex
+              decimalValue = '0x' + amountHex;
+            }
           }
           
+          tokenAmount = decimalValue;
           console.log(`Decoded ${chainType} token amount (raw): ${tokenAmount}`);
         } catch (e) {
           console.error(`Error parsing ${chainType} token amount:`, e);
@@ -1702,6 +1720,63 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     } catch (error) {
       console.error(`Error decoding ${chainType} transfer:`, error);
       return { to: null, value: '0' };
+    }
+  };
+
+  // Add a helper function for formatting token values with decimals
+  const formatTokenWithDecimals = (value, decimals) => {
+    try {
+      // Remove scientific notation if present
+      if (value.includes('e')) {
+        const parts = value.split('e');
+        const base = parseFloat(parts[0]);
+        const exponent = parseInt(parts[1]);
+        
+        if (exponent > 0) {
+          // Convert to regular number with zeros
+          value = base.toFixed(0) + '0'.repeat(exponent);
+        } else {
+          // Negative exponent (very small number)
+          value = (base * Math.pow(10, exponent)).toString();
+        }
+      }
+      
+      // Convert to a value with proper decimal point
+      let formattedValue;
+      
+      // If the value is small enough to handle as a regular number
+      if (value.length < 15) {
+        const numericValue = parseFloat(value);
+        const divisor = Math.pow(10, decimals);
+        formattedValue = (numericValue / divisor).toString();
+      } else {
+        // For large numbers, use string manipulation
+        if (value.length <= decimals) {
+          // Value is less than 1
+          formattedValue = '0.' + '0'.repeat(decimals - value.length) + value.replace(/^0+/, '');
+        } else {
+          // Value is at least 1
+          const wholePart = value.slice(0, value.length - decimals);
+          let decimalPart = value.slice(value.length - decimals);
+          
+          // Remove trailing zeros
+          decimalPart = decimalPart.replace(/0+$/, '');
+          
+          formattedValue = decimalPart.length > 0 ? `${wholePart}.${decimalPart}` : wholePart;
+        }
+      }
+      
+      // Clean up the formatted value - ensure we don't have extremely long decimal parts
+      if (formattedValue.includes('.')) {
+        const parts = formattedValue.split('.');
+        // Limit decimal places to 6
+        formattedValue = `${parts[0]}.${parts[1].substring(0, 6)}`;
+      }
+      
+      return formattedValue;
+    } catch (error) {
+      console.error('Error in formatTokenWithDecimals:', error);
+      return '0';
     }
   };
 
