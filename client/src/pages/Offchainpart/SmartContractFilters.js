@@ -1068,74 +1068,62 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 // Parse amount with safer handling
                 let tokenAmount = "Unknown Amount";
                 try {
-                  // Special case for the specific value (directly from Zeebu token)
-                  if (amountHex === "000000000000000000000000000000000000000000000001d9fe68f33076e9e5") {
-                    // This is exactly 34.154852017723861477 ZBU tokens
-                    tokenAmount = "34.154852";
-                  } else {
-                    // For all other token amounts, use a more precise decimal conversion
+                  // Remove leading zeros
+                  const significantHex = amountHex.replace(/^0+/, '') || '0';
+                  console.log(`Significant hex for amount: ${significantHex}`);
+                  
+                  // Use a decimal string approach for precise conversion
+                  let decimalValue = '0';
+                  
+                  // Convert hex to decimal one digit at a time
+                  for (let i = 0; i < significantHex.length; i++) {
+                    const hexDigit = parseInt(significantHex[i], 16);
                     
-                    // Remove leading zeros
-                    const significantHex = amountHex.replace(/^0+/, '') || '0';
-                    console.log(`Significant hex for amount: ${significantHex}`);
-                    
-                    // Use a decimal string approach for precise conversion
-                    let decimalValue = '0';
-                    
-                    // Convert hex to decimal one digit at a time
-                    for (let i = 0; i < significantHex.length; i++) {
-                      const hexDigit = parseInt(significantHex[i], 16);
-                      
-                      // Multiply by 16 and add current digit (as strings to avoid overflow)
-                      let temp = 0;
-                      for (let j = 0; j < decimalValue.length; j++) {
-                        temp = temp * 10 + parseInt(decimalValue[j]);
-                        temp = temp * 16;
-                      }
-                      temp = temp + hexDigit;
-                      decimalValue = temp.toString();
+                    // Multiply by 16 and add current digit (as strings to avoid overflow)
+                    let temp = 0;
+                    for (let j = 0; j < decimalValue.length; j++) {
+                      temp = temp * 10 + parseInt(decimalValue[j]);
+                      temp = temp * 16;
                     }
+                    temp = temp + hexDigit;
+                    decimalValue = temp.toString();
+                  }
+                  
+                  console.log(`Decimal value before applying decimals: ${decimalValue}`);
+                  
+                  // Apply token decimals (standard is 18 for most ERC-20 tokens)
+                  const decimals = 18;
+                  
+                  // Format with appropriate decimal places
+                  if (decimalValue.length <= decimals) {
+                    // Value is less than 1
+                    const leadingZeros = decimals - decimalValue.length;
+                    const formattedValue = '0.' + '0'.repeat(leadingZeros) + decimalValue;
+                    console.log(`Formatted value (< 1): ${formattedValue}`);
+                    tokenAmount = parseFloat(formattedValue).toFixed(6);
+                  } else {
+                    // Value is at least 1
+                    const integerPart = decimalValue.slice(0, decimalValue.length - decimals);
+                    const fractionalPart = decimalValue.slice(decimalValue.length - decimals);
+                    const formattedValue = integerPart + '.' + fractionalPart;
+                    console.log(`Formatted value (≥ 1): ${formattedValue}`);
                     
-                    console.log(`Decimal value before applying decimals: ${decimalValue}`);
-                    
-                    // Apply token decimals (standard is 18 for most ERC-20 tokens)
-                    const decimals = 18;
-                    
-                    // Format with appropriate decimal places
-                    if (decimalValue.length <= decimals) {
-                      // Value is less than 1
-                      const leadingZeros = decimals - decimalValue.length;
-                      const formattedValue = '0.' + '0'.repeat(leadingZeros) + decimalValue;
-                      console.log(`Formatted value (< 1): ${formattedValue}`);
-                      tokenAmount = parseFloat(formattedValue).toFixed(6);
+                    // Use appropriate precision based on size
+                    const numValue = parseFloat(formattedValue);
+                    if (numValue > 1000000) {
+                      tokenAmount = numValue.toFixed(2);
+                    } else if (numValue > 10000) {
+                      tokenAmount = numValue.toFixed(3);
+                    } else if (numValue > 100) {
+                      tokenAmount = numValue.toFixed(4);
                     } else {
-                      // Value is at least 1
-                      const integerPart = decimalValue.slice(0, decimalValue.length - decimals);
-                      const fractionalPart = decimalValue.slice(decimalValue.length - decimals);
-                      const formattedValue = integerPart + '.' + fractionalPart;
-                      console.log(`Formatted value (≥ 1): ${formattedValue}`);
-                      
-                      // Use appropriate precision based on size
-                      const numValue = parseFloat(formattedValue);
-                      if (numValue > 1000000) {
-                        tokenAmount = numValue.toFixed(2);
-                      } else if (numValue > 10000) {
-                        tokenAmount = numValue.toFixed(3);
-                      } else if (numValue > 100) {
-                        tokenAmount = numValue.toFixed(4);
-                      } else {
-                        tokenAmount = numValue.toFixed(6);
-                      }
+                      tokenAmount = numValue.toFixed(6);
                     }
                   }
                 } catch (amountError) {
                   console.error("Error parsing token amount:", amountError);
                   console.error("Problematic amount hex:", amountHex);
-                  
-                  // Fallback for known values
-                  if (amountHex === "000000000000000000000000000000000000000000000001d9fe68f33076e9e5") {
-                    tokenAmount = "34.154852"; // Exact value for Zeebu token example
-                  }
+                  tokenAmount = "Unknown";
                 }
                 
                 // Create token transfer record
@@ -1194,46 +1182,50 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   // Use a more accurate approach to decode token amounts
                   let readableAmount = "0";
                   try {
-                    // Check length of hex value (after removing leading zeros)
+                    // Remove leading zeros
                     const significantHex = amountHex.replace(/^0+/, '');
                     
-                    // For common Base token amounts, try to handle with more precision
-                    if (tx.input.includes("000000000000000000000000000000000000000000000001d9fe68f33076e9e5")) {
-                      // This specific value is 34.154852017723861477 ZBU tokens
-                      readableAmount = "34.154852";
-                      
-                      // If we know it's Zeebu token, set the token details
-                      if (tx.to === "0x2c8c89c442436cc6c0a77943e09c8daf49da3161") {
-                        tokenName = "Zeebu";
-                        tokenSymbol = "ZBU";
+                    // Instead of hardcoding specific token transfers, use the general approach
+                    // Use string-based decimal conversion for all values
+                    let decimalValue = '0';
+                    
+                    // Process hex string character by character to build a decimal string
+                    for (let i = 0; i < significantHex.length; i++) {
+                      // Convert current decimal value to a calculation that avoids overflow
+                      let newValue = 0;
+                      for (let j = 0; j < decimalValue.length; j++) {
+                        newValue = newValue * 10 + parseInt(decimalValue[j]);
+                        newValue = newValue * 16;
                       }
+                      newValue = newValue + parseInt(significantHex[i], 16);
+                      decimalValue = newValue.toString();
+                    }
+                    
+                    // Apply token decimals (usually 18)
+                    const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
+                    
+                    // Format the value with correct decimal places
+                    if (decimalValue.length <= decimals) {
+                      // Value is less than 1
+                      const leadingZeros = decimals - decimalValue.length;
+                      readableAmount = "0." + "0".repeat(leadingZeros) + decimalValue;
                     } else {
-                      // Use string-based decimal conversion for larger values
-                      let decimalValue = "0";
-                      
-                      // Process hex string character by character to build a decimal string
-                      for (let i = 0; i < significantHex.length; i++) {
-                        // Convert current decimal value to a BigInt-like calculation
-                        decimalValue = (parseInt(decimalValue) * 16 + parseInt(significantHex[i], 16)).toString();
-                      }
-                      
-                      // Apply token decimals (usually 18)
-                      const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                      
-                      // Format the value with correct decimal places
-                      if (decimalValue.length <= decimals) {
-                        // Value is less than 1
-                        const leadingZeros = decimals - decimalValue.length;
-                        readableAmount = "0." + "0".repeat(leadingZeros) + decimalValue;
-                      } else {
-                        // Value is at least 1
-                        const wholeNumber = decimalValue.slice(0, decimalValue.length - decimals);
-                        const fraction = decimalValue.slice(decimalValue.length - decimals);
-                        readableAmount = wholeNumber + "." + fraction.substring(0, 8); // Limit to 8 decimal places
-                      }
-                      
-                      // Format to reasonable precision
-                      readableAmount = parseFloat(readableAmount).toFixed(6);
+                      // Value is at least 1
+                      const wholeNumber = decimalValue.slice(0, decimalValue.length - decimals);
+                      const fraction = decimalValue.slice(decimalValue.length - decimals);
+                      readableAmount = wholeNumber + "." + fraction.substring(0, 8); // Limit to 8 decimal places
+                    }
+                    
+                    // Format to reasonable precision based on the size of the number
+                    const parsedAmount = parseFloat(readableAmount);
+                    if (parsedAmount > 1000000) {
+                      readableAmount = parsedAmount.toFixed(2);
+                    } else if (parsedAmount > 10000) {
+                      readableAmount = parsedAmount.toFixed(3);
+                    } else if (parsedAmount > 100) {
+                      readableAmount = parsedAmount.toFixed(4);
+                    } else {
+                      readableAmount = parsedAmount.toFixed(6);
                     }
                   } catch (convError) {
                     console.error("Error in token amount conversion:", convError);
@@ -1816,15 +1808,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Add a new helper function for more accurate token amount parsing
+  // Replace the BigInt-based helper function with a more compatible approach
   const parseTokenAmount = (hexValue, decimals = 18) => {
     try {
-      // Special case for Zeebu token amount
-      if (hexValue === "000000000000000000000000000000000000000000000001d9fe68f33076e9e5" || 
-          hexValue === "1d9fe68f33076e9e5") {
-        return "34.154852";
-      }
-      
       // Remove leading zeros
       const significantHex = hexValue.replace(/^0+/, '') || '0';
       
@@ -1840,7 +1826,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       for (let i = 0; i < significantHex.length; i++) {
         // Manual decimal conversion processing each digit
-        decimalValue = (BigInt(decimalValue) * 16n + BigInt(parseInt(significantHex[i], 16))).toString();
+        let temp = 0;
+        for (let j = 0; j < decimalValue.length; j++) {
+          temp = temp * 10 + parseInt(decimalValue[j]);
+          temp = temp * 16;
+        }
+        temp = temp + parseInt(significantHex[i], 16);
+        decimalValue = temp.toString();
       }
       
       // Apply decimals to the value
