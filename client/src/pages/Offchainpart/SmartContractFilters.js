@@ -921,100 +921,168 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Process all the transactions we found
         transactions = allTxs.map(tx => {
-          // Check if this is a token transfer transaction (has function name and 0 BNB value)
-          const isTokenTransfer = 
-            tx.functionName && 
+          // Check if this is a token transfer transaction 
+          let isTokenTransfer = tx.functionName && 
             tx.functionName.includes('transfer') && 
-            tx.value === '0' && 
-            contract.chain === 'Bnb';
+            tx.value === '0';
           
+          // Further validate token transfers
+          let tokenValue = "0";
+          let tokenType = "Token";
+          let tokenName = "Unknown Token";
+          let tokenSymbol = "TOKEN";
+          let tokenRecipient = tx.to;
+          let tokenDecimals = 18;
+          let usdValue = null;
+          
+          // Chain-specific handling for token transfers
           if (isTokenTransfer) {
-            console.log("Found token transfer in regular transactions:", tx);
-            
-            // This looks like a token transfer, so let's check if we can decode the token info
-            let tokenValue = "Unknown";
-            let tokenType = "BEP-20 Token";
-            let tokenName = "BEP-20 Token";
-            let tokenSymbol = "TOKEN";
-            let usdValue = null;
-            
-            // Check if we have cached token details
-            const tokenContractAddress = tx.to.toLowerCase();
-            if (tokenDetailsCache[tokenContractAddress]) {
-              const tokenInfo = tokenDetailsCache[tokenContractAddress];
-              tokenName = tokenInfo.name;
-              tokenSymbol = tokenInfo.symbol;
-              console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
-            }
-            
-            // Attempt to parse input data
-            if (tx.input && tx.input.length > 10) {
-              console.log("Token transfer input data:", tx.input);
-              // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
-              if (tx.input.startsWith('0xa9059cbb')) {
-                try {
-                  // Extract the amount from the input data, which is the last 64 characters
-                  const amountHex = tx.input.substring(tx.input.length - 64);
-                  // Use parseInt for small numbers or a workaround for larger numbers
-                  // This is a simplified approach since BigInt isn't available
-                  let readableAmount = 0;
-                  let tokenAmount = 0;
+            if (contract.chain === 'Bnb') {
+              // BNB chain processing remains the same
+              tokenType = "BEP-20 Token";
+              tokenName = "BEP-20 Token";
+              
+              // Check if we have cached token details
+              const tokenContractAddress = tx.to.toLowerCase();
+              if (tokenDetailsCache[tokenContractAddress]) {
+                const tokenInfo = tokenDetailsCache[tokenContractAddress];
+                tokenName = tokenInfo.name;
+                tokenSymbol = tokenInfo.symbol;
+                tokenDecimals = parseInt(tokenInfo.decimals) || 18;
+                console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
+              }
+            } else if (contract.chain === 'Base') {
+              // Base chain ERC-20 processing
+              tokenType = "ERC-20 Token";
+              tokenName = "ERC-20 Token";
+              
+              // For Base transactions, we need to be more aggressive about finding token transfers
+              // Typical ERC-20 transfer method: transfer(address,uint256)
+              if (tx.input && tx.input.length > 10) {
+                console.log("Base ERC-20 potential transfer input:", tx.input.substring(0, 50) + "...");
+                
+                // For Base chain, always try to decode the input as an ERC-20 transfer
+                // when we see a zero-value transaction with data
+                if (tx.value === '0' && tx.input.length >= 138) {
+                  const decodedData = decodeERC20TransferInput(tx.input, 'ERC-20');
                   
-                  if (amountHex.startsWith('000000000000000000000000')) {
-                    // This is likely a small number we can parse directly
-                    const smallerHex = amountHex.substring(24); // Remove leading zeros
-                    const rawAmount = parseInt('0x' + smallerHex, 16);
-                    const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                    tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
-                    readableAmount = tokenAmount.toFixed(6);
-                  } else {
-                    // For larger amounts, we'll make an approximation
-                    // Count significant digits and make an estimate
-                    let significantHex = amountHex.replace(/^0+/, '');
-                    const magnitude = significantHex.length * 4; // Each hex char is 4 bits
+                  if (decodedData.to) {
+                    // We successfully decoded this as an ERC-20 transfer
+                    isTokenTransfer = true;
+                    tokenRecipient = decodedData.to;
                     
-                    // Get first few digits for approximation
-                    const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
-                    const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
+                    // Convert the raw token amount based on decimals
+                    // Default to 18 decimals if we don't know
+                    const rawValue = decodedData.value;
+                    const decimals = 18;
                     
-                    tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
-                    
-                    if (tokenAmount > 1000) {
-                      readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
-                    } else {
-                      readableAmount = tokenAmount.toFixed(6);
+                    try {
+                      // Format token value more clearly for Base ERC-20 tokens
+                      // Use BigInt to handle potentially very large numbers
+                      const bigintValue = BigInt(rawValue);
+                      const divisor = BigInt(10) ** BigInt(decimals);
+                      const wholePart = bigintValue / divisor;
+                      
+                      // For the decimal part, calculate the remainder and convert to string
+                      const remainder = bigintValue % divisor;
+                      let decimalPart = remainder.toString().padStart(decimals, '0');
+                      // Trim trailing zeros
+                      decimalPart = decimalPart.replace(/0+$/, '');
+                      
+                      // Format the final token value
+                      if (decimalPart.length > 0) {
+                        tokenValue = `${wholePart.toString()}.${decimalPart}`;
+                      } else {
+                        tokenValue = wholePart.toString();
+                      }
+                      
+                      console.log(`Decoded Base ERC-20 token amount: ${tokenValue}`);
+                    } catch (error) {
+                      console.error("Error formatting Base ERC-20 token value:", error);
+                      tokenValue = "Error";
                     }
                   }
-                  
-                  // Get token pricing information separately - can't use await in map function
-                  if (contract.chain === 'Bnb' && tokenContractAddress) {
-                    console.log(`Will check pricing for token ${tokenSymbol} later`);
-                    // Price info would need external API integration
-                  }
-                  
-                  tokenValue = `${readableAmount} ${tokenSymbol}`;
-                  console.log("Decoded token amount:", tokenValue);
-                } catch (error) {
-                  console.error("Error decoding token amount:", error);
                 }
               }
             }
+          }
+          
+          // Continue with existing token detection logic for regular BNB transfers
+          if (isTokenTransfer && contract.chain === 'Bnb' && tx.input && tx.input.length > 10) {
+            // Keep the existing BNB token detection logic
+            // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
+            if (tx.input.startsWith('0xa9059cbb')) {
+              try {
+                // Extract the amount from the input data, which is the last 64 characters
+                const amountHex = tx.input.substring(tx.input.length - 64);
+                // Use parseInt for small numbers or a workaround for larger numbers
+                // This is a simplified approach since BigInt isn't available
+                let readableAmount = 0;
+                let tokenAmount = 0;
+                
+                if (amountHex.startsWith('000000000000000000000000')) {
+                  // This is likely a small number we can parse directly
+                  const smallerHex = amountHex.substring(24); // Remove leading zeros
+                  const rawAmount = parseInt('0x' + smallerHex, 16);
+                  const decimals = tokenDetailsCache[tx.to.toLowerCase()]?.decimals || 18;
+                  tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
+                  readableAmount = tokenAmount.toFixed(6);
+                } else {
+                  // For larger amounts, we'll make an approximation
+                  // Count significant digits and make an estimate
+                  let significantHex = amountHex.replace(/^0+/, '');
+                  const magnitude = significantHex.length * 4; // Each hex char is 4 bits
+                  
+                  // Get first few digits for approximation
+                  const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
+                  const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
+                  
+                  tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
+                  
+                  if (tokenAmount > 1000) {
+                    readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
+                  } else {
+                    readableAmount = tokenAmount.toFixed(6);
+                  }
+                }
+                
+                tokenValue = `${readableAmount} ${tokenSymbol}`;
+                console.log("Decoded BNB token amount:", tokenValue);
+              } catch (error) {
+                console.error("Error decoding BNB token amount:", error);
+              }
+            }
+          }
+          
+          if (isTokenTransfer) {
+            // This is a token transfer transaction
+            let displayValue = `${tokenValue} ${tokenSymbol}`;
             
-            // Create a special token transfer record
+            // Chain-specific formatting
+            if (contract.chain === 'Base') {
+              displayValue = `${tokenValue} ${tokenSymbol || 'ERC20'}`;
+            } else if (contract.chain === 'Bnb') {
+              if (!displayValue.includes(tokenSymbol)) {
+                displayValue = `${tokenValue}`;
+              }
+            }
+            
             return {
               tx_hash: tx.hash,
               block_number: parseInt(tx.blockNumber),
               block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
               from_address: tx.from,
-              to_address: tx.to,
-              value_eth: tokenValue,
+              to_address: tokenRecipient, // Use the decoded recipient for token transfers
+              value_eth: displayValue,
               gas_used: tx.gasUsed,
               status: tx.isError === '0' ? 'Success' : 'Failed',
-              tx_type: 'Token Transfer',
+              tx_type: contract.chain === 'Base' ? 'ERC-20 Transfer' : 
+                       contract.chain === 'Bnb' ? 'BEP-20 Transfer' : 'Token Transfer',
               contract_address: tx.to, // The token contract is likely the "to" address
               token_name: tokenName,
               token_symbol: tokenSymbol,
-              usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A'
+              usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A',
+              chain: contract.chain
             };
           } else {
             // Regular transaction
@@ -1027,7 +1095,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               value_eth: (parseFloat(tx.value) / 1e18).toString(),
               gas_used: tx.gasUsed,
               status: tx.isError === '0' ? 'Success' : 'Failed',
-              tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer'
+              tx_type: tx.functionName ? tx.functionName.split('(')[0] : 'Transfer',
+              chain: contract.chain
             };
           }
         });
@@ -1556,6 +1625,52 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.log("Oldest transactions:");
       logTx(txArray[txArray.length-2], `#${txArray.length-1}`);
       logTx(txArray[txArray.length-1], `#${txArray.length}`);
+    }
+  };
+
+  // Add a helper function for decoding ERC-20 transfer input data
+  const decodeERC20TransferInput = (inputData, chainType) => {
+    try {
+      if (!inputData || inputData.length < 138) {
+        console.log("Input data too short or invalid:", inputData);
+        return { to: null, value: '0' };
+      }
+      
+      // Standard ERC-20 transfer method signature: 0xa9059cbb
+      // Format: 0xa9059cbb + 32 bytes (address padded) + 32 bytes (value)
+      if (inputData.startsWith('0xa9059cbb')) {
+        // Extract the destination address: 2nd parameter (offset 10, length 64)
+        // Remove leading zeros from address part and add 0x prefix
+        const addressHex = inputData.substring(10, 74);
+        const cleanAddress = '0x' + addressHex.slice(-40);
+        
+        // Extract the token amount: 3rd parameter (offset 74, length 64)
+        const amountHex = inputData.substring(74);
+        let tokenAmount = 0;
+        
+        // Convert hex to decimal (support large numbers)
+        try {
+          // For very large numbers, we'll use a string-based approach
+          const bigAmount = `0x${amountHex}`;
+          // Using bigint can handle large numbers precisely
+          tokenAmount = BigInt(bigAmount).toString();
+          console.log(`Decoded ${chainType} token amount (raw): ${tokenAmount}`);
+        } catch (e) {
+          console.error(`Error parsing ${chainType} token amount:`, e);
+          tokenAmount = '0';
+        }
+        
+        return {
+          to: cleanAddress,
+          value: tokenAmount
+        };
+      } else {
+        console.log(`Not a standard ${chainType} transfer call:`, inputData.substring(0, 10));
+        return { to: null, value: '0' };
+      }
+    } catch (error) {
+      console.error(`Error decoding ${chainType} transfer:`, error);
+      return { to: null, value: '0' };
     }
   };
 
