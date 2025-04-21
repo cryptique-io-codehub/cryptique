@@ -2,40 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Web3 from 'web3';
 
-// Function to decode ERC-20 transfer data from transaction input
-// This will be used for Base chain ERC-20 token detection
-const decodeERC20Transfer = (input) => {
-  try {
-    // Check if this is a potential ERC-20 transfer (method ID for transfer function)
-    if (!input || input.length < 138 || !input.startsWith('0xa9059cbb')) {
-      return null;
-    }
-    
-    // Extract recipient address (second parameter in the call)
-    // It's a 32-byte value (64 hex chars) starting at position 10
-    const addressParam = input.substring(10, 74);
-    // Convert to a proper Ethereum address by taking the last 40 chars and adding 0x prefix
-    const recipient = '0x' + addressParam.slice(-40);
-    
-    // Extract amount (third parameter in the call)
-    // It's a 32-byte value (64 hex chars) starting at position 74
-    const amountParam = input.substring(74);
-    // Convert hex to decimal - need to handle large numbers
-    const amountHex = `0x${amountParam}`;
-    // Use BigInt to avoid precision issues with large numbers
-    const amount = BigInt(amountHex);
-    
-    return {
-      recipient,
-      amount: amount.toString(),
-      isERC20Transfer: true
-    };
-  } catch (error) {
-    console.error("Failed to decode potential ERC-20 transfer:", error);
-    return null;
-  }
-};
-
 // ABI for ERC20/BEP20 token interface - minimal version for what we need
 const ERC20_ABI = [
   // Get token name
@@ -955,84 +921,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Process all the transactions we found
         transactions = allTxs.map(tx => {
-          // First check for Base chain ERC-20 transfers which have a different signature
-          let tokenTransferInfo = null;
-          
-          // For zero-value transactions with input data on Base chain, try to detect ERC-20 transfers
-          if (contract.chain === 'Base' && tx.value === '0' && tx.input && tx.input.length >= 138) {
-            console.log(`Analyzing Base transaction ${tx.hash} for ERC-20 transfer...`);
-            // Try to decode as ERC-20 transfer
-            tokenTransferInfo = decodeERC20Transfer(tx.input);
-            
-            if (tokenTransferInfo) {
-              console.log(`Detected Base ERC-20 transfer to ${tokenTransferInfo.recipient}`);
-              console.log(`Raw token amount: ${tokenTransferInfo.amount}`);
-              
-              // Get token decimals - usually 18 for most ERC-20 tokens
-              const decimals = 18;
-              
-              // Calculate human-readable token amount
-              // For very large numbers, use BigInt operations
-              try {
-                const bigAmount = BigInt(tokenTransferInfo.amount);
-                const divisor = BigInt(10) ** BigInt(decimals);
-                
-                // Get whole token amount
-                const wholeTokens = bigAmount / divisor;
-                
-                // Get fractional part if any
-                const fraction = bigAmount % divisor;
-                const fractionStr = fraction.toString().padStart(decimals, '0');
-                // Remove trailing zeros
-                const trimmedFraction = fractionStr.replace(/0+$/, '');
-                
-                // Format with appropriate precision
-                let displayAmount;
-                if (trimmedFraction.length > 0) {
-                  displayAmount = `${wholeTokens.toString()}.${trimmedFraction}`;
-                } else {
-                  displayAmount = wholeTokens.toString();
-                }
-                
-                console.log(`Formatted Base ERC-20 token amount: ${displayAmount}`);
-                
-                // Return an ERC-20 transfer transaction object
-                return {
-                  tx_hash: tx.hash,
-                  block_number: parseInt(tx.blockNumber),
-                  block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                  from_address: tx.from,
-                  to_address: tokenTransferInfo.recipient,
-                  value_eth: `${displayAmount} ERC-20`,  // Use a generic label if token symbol unknown
-                  gas_used: tx.gasUsed,
-                  status: tx.isError === '0' ? 'Success' : 'Failed',
-                  tx_type: 'ERC-20 Transfer',
-                  contract_address: tx.to,  // The token contract address
-                  token_name: 'ERC-20 Token',
-                  token_symbol: 'ERC-20',
-                  chain: contract.chain
-                };
-              } catch (error) {
-                console.error("Error formatting Base ERC-20 token amount:", error);
-              }
-            }
-          }
-          
-          // For BNB chain or if no ERC-20 transfer was detected on Base, continue with standard detection
-          // Check if this is a token transfer transaction (has function name and 0 value)
-          const isTokenTransfer = tx.functionName && 
+          // Check if this is a token transfer transaction 
+          let isTokenTransfer = tx.functionName && 
             tx.functionName.includes('transfer') && 
             tx.value === '0';
           
+          // Further validate token transfers
+          let tokenValue = "0";
+          let tokenType = "Token";
+          let tokenName = "Unknown Token";
+          let tokenSymbol = "TOKEN";
+          let tokenRecipient = tx.to;
+          let tokenDecimals = 18;
+          let usdValue = null;
+          
+          // Chain-specific handling for token transfers
           if (isTokenTransfer) {
-            // For BNB chain, process BEP-20 transfers
             if (contract.chain === 'Bnb') {
-              console.log("Found BEP-20 token transfer:", tx.hash);
-              
-              // This looks like a token transfer, decode the token info
-              let tokenValue = "Unknown";
-              let tokenName = "BEP-20 Token";
-              let tokenSymbol = "BEP-20";
+              // BNB chain processing remains the same
+              tokenType = "BEP-20 Token";
+              tokenName = "BEP-20 Token";
               
               // Check if we have cached token details
               const tokenContractAddress = tx.to.toLowerCase();
@@ -1040,99 +948,167 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 const tokenInfo = tokenDetailsCache[tokenContractAddress];
                 tokenName = tokenInfo.name;
                 tokenSymbol = tokenInfo.symbol;
+                tokenDecimals = parseInt(tokenInfo.decimals) || 18;
                 console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
               }
+            } else if (contract.chain === 'Base') {
+              // Base chain ERC-20 processing
+              tokenType = "ERC-20 Token";
+              tokenName = "ERC-20 Token";
               
-              // Attempt to parse input data for BEP-20 transfers
+              // For Base transactions, we need to be more aggressive about finding token transfers
+              // Typical ERC-20 transfer method: transfer(address,uint256)
               if (tx.input && tx.input.length > 10) {
-                console.log("Token transfer input data:", tx.input.substring(0, 50) + "...");
+                console.log("Base ERC-20 potential transfer input:", tx.input.substring(0, 50) + "...");
                 
-                // Standard transfer function signature: 0xa9059cbb
-                if (tx.input.startsWith('0xa9059cbb')) {
-                  try {
-                    // Extract the amount from the input data, which is the last 64 characters
-                    const amountHex = tx.input.substring(tx.input.length - 64);
-                    let readableAmount = 0;
+                // For Base chain, always try to decode the input as an ERC-20 transfer
+                // when we see a zero-value transaction with data
+                if (tx.value === '0' && tx.input.length >= 138) {
+                  const decodedData = decodeERC20TransferInput(tx.input, 'ERC-20');
+                  
+                  if (decodedData.to) {
+                    // We successfully decoded this as an ERC-20 transfer
+                    isTokenTransfer = true;
+                    tokenRecipient = decodedData.to;
                     
-                    if (amountHex.startsWith('000000000000000000000000')) {
-                      // This is likely a small number we can parse directly
-                      const smallerHex = amountHex.substring(24); // Remove leading zeros
-                      const rawAmount = parseInt('0x' + smallerHex, 16);
-                      const decimals = tokenDetailsCache[tokenContractAddress]?.decimals || 18;
-                      const tokenAmount = rawAmount / Math.pow(10, parseInt(decimals));
-                      readableAmount = tokenAmount.toFixed(6);
-                    } else {
-                      // For larger amounts, use a more general approach with BigInt if available
-                      try {
-                        const bigAmount = BigInt(`0x${amountHex}`);
-                        const decimals = parseInt(tokenDetailsCache[tokenContractAddress]?.decimals || 18);
-                        const divisor = BigInt(10) ** BigInt(decimals);
+                    // Convert the raw token amount based on decimals
+                    // Default to 18 decimals if we don't know
+                    const rawValue = decodedData.value;
+                    const decimals = 18;
+                    
+                    try {
+                      // Format token value more clearly for Base ERC-20 tokens
+                      // Use string-based math instead of BigInt to handle large numbers
+                      const rawValue = decodedData.value;
+                      const decimals = 18;
+                      
+                      // If the raw value is small enough, we can use normal number conversion
+                      if (rawValue.length < 15) {
+                        const numericValue = Number(rawValue);
+                        const divisor = Math.pow(10, decimals);
+                        tokenValue = (numericValue / divisor).toString();
                         
-                        // Get whole and fractional parts
-                        const wholeTokens = bigAmount / divisor;
-                        const fraction = bigAmount % divisor;
-                        const fractionStr = fraction.toString().padStart(decimals, '0');
-                        // Remove trailing zeros
-                        const trimmedFraction = fractionStr.replace(/0+$/, '');
-                        
-                        if (trimmedFraction.length > 0) {
-                          readableAmount = `${wholeTokens.toString()}.${trimmedFraction}`;
-                        } else {
-                          readableAmount = wholeTokens.toString();
+                        // Format with appropriate decimals
+                        if (tokenValue.includes('.')) {
+                          const parts = tokenValue.split('.');
+                          tokenValue = parts[0] + '.' + parts[1].substring(0, 6).replace(/0+$/, '');
+                          if (tokenValue.endsWith('.')) tokenValue = tokenValue.substring(0, tokenValue.length - 1);
                         }
-                      } catch (bigIntError) {
-                        // Fallback if BigInt not available or other error
-                        console.error("BigInt error, using fallback:", bigIntError);
-                        // Estimate with scientific notation
-                        let significantHex = amountHex.replace(/^0+/, '');
-                        const magnitude = significantHex.length * 4; // Each hex char is 4 bits
-                        const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
-                        const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
-                        readableAmount = `~${firstDigits * Math.pow(10, scale - 6)}`;
+                      } else {
+                        // For large numbers, we'll do manual division with string manipulation
+                        // This avoids precision issues with large numbers
+                        
+                        // Implement a simple string-based division by 10^decimals
+                        if (rawValue.length <= decimals) {
+                          // Value is smaller than 1
+                          const paddedValue = '0'.repeat(decimals - rawValue.length) + rawValue;
+                          tokenValue = '0.' + paddedValue.replace(/0+$/, '');
+                        } else {
+                          // Value is at least 1
+                          const wholePart = rawValue.slice(0, -decimals) || '0';
+                          let decimalPart = rawValue.slice(-decimals);
+                          
+                          // Remove trailing zeros from decimal part
+                          decimalPart = decimalPart.replace(/0+$/, '');
+                          
+                          if (decimalPart.length > 0) {
+                            tokenValue = wholePart + '.' + decimalPart;
+                          } else {
+                            tokenValue = wholePart;
+                          }
+                        }
                       }
+                      
+                      console.log(`Decoded Base ERC-20 token amount: ${tokenValue}`);
+                    } catch (error) {
+                      console.error("Error formatting Base ERC-20 token value:", error);
+                      tokenValue = "Error";
                     }
-                    
-                    tokenValue = `${readableAmount} ${tokenSymbol}`;
-                    console.log("Decoded BEP-20 token amount:", tokenValue);
-                  } catch (error) {
-                    console.error("Error decoding token amount:", error);
                   }
                 }
               }
-              
-              // Return a BEP-20 transfer transaction object
-              return {
-                tx_hash: tx.hash,
-                block_number: parseInt(tx.blockNumber),
-                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                from_address: tx.from,
-                to_address: tx.to,
-                value_eth: tokenValue,
-                gas_used: tx.gasUsed,
-                status: tx.isError === '0' ? 'Success' : 'Failed',
-                tx_type: 'BEP-20 Transfer',
-                contract_address: tx.to,
-                token_name: tokenName,
-                token_symbol: tokenSymbol,
-                chain: contract.chain
-              };
-            } else {
-              // For other chains with token transfers
-              return {
-                tx_hash: tx.hash,
-                block_number: parseInt(tx.blockNumber),
-                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                from_address: tx.from,
-                to_address: tx.to,
-                value_eth: "Token Transfer",
-                gas_used: tx.gasUsed,
-                status: tx.isError === '0' ? 'Success' : 'Failed',
-                tx_type: 'Token Transfer',
-                chain: contract.chain
-              };
             }
+          }
+          
+          // Continue with existing token detection logic for regular BNB transfers
+          if (isTokenTransfer && contract.chain === 'Bnb' && tx.input && tx.input.length > 10) {
+            // Keep the existing BNB token detection logic
+            // Typical transfer function: 0xa9059cbb000000000000000000000000{address}000000000000000000000000{value}
+            if (tx.input.startsWith('0xa9059cbb')) {
+              try {
+                // Extract the amount from the input data, which is the last 64 characters
+                const amountHex = tx.input.substring(tx.input.length - 64);
+                // Use parseInt for small numbers or a workaround for larger numbers
+                // This is a simplified approach since BigInt isn't available
+                let readableAmount = 0;
+                let tokenAmount = 0;
+                
+                if (amountHex.startsWith('000000000000000000000000')) {
+                  // This is likely a small number we can parse directly
+                  const smallerHex = amountHex.substring(24); // Remove leading zeros
+                  const rawAmount = parseInt('0x' + smallerHex, 16);
+                  const decimals = tokenDetailsCache[tx.to.toLowerCase()]?.decimals || 18;
+                  tokenAmount = rawAmount / Math.pow(10, parseInt(decimals)); // Use Math.pow instead of 10**decimals
+                  readableAmount = tokenAmount.toFixed(6);
+                } else {
+                  // For larger amounts, we'll make an approximation
+                  // Count significant digits and make an estimate
+                  let significantHex = amountHex.replace(/^0+/, '');
+                  const magnitude = significantHex.length * 4; // Each hex char is 4 bits
+                  
+                  // Get first few digits for approximation
+                  const firstDigits = parseInt('0x' + significantHex.substring(0, 8), 16);
+                  const scale = Math.floor((magnitude - 32) / 3.32); // Log base 10 of 2
+                  
+                  tokenAmount = firstDigits * 10**(scale - 6); // Approximate amount
+                  
+                  if (tokenAmount > 1000) {
+                    readableAmount = Math.round(tokenAmount) / 10**3 + 'K';
+                  } else {
+                    readableAmount = tokenAmount.toFixed(6);
+                  }
+                }
+                
+                tokenValue = `${readableAmount} ${tokenSymbol}`;
+                console.log("Decoded BNB token amount:", tokenValue);
+              } catch (error) {
+                console.error("Error decoding BNB token amount:", error);
+              }
+            }
+          }
+          
+          if (isTokenTransfer) {
+            // This is a token transfer transaction
+            let displayValue = `${tokenValue} ${tokenSymbol}`;
+            
+            // Chain-specific formatting
+            if (contract.chain === 'Base') {
+              displayValue = `${tokenValue} ${tokenSymbol || 'ERC20'}`;
+            } else if (contract.chain === 'Bnb') {
+              if (!displayValue.includes(tokenSymbol)) {
+                displayValue = `${tokenValue}`;
+              }
+            }
+            
+            return {
+              tx_hash: tx.hash,
+              block_number: parseInt(tx.blockNumber),
+              block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+              from_address: tx.from,
+              to_address: tokenRecipient, // Use the decoded recipient for token transfers
+              value_eth: displayValue,
+              gas_used: tx.gasUsed,
+              status: tx.isError === '0' ? 'Success' : 'Failed',
+              tx_type: contract.chain === 'Base' ? 'ERC-20 Transfer' : 
+                       contract.chain === 'Bnb' ? 'BEP-20 Transfer' : 'Token Transfer',
+              contract_address: tx.to, // The token contract is likely the "to" address
+              token_name: tokenName,
+              token_symbol: tokenSymbol,
+              usd_value: usdValue ? `$${usdValue.toFixed(2)}` : 'N/A',
+              chain: contract.chain
+            };
           } else {
-            // Regular value transfer transaction
+            // Regular transaction
             return {
               tx_hash: tx.hash,
               block_number: parseInt(tx.blockNumber),
@@ -1148,21 +1124,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }
         });
         
-        // After transactions are processed, check for Base chain ERC-20 transfers that may have been missed
-        // Handle token transfers from token API 
-        if (transactions.length === 0 || (contract.chain === 'Base' && !transactions.some(tx => tx.tx_type === 'ERC-20 Transfer'))) {
-          console.log(`No regular transactions found or no ERC-20 transfers detected on ${contract.chain}, fetching token transfers...`);
+        // Try to get token/NFT transfers if no regular transactions were found
+        if (transactions.length === 0) {
+          console.log("No regular transactions found, fetching token transfers instead");
           
-          // Try to get token transfers with proper pagination
+          // Now try to get token transfers with proper pagination
           let allTokenTxs = [];
           currentPage = 1;
           hasMoreTxs = true;
-          
-          // Special handling for Base chain to ensure we get ERC-20 token transfers
-          let tokenTxAction = 'tokentx'; // Default ERC-20 token transfers action
-          
-          // For Base chain, specifically look for ERC-20 token transfers
-          console.log(`Querying ${contract.chain} explorer API for token transfers...`);
           
           while (hasMoreTxs && currentPage <= maxPages) {
             console.log(`Fetching token transfer page ${currentPage}...`);
@@ -1173,6 +1142,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               effectiveOffset = Math.floor(10000 / currentPage);
               console.log(`Adjusted offset to ${effectiveOffset} for page ${currentPage} to stay under limit`);
             }
+            
+            // For BNB Chain specifically, adjust the endpoint
+            let tokenTxAction = 'tokentx'; // Default ERC-20 token transfers
             
             try {
               const tokenTxResponse = await axios.get(apiBaseUrl, {
@@ -1188,7 +1160,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               });
               
               if (currentPage === 1) {
-                console.log(`${contract.chain} token TX First Page Response:`, tokenTxResponse.data);
+                console.log("Token TX First Page Response:", tokenTxResponse.data);
               }
               
               if (tokenTxResponse.data.status === '1' && Array.isArray(tokenTxResponse.data.result)) {
@@ -1217,116 +1189,56 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 hasMoreTxs = false;
               }
             } catch (tokenError) {
-              console.error(`Error fetching ${contract.chain} token transfers:`, tokenError);
+              console.error("Error fetching token transfers:", tokenError);
               hasMoreTxs = false;
             }
           }
           
-          console.log(`Total ${contract.chain} token transfers found: ${allTokenTxs.length}`);
+          console.log(`Total token transfers found: ${allTokenTxs.length}`);
           
-          // Process token transfers with enhanced token value calculation for Base chain
+          // Process token transfers
           if (allTokenTxs.length > 0) {
-            // Create a new array for token transfers
             const tokenTransfers = allTokenTxs.map(tx => {
-              try {
-                // Handle possible missing fields for different explorers
-                const decimals = tx.tokenDecimal || tx.decimals || '18';
-                const symbol = tx.tokenSymbol || tx.symbol || 'TOKEN';
-                const name = tx.tokenName || tx.name || 'Token';
-                
-                // Convert value to a number safely
-                const rawValue = tx.value || '0';
-                let formattedValue;
-                
-                // Improve value formatting with BigInt for large numbers
-                try {
-                  // For very large numbers, use BigInt
-                  const bigValue = BigInt(rawValue);
-                  const decimalNum = parseInt(decimals);
-                  const divisor = BigInt(10) ** BigInt(decimalNum);
-                  
-                  // Get whole token amount
-                  const wholeTokens = bigValue / divisor;
-                  
-                  // Get fractional part if any
-                  const fraction = bigValue % divisor;
-                  const fractionStr = fraction.toString().padStart(decimalNum, '0');
-                  // Remove trailing zeros
-                  const trimmedFraction = fractionStr.replace(/0+$/, '');
-                  
-                  // Format with appropriate precision
-                  if (trimmedFraction.length > 0) {
-                    formattedValue = `${wholeTokens.toString()}.${trimmedFraction}`;
-                  } else {
-                    formattedValue = wholeTokens.toString();
-                  }
-                  
-                  console.log(`Formatted ${contract.chain} token amount: ${formattedValue} ${symbol}`);
-                } catch (bigIntError) {
-                  // Fallback to regular floating point for smaller numbers
-                  console.error("BigInt conversion failed, using fallback:", bigIntError);
-                  const valueNum = parseFloat(rawValue);
-                  const decimalNum = parseInt(decimals);
-                  const divisor = Math.pow(10, decimalNum);
-                  formattedValue = (valueNum / divisor).toFixed(6);
-                }
-                
-                // Chain-specific customizations for token displays
-                let displayValue = `${formattedValue} ${symbol}`;
-                let txType = 'Token Transfer';
-                
-                // For Base chain, specifically enhance ERC-20 token formatting
-                if (contract.chain === 'Base') {
-                  txType = 'ERC-20 Transfer';
-                  displayValue = `${formattedValue} ${symbol}`;
-                  console.log(`Base ERC-20 token transfer: ${displayValue}`);
-                } else if (contract.chain === 'Bnb') {
-                  txType = 'BEP-20 Transfer';
-                }
-                
-                return {
-                  tx_hash: tx.hash,
-                  block_number: parseInt(tx.blockNumber),
-                  block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                  from_address: tx.from,
-                  to_address: tx.to,
-                  value_eth: displayValue,
-                  token_name: name,
-                  token_symbol: symbol,
-                  gas_used: tx.gasUsed,
-                  status: 'Success', // Token transfers are typically successful
-                  tx_type: txType,
-                  contract_address: tx.contractAddress || tx.to,
-                  chain: contract.chain
-                };
-              } catch (error) {
-                console.error(`Error processing ${contract.chain} token transfer:`, error);
-                // Return a simplified version if there are any parsing errors
-                return {
-                  tx_hash: tx.hash,
-                  block_number: parseInt(tx.blockNumber) || 0,
-                  block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-                  from_address: tx.from,
-                  to_address: tx.to,
-                  value_eth: "Error parsing token amount",
-                  gas_used: tx.gasUsed,
-                  status: 'Success',
-                  tx_type: contract.chain === 'Base' ? 'ERC-20 Transfer' : 'Token Transfer',
-                  chain: contract.chain
-                };
+              // Handle possible missing fields for different explorers
+              const decimals = tx.tokenDecimal || tx.decimals || '18';
+              const symbol = tx.tokenSymbol || tx.symbol || 'tokens';
+              const name = tx.tokenName || tx.name || 'Unknown Token';
+              
+              // Convert value to a number safely
+              const rawValue = tx.value || '0';
+              const valueNum = parseFloat(rawValue);
+              const decimalNum = parseInt(decimals);
+              const divisor = Math.pow(10, decimalNum);
+              const formattedValue = (valueNum / divisor).toFixed(6);
+              
+              // Chain-specific customizations for token displays
+              let displayValue = `${formattedValue} ${symbol}`;
+              let txType = 'Token Transfer';
+              
+              // For Base chain, specifically enhance ERC-20 token formatting
+              if (contract.chain === 'Base') {
+                txType = 'ERC-20 Transfer';
+                displayValue = `${formattedValue} ${symbol} (ERC-20)`;
               }
+              
+              return {
+                tx_hash: tx.hash,
+                block_number: parseInt(tx.blockNumber),
+                block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                from_address: tx.from,
+                to_address: tx.to,
+                value_eth: displayValue,
+                token_name: name,
+                token_symbol: symbol,
+                gas_used: tx.gasUsed,
+                status: 'Success', // Token transfers are typically successful
+                tx_type: txType,
+                chain: contract.chain
+              };
             });
             
-            // Add these token transfers to our regular transactions array
-            // If we had no transactions before, replace with token transfers
-            if (transactions.length === 0) {
-              transactions = tokenTransfers;
-            } else {
-              // Otherwise append token transfers to existing transactions
-              transactions = [...transactions, ...tokenTransfers];
-            }
-            
-            console.log(`Found ${tokenTransfers.length} ${contract.chain === 'Base' ? 'ERC-20' : contract.chain === 'Bnb' ? 'BEP-20' : 'token'} transfers`);
+            transactions = tokenTransfers;
+            console.log(`Found ${transactions.length} ${contract.chain === 'Base' ? 'ERC-20' : contract.chain === 'Bnb' ? 'BEP-20' : 'token'} transfers`);
           }
         }
         
@@ -1763,8 +1675,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         try {
           // For very large numbers, we'll use a string-based approach
           const bigAmount = `0x${amountHex}`;
-          // Using bigint can handle large numbers precisely
-          tokenAmount = BigInt(bigAmount).toString();
+          
+          // We can't use BigInt, so we'll convert with a different approach
+          // For values that fit in regular numbers
+          if (amountHex.replace(/^0+/, '').length <= 15) {
+            tokenAmount = parseInt(bigAmount).toString();
+          } else {
+            // For large values, we'll keep the hex and decode later during formatting
+            tokenAmount = amountHex;
+          }
+          
           console.log(`Decoded ${chainType} token amount (raw): ${tokenAmount}`);
         } catch (e) {
           console.error(`Error parsing ${chainType} token amount:`, e);
