@@ -1897,10 +1897,29 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
           // For typical token amounts, apply 18 decimals
           const decimalPlaces = 18;
-          const divisor = Math.pow(10, decimalPlaces);
           
-          // Convert to fixed-point number with 6 significant digits
-          tokenAmount = (decimalValue / divisor).toFixed(6).replace(/\.?0+$/, '');
+          // This is the key change: Check if the value is a standard 18-decimal token amount
+          // Most ERC-20 transfers use 18 decimals, where 1 token = 10^18 base units
+          // First, log the raw decoded value to help diagnose
+          console.log(`Raw token value in base units: ${rawDecimal}`);
+          
+          // Convert properly considering 18 decimals
+          const divisor = Math.pow(10, decimalPlaces);
+          let tokenAmountFloat = decimalValue / divisor;
+          
+          // Handle the display format based on the size
+          if (tokenAmountFloat >= 1) {
+            // For values greater than 1, show up to 6 decimal places
+            tokenAmount = tokenAmountFloat.toFixed(6).replace(/\.?0+$/, '');
+          } else if (tokenAmountFloat >= 0.000001) {
+            // For smaller values, show more precision
+            tokenAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
+          } else {
+            // For tiny values, use scientific notation
+            tokenAmount = tokenAmountFloat.toExponential(6);
+          }
+          
+          // Remove trailing decimal point if present
           if (tokenAmount.endsWith('.')) tokenAmount = tokenAmount.slice(0, -1);
           
           console.log(`Decoded standard token amount: 0x${cleanHex} → ${rawDecimal} → ${tokenAmount}`);
@@ -1979,7 +1998,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
           from_address: tx.from,
           to_address: transferData.recipient,  // Use the actual token recipient, not contract
-          value_eth: `${transferData.displayAmount} TOKEN`,
+          value_eth: `${transferData.displayAmount} TOKEN`, // Only include TOKEN once
           gas_used: tx.gasUsed,
           status: tx.isError === '0' ? 'Success' : 'Failed',
           tx_type: 'ERC-20 Transfer',
