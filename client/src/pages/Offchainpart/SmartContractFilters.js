@@ -981,7 +981,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         // Convert hex to decimal
                         const hexValue = rawValue.substring(2); // Remove '0x'
                         const decimalValue = parseInt(rawValue, 16).toString();
-                        tokenValue = formatTokenWithDecimals(decimalValue, decimals);
+                        tokenValue = formatTokenAmount(decimalValue, decimals, tokenSymbol || "TOKEN");
                       }
                       // Check if it's a large number marker
                       else if (typeof rawValue === 'string' && rawValue.startsWith('LARGE_NUMBER:')) {
@@ -993,7 +993,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                         if (hexPart.length <= 16) {
                           // This covers most realistic token amounts
                           const approxValue = parseInt('0x' + hexPart, 16) / Math.pow(10, 18);
-                          tokenValue = approxValue.toString();
+                          tokenValue = formatTokenAmount(approxValue, decimals, tokenSymbol || "TOKEN");
                         } else {
                           // For very large amounts, display a simple approximation
                           tokenValue = hexPart.length * 4 > 40 ? "Trillions+" : "Millions+";
@@ -1001,7 +1001,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       }
                       // Regular number string
                       else {
-                        tokenValue = formatTokenWithDecimals(rawValue, decimals);
+                        tokenValue = formatTokenAmount(rawValue, decimals, tokenSymbol || "TOKEN");
                       }
                       
                       console.log(`Decoded Base ERC-20 token amount: ${tokenValue}`);
@@ -1680,20 +1680,23 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.error("Error converting hex value:", err);
           // Try a different approach - convert each character individually
           try {
-            let value = 0n;
-            for (let i = 0; i < valueHex.length; i++) {
-              const digit = parseInt(valueHex[i], 16);
-              if (!isNaN(digit)) {
-                value = value * 16n + BigInt(digit);
-              }
-            }
-            decimalValue = value.toString();
+            // Use the hexToDecimalString function we already defined
+            decimalValue = hexToDecimalString(valueHex);
             console.log(`Fallback hex conversion: ${valueHex} → ${decimalValue}`);
-          } catch (bigintErr) {
-            console.error("BigInt conversion failed:", bigintErr);
-            // Last resort - try using scientific notation
-            decimalValue = parseInt('0x' + valueHex, 16).toString();
-            console.log(`Last resort conversion: ${valueHex} → ${decimalValue}`);
+          } catch (convErr) {
+            console.error("Hex conversion failed:", convErr);
+            // Last resort - try using scientific notation with a limited substring
+            try {
+              // Parse only the last 12 characters to avoid numeric overflow
+              const hexSubstring = valueHex.slice(-12);
+              const numericValue = parseInt('0x' + hexSubstring, 16);
+              decimalValue = numericValue.toString();
+              console.log(`Limited hex conversion: ${hexSubstring} → ${decimalValue}`);
+            } catch (finalErr) {
+              console.error("Final fallback failed:", finalErr);
+              decimalValue = "0";
+              console.log("Using default value 0 due to conversion errors");
+            }
           }
         }
         
@@ -1993,67 +1996,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     // If it's not an ERC-20 transfer or we couldn't parse it, return null to use the default processing
     return null;
   };
-
-  // ... existing code ...
-
-  // Update where you process Base chain transactions
-  if (normalTxResponse.data.status === '1' && Array.isArray(normalTxResponse.data.result)) {
-    transactions = normalTxResponse.data.result.map(tx => {
-      // Special handling for Base chain ERC-20 transfers
-      if (contract.chain === 'Base') {
-        const baseTransaction = processBaseChainTransaction(tx);
-        if (baseTransaction) {
-          return baseTransaction;
-        }
-      }
-      
-      // Check if this is a token transfer transaction (has function name and 0 BNB value)
-      const isTokenTransfer = 
-        tx.functionName && 
-        tx.functionName.includes('transfer') && 
-        tx.value === '0' && 
-        contract.chain === 'Bnb';
-      
-      if (isTokenTransfer) {
-        console.log("Found token transfer in regular transactions:", tx);
-        
-        // This looks like a token transfer, so let's check if we can decode the token info
-        let tokenValue = "Unknown";
-        let tokenType = "BEP-20 Token";
-        let tokenName = "BEP-20 Token";
-        let tokenSymbol = "TOKEN";
-        let usdValue = null;
-        
-        // Check if we have cached token details
-        const tokenContractAddress = tx.to.toLowerCase();
-        if (tokenDetailsCache[tokenContractAddress]) {
-          const tokenInfo = tokenDetailsCache[tokenContractAddress];
-          tokenName = tokenInfo.name;
-          tokenSymbol = tokenInfo.symbol;
-          console.log(`Using cached token info: ${tokenName} (${tokenSymbol})`);
-        }
-        
-        // Rest of your existing token transfer processing code...
-      }
-      
-      // Regular transaction
-      return {
-        tx_hash: tx.hash,
-        block_number: parseInt(tx.blockNumber),
-        block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-        from_address: tx.from,
-        to_address: tx.to,
-        value_eth: (parseFloat(tx.value) / 1e18).toString(),
-        gas_used: tx.gasUsed,
-        status: tx.isError === '0' ? 'Success' : 'Failed',
-        tx_type: tx.input && tx.input.startsWith('0xa9059cbb') ? 'Token Transfer' : 
-                 tx.functionName ? tx.functionName.split('(')[0] : 'Transfer',
-        chain: contract.chain
-      };
-    });
-  }
-
-  // ... existing code ...
 
   return (
     <div className="flex-1">
