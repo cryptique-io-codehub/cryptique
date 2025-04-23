@@ -964,15 +964,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 // For Base chain, always try to decode the input as an ERC-20 transfer
                 // when we see a zero-value transaction with data
                 if (tx.value === '0' && tx.input.length >= 138) {
-                  const decodedData = decodeERC20TransferInput(tx.input, 'ERC-20');
+                  const decodedData = decodeERC20TransferInput(tx.input);
                   
-                  if (decodedData.to) {
+                  if (decodedData) {
                     // We successfully decoded this as an ERC-20 transfer
                     isTokenTransfer = true;
-                    tokenRecipient = decodedData.to;
+                    tokenRecipient = decodedData.recipient;
                     
                     // Process the token value
-                    const rawValue = decodedData.value;
+                    const rawValue = decodedData.rawAmount;
                     const decimals = 18; // Most ERC-20 tokens use 18 decimals
                     
                     try {
@@ -1636,91 +1636,166 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Add a helper function for decoding ERC-20 transfer input data
-  const decodeERC20TransferInput = (inputData, chainType) => {
+  // Improved function to decode ERC-20 transfer input data from Base chain
+  const decodeERC20TransferInput = (inputData) => {
     try {
-      if (!inputData || inputData.length < 138) {
-        console.log("Input data too short or invalid:", inputData);
-        return { to: null, value: '0' };
-      }
-      
-      // Standard ERC-20 transfer method signature: 0xa9059cbb
-      // Format: 0xa9059cbb + 32 bytes (address padded) + 32 bytes (value)
-      if (inputData.startsWith('0xa9059cbb')) {
-        // Extract the destination address: 2nd parameter (offset 10, length 64)
-        // Remove leading zeros from address part and add 0x prefix
-        const addressHex = inputData.substring(10, 74);
-        const cleanAddress = '0x' + addressHex.slice(-40);
+      // Check if this is an ERC-20 transfer function call (starts with 0xa9059cbb)
+      if (inputData && inputData.startsWith('0xa9059cbb')) {
+        // The recipient address follows the function selector (next 64 characters after initial 10)
+        const recipientHex = inputData.slice(10, 74);
+        const recipient = '0x' + recipientHex.slice(24); // Extract the actual address, removing padding
+
+        // The amount is the next 64 characters
+        const valueHex = inputData.slice(74, 138);
         
-        // Extract the token amount: 3rd parameter (offset 74, length 64)
-        const amountHex = inputData.substring(74);
-        let tokenAmount = '0';
+        // Remove leading zeros for better parsing
+        const cleanHex = valueHex.replace(/^0+/, '');
         
-        // Convert hex to decimal (support large numbers)
-        try {
-          // Convert hex to a decimal string
-          const hexWithoutPrefix = amountHex.replace(/^0+/, ''); // Remove leading zeros
-          
-          // Parse hex string to a decimal string
-          let decimalValue = '';
-          
-          // If it's a small enough hex, use parseInt directly
-          if (hexWithoutPrefix.length <= 12) {
-            decimalValue = parseInt('0x' + hexWithoutPrefix, 16).toString();
-          } else {
-            // For larger numbers, convert manually
-            // Since we're only handling ERC-20 tokens that are typically 18 decimals,
-            // we can make a simplification to get the value directly
-            
-            // Most ERC-20 transfers are whole numbers or have simple decimals
-            // 5000 tokens in hex for an 18 decimal token would be: 
-            // 5000 * 10^18 = 5000000000000000000000 or 0x4563918244f40000
-            
-            // Check if this might be a token amount by its typical format
-            if (amountHex.match(/^0{40,60}[0-9a-f]{4,24}$/i)) {
-              // Very likely a token amount with 18 decimals
-              // Get the actual significant digits
-              const significantPart = amountHex.replace(/^0+/, '');
-              
-              // For common token amounts (up to ~quadrillions)
-              if (significantPart.length <= 16) {
-                try {
-                  // Parse directly if possible
-                  decimalValue = parseInt('0x' + significantPart, 16).toString();
-                } catch (e) {
-                  console.log('Error directly parsing hex:', e);
-                  // Just store the hex for later display
-                  decimalValue = '0x' + significantPart;
-                }
-              } else {
-                // For very large amounts, just note we have a large number
-                decimalValue = 'LARGE_NUMBER:' + significantPart;
-              }
-            } else {
-              // Unusual format, just keep it as hex
-              decimalValue = '0x' + amountHex;
-            }
-          }
-          
-          tokenAmount = decimalValue;
-          console.log(`Decoded ${chainType} token amount (raw): ${tokenAmount}`);
-        } catch (e) {
-          console.error(`Error parsing ${chainType} token amount:`, e);
-          tokenAmount = '0';
+        // Check if we have a valid hex value
+        if (cleanHex.length === 0) {
+          console.log("Zero token amount detected");
+          return { recipient, rawAmount: '0', displayAmount: '0' };
         }
         
+        console.log("Parsing ERC-20 transfer input:", { 
+          rawInput: inputData,
+          valueHex: valueHex,
+          cleanHex: cleanHex
+        });
+        
+        // Parse the hex value to a decimal string first
+        let decimalValue = '';
+        if (cleanHex.length > 16) {
+          // For extremely large numbers, do string-based conversion
+          // Convert hex to a decimal string without using BigInt
+          decimalValue = hexToDecimalString(cleanHex);
+          console.log("Converted large hex value to decimal string:", decimalValue);
+        } else {
+          // For smaller numbers, parseInt works fine
+          const numericValue = parseInt('0x' + cleanHex, 16);
+          decimalValue = numericValue.toString();
+          console.log("Converted smaller hex value to decimal:", decimalValue);
+        }
+        
+        // Assume 18 decimals for ERC-20 tokens (most common)
+        // This should be replaced with actual token decimals when available
+        const decimals = 18;
+        
+        // Format with appropriate decimals
+        const displayAmount = formatDecimalString(decimalValue, decimals);
+        
+        console.log("Decoded token transfer:", {
+          recipient: recipient,
+          rawAmount: decimalValue,
+          displayAmount: displayAmount
+        });
+        
         return {
-          to: cleanAddress,
-          value: tokenAmount
+          recipient,
+          rawAmount: decimalValue,
+          displayAmount
         };
-      } else {
-        console.log(`Not a standard ${chainType} transfer call:`, inputData.substring(0, 10));
-        return { to: null, value: '0' };
       }
+      
+      return null;
     } catch (error) {
-      console.error(`Error decoding ${chainType} transfer:`, error);
-      return { to: null, value: '0' };
+      console.error("Error decoding ERC-20 transfer input:", error);
+      return null;
     }
+  };
+
+  // Helper to convert a hex string to decimal string without using BigInt
+  const hexToDecimalString = (hexString) => {
+    if (!hexString) return '0';
+    
+    const hex = hexString.toLowerCase().replace(/^0x/, '');
+    if (hex === '0') return '0';
+    
+    // Each hex digit maps to a decimal value
+    const hexValues = {
+      '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+      '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15
+    };
+    
+    // Start with 0
+    let decimal = '0';
+    
+    // For each digit in hex, multiply the result so far by 16 and add the digit value
+    for (let i = 0; i < hex.length; i++) {
+      // Multiply decimal by 16 (using string math)
+      let temp = '0';
+      for (let j = 0; j < decimal.length; j++) {
+        const digit = parseInt(decimal[j]);
+        let product = digit * 16;
+        let carry = Math.floor(product / 10);
+        let remainder = product % 10;
+        
+        if (j === 0) {
+          temp = remainder.toString();
+        } else {
+          temp += remainder.toString();
+        }
+        
+        if (carry > 0) {
+          if (j === decimal.length - 1) {
+            temp += carry.toString();
+          } else {
+            const nextDigit = parseInt(decimal[j + 1]) + carry;
+            decimal = decimal.substring(0, j + 1) + nextDigit.toString() + decimal.substring(j + 2);
+          }
+        }
+      }
+      
+      // Add the current hex digit value
+      const digitValue = hexValues[hex[i]];
+      let sum = parseInt(temp) + digitValue;
+      
+      decimal = sum.toString();
+    }
+    
+    return decimal;
+  };
+
+  // Format a decimal string with appropriate decimal places
+  const formatDecimalString = (decimalStr, decimals) => {
+    if (!decimalStr) return '0';
+    
+    // If the number is too small or zero
+    if (decimalStr === '0') return '0';
+    
+    // Add leading zeros if necessary to ensure we have enough digits for decimals
+    let paddedStr = decimalStr;
+    while (paddedStr.length <= decimals) {
+      paddedStr = '0' + paddedStr;
+    }
+    
+    // Insert decimal point at the appropriate position
+    const integerPart = paddedStr.slice(0, paddedStr.length - decimals) || '0';
+    const fractionalPart = paddedStr.slice(paddedStr.length - decimals);
+    
+    // Trim trailing zeros from fractional part
+    let trimmedFractional = fractionalPart.replace(/0+$/, '');
+    
+    let result;
+    if (trimmedFractional.length > 0) {
+      result = integerPart + '.' + trimmedFractional;
+    } else {
+      result = integerPart;
+    }
+    
+    // For very large numbers, provide a more readable format
+    if (integerPart.length > 15) {
+      if (integerPart.length > 18) {
+        return "Very large amount"; // For truly massive numbers
+      } else {
+        // For billions/trillions, format nicely
+        const firstDigits = integerPart.substring(0, 3);
+        const exponent = integerPart.length - 3;
+        return `${firstDigits}×10^${exponent}`;
+      }
+    }
+    
+    return result;
   };
 
   // Add a helper function for formatting token values with decimals
