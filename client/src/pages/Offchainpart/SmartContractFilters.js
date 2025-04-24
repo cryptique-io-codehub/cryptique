@@ -79,6 +79,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [web3, setWeb3] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [contracts, setContracts] = useState([]);
+  const [newContract, setNewContract] = useState({
+    address: '',
+    name: '',
+    chain: 'ethereum'
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -383,6 +392,32 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     };
   };
 
+  const handleDeleteContract = (contractId) => {
+    const updatedContracts = contracts.filter(contract => contract.id !== contractId);
+    setContracts(updatedContracts);
+    
+    // Update selected contracts
+    const updatedSelectedContracts = selectedContracts.filter(contract => contract.id !== contractId);
+    setSelectedContracts(updatedSelectedContracts);
+    
+    // Update primary selected contract if needed
+    if (selectedContract?.id === contractId) {
+      setSelectedContract(updatedSelectedContracts[0] || null);
+      setcontractarray(updatedContracts);
+    }
+    
+    // Update localStorage
+    const teamName = localStorage.getItem('selectedTeam');
+    if (teamName) {
+      const key = `contracts_${teamName}`;
+      if (updatedContracts.length === 0) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, JSON.stringify(updatedContracts));
+      }
+    }
+  };
+
   return (
     <div className="smart-contract-filters relative">
       <div className="relative inline-block text-left">
@@ -435,17 +470,43 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   const isSelected = selectedContracts.some(c => c.id === contract.id);
                   
                   return (
-                    <button
+                    <div
                       key={contract.id}
-                      className={`w-full text-left px-4 py-2 text-sm ${isSelected ? 'bg-gray-100' : ''}`}
-                      onClick={() => handleSelectContract(contract)}
+                      className="flex items-center justify-between px-4 py-2 hover:bg-gray-100 cursor-pointer"
                     >
-                      <div className="font-medium">{displayInfo.name}</div>
-                      <div className="text-xs text-gray-500 flex justify-between">
-                        <span>{displayInfo.shortAddress}</span>
-                        <span className="italic">{contract.blockchain}</span>
+                      <div
+                        className="flex-1"
+                        onClick={() => handleSelectContract(contract)}
+                      >
+                        <div className="font-medium">
+                          {displayInfo.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {displayInfo.shortAddress}
+                        </div>
                       </div>
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteContract(contract.id);
+                        }}
+                        className="text-red-500 hover:text-red-700 ml-2"
+                        title="Delete contract"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   );
                 })
               ) : (
