@@ -184,7 +184,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       return;
     }
 
-    console.log(`Fetching ALL transactions for contract: ${contract.address} on ${contract.blockchain}`);
+    console.log(`Fetching transactions for contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
       let transactions = [];
@@ -192,110 +192,44 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // Use the appropriate chain-specific module based on blockchain
       switch (contract.blockchain) {
         case 'BNB Chain':
-          console.log('Using BNB Chain module to fetch all transaction types');
+          console.log('Fetching up to 10,000 transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 10000, // Fetch maximum transactions
-            page: 1,
-            sort: 'desc'
+            limit: 10000
           });
           
           if (bnbResult.transactions?.length > 0) {
-            console.log(`Received ${bnbResult.transactions.length} total transactions from BNB Chain`);
-            
-            // Group by transaction type for logging
-            const txTypes = bnbResult.transactions.reduce((acc, tx) => {
-              const type = tx.tx_type || 'Unknown';
-              acc[type] = (acc[type] || 0) + 1;
-              return acc;
-            }, {});
-            
-            console.log('Transaction types breakdown:', txTypes);
-            
-            // Log some sample transactions by type
-            const sampleTx = {};
-            for (const tx of bnbResult.transactions) {
-              const type = tx.tx_type || 'Unknown';
-              if (!sampleTx[type]) {
-                sampleTx[type] = tx;
-              }
-            }
-            console.log('Sample transactions by type:', sampleTx);
-            
+            console.log(`Retrieved ${bnbResult.transactions.length} transactions from BscScan`);
+            console.log('Transactions:', bnbResult.transactions);
             transactions = bnbResult.transactions;
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
-            // Use mock data as fallback
-            console.log('Using mock data as fallback');
-            transactions = generateSampleTransactions(contract.address);
           }
           break;
           
         case 'Base':
           console.log('Using Base Chain module');
           transactions = await fetchBaseTransactions(contract.address, {
-            limit: 10000,
-            page: 1
+            limit: 10000
           });
           break;
           
         case 'Ethereum':
-          console.log('Ethereum chain not implemented yet, using mock data');
-          transactions = generateSampleTransactions(contract.address);
-          break;
-          
         default:
-          console.log(`Chain ${contract.blockchain} not implemented yet, using mock data`);
-          transactions = generateSampleTransactions(contract.address);
+          console.log(`${contract.blockchain} chain not fully implemented yet`);
+          transactions = [];
       }
-      
-      // Create an organized view of the transactions
-      const organizedTransactions = organizeTransactionsByType(transactions);
-      
-      // Log transactions to console
-      console.log(`Retrieved ${transactions.length} total transactions for ${contract.address}`);
-      console.log('Organized transactions by type:', organizedTransactions);
       
       return transactions;
     } catch (error) {
       console.error(`Error fetching transactions for ${contract.address}:`, error);
-      // Use sample data as fallback in case of error
-      console.log('Using mock data due to error');
-      return generateSampleTransactions(contract.address);
+      return [];
     }
-  };
-
-  // Helper function to organize transactions by type
-  const organizeTransactionsByType = (transactions) => {
-    const organized = {
-      normal: [],
-      token: [],
-      internal: [],
-      contract: []
-    };
-    
-    for (const tx of transactions) {
-      if (tx.isInternalTx) {
-        organized.internal.push(tx);
-      } else if (tx.contract_address) {
-        organized.token.push(tx);
-      } else if (tx.tx_type === 'Contract Interaction') {
-        organized.contract.push(tx);
-      } else {
-        organized.normal.push(tx);
-      }
-    }
-    
-    return {
-      normal: organized.normal.length,
-      token: organized.token.length,
-      internal: organized.internal.length,
-      contract: organized.contract.length,
-      total: transactions.length
-    };
   };
 
   // Generate sample transactions for testing purposes
   const generateSampleTransactions = (address) => {
+    // This function is kept just in case we need it for other chains
+    // but it's not used for BNB Chain anymore
     return Array(10).fill().map((_, index) => ({
       tx_hash: `0x${Math.random().toString(16).substr(2, 40)}`,
       block_number: 10000000 + index,
