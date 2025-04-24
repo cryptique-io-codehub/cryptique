@@ -88,16 +88,24 @@ export const hexToDecimalString = (hexString) => {
         // Combine with previous result
         // result = result * (16^chunk.length) + chunkValue
         const multiplier = Math.pow(16, chunk.length);
-        result = (BigInt(result) * BigInt(multiplier) + BigInt(chunkValue)).toString();
+        if (typeof BigInt !== 'undefined') {
+          result = (BigInt(result) * BigInt(multiplier) + BigInt(chunkValue)).toString();
+        } else {
+          // Fallback for environments without BigInt
+          result = (Number(result) * multiplier + chunkValue).toString();
+        }
       }
       
       return result;
     }
   } catch (error) {
     console.error('Error converting hex to decimal:', error);
-    // As a last resort, try using BigInt directly
+    // As a last resort, try using BigInt directly if available
     try {
-      return BigInt(`0x${hexString.replace(/^0x/, '')}`).toString();
+      if (typeof BigInt !== 'undefined') {
+        return BigInt(`0x${hexString.replace(/^0x/, '')}`).toString();
+      }
+      return '0';
     } catch (err) {
       return '0';
     }
