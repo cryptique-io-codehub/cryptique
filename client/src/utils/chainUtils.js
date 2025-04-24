@@ -3,7 +3,14 @@
  * Contains shared functions used across different chain implementations
  */
 
-import { ethers } from 'ethers';
+// Try to import ethers, but provide fallbacks if not available
+let ethers;
+try {
+  ethers = require('ethers');
+} catch (e) {
+  console.warn('Ethers.js not available, using fallback implementations');
+  // Fallback implementations will be used
+}
 
 /**
  * Safely converts a value to a number, returning a default if conversion fails
@@ -31,15 +38,69 @@ export const safeNumber = (value, defaultValue = 0) => {
  */
 export const hexToDecimalString = (hexString) => {
   try {
-    // Remove '0x' prefix if present
-    const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
-    
-    // Use ethers.js BigNumber for safe conversion
-    const bigNumber = ethers.BigNumber.from(`0x${cleanHex}`);
-    return bigNumber.toString();
+    // If ethers is available, use it for the conversion
+    if (ethers) {
+      // Remove '0x' prefix if present
+      const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+      
+      // Use ethers.js BigNumber for safe conversion
+      const bigNumber = ethers.BigNumber.from(`0x${cleanHex}`);
+      return bigNumber.toString();
+    } else {
+      // Fallback implementation without ethers
+      if (!hexString) return '0';
+      
+      // Remove '0x' prefix if present
+      const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+      if (cleanHex === '0') return '0';
+      
+      // For small enough hex values, use native parseInt
+      if (cleanHex.length <= 10) {
+        return parseInt(`0x${cleanHex}`, 16).toString();
+      }
+      
+      // For larger hex values, use a manual conversion approach
+      // Convert hex to decimal without BigInt or ethers
+      // Each hex digit contributes a power of 16
+      let decimal = 0;
+      const hexDigits = {
+        '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+        '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15,
+        'A': 10, 'B': 11, 'C': 12, 'D': 13, 'E': 14, 'F': 15
+      };
+      
+      // Process 8 digits at a time to avoid overflow
+      const chunks = [];
+      for (let i = 0; i < cleanHex.length; i += 8) {
+        chunks.push(cleanHex.slice(i, Math.min(i + 8, cleanHex.length)));
+      }
+      
+      // Process each chunk and combine
+      let result = '0';
+      for (const chunk of chunks) {
+        // Process this chunk
+        let chunkValue = 0;
+        for (let i = 0; i < chunk.length; i++) {
+          const digit = hexDigits[chunk[i]] || 0;
+          chunkValue = chunkValue * 16 + digit;
+        }
+        
+        // Combine with previous result
+        // result = result * (16^chunk.length) + chunkValue
+        const multiplier = Math.pow(16, chunk.length);
+        result = (BigInt(result) * BigInt(multiplier) + BigInt(chunkValue)).toString();
+      }
+      
+      return result;
+    }
   } catch (error) {
     console.error('Error converting hex to decimal:', error);
-    return '0';
+    // As a last resort, try using BigInt directly
+    try {
+      return BigInt(`0x${hexString.replace(/^0x/, '')}`).toString();
+    } catch (err) {
+      return '0';
+    }
   }
 };
 
@@ -61,37 +122,97 @@ export const formatTokenAmount = (amount, decimals = 18, symbol = '') => {
     // Handle zero case
     if (amountStr === '0') return symbol ? `0 ${symbol}` : '0';
     
-    // Convert to BigNumber for precision
-    let bigAmount;
-    try {
-      // Try to create a BigNumber directly
-      bigAmount = ethers.BigNumber.from(amountStr);
-    } catch (error) {
-      // If it fails (e.g., for decimal strings), use a fallback approach
-      console.warn('BigNumber creation failed, using fallback:', error);
-      
-      // Remove decimal point if present
-      const parts = amountStr.split('.');
-      const integerPart = parts[0] || '0';
-      const decimalPart = parts[1] || '';
-      
-      // Create approximation - note this may lose precision for very large numbers
-      const approxAmount = integerPart + decimalPart.padEnd(decimals, '0');
-      return (Number(integerPart + '.' + decimalPart) || 0).toLocaleString() + 
-             (symbol ? ` ${symbol}` : '');
+    // If ethers is available, use it for precise formatting
+    if (ethers) {
+      try {
+        // Try to create a BigNumber directly
+        const bigAmount = ethers.BigNumber.from(amountStr);
+        
+        // Format with correct decimals
+        const formattedAmount = ethers.utils.formatUnits(bigAmount, decimals);
+        
+        // Remove trailing zeros after decimal point
+        const cleanAmount = formattedAmount.replace(/\.0+$|(\.\d*[1-9])0+$/, '$1');
+        
+        // Add symbol if provided
+        return symbol ? `${cleanAmount} ${symbol}` : cleanAmount;
+      } catch (error) {
+        // Fallback to manual formatting below
+        console.warn('Failed to format with ethers:', error);
+      }
     }
     
-    // Format with correct decimals
-    const formattedAmount = ethers.utils.formatUnits(bigAmount, decimals);
+    // Fallback implementation without ethers
+    // Handle scientific notation
+    if (/e[+-]/.test(amountStr)) {
+      const [significand, exponent] = amountStr.split(/e([+-])/);
+      const exp = parseInt(exponent.substring(1));
+      const isNegativeExponent = exponent.startsWith('-');
+      
+      if (isNegativeExponent) {
+        // For small numbers: e.g., 1e-18
+        const zeroes = '0'.repeat(exp - 1);
+        const result = `0.${zeroes}${significand.replace(/\./g, '')}`;
+        return symbol ? `${result} ${symbol}` : result;
+      } else {
+        // For large numbers: e.g., 1.2e+18
+        const parts = significand.split('.');
+        const integerPart = parts[0];
+        const fractionalPart = parts[1] || '';
+        
+        const paddedFractional = fractionalPart + '0'.repeat(exp - fractionalPart.length);
+        const result = integerPart + paddedFractional;
+        
+        // Apply decimals
+        return formatWithDecimals(result, decimals, symbol);
+      }
+    }
     
-    // Remove trailing zeros after decimal point
-    const cleanAmount = formattedAmount.replace(/\.0+$|(\.\d*[1-9])0+$/, '$1');
-    
-    // Add symbol if provided
-    return symbol ? `${cleanAmount} ${symbol}` : cleanAmount;
+    // Regular case: apply decimals directly
+    return formatWithDecimals(amountStr, decimals, symbol);
   } catch (error) {
     console.error('Error formatting token amount:', error);
     return symbol ? `0 ${symbol}` : '0';
+  }
+};
+
+/**
+ * Helper function to format a number with the given number of decimals
+ */
+const formatWithDecimals = (amountStr, decimals, symbol) => {
+  // Remove any non-numeric characters except the decimal point
+  const cleanAmount = amountStr.replace(/[^\d.]/g, '');
+  
+  // Handle the case where decimals need to be added
+  if (cleanAmount.length <= decimals) {
+    const paddedAmount = '0'.repeat(decimals - cleanAmount.length + 1) + cleanAmount;
+    const integerPart = paddedAmount.slice(0, paddedAmount.length - decimals) || '0';
+    const fractionalPart = paddedAmount.slice(paddedAmount.length - decimals);
+    
+    // Format with commas and trim trailing zeros
+    const formattedInt = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    let formattedFrac = fractionalPart.replace(/0+$/, '');
+    
+    if (formattedFrac.length > 0) {
+      return symbol ? `${formattedInt}.${formattedFrac} ${symbol}` : `${formattedInt}.${formattedFrac}`;
+    } else {
+      return symbol ? `${formattedInt} ${symbol}` : formattedInt;
+    }
+  } else {
+    // Regular case: insert decimal point at the right position
+    const position = cleanAmount.length - decimals;
+    const integerPart = cleanAmount.slice(0, position) || '0';
+    const fractionalPart = cleanAmount.slice(position);
+    
+    // Format with commas and trim trailing zeros
+    const formattedInt = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    let formattedFrac = fractionalPart.replace(/0+$/, '');
+    
+    if (formattedFrac.length > 0) {
+      return symbol ? `${formattedInt}.${formattedFrac} ${symbol}` : `${formattedInt}.${formattedFrac}`;
+    } else {
+      return symbol ? `${formattedInt} ${symbol}` : formattedInt;
+    }
   }
 };
 
