@@ -239,24 +239,6 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
     if (result.status === '1' && Array.isArray(result.result)) {
       console.log(`Retrieved ${result.result.length} token transfers from BscScan`);
       
-      // Log some sample token transfer data for debugging
-      if (result.result.length > 0) {
-        const sample = result.result[0];
-        console.log('Sample token transfer:', {
-          tokenName: sample.tokenName,
-          tokenSymbol: sample.tokenSymbol,
-          tokenDecimal: sample.tokenDecimal,
-          value: sample.value
-        });
-        
-        const formattedValue = formatTokenAmount(
-          sample.value, 
-          safeNumber(sample.tokenDecimal), 
-          sample.tokenSymbol
-        );
-        console.log('Formatted token value:', formattedValue);
-      }
-      
       // Process and format token transfers
       return result.result.map(tx => {
         // Create token data object
@@ -268,16 +250,8 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
           value: formatTokenAmount(tx.value, safeNumber(tx.tokenDecimal), tx.tokenSymbol)
         };
         
-        // Log the token data for debugging
-        console.log(`Token transfer: ${tx.hash} - ${tokenData.value}`);
-        
         // Format the transaction with token data
-        const formattedTx = formatTransaction(tx, 'BNB', tokenData);
-        
-        // Ensure token value is displayed in the tx_type field too
-        formattedTx.tx_type = `${tokenData.symbol} Transfer (${tokenData.value})`;
-        
-        return formattedTx;
+        return formatTransaction(tx, 'BNB', tokenData);
       });
     } else {
       console.log('No token transfers found or API error:', result.message);
@@ -290,7 +264,7 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
 };
 
 /**
- * Calculates an adjusted page size for BscScan API requests
+ * Calculates an adjusted page size for BscScan API requests 
  * to prevent "Result window is too large" errors
  * 
  * @param {number} page - Current page number
