@@ -13,8 +13,8 @@ import {
 } from '../chainUtils';
 
 // API keys should be in .env file - these are placeholders
-const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YourBscScanApiKeyHere';
-const INFURA_API_KEY = process.env.REACT_APP_INFURA_API_KEY || 'YourInfuraApiKeyHere';
+const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN_API_KEY';
+const INFURA_API_KEY = process.env.REACT_APP_INFURA_API_KEY || 'YOUR_INFURA_API_KEY';
 
 // BscScan API endpoints
 const BSC_SCAN_BASE_URL = 'https://api.bscscan.com/api';
@@ -115,10 +115,7 @@ export const fetchFromBscScan = async (address, options) => {
   
   try {
     // Calculate adjusted page size to prevent "Result window is too large" error
-    // BscScan has a max of 10,000 results total, so adjust page size for later pages
     const adjustedLimit = calculateAdjustedPageSize(page, limit);
-    
-    // For page > 1, we need to calculate offset
     const offset = (page - 1) * adjustedLimit;
     
     console.log(`Fetching from BscScan with page ${page}, adjustedLimit ${adjustedLimit}`);
@@ -131,7 +128,7 @@ export const fetchFromBscScan = async (address, options) => {
         startblock: startBlock,
         endblock: endBlock,
         page,
-        offset: adjustedLimit, // BscScan uses 'offset' as page size
+        offset: adjustedLimit,
         sort
       }
     });
@@ -139,14 +136,27 @@ export const fetchFromBscScan = async (address, options) => {
     // Parse the response
     const txResult = txResponse.data;
     
+    // Check for API errors
+    if (txResult.status === '0' && txResult.message === 'NOTOK') {
+      console.error('BscScan API error:', txResult.message, 'Result:', txResult.result);
+      return {
+        transactions: [],
+        metadata: {
+          status: 'error',
+          message: 'BscScan API error: Invalid API key or rate limit exceeded',
+          total: 0,
+          page,
+          pageSize: 0
+        }
+      };
+    }
+    
     // Initialize transactions array
     let transactions = [];
     
     // Process regular transactions if successful
     if (txResult.status === '1' && Array.isArray(txResult.result)) {
-      // Map the transactions to our standard format
       transactions = txResult.result.map(tx => formatTransaction(tx, 'BNB'));
-      
       console.log(`Retrieved ${transactions.length} regular transactions from BscScan`);
     } else {
       console.log('No regular transactions found or API error:', txResult.message);
@@ -160,21 +170,16 @@ export const fetchFromBscScan = async (address, options) => {
       );
       
       if (tokenTransfers.length > 0) {
-        // Add token transfers to the transactions array
         transactions = [...transactions, ...tokenTransfers];
-        
-        // Sort transactions by block number (descending by default)
         transactions.sort((a, b) => {
           return sort === 'asc' 
             ? a.block_number - b.block_number 
             : b.block_number - a.block_number;
         });
-        
         console.log(`Added ${tokenTransfers.length} token transfers, total: ${transactions.length}`);
       }
     }
     
-    // Return formatted result
     return {
       transactions,
       metadata: {
@@ -189,8 +194,6 @@ export const fetchFromBscScan = async (address, options) => {
     };
   } catch (error) {
     console.error('Error fetching from BscScan:', error);
-    
-    // Provide a more detailed error message
     const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
     
     return {
