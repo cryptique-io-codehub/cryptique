@@ -244,34 +244,41 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
         // Get token decimals, defaulting to 18 if not provided
         const decimals = safeNumber(tx.tokenDecimal, 18);
         
-        // Format the token value with proper decimals
-        const formattedValue = formatTokenAmount(tx.value, decimals, tx.tokenSymbol);
-        
-        // Create token data object with formatted value
+        // Create token data object with more detailed information
         const tokenData = {
           isToken: true,
           name: tx.tokenName || 'Unknown Token',
           symbol: tx.tokenSymbol || 'TOKEN',
           contractAddress: tx.contractAddress,
-          value: formattedValue,
+          value: formatTokenAmount(tx.value, decimals, tx.tokenSymbol),
+          rawValue: tx.value,
           decimals: decimals,
-          rawValue: tx.value
+          from: tx.from,
+          to: tx.to,
+          tokenName: tx.tokenName,
+          tokenSymbol: tx.tokenSymbol
         };
+        
+        // Format the transaction with token data
+        const formattedTx = formatTransaction(tx, 'BNB', tokenData);
+        
+        // Add additional token-specific fields
+        formattedTx.token_value = tokenData.value;
+        formattedTx.token_symbol = tokenData.symbol;
+        formattedTx.token_name = tokenData.name;
+        formattedTx.token_contract = tokenData.contractAddress;
         
         // Log the token transfer details for debugging
         console.log('Token Transfer:', {
-          tokenName: tokenData.name,
-          tokenSymbol: tokenData.symbol,
-          value: tokenData.value,
-          decimals: tokenData.decimals,
-          rawValue: tokenData.rawValue,
-          from: tx.from,
-          to: tx.to,
-          contractAddress: tx.contractAddress
+          hash: formattedTx.tx_hash,
+          from: formattedTx.from_address,
+          to: formattedTx.to_address,
+          value: formattedTx.token_value,
+          symbol: formattedTx.token_symbol,
+          name: formattedTx.token_name
         });
         
-        // Format the transaction with token data
-        return formatTransaction(tx, 'BNB', tokenData);
+        return formattedTx;
       });
     } else {
       console.log('No token transfers found or API error:', result.message);
