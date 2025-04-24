@@ -199,7 +199,32 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
           if (bnbResult.transactions?.length > 0) {
             console.log(`Retrieved ${bnbResult.transactions.length} transactions from BscScan`);
-            console.log('Transactions:', bnbResult.transactions);
+            
+            // Enhanced console logging for token transfers
+            console.log('Transactions with BEP-20 token details:');
+            bnbResult.transactions.forEach((tx, index) => {
+              // Add a clear index number for each transaction
+              const enhancedTx = { ...tx, index };
+              
+              // If this is a token transfer, add a formatted representation
+              if (tx.token_transfers) {
+                console.log(`Transaction #${index}: ${tx.tx_hash}`);
+                console.log(`  BEP-20 Tokens Transferred:`);
+                console.log(`    From: ${tx.token_transfers.from.slice(0, 10)}...${tx.token_transfers.from.slice(-8)}`);
+                console.log(`    To: ${tx.token_transfers.to.slice(0, 10)}...${tx.token_transfers.to.slice(-8)}`);
+                console.log(`    Amount: ${tx.token_transfers.amount}`);
+                console.log(`    Token: ${tx.token_transfers.token_name} (${tx.token_transfers.token_symbol})`);
+                console.log(`    Contract: ${tx.token_transfers.contract_address.slice(0, 10)}...${tx.token_transfers.contract_address.slice(-8)}`);
+                console.log(`  Block: ${tx.block_number}, Time: ${new Date(tx.block_time).toLocaleString()}`);
+                console.log(`  Status: ${tx.status}, Gas Used: ${tx.gas_used}`);
+                console.log(`  Value: ${tx.value_eth}`);
+                console.log('  -------------------------');
+              }
+            });
+            
+            // Also log the full transaction details
+            console.log('Full transaction details:', bnbResult.transactions);
+            
             transactions = bnbResult.transactions;
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
