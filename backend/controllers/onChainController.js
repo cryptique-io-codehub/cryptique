@@ -32,16 +32,16 @@ exports.sendSmartContractData = async (req, res) => {
             const contractVerification = await axios.get(
                 `https://api.dune.com/api/v1/contract/verify`,
                 {
-                    params: {
+                  params: {
                         chain: chainName.toLowerCase(),
                         address: normalizedAddress
-                    },
-                    headers: {
+                  },
+                  headers: {
                         "X-Dune-API-Key": duneApiKey
                     },
                     timeout: 8000 // 8 second timeout
                 }
-            );
+              );
             
             // If we get here, the contract verification was successful
             return res.status(200).json({

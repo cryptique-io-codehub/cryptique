@@ -72,6 +72,8 @@ const ERC20_ABI = [
 const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract, setSelectedContract }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddContractModal, setShowAddContractModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState(null);
   const [contractAddress, setContractAddress] = useState('');
   const [contractName, setContractName] = useState('');
   const [blockchain, setBlockchain] = useState('Ethereum');
@@ -79,15 +81,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [web3, setWeb3] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [contracts, setContracts] = useState([]);
-  const [newContract, setNewContract] = useState({
-    address: '',
-    name: '',
-    chain: 'ethereum'
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -319,7 +312,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
     setAddingContract(true);
     setContractError('');
-
+    
     try {
       // Create new contract object directly without API verification
       // since the backend API is not available yet
@@ -332,7 +325,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         added_at: new Date().toISOString(),
         verified: true
       };
-
+      
       // Update contract array
       const updatedContracts = [...contractarray, newContract];
       setcontractarray(updatedContracts);
@@ -392,43 +385,52 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     };
   };
 
-  const handleDeleteContract = (contractId) => {
-    const updatedContracts = contracts.filter(contract => contract.id !== contractId);
-    setContracts(updatedContracts);
-    
-    // Update selected contracts
-    const updatedSelectedContracts = selectedContracts.filter(contract => contract.id !== contractId);
+  const handleDeleteContract = (contract) => {
+    setContractToDelete(contract);
+    setShowDeleteModal(true);
+    setShowDropdown(false);
+  };
+
+  const confirmDeleteContract = () => {
+    if (!contractToDelete) return;
+
+    // Remove from contract array
+    const updatedContracts = contractarray.filter(c => c.id !== contractToDelete.id);
+    setcontractarray(updatedContracts);
+
+    // Remove from selected contracts
+    const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
     setSelectedContracts(updatedSelectedContracts);
-    
-    // Update primary selected contract if needed
-    if (selectedContract?.id === contractId) {
-      setSelectedContract(updatedSelectedContracts[0] || null);
-      setcontractarray(updatedContracts);
-    }
-    
-    // Update localStorage
-    const teamName = localStorage.getItem('selectedTeam');
-    if (teamName) {
-      const key = `contracts_${teamName}`;
-      if (updatedContracts.length === 0) {
-        localStorage.removeItem(key);
+
+    // If this was the primary selected contract, update it
+    if (selectedContract?.id === contractToDelete.id) {
+      if (updatedSelectedContracts.length > 0) {
+        setSelectedContract(updatedSelectedContracts[0]);
       } else {
-        localStorage.setItem(key, JSON.stringify(updatedContracts));
+        setSelectedContract(null);
       }
     }
+
+    setShowDeleteModal(false);
+    setContractToDelete(null);
+  };
+
+  const cancelDeleteContract = () => {
+    setShowDeleteModal(false);
+    setContractToDelete(null);
   };
 
   return (
     <div className="smart-contract-filters relative">
       <div className="relative inline-block text-left">
         <div>
-          <button
-            type="button"
+        <button
+          type="button"
             className="inline-flex w-full justify-between gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-            onClick={handleDropdownToggle}
+          onClick={handleDropdownToggle}
             aria-expanded={showDropdown}
             aria-haspopup="true"
-          >
+        >
             {selectedContract 
               ? formatContractDisplay(selectedContract).name
               : "Select Smart Contract"}
@@ -470,40 +472,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   const isSelected = selectedContracts.some(c => c.id === contract.id);
                   
                   return (
-                    <div
-                      key={contract.id}
-                      className="flex items-center justify-between px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      <div
-                        className="flex-1"
+                    <div key={contract.id} className="group">
+                      <button
+                        className={`w-full text-left px-4 py-2 text-sm ${isSelected ? 'bg-gray-100' : ''} hover:bg-gray-50`}
                         onClick={() => handleSelectContract(contract)}
                       >
-                        <div className="font-medium">
-                          {displayInfo.name}
+                        <div className="font-medium">{displayInfo.name}</div>
+                        <div className="text-xs text-gray-500 flex justify-between">
+                          <span>{displayInfo.shortAddress}</span>
+                          <span className="italic">{contract.blockchain}</span>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {displayInfo.shortAddress}
-                        </div>
-                      </div>
+                      </button>
                       <button
+                        className="absolute right-2 top-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteContract(contract.id);
+                          handleDeleteContract(contract);
                         }}
-                        className="text-red-500 hover:text-red-700 ml-2"
-                        title="Delete contract"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                       </button>
                     </div>
@@ -513,12 +501,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 <div className="px-4 py-2 text-sm text-gray-500">No smart contracts found</div>
               )}
               <div className="border-t border-gray-100"></div>
-              <button
+                <button
                 className="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-gray-50"
-                onClick={handleOpenAddContractModal}
-              >
+                  onClick={handleOpenAddContractModal}
+                >
                 + Add new smart contract
-              </button>
+                </button>
             </div>
           </div>
         )}
@@ -530,8 +518,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
+              </div>
+              
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
@@ -542,24 +530,24 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       Add Smart Contract
                     </h3>
                     <div className="mt-4">
-                      <form onSubmit={handleAddContract}>
-                        <div className="mb-4">
+              <form onSubmit={handleAddContract}>
+                <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
                             Contract Address
                           </label>
-                          <input
-                            type="text"
+                  <input
+                    type="text"
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             placeholder="0x..."
                             value={contractAddress}
                             onChange={(e) => setContractAddress(e.target.value)}
-                            required
-                          />
-                        </div>
+                    required
+                  />
+                </div>
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
                             Name (Optional)
-                          </label>
+                  </label>
                           <input
                             type="text"
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -608,6 +596,57 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Delete Smart Contract
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to delete this smart contract? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={confirmDeleteContract}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={cancelDeleteContract}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
