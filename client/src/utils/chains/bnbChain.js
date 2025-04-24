@@ -241,14 +241,34 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
       
       // Process and format token transfers
       return result.result.map(tx => {
-        // Create token data object
+        // Get token decimals, defaulting to 18 if not provided
+        const decimals = safeNumber(tx.tokenDecimal, 18);
+        
+        // Format the token value with proper decimals
+        const formattedValue = formatTokenAmount(tx.value, decimals, tx.tokenSymbol);
+        
+        // Create token data object with formatted value
         const tokenData = {
           isToken: true,
           name: tx.tokenName || 'Unknown Token',
           symbol: tx.tokenSymbol || 'TOKEN',
           contractAddress: tx.contractAddress,
-          value: formatTokenAmount(tx.value, safeNumber(tx.tokenDecimal), tx.tokenSymbol)
+          value: formattedValue,
+          decimals: decimals,
+          rawValue: tx.value
         };
+        
+        // Log the token transfer details for debugging
+        console.log('Token Transfer:', {
+          tokenName: tokenData.name,
+          tokenSymbol: tokenData.symbol,
+          value: tokenData.value,
+          decimals: tokenData.decimals,
+          rawValue: tokenData.rawValue,
+          from: tx.from,
+          to: tx.to,
+          contractAddress: tx.contractAddress
+        });
         
         // Format the transaction with token data
         return formatTransaction(tx, 'BNB', tokenData);
