@@ -6,7 +6,8 @@
 import axios from 'axios';
 import { 
   formatTransaction, 
-  isValidAddress 
+  isValidAddress,
+  decodeERC20TransferInput
 } from '../chainUtils';
 
 // API key should be in .env file
@@ -15,9 +16,123 @@ const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN
 // BscScan API endpoints
 const BSC_SCAN_BASE_URL = 'https://api.bscscan.com/api';
 const BSC_SCAN_ACCT_TX_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=account&action=txlist`;
+const BSC_SCAN_TOKEN_TX_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=account&action=tokentx`;
 
 // Max results per page
 const MAX_RESULTS = 10000;
+
+/**
+ * Fetches BEP20 token transfers for a BNB address
+ * 
+ * @param {string} address - The address to fetch token transfers for
+ * @param {Object} options - Options for the fetch request
+ * @param {number} options.limit - Maximum number of transactions to return
+ * @returns {Promise<Array>} - Array of processed token transfer transactions
+ */
+const fetchBep20TokenTransfers = async (address, options = {}) => {
+  const limit = options.limit || MAX_RESULTS;
+  
+  try {
+    console.log(`Fetching BEP20 token transfers for address: ${address}`);
+    
+    const response = await axios.get(BSC_SCAN_TOKEN_TX_ENDPOINT, {
+      params: {
+        address,
+        apikey: BSC_SCAN_API_KEY,
+        startblock: 0,
+        endblock: 999999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc'
+      }
+    });
+    
+    const result = response.data;
+    
+    if (result.status !== '1' || !Array.isArray(result.result)) {
+      console.log(`No BEP20 token transfers found: ${result.message || 'Unknown error'}`);
+      return [];
+    }
+    
+    const tokenTransfers = result.result;
+    console.log(`Found ${tokenTransfers.length} BEP20 token transfers`);
+    
+    // Process token transfers
+    return tokenTransfers.map(tx => {
+      const decimals = parseInt(tx.tokenDecimal || 18);
+      const symbol = tx.tokenSymbol || 'TOKEN';
+      
+      // Format token value
+      const tokenValue = `${tx.value / Math.pow(10, decimals)} ${symbol}`;
+      
+      return formatTransaction(tx, 'BNB', {
+        isToken: true,
+        name: tx.tokenName || 'BEP20 Token',
+        symbol,
+        contractAddress: tx.contractAddress,
+        value: tokenValue
+      });
+    });
+  } catch (error) {
+    console.error('Error fetching BEP20 token transfers:', error);
+    return [];
+  }
+};
+
+/**
+ * Process a BEP20 token transfer transaction
+ * 
+ * @param {Object} tx - Raw transaction data
+ * @returns {Object} - Processed transaction
+ */
+const processBep20Transaction = (tx) => {
+  try {
+    // Decode the BEP20 transfer data
+    const decodedData = decodeERC20TransferInput(tx.input);
+    
+    if (!decodedData) {
+      return formatTransaction(tx, 'BNB');
+    }
+    
+    // Default 18 decimals (most common)
+    const decimals = 18;
+    
+    // Format token amount with proper decimal placement
+    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
+    let displayAmount;
+    
+    // Handle the display format based on the size
+    if (tokenAmountFloat >= 1) {
+      displayAmount = tokenAmountFloat.toFixed(6).replace(/\.?0+$/, '');
+    } else if (tokenAmountFloat >= 0.000001) {
+      displayAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
+    } else {
+      displayAmount = tokenAmountFloat.toExponential(6);
+    }
+    
+    // Remove trailing decimal point if present
+    if (displayAmount.endsWith('.')) {
+      displayAmount = displayAmount.slice(0, -1);
+    }
+    
+    // Create tokenData object for formatTransaction
+    const tokenData = {
+      isToken: true,
+      symbol: 'BEP20', // Generic symbol since we don't have actual token info
+      value: `${displayAmount} BEP20`,
+      contractAddress: tx.to // Contract address is the 'to' field in tx
+    };
+    
+    // Format transaction with token data
+    return formatTransaction({
+      ...tx,
+      to: decodedData.recipient // Update recipient to actual token receiver
+    }, 'BNB', tokenData);
+  } catch (error) {
+    console.error("Error processing BEP20 transaction:", error);
+    return formatTransaction(tx, 'BNB');
+  }
+};
 
 /**
  * Fetches transactions for a BNB address or contract
@@ -47,60 +162,77 @@ export const fetchBnbTransactions = async (address, options = {}) => {
   const limit = options.limit || MAX_RESULTS;
   
   try {
-    console.log(`Requesting up to ${limit} transactions from BscScan API`);
+    // Fetch both regular transactions and token transfers in parallel
+    const [regularTxResponse, tokenTransfers] = await Promise.all([
+      // Regular transactions
+      axios.get(BSC_SCAN_ACCT_TX_ENDPOINT, {
+        params: {
+          address,
+          apikey: BSC_SCAN_API_KEY,
+          startblock: 0,
+          endblock: 999999999,
+          page: 1,
+          offset: limit,
+          sort: 'desc'
+        }
+      }),
+      // BEP20 token transfers
+      fetchBep20TokenTransfers(address, options)
+    ]);
     
-    // Make API request to BscScan
-    const response = await axios.get(BSC_SCAN_ACCT_TX_ENDPOINT, {
-      params: {
-        address,
-        apikey: BSC_SCAN_API_KEY,
-        startblock: 0,
-        endblock: 999999999,
-        page: 1,
-        offset: limit,
-        sort: 'desc'
-      }
-    });
+    const result = regularTxResponse.data;
     
-    const result = response.data;
-    
-    // Check for errors
+    // Check for errors in regular transactions
     if (result.status === '0') {
       console.error('BscScan API error:', result.message);
       return {
-        transactions: [],
+        transactions: tokenTransfers, // Return token transfers even if regular txs failed
         metadata: {
-          status: 'error',
-          message: `BscScan API error: ${result.message}`,
-          total: 0
+          status: 'partial_error',
+          message: `BscScan API error for regular transactions: ${result.message}`,
+          total: tokenTransfers.length
         }
       };
     }
     
     // Process successful response
+    let transactions = [];
+    
     if (result.status === '1' && Array.isArray(result.result)) {
-      const transactions = result.result.map(tx => formatTransaction(tx, 'BNB'));
-      console.log(`Retrieved ${transactions.length} transactions from BscScan`);
-      
-      return {
-        transactions,
-        metadata: {
-          status: 'success',
-          message: 'Transactions retrieved successfully',
-          total: transactions.length
+      // Process regular transactions
+      const regularTxs = result.result.map(tx => {
+        // Check if this might be a BEP20 transfer
+        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
+          return processBep20Transaction(tx);
         }
-      };
+        return formatTransaction(tx, 'BNB');
+      });
+      
+      console.log(`Retrieved ${regularTxs.length} regular transactions from BscScan`);
+      
+      // Combine regular transactions with token transfers
+      transactions = [...regularTxs, ...tokenTransfers];
+      
+      // Sort transactions by timestamp (newest first)
+      transactions.sort((a, b) => {
+        return new Date(b.block_time) - new Date(a.block_time);
+      });
+      
+      console.log(`Total transactions after combining: ${transactions.length}`);
+    } else {
+      // Use only token transfers if no regular transactions
+      transactions = tokenTransfers;
     }
     
-    // Handle no results
     return {
-      transactions: [],
+      transactions,
       metadata: {
-        status: 'no_results',
-        message: 'No transactions found for this address',
-        total: 0
+        status: 'success',
+        message: 'Transactions retrieved successfully',
+        total: transactions.length
       }
     };
+    
   } catch (error) {
     console.error('Error fetching BNB transactions:', error);
     return {
