@@ -322,6 +322,10 @@ export const formatTransaction = (tx, chain, tokenData = null) => {
       formattedTx.contract_address = tokenData.contractAddress;
       formattedTx.token_name = tokenData.name;
       formattedTx.token_symbol = tokenData.symbol;
+      formattedTx.token_value = tokenData.value;
+      
+      // Include token value in tx_type for better visibility
+      formattedTx.tx_type = `${tokenData.symbol} Transfer (${tokenData.value})`;
     }
     
     return formattedTx;

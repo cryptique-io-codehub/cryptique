@@ -66,8 +66,7 @@ export const fetchBnbTransactions = async (address, options = {}) => {
     startBlock: options.startBlock || '0',
     endBlock: options.endBlock || '999999999',
     sort: options.sort || 'desc',
-    includeTokenTransfers: options.includeTokenTransfers !== false,
-    contractAddress: address // This is important - we pass the contract address to filter token transfers
+    includeTokenTransfers: options.includeTokenTransfers !== false
   };
 
   try {
@@ -112,7 +111,7 @@ export const fetchBnbTransactions = async (address, options = {}) => {
  * @returns {Promise<Object>} - Formatted transaction results
  */
 export const fetchFromBscScan = async (address, options) => {
-  const { page, limit, startBlock, endBlock, sort, includeTokenTransfers, contractAddress } = options;
+  const { page, limit, startBlock, endBlock, sort, includeTokenTransfers } = options;
   
   try {
     // Calculate adjusted page size to prevent "Result window is too large" error
@@ -167,14 +166,7 @@ export const fetchFromBscScan = async (address, options) => {
     if (includeTokenTransfers) {
       const tokenTransfers = await fetchTokenTransfersFromBscScan(
         address, 
-        { 
-          startBlock, 
-          endBlock, 
-          page, 
-          limit: adjustedLimit, 
-          sort,
-          contractAddress // Pass the contract address to filter token transfers
-        }
+        { startBlock, endBlock, page, limit: adjustedLimit, sort }
       );
       
       if (tokenTransfers.length > 0) {
@@ -225,7 +217,7 @@ export const fetchFromBscScan = async (address, options) => {
  * @returns {Promise<Array>} - Array of formatted token transfers
  */
 export const fetchTokenTransfersFromBscScan = async (address, options) => {
-  const { startBlock, endBlock, page, limit, sort, contractAddress } = options;
+  const { startBlock, endBlock, page, limit, sort } = options;
   
   try {
     console.log(`Fetching token transfers for ${address}`);
@@ -247,68 +239,43 @@ export const fetchTokenTransfersFromBscScan = async (address, options) => {
     if (result.status === '1' && Array.isArray(result.result)) {
       console.log(`Retrieved ${result.result.length} token transfers from BscScan`);
       
-      // Filter out spam tokens by only including:
-      // 1. Transfers where the contractAddress matches our selected contract
-      // 2. Legitimate tokens with standard names (by comparing name and symbol)
-      const filteredTransfers = result.result.filter(tx => {
-        // If we're viewing a specific contract's transfers, only show transfers for that contract
-        if (contractAddress && contractAddress.toLowerCase() === address.toLowerCase()) {
-          // When looking at a contract itself, only include transfers involving that contract address
-          return tx.contractAddress.toLowerCase() === contractAddress.toLowerCase();
-        }
+      // Log some sample token transfer data for debugging
+      if (result.result.length > 0) {
+        const sample = result.result[0];
+        console.log('Sample token transfer:', {
+          tokenName: sample.tokenName,
+          tokenSymbol: sample.tokenSymbol,
+          tokenDecimal: sample.tokenDecimal,
+          value: sample.value
+        });
         
-        // Otherwise, filter out spam tokens that have URLs or long messages in their names/symbols
-        const hasNormalName = !(tx.tokenName || '').includes('http') && 
-                            !(tx.tokenName || '').includes('.com') &&
-                            !(tx.tokenName || '').includes('claim') &&
-                            !(tx.tokenSymbol || '').includes('http') &&
-                            !(tx.tokenSymbol || '').includes('.com') &&
-                            !(tx.tokenSymbol || '').includes('claim') &&
-                            (tx.tokenName || '').length < 30 &&
-                            (tx.tokenSymbol || '').length < 15;
-        
-        return hasNormalName;
-      });
-      
-      console.log(`Filtered to ${filteredTransfers.length} legitimate token transfers`);
+        const formattedValue = formatTokenAmount(
+          sample.value, 
+          safeNumber(sample.tokenDecimal), 
+          sample.tokenSymbol
+        );
+        console.log('Formatted token value:', formattedValue);
+      }
       
       // Process and format token transfers
-      return filteredTransfers.map(tx => {
-        // Get token decimals, defaulting to 18 if not provided
-        const decimals = safeNumber(tx.tokenDecimal, 18);
-        
-        // Create token data object with more detailed information
+      return result.result.map(tx => {
+        // Create token data object
         const tokenData = {
           isToken: true,
           name: tx.tokenName || 'Unknown Token',
           symbol: tx.tokenSymbol || 'TOKEN',
           contractAddress: tx.contractAddress,
-          value: formatTokenAmount(tx.value, decimals, tx.tokenSymbol),
-          rawValue: tx.value,
-          decimals: decimals,
-          from: tx.from,
-          to: tx.to,
-          tokenName: tx.tokenName,
-          tokenSymbol: tx.tokenSymbol
+          value: formatTokenAmount(tx.value, safeNumber(tx.tokenDecimal), tx.tokenSymbol)
         };
+        
+        // Log the token data for debugging
+        console.log(`Token transfer: ${tx.hash} - ${tokenData.value}`);
         
         // Format the transaction with token data
         const formattedTx = formatTransaction(tx, 'BNB', tokenData);
         
-        // Add additional token-specific fields
-        formattedTx.token_value = tokenData.value;
-        formattedTx.token_symbol = tokenData.symbol;
-        formattedTx.token_name = tokenData.name;
-        formattedTx.token_contract = tokenData.contractAddress;
-        
-        // Log legitimate token transfers for debugging
-        console.log('Token Transfer:', {
-          hash: formattedTx.tx_hash.substring(0, 10) + '...',
-          contract: tokenData.contractAddress.substring(0, 10) + '...',
-          value: formattedTx.token_value,
-          symbol: formattedTx.token_symbol,
-          name: formattedTx.token_name
-        });
+        // Ensure token value is displayed in the tx_type field too
+        formattedTx.tx_type = `${tokenData.symbol} Transfer (${tokenData.value})`;
         
         return formattedTx;
       });

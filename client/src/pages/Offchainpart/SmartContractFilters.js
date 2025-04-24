@@ -198,6 +198,44 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             includeTokenTransfers: true
           });
           transactions = bnbResult.transactions || [];
+          
+          // Display transaction summary
+          if (transactions.length > 0) {
+            console.log("Transaction Summary:");
+            
+            // Group by token symbol for token transfers
+            const tokenTransfers = transactions.filter(tx => tx.token_symbol);
+            const tokenGroups = {};
+            
+            tokenTransfers.forEach(tx => {
+              const symbol = tx.token_symbol;
+              if (!tokenGroups[symbol]) {
+                tokenGroups[symbol] = [];
+              }
+              tokenGroups[symbol].push(tx);
+            });
+            
+            // Log token transfer summaries
+            Object.keys(tokenGroups).forEach(symbol => {
+              console.log(`${symbol} Transfers: ${tokenGroups[symbol].length} transactions`);
+              
+              // Show a sample transaction
+              const sample = tokenGroups[symbol][0];
+              console.log(`Sample ${symbol} Transfer:`, {
+                tx_hash: sample.tx_hash,
+                from: sample.from_address,
+                to: sample.to_address,
+                value: sample.token_value || sample.value_eth,
+                type: sample.tx_type
+              });
+            });
+            
+            // Also log non-token transactions if any
+            const nonTokenTxs = transactions.filter(tx => !tx.token_symbol);
+            if (nonTokenTxs.length > 0) {
+              console.log(`Regular transfers: ${nonTokenTxs.length} transactions`);
+            }
+          }
           break;
           
         case 'Base':
