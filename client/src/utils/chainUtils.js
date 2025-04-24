@@ -1,3 +1,5 @@
+/* eslint-env es2020 */
+/* global BigInt */
 /**
  * chainUtils.js - Utility functions for blockchain data processing
  * Contains shared functions used across different chain implementations
