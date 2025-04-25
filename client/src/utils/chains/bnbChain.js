@@ -21,64 +21,31 @@ const BSC_SCAN_TOKEN_INFO_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=token&action=t
 // Max results per page
 const MAX_RESULTS = 10000;
 
-// Cache for token information to avoid repeated API calls
-const tokenInfoCache = {};
-
 /**
- * Fetch token information for a BEP20 token contract
+ * Fetches token information from BscScan API
  * 
  * @param {string} contractAddress - The token contract address
- * @returns {Promise<Object>} - Token information including name, symbol and decimals
+ * @returns {Promise<Object>} - Token information including symbol and decimals
  */
-const getTokenInfo = async (contractAddress) => {
-  // Check cache first
-  if (tokenInfoCache[contractAddress]) {
-    return tokenInfoCache[contractAddress];
-  }
-  
-  // Default token info
-  const defaultTokenInfo = {
-    name: 'BEP20 Token',
-    symbol: 'BEP20',
-    decimals: 18
-  };
-  
+const fetchTokenInfo = async (contractAddress) => {
   try {
-    // Fetch token info from BscScan API
     const response = await axios.get(BSC_SCAN_TOKEN_INFO_ENDPOINT, {
       params: {
-        apikey: BSC_SCAN_API_KEY,
         contractaddress: contractAddress,
-        module: 'token',
-        action: 'tokeninfo'
+        apikey: BSC_SCAN_API_KEY
       }
     });
-    
-    // Process response
-    if (
-      response.data.status === '1' && 
-      response.data.result && 
-      Array.isArray(response.data.result) && 
-      response.data.result.length > 0
-    ) {
-      const tokenData = response.data.result[0];
-      
-      const tokenInfo = {
-        name: tokenData.name || defaultTokenInfo.name,
-        symbol: tokenData.symbol || defaultTokenInfo.symbol,
-        decimals: parseInt(tokenData.decimals || defaultTokenInfo.decimals)
+
+    if (response.data.status === '1' && response.data.result.length > 0) {
+      return {
+        symbol: response.data.result[0].symbol,
+        decimals: parseInt(response.data.result[0].decimals)
       };
-      
-      // Cache the result
-      tokenInfoCache[contractAddress] = tokenInfo;
-      return tokenInfo;
     }
-    
-    // Return default if no valid response
-    return defaultTokenInfo;
+    return null;
   } catch (error) {
-    console.warn(`Error fetching token info for ${contractAddress}:`, error.message);
-    return defaultTokenInfo;
+    console.error("Error fetching token info:", error);
+    return null;
   }
 };
 
@@ -97,12 +64,13 @@ const processBep20Transaction = async (tx) => {
       return formatTransaction(tx, 'BNB');
     }
     
-    // Get token contract info
-    const contractAddress = tx.to;
-    const tokenInfo = await getTokenInfo(contractAddress);
+    // Get token information
+    const tokenInfo = await fetchTokenInfo(tx.to);
+    const decimals = tokenInfo?.decimals || 18;
+    const symbol = tokenInfo?.symbol || 'BEP20';
     
     // Format token amount with proper decimal placement
-    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, tokenInfo.decimals);
+    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
     let displayAmount;
     
     // Handle the display format based on the size
@@ -122,16 +90,15 @@ const processBep20Transaction = async (tx) => {
     // Create tokenData object for formatTransaction
     const tokenData = {
       isToken: true,
-      name: tokenInfo.name,
-      symbol: tokenInfo.symbol,
-      value: `${displayAmount} ${tokenInfo.symbol}`,
-      contractAddress: contractAddress
+      symbol: symbol,
+      value: `${displayAmount} ${symbol}`,
+      contractAddress: tx.to
     };
     
     // Format transaction with token data
     return formatTransaction({
       ...tx,
-      to: decodedData.recipient // Update recipient to actual token receiver
+      to: decodedData.recipient
     }, 'BNB', tokenData);
   } catch (error) {
     console.error("Error processing BEP20 transaction:", error);
@@ -198,16 +165,13 @@ export const fetchBnbTransactions = async (address, options = {}) => {
     // Process successful response
     if (result.status === '1' && Array.isArray(result.result)) {
       // Process transactions and identify BEP20 token transfers
-      const txPromises = result.result.map(async (tx) => {
+      const transactions = await Promise.all(result.result.map(async tx => {
         // Check if this might be a BEP20 transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
           return await processBep20Transaction(tx);
         }
         return formatTransaction(tx, 'BNB');
-      });
-      
-      // Wait for all transaction processing to complete
-      const transactions = await Promise.all(txPromises);
+      }));
       
       console.log(`Retrieved ${transactions.length} transactions from BscScan`);
       
