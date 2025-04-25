@@ -9,6 +9,7 @@ import {
   isValidAddress,
   decodeERC20TransferInput
 } from '../chainUtils';
+import Web3 from 'web3';
 
 // API key should be in .env file
 const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN_API_KEY';
@@ -16,17 +17,115 @@ const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN
 // BscScan API endpoints
 const BSC_SCAN_BASE_URL = 'https://api.bscscan.com/api';
 const BSC_SCAN_ACCT_TX_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=account&action=txlist`;
+const BSC_SCAN_TOKEN_INFO_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=token&action=tokeninfo`;
 
 // Max results per page
 const MAX_RESULTS = 10000;
+
+// Cache for token information to avoid repeated API calls
+const tokenInfoCache = {};
+
+// Minimal ABI for fetching token details
+const TOKEN_ABI = [
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "name",
+    "outputs": [{"name": "", "type": "string"}],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{"name": "", "type": "string"}],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{"name": "", "type": "uint8"}],
+    "type": "function"
+  }
+];
+
+// Initialize Web3 for BSC
+const web3 = new Web3('https://bsc-dataseed1.binance.org/');
+
+/**
+ * Fetch token information using BscScan API or Web3
+ * 
+ * @param {string} contractAddress - Token contract address
+ * @returns {Promise<Object>} - Token information (symbol, name, decimals)
+ */
+const getTokenInfo = async (contractAddress) => {
+  // Return from cache if available
+  if (tokenInfoCache[contractAddress]) {
+    return tokenInfoCache[contractAddress];
+  }
+  
+  try {
+    // First try BscScan API for token info
+    const response = await axios.get(BSC_SCAN_TOKEN_INFO_ENDPOINT, {
+      params: {
+        apikey: BSC_SCAN_API_KEY,
+        contractaddress: contractAddress,
+        module: 'token',
+        action: 'tokeninfo'
+      }
+    });
+    
+    if (response.data.status === '1' && response.data.result.length > 0) {
+      const tokenInfo = {
+        symbol: response.data.result[0].symbol || 'UNKNOWN',
+        name: response.data.result[0].name || 'Unknown Token',
+        decimals: parseInt(response.data.result[0].decimals) || 18
+      };
+      
+      // Cache the result
+      tokenInfoCache[contractAddress] = tokenInfo;
+      return tokenInfo;
+    }
+    
+    // Fallback to Web3 if BscScan API fails
+    const tokenContract = new web3.eth.Contract(TOKEN_ABI, contractAddress);
+    
+    // Fetch token details
+    const [symbol, name, decimals] = await Promise.all([
+      tokenContract.methods.symbol().call().catch(() => 'UNKNOWN'),
+      tokenContract.methods.name().call().catch(() => 'Unknown Token'),
+      tokenContract.methods.decimals().call().catch(() => '18')
+    ]);
+    
+    const tokenInfo = {
+      symbol,
+      name,
+      decimals: parseInt(decimals)
+    };
+    
+    // Cache the result
+    tokenInfoCache[contractAddress] = tokenInfo;
+    return tokenInfo;
+  } catch (error) {
+    console.error(`Error fetching token info for ${contractAddress}:`, error);
+    
+    // Return default values if all methods fail
+    return {
+      symbol: 'BEP20',
+      name: 'Unknown BEP20 Token',
+      decimals: 18
+    };
+  }
+};
 
 /**
  * Process a BEP20 token transfer transaction
  * 
  * @param {Object} tx - Raw transaction data
- * @returns {Object} - Processed transaction
+ * @returns {Promise<Object>} - Processed transaction
  */
-const processBep20Transaction = (tx) => {
+const processBep20Transaction = async (tx) => {
   try {
     // Decode the BEP20 transfer data
     const decodedData = decodeERC20TransferInput(tx.input);
@@ -35,11 +134,12 @@ const processBep20Transaction = (tx) => {
       return formatTransaction(tx, 'BNB');
     }
     
-    // Default 18 decimals (most common)
-    const decimals = 18;
+    // Get token information from the contract
+    const contractAddress = tx.to;
+    const tokenInfo = await getTokenInfo(contractAddress);
     
     // Format token amount with proper decimal placement
-    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
+    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, tokenInfo.decimals);
     let displayAmount;
     
     // Handle the display format based on the size
@@ -59,9 +159,10 @@ const processBep20Transaction = (tx) => {
     // Create tokenData object for formatTransaction
     const tokenData = {
       isToken: true,
-      symbol: 'BEP20', // Generic symbol since we don't have actual token info
-      value: `${displayAmount} BEP20`,
-      contractAddress: tx.to // Contract address is the 'to' field in tx
+      symbol: tokenInfo.symbol,
+      name: tokenInfo.name,
+      value: `${displayAmount} ${tokenInfo.symbol}`,
+      contractAddress: contractAddress
     };
     
     // Format transaction with token data
@@ -134,13 +235,17 @@ export const fetchBnbTransactions = async (address, options = {}) => {
     // Process successful response
     if (result.status === '1' && Array.isArray(result.result)) {
       // Process transactions and identify BEP20 token transfers
-      const transactions = result.result.map(tx => {
+      // Since processBep20Transaction is now async, we need to use Promise.all
+      const transactionPromises = result.result.map(async (tx) => {
         // Check if this might be a BEP20 transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return processBep20Transaction(tx);
+          return await processBep20Transaction(tx);
         }
         return formatTransaction(tx, 'BNB');
       });
+      
+      // Wait for all transaction processing to complete
+      const transactions = await Promise.all(transactionPromises);
       
       console.log(`Retrieved ${transactions.length} transactions from BscScan`);
       
