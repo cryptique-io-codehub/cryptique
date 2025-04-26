@@ -21,14 +21,25 @@ const BSC_SCAN_TOKEN_INFO_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=token&action=t
 // Max results per page
 const MAX_RESULTS = 10000;
 
+// Cache for token information to reduce API calls
+const tokenInfoCache = new Map();
+
 /**
- * Fetches token information from BscScan API
+ * Fetches token information from BscScan API with caching
  * 
  * @param {string} contractAddress - The token contract address
  * @returns {Promise<Object>} - Token information including symbol and decimals
  */
 const fetchTokenInfo = async (contractAddress) => {
+  // Check cache first
+  if (tokenInfoCache.has(contractAddress)) {
+    return tokenInfoCache.get(contractAddress);
+  }
+
   try {
+    // Add delay between API calls to prevent rate limiting
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     const response = await axios.get(BSC_SCAN_TOKEN_INFO_ENDPOINT, {
       params: {
         contractaddress: contractAddress,
@@ -37,14 +48,19 @@ const fetchTokenInfo = async (contractAddress) => {
     });
 
     if (response.data.status === '1' && response.data.result.length > 0) {
-      return {
+      const tokenInfo = {
         symbol: response.data.result[0].symbol,
         decimals: parseInt(response.data.result[0].decimals)
       };
+      
+      // Cache the result
+      tokenInfoCache.set(contractAddress, tokenInfo);
+      return tokenInfo;
     }
     return null;
   } catch (error) {
     console.error("Error fetching token info:", error);
+    // Return null instead of throwing to allow the app to continue
     return null;
   }
 };
