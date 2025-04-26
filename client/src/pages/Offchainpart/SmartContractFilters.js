@@ -428,6 +428,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
     }
 
+    // Save the updated contracts to localStorage
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (currentTeam) {
+        const storageKey = `contracts_${currentTeam}`;
+        localStorage.setItem(storageKey, JSON.stringify(updatedContracts));
+        console.log(`Saved ${updatedContracts.length} contracts to storage after deletion`);
+      }
+    } catch (error) {
+      console.error("Error saving contracts to storage after deletion:", error);
+    }
+
     setShowDeleteModal(false);
     setContractToDelete(null);
   };
