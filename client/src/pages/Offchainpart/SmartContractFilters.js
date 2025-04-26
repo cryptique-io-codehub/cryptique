@@ -4,6 +4,7 @@ import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
 import { fetchBaseTransactions } from '../../utils/chains/baseChain';
 import { isValidAddress } from '../../utils/chainUtils';
+import axiosInstance from '../../axiosInstance';
 
 // ABI for ERC20/BEP20 token interface - minimal version for what we need
 const ERC20_ABI = [
@@ -85,8 +86,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [lastFetchTime, setLastFetchTime] = useState({});
   const [storedTransactions, setStoredTransactions] = useState({});
 
-  // Change API base URL to use existing environment variable
-  const API_BASE_URL = process.env.REACT_APP_API_SERVER_URL ? `${process.env.REACT_APP_API_SERVER_URL}/api` : 'http://localhost:3001/api';
+  // Use the API base URL without modifying the path as the backend already has /api in its routes
+  const API_BASE_URL = process.env.REACT_APP_API_SERVER_URL || 'http://localhost:3001';
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -195,8 +196,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
       console.log(`Saving ${contractTransactions.length} transactions to MongoDB for contract ${selectedContract.id}`);
       
-      // Call the API to save transactions
-      await axios.post(`${API_BASE_URL}/transactions`, {
+      // Call the API to save transactions using axiosInstance
+      await axiosInstance.post(`/transactions`, {
         teamId: currentTeam,
         contractId: selectedContract.id,
         transactions: contractTransactions
@@ -232,8 +233,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
       console.log(`Loading transactions from MongoDB for contract ${selectedContract.id}`);
       
-      // Call the API to get transactions
-      const response = await axios.get(`${API_BASE_URL}/transactions/${currentTeam}/${selectedContract.id}`);
+      // Call the API to get transactions using axiosInstance
+      const response = await axiosInstance.get(`/transactions/${currentTeam}/${selectedContract.id}`);
       
       if (response.data.success) {
         setStoredTransactions(prev => ({
@@ -332,7 +333,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           const currentTeam = localStorage.getItem('selectedTeam');
           if (currentTeam) {
             try {
-              await axios.post(`${API_BASE_URL}/transactions`, {
+              await axiosInstance.post(`/transactions`, {
                 teamId: currentTeam,
                 contractId: selectedContract.id,
                 transactions: uniqueTransactions
@@ -437,7 +438,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         const currentTeam = localStorage.getItem('selectedTeam');
         if (currentTeam) {
           try {
-            const response = await axios.get(`${API_BASE_URL}/transactions/${currentTeam}/${contract.id}`);
+            // Use axiosInstance for API calls
+            const response = await axiosInstance.get(`/transactions/${currentTeam}/${contract.id}`);
             
             if (response.data.success) {
               setStoredTransactions(prev => ({
@@ -474,10 +476,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             [contract.id]: Date.now()
           }));
           
-          // Save to MongoDB
+          // Save to MongoDB using axiosInstance
           if (currentTeam) {
             try {
-              await axios.post(`${API_BASE_URL}/transactions`, {
+              await axiosInstance.post(`/transactions`, {
                 teamId: currentTeam,
                 contractId: contract.id,
                 transactions
