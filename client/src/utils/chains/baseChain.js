@@ -10,41 +10,146 @@ import {
   hexToDecimalString, 
   formatTokenAmount, 
   decodeERC20TransferInput,
-  formatTransaction
+  formatTransaction,
+  isValidAddress
 } from '../chainUtils';
 
-// API key for Base chain explorer
-const BASESCAN_API_KEY = 'Q2NXNU8H6BXRI39QQIU575GBT7VIN4FQ8K';
-const BASESCAN_API_URL = 'https://api.basescan.org/api';
+// API key should be in .env file
+const BASE_SCAN_API_KEY = process.env.REACT_APP_BASE_SCAN_API_KEY || 'YOUR_BASESCAN_API_KEY';
+
+// BaseScan API endpoints
+const BASE_SCAN_BASE_URL = 'https://api.basescan.org/api';
+const BASE_SCAN_ACCT_TX_ENDPOINT = `${BASE_SCAN_BASE_URL}?module=account&action=txlist`;
+
+// Max results per page
+const MAX_RESULTS = 10000;
 
 /**
- * Fetches transactions for a contract from BaseScan API
- * @param {string} contractAddress - The contract address to fetch transactions for
- * @param {Object} options - Additional options for the fetch
- * @returns {Promise<Array>} - Array of processed transactions
+ * Process an ERC20 token transfer transaction
+ * 
+ * @param {Object} tx - Raw transaction data
+ * @returns {Object} - Processed transaction
  */
-export const fetchBaseTransactions = async (contractAddress, options = {}) => {
-  console.log(`Fetching Base chain transactions for contract: ${contractAddress}`);
-  const { page = 1, limit = 1000 } = options;
+const processErc20Transaction = (tx) => {
+  try {
+    const decodedInput = decodeERC20TransferInput(tx.input);
+    if (!decodedInput) return null;
+
+    return {
+      ...formatTransaction(tx, 'Base'),
+      tx_type: 'ERC20 Transfer',
+      to_address: decodedInput.to,
+      value_eth: `${decodedInput.value} TOKEN`,
+      token_symbol: 'TOKEN',
+      is_token_transfer: true
+    };
+  } catch (error) {
+    console.error('Error processing ERC20 transaction:', error);
+    return null;
+  }
+};
+
+/**
+ * Fetches transactions for a Base address or contract
+ * 
+ * @param {string} address - The address to fetch transactions for
+ * @param {Object} options - Options for the fetch request
+ * @param {number} options.limit - Maximum number of transactions to return
+ * @param {number} options.startBlock - Block number to start fetching from
+ * @returns {Promise<Object>} - Object containing transactions and metadata
+ */
+export const fetchBaseTransactions = async (address, options = {}) => {
+  // Validate address
+  if (!isValidAddress(address)) {
+    console.error('Invalid Base address format:', address);
+    return {
+      transactions: [],
+      metadata: {
+        status: 'error',
+        message: 'Invalid address format',
+        total: 0
+      }
+    };
+  }
+
+  console.log(`Fetching Base transactions for address: ${address}`);
+  
+  // Define options
+  const limit = options.limit || MAX_RESULTS;
+  const startBlock = options.startBlock || 0;
   
   try {
-    // First, try to get transactions from BaseScan API
-    const transactions = await fetchFromBaseScan(contractAddress, page, limit);
+    // Fetch regular transactions
+    const response = await axios.get(BASE_SCAN_ACCT_TX_ENDPOINT, {
+      params: {
+        address,
+        apikey: BASE_SCAN_API_KEY,
+        startblock: startBlock,
+        endblock: 999999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc'
+      }
+    });
     
-    if (transactions.length > 0) {
-      console.log(`Successfully fetched ${transactions.length} transactions from BaseScan API`);
-      return transactions;
+    const result = response.data;
+    
+    // Check for errors
+    if (result.status === '0') {
+      console.error('BaseScan API error:', result.message);
+      return {
+        transactions: [],
+        metadata: {
+          status: 'error',
+          message: `BaseScan API error: ${result.message}`,
+          total: 0
+        }
+      };
     }
     
-    // If BaseScan doesn't provide results, fallback to Infura
-    console.log("No transactions found via BaseScan, trying Infura...");
-    const infuraTransactions = await fetchFromInfura(contractAddress);
+    // Process successful response
+    if (result.status === '1' && Array.isArray(result.result)) {
+      // Process transactions and identify ERC20 token transfers
+      const transactions = result.result.map(tx => {
+        // Check if this might be an ERC20 transfer
+        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
+          const processedTx = processErc20Transaction(tx);
+          return processedTx || formatTransaction(tx, 'Base');
+        }
+        return formatTransaction(tx, 'Base');
+      }).filter(tx => tx !== null);
+      
+      console.log(`Retrieved ${transactions.length} transactions from BaseScan`);
+      
+      return {
+        transactions,
+        metadata: {
+          status: 'success',
+          message: 'Transactions retrieved successfully',
+          total: transactions.length
+        }
+      };
+    }
     
-    return infuraTransactions;
+    // Handle no results
+    return {
+      transactions: [],
+      metadata: {
+        status: 'no_results',
+        message: 'No transactions found for this address',
+        total: 0
+      }
+    };
   } catch (error) {
-    console.error("Error fetching Base chain transactions:", error);
-    // Return empty array in case of error
-    return [];
+    console.error('Error fetching Base transactions:', error);
+    return {
+      transactions: [],
+      metadata: {
+        status: 'error',
+        message: error.message || 'Unknown error occurred',
+        total: 0
+      }
+    };
   }
 };
 
@@ -66,17 +171,15 @@ const fetchFromBaseScan = async (contractAddress, page = 1, limit = 1000) => {
     }
     
     // Fetch regular transactions first
-    const response = await axios.get(BASESCAN_API_URL, {
+    const response = await axios.get(BASE_SCAN_ACCT_TX_ENDPOINT, {
       params: {
-        module: 'account',
-        action: 'txlist',
         address: contractAddress,
+        apikey: BASE_SCAN_API_KEY,
         startblock: 0,
         endblock: 99999999,
         page,
         offset: adjustedLimit,
-        sort: 'desc',
-        apikey: BASESCAN_API_KEY
+        sort: 'desc'
       }
     });
     
@@ -116,15 +219,13 @@ const fetchTokenTransfersFromBaseScan = async (contractAddress, page = 1, limit 
   try {
     console.log(`Fetching ERC-20 token transfers from BaseScan API`);
     
-    const response = await axios.get(BASESCAN_API_URL, {
+    const response = await axios.get(BASE_SCAN_ACCT_TX_ENDPOINT, {
       params: {
-        module: 'account',
-        action: 'tokentx',  // ERC-20 token transfers
         address: contractAddress,
+        apikey: BASE_SCAN_API_KEY,
         page,
         offset: limit,
-        sort: 'desc',
-        apikey: BASESCAN_API_KEY
+        sort: 'desc'
       }
     });
     
