@@ -118,6 +118,7 @@ app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/onchain", require("./routes/onChainRouter"));
 app.use("/api/campaign", campaignRouter);
 app.use("/api/contracts", require("./routes/smartContractRouter"));
+app.use("/api/transactions", require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling
 try {

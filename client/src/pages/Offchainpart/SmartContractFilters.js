@@ -83,9 +83,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [web3, setWeb3] = useState(null);
-  const [lastFetchTime, setLastFetchTime] = useState({});
-  const [storedTransactions, setStoredTransactions] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [transactions, setTransactions] = useState({});
+  const [isFetchingTransactions, setIsFetchingTransactions] = useState(false);
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -126,164 +126,54 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     fetchContractsFromAPI();
   }, []);
 
-  // Load contracts from localStorage on component mount
-  useEffect(() => {
-    loadContractsFromStorage();
-  }, []);
-
-  // Save contracts to localStorage whenever they change
-  useEffect(() => {
-    if (contractarray && contractarray.length > 0) {
-      saveContractsToStorage();
-    }
-  }, [contractarray]);
-
-  // Effect to initialize selectedContracts with existing selectedContract
-  useEffect(() => {
-    if (selectedContract && !selectedContracts.find(c => c.id === selectedContract.id)) {
-      setSelectedContracts([selectedContract]);
-    }
-  }, [selectedContract]);
-
-  // Load contracts from localStorage based on current team
-  const loadContractsFromStorage = () => {
-    try {
-      // Get current team from localStorage
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
-
-      // Get contracts for this team
-      const storageKey = `contracts_${currentTeam}`;
-      const storedContracts = localStorage.getItem(storageKey);
-      
-      if (storedContracts) {
-        const contracts = JSON.parse(storedContracts);
-        setcontractarray(contracts);
-        console.log(`Loaded ${contracts.length} contracts from storage for team ${currentTeam}`);
-      } else {
-        console.log(`No contracts found in storage for team ${currentTeam}`);
-      }
-    } catch (error) {
-      console.error("Error loading contracts from storage:", error);
-    }
-  };
-
-  // Save contracts to localStorage for current team
-  const saveContractsToStorage = () => {
-    try {
-      // Get current team from localStorage
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
-
-      // Save contracts for this team
-      const storageKey = `contracts_${currentTeam}`;
-      localStorage.setItem(storageKey, JSON.stringify(contractarray));
-      console.log(`Saved ${contractarray.length} contracts to storage for team ${currentTeam}`);
-    } catch (error) {
-      console.error("Error saving contracts to storage:", error);
-    }
-  };
-
-  // Load stored transactions from localStorage on component mount
-  useEffect(() => {
-    loadStoredTransactions();
-  }, []);
-
-  // Save transactions to localStorage whenever they change
-  useEffect(() => {
-    saveStoredTransactions();
-  }, [storedTransactions]);
-
-  const loadStoredTransactions = () => {
-    try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
-
-      const storageKey = `transactions_${currentTeam}`;
-      const storedData = localStorage.getItem(storageKey);
-      
-      if (storedData) {
-        const { transactions, lastFetch } = JSON.parse(storedData);
-        setStoredTransactions(transactions);
-        setLastFetchTime(lastFetch);
-        console.log('Loaded stored transactions:', transactions);
-      }
-    } catch (error) {
-      console.error("Error loading stored transactions:", error);
-    }
-  };
-
-  const saveStoredTransactions = () => {
-    try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
-
-      const storageKey = `transactions_${currentTeam}`;
-      const data = {
-        transactions: storedTransactions,
-        lastFetch: lastFetchTime
-      };
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      console.log('Saved transactions to storage');
-    } catch (error) {
-      console.error("Error saving transactions to storage:", error);
-    }
-  };
-
   // Polling effect for transactions
   useEffect(() => {
-    const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
-
-    const pollTransactions = async () => {
-      if (!selectedContract) return;
-
-      const now = Date.now();
-      const lastFetch = lastFetchTime[selectedContract.id] || 0;
-      
-      // Only fetch if it's been 15 minutes since last fetch
-      if (now - lastFetch >= POLLING_INTERVAL) {
-        console.log(`Polling new transactions for contract ${selectedContract.id}`);
-        const newTransactions = await fetchContractTransactions(selectedContract, true);
-        
-        if (newTransactions && newTransactions.length > 0) {
-          // Update stored transactions
-          const currentTransactions = storedTransactions[selectedContract.id] || [];
-          const updatedTransactions = [...newTransactions, ...currentTransactions];
-          
-          // Remove duplicates based on tx_hash
-          const uniqueTransactions = Array.from(
-            new Map(updatedTransactions.map(tx => [tx.tx_hash, tx])).values()
-          );
-          
-          setStoredTransactions(prev => ({
-            ...prev,
-            [selectedContract.id]: uniqueTransactions
-          }));
-          
-          setLastFetchTime(prev => ({
-            ...prev,
-            [selectedContract.id]: now
-          }));
-          
-          console.log(`Updated transactions for contract ${selectedContract.id}:`, uniqueTransactions.length);
-        }
-      }
-    };
-
-    const intervalId = setInterval(pollTransactions, POLLING_INTERVAL);
+    if (!selectedContract) return;
+    
+    const POLLING_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+    
+    // Fetch transactions initially
+    fetchTransactionsForContract(selectedContract);
+    
+    // Set up interval for polling
+    const intervalId = setInterval(() => {
+      fetchTransactionsForContract(selectedContract, true);
+    }, POLLING_INTERVAL);
+    
     return () => clearInterval(intervalId);
-  }, [selectedContract, lastFetchTime, storedTransactions]);
+  }, [selectedContract]);
 
-  const fetchContractTransactions = async (contract, isPolling = false) => {
-    if (!contract || !contract.address) {
-      console.error("No contract selected or contract address is missing");
+  const fetchTransactionsForContract = async (contract, isPolling = false) => {
+    if (!contract || !contract.id) {
+      console.error("No valid contract provided for fetching transactions");
       return;
     }
-
-    console.log(`Fetching transactions for contract: ${contract.address} on ${contract.blockchain}`);
+    
+    setIsFetchingTransactions(true);
     
     try {
-      let transactions = [];
+      // First, check if we already have transactions for this contract
+      if (!isPolling && transactions[contract.id]) {
+        console.log(`Using cached transactions for contract ${contract.id}`);
+        setIsFetchingTransactions(false);
+        return transactions[contract.id];
+      }
+      
+      // For polling or initial fetch, get the latest block number
+      let startBlock;
+      if (isPolling) {
+        try {
+          const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
+          startBlock = latestBlockResponse.data.latestBlockNumber;
+        } catch (error) {
+          console.warn("Could not get latest block number, will fetch new transactions anyway");
+        }
+      }
+      
+      // Fetch transactions from blockchain
+      let newTransactions = [];
+      
+      console.log(`Fetching transactions for contract: ${contract.address} on ${contract.blockchain}`);
       
       // Use the appropriate chain-specific module based on blockchain
       switch (contract.blockchain) {
@@ -291,18 +181,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log('Fetching up to 10,000 transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
             limit: 10000,
-            startBlock: isPolling ? contract.lastBlock : undefined
+            startBlock: startBlock
           });
           
           if (bnbResult.transactions?.length > 0) {
             console.log(`Retrieved ${bnbResult.transactions.length} transactions from BscScan`);
             // Update token symbol in transactions
-            transactions = bnbResult.transactions.map(tx => ({
+            newTransactions = bnbResult.transactions.map(tx => ({
               ...tx,
               token_symbol: contract.tokenSymbol || tx.token_symbol,
               value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
             }));
-            console.log('Transactions:', transactions);
+            console.log('Transactions:', newTransactions);
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
           }
@@ -312,10 +202,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log('Using Base Chain module');
           const baseTransactions = await fetchBaseTransactions(contract.address, {
             limit: 10000,
-            startBlock: isPolling ? contract.lastBlock : undefined
+            startBlock: startBlock
           });
           // Update token symbol in transactions
-          transactions = baseTransactions.map(tx => ({
+          newTransactions = baseTransactions.map(tx => ({
             ...tx,
             token_symbol: contract.tokenSymbol || tx.token_symbol,
             value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
@@ -325,18 +215,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Ethereum':
         default:
           console.log(`${contract.blockchain} chain not fully implemented yet`);
-          transactions = [];
+          newTransactions = [];
       }
       
-      return transactions;
+      if (newTransactions.length > 0) {
+        // Save transactions to API
+        try {
+          await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+            transactions: newTransactions
+          });
+          console.log(`Saved ${newTransactions.length} transactions to API`);
+        } catch (error) {
+          console.error("Error saving transactions to API:", error);
+        }
+        
+        // Fetch all transactions from API to ensure we have the complete set
+        try {
+          const response = await axiosInstance.get(`/transactions/contract/${contract.id}`, {
+            params: { limit: 10000 }
+          });
+          
+          if (response.data && response.data.transactions) {
+            setTransactions(prev => ({
+              ...prev,
+              [contract.id]: response.data.transactions
+            }));
+            
+            console.log(`Loaded ${response.data.transactions.length} total transactions from API`);
+            setIsFetchingTransactions(false);
+            return response.data.transactions;
+          }
+        } catch (error) {
+          console.error("Error fetching transactions from API:", error);
+        }
+      }
+      
+      setIsFetchingTransactions(false);
+      return newTransactions;
     } catch (error) {
       console.error(`Error fetching transactions for ${contract.address}:`, error);
+      setIsFetchingTransactions(false);
       return [];
     }
-  };
-
-  const handleDropdownToggle = () => {
-    setShowDropdown(!showDropdown);
   };
 
   const handleSelectContract = async (contract) => {
@@ -348,22 +268,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setSelectedContracts([...selectedContracts, contract]);
     }
     
-    // Fetch initial transactions if not already stored
-    if (!storedTransactions[contract.id]) {
-      const transactions = await fetchContractTransactions(contract);
-      if (transactions && transactions.length > 0) {
-        setStoredTransactions(prev => ({
-          ...prev,
-          [contract.id]: transactions
-        }));
-        setLastFetchTime(prev => ({
-          ...prev,
-          [contract.id]: Date.now()
-        }));
-      }
+    // Fetch transactions if not already loaded
+    if (!transactions[contract.id]) {
+      fetchTransactionsForContract(contract);
     }
     
     setShowDropdown(false);
+  };
+
+  const handleDropdownToggle = () => {
+    setShowDropdown(!showDropdown);
   };
 
   const handleRemoveContract = (contractId, e) => {
@@ -380,7 +294,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // If there are other selected contracts, set the first one as primary
       if (updatedSelectedContracts.length > 0) {
         setSelectedContract(updatedSelectedContracts[0]);
-        fetchContractTransactions(updatedSelectedContracts[0]);
+        fetchTransactionsForContract(updatedSelectedContracts[0]);
       } else {
         setSelectedContract(null);
       }
@@ -486,7 +400,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setShowAddContractModal(false);
       
       // Fetch transactions for the new contract
-      fetchContractTransactions(contractToAdd);
+      fetchTransactionsForContract(contractToAdd);
       
       return true;
     } catch (error) {
@@ -926,6 +840,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {isFetchingTransactions && (
+        <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-3 z-40 flex items-center">
+          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
+          <span className="text-sm text-gray-600">Syncing transactions...</span>
         </div>
       )}
     </div>
