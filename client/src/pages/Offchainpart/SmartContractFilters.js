@@ -132,8 +132,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     const POLLING_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
     
-    // Fetch transactions initially
-    fetchTransactionsForContract(selectedContract);
+    // Fetch transactions initially if not already loaded
+    if (!transactions[selectedContract.id]) {
+      fetchTransactionsForContract(selectedContract);
+    }
     
     // Set up interval for polling
     const intervalId = setInterval(() => {
@@ -141,7 +143,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }, POLLING_INTERVAL);
     
     return () => clearInterval(intervalId);
-  }, [selectedContract]);
+  }, [selectedContract, transactions]);
 
   const fetchTransactionsForContract = async (contract, isPolling = false) => {
     if (!contract || !contract.id) {
@@ -268,10 +270,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setSelectedContracts([...selectedContracts, contract]);
     }
     
-    // Fetch transactions if not already loaded
-    if (!transactions[contract.id]) {
-      fetchTransactionsForContract(contract);
-    }
+    // NOTE: Removed explicit fetchTransactionsForContract call here
+    // The useEffect hook will handle fetching transactions when selectedContract changes
     
     setShowDropdown(false);
   };
@@ -294,7 +294,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // If there are other selected contracts, set the first one as primary
       if (updatedSelectedContracts.length > 0) {
         setSelectedContract(updatedSelectedContracts[0]);
-        fetchTransactionsForContract(updatedSelectedContracts[0]);
+        // The useEffect hook will handle fetching transactions when selectedContract changes
       } else {
         setSelectedContract(null);
       }
@@ -399,8 +399,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setAddingContract(false);
       setShowAddContractModal(false);
       
-      // Fetch transactions for the new contract
-      fetchTransactionsForContract(contractToAdd);
+      // The useEffect hook will handle fetching transactions when selectedContract changes
       
       return true;
     } catch (error) {
