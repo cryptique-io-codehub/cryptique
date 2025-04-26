@@ -457,13 +457,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     <div className="smart-contract-filters relative">
       <div className="relative inline-block text-left">
         <div>
-        <button
-          type="button"
+          <button
+            type="button"
             className="inline-flex w-full justify-between gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          onClick={handleDropdownToggle}
+            onClick={handleDropdownToggle}
             aria-expanded={showDropdown}
             aria-haspopup="true"
-        >
+          >
             {selectedContract 
               ? formatContractDisplay(selectedContract).name
               : "Select Smart Contract"}
@@ -472,33 +472,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             </svg>
           </button>
         </div>
-
-        {/* Selected contracts display (as tags) */}
-        {selectedContracts.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {selectedContracts.map((contract) => {
-              const display = formatContractDisplay(contract);
-              return (
-                <div key={contract.id} className="flex items-center justify-between p-2 bg-gray-100 rounded-lg mb-2">
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-900 mr-2">{display.name}</span>
-                    <span className="text-xs text-gray-500">({display.shortAddress})</span>
-                    <span className="text-xs text-gray-500 ml-2">[{display.blockchain}]</span>
-                    <span className="text-xs text-gray-500 ml-2">({display.tokenSymbol})</span>
-                  </div>
-                  <button
-                    onClick={(e) => handleRemoveContract(contract.id, e)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {showDropdown && (
           <div className="absolute left-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
@@ -511,7 +484,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   return (
                     <div 
                       key={contract.id} 
-                      className={`flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                      className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
                       onClick={() => handleSelectContract(contract)}
                     >
                       <div className="flex-1 min-w-0">
@@ -529,7 +502,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                           e.stopPropagation();
                           handleDeleteContract(contract);
                         }}
-                        className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
+                        className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -539,19 +512,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                   );
                 })
               ) : (
-                <div className="px-4 py-2 text-sm text-gray-500">No smart contracts found</div>
+                <div className="px-3 py-2 text-sm text-gray-500">No smart contracts found</div>
               )}
               <div className="border-t border-gray-100"></div>
               <button
-                className="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-gray-50"
+                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center"
                 onClick={handleOpenAddContractModal}
               >
-                + Add new smart contract
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add new smart contract
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Selected contracts display */}
+      {selectedContracts.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {selectedContracts.map((contract) => {
+            const display = formatContractDisplay(contract);
+            return (
+              <div 
+                key={contract.id} 
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+              >
+                <span className="mr-2">{display.name}</span>
+                <span className="text-xs text-gray-500">({display.shortAddress})</span>
+                <button
+                  onClick={(e) => handleRemoveContract(contract.id, e)}
+                  className="ml-2 text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Smart Contract Modal */}
       {showAddContractModal && (
@@ -559,8 +561,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-              </div>
-              
+            </div>
+            
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
@@ -571,24 +573,24 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       Add Smart Contract
                     </h3>
                     <div className="mt-4">
-              <form onSubmit={handleAddContract}>
-                <div className="mb-4">
+                      <form onSubmit={handleAddContract}>
+                        <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
                             Contract Address
                           </label>
-                  <input
-                    type="text"
+                          <input
+                            type="text"
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             placeholder="0x..."
                             value={contractAddress}
                             onChange={(e) => setContractAddress(e.target.value)}
-                    required
-                  />
-                </div>
+                            required
+                          />
+                        </div>
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
                             Name (Optional)
-                  </label>
+                          </label>
                           <input
                             type="text"
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
