@@ -200,8 +200,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
           if (bnbResult.transactions?.length > 0) {
             console.log(`Retrieved ${bnbResult.transactions.length} transactions from BscScan`);
-            console.log('Transactions:', bnbResult.transactions);
-            transactions = bnbResult.transactions;
+            // Update token symbol in transactions
+            transactions = bnbResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
+            }));
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
           }
@@ -209,9 +213,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Base':
           console.log('Using Base Chain module');
-          transactions = await fetchBaseTransactions(contract.address, {
+          const baseTransactions = await fetchBaseTransactions(contract.address, {
             limit: 10000
           });
+          // Update token symbol in transactions
+          transactions = baseTransactions.map(tx => ({
+            ...tx,
+            token_symbol: contract.tokenSymbol || tx.token_symbol,
+            value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
+          }));
           break;
           
         case 'Ethereum':
