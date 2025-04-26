@@ -202,8 +202,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       const response = await axios.get(`/api/transactions/load?teamId=${currentTeam}`, {
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: true
       });
       
       if (response.data.success) {
@@ -211,6 +213,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         setStoredTransactions(transactions);
         setLastFetchTime(lastFetch);
         console.log('Successfully loaded transactions from MongoDB');
+        console.log('Loaded data:', {
+          transactionCount: Object.keys(transactions).length,
+          lastFetchCount: Object.keys(lastFetch).length
+        });
       } else {
         console.error('Failed to load transactions from MongoDB:', response.data.message);
       }
@@ -218,6 +224,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.error("Error loading stored transactions from MongoDB:", error.message);
       if (error.response) {
         console.error('Server response:', error.response.data);
+        console.error('Status:', error.response.status);
+        console.error('Headers:', error.response.headers);
+      }
+      if (error.request) {
+        console.error('Request:', error.request);
       }
     }
   };
@@ -231,6 +242,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
 
       console.log('Saving transactions to MongoDB for team:', currentTeam);
+      console.log('Transaction data:', {
+        teamId: currentTeam,
+        transactionCount: Object.keys(storedTransactions).length,
+        lastFetchCount: Object.keys(lastFetchTime).length
+      });
       
       const response = await axios.post('/api/transactions/save', {
         teamId: currentTeam,
@@ -238,8 +254,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         lastFetch: lastFetchTime
       }, {
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: true
       });
 
       if (response.data.success) {
@@ -251,6 +269,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.error("Error saving transactions to MongoDB:", error.message);
       if (error.response) {
         console.error('Server response:', error.response.data);
+        console.error('Status:', error.response.status);
+        console.error('Headers:', error.response.headers);
+      }
+      if (error.request) {
+        console.error('Request:', error.request);
       }
     }
   };

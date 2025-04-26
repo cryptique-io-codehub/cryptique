@@ -20,6 +20,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
   useNewUrlParser: true,
@@ -31,6 +37,11 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 // Routes
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/transactions', require('./routes/transactions'));
+
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
