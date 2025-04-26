@@ -228,6 +228,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Replace loadStoredTransactions with API call to MongoDB
   const loadStoredTransactions = async () => {
     try {
+      // First, test if the API is accessible at all
+      try {
+        console.log("Testing transactions API endpoint...");
+        const testResponse = await axiosInstance.get(`/transactions/test`);
+        console.log("Test response:", testResponse.data);
+      } catch (testError) {
+        console.error("Error testing transactions API:", testError);
+      }
+
       const currentTeam = localStorage.getItem('selectedTeam');
       if (!currentTeam || !selectedContract) return;
 
@@ -438,6 +447,17 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         const currentTeam = localStorage.getItem('selectedTeam');
         if (currentTeam) {
           try {
+            console.log(`Attempting to fetch transactions for team ${currentTeam} and contract ${contract.id}`);
+            console.log(`API endpoint: /transactions/${currentTeam}/${contract.id}`);
+            
+            // First test the API connection
+            try {
+              const testResponse = await axiosInstance.get('/transactions/test');
+              console.log("API test successful:", testResponse.data);
+            } catch (testError) {
+              console.error("API test failed:", testError.response || testError.message);
+            }
+            
             // Use axiosInstance for API calls
             const response = await axiosInstance.get(`/transactions/${currentTeam}/${contract.id}`);
             
@@ -457,6 +477,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               return;
             }
           } catch (error) {
+            console.log("Full error:", error);
+            
+            if (error.response) {
+              console.error("API error response:", {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                data: error.response.data
+              });
+            } else if (error.request) {
+              console.error("No response received:", error.request);
+            } else {
+              console.error("Error setting up request:", error.message);
+            }
+            
             if (error.response && error.response.status !== 404) {
               console.error("Error fetching transactions from MongoDB:", error);
             }
@@ -479,13 +513,36 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           // Save to MongoDB using axiosInstance
           if (currentTeam) {
             try {
-              await axiosInstance.post(`/transactions`, {
+              console.log(`Attempting to save ${transactions.length} transactions to MongoDB`);
+              console.log("API endpoint: /transactions");
+              console.log("Request payload:", {
+                teamId: currentTeam,
+                contractId: contract.id,
+                transactionsCount: transactions.length
+              });
+              
+              const saveResponse = await axiosInstance.post(`/transactions`, {
                 teamId: currentTeam,
                 contractId: contract.id,
                 transactions
               });
-              console.log(`Saved ${transactions.length} transactions to MongoDB`);
+              
+              console.log(`Saved transactions to MongoDB:`, saveResponse.data);
             } catch (saveError) {
+              console.log("Full save error:", saveError);
+              
+              if (saveError.response) {
+                console.error("API save error response:", {
+                  status: saveError.response.status,
+                  statusText: saveError.response.statusText,
+                  data: saveError.response.data
+                });
+              } else if (saveError.request) {
+                console.error("No save response received:", saveError.request);
+              } else {
+                console.error("Error setting up save request:", saveError.message);
+              }
+              
               console.error("Error saving transactions to MongoDB:", saveError);
             }
           }

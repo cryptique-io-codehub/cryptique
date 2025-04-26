@@ -117,7 +117,20 @@ app.use("/api/website", require("./routes/websiteRouter"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/onchain", require("./routes/onChainRouter"));
 app.use("/api/campaign", campaignRouter);
-app.use("/api/transactions", require("./routes/transactions"));
+
+// Mount transactions router with explicit logging
+console.log('Loading transactions router...');
+try {
+  // Explicitly require the Transaction model to ensure it's loaded
+  require('./models/transaction');
+  console.log('Transaction model loaded successfully');
+  
+  const transactionsRouter = require('./routes/transactions');
+  app.use("/api/transactions", transactionsRouter);
+  console.log('Transactions router loaded successfully at /api/transactions');
+} catch (error) {
+  console.error('Error loading transactions router:', error);
+}
 
 // Load AI router with explicit error handling
 try {
