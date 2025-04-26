@@ -501,27 +501,35 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         )}
 
         {showDropdown && (
-          <div className="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-            <div className="py-1">
+          <div className="absolute left-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <div className="py-1 max-h-96 overflow-y-auto">
               {contractarray && contractarray.length > 0 ? (
                 contractarray.map((contract) => {
                   const display = formatContractDisplay(contract);
                   const isSelected = selectedContracts.some(c => c.id === contract.id);
                   
                   return (
-                    <div key={contract.id} className="flex items-center justify-between p-2 bg-gray-100 rounded-lg mb-2">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900 mr-2">{display.name}</span>
-                        <span className="text-xs text-gray-500">({display.shortAddress})</span>
-                        <span className="text-xs text-gray-500 ml-2">[{display.blockchain}]</span>
-                        <span className="text-xs text-gray-500 ml-2">({display.tokenSymbol})</span>
+                    <div 
+                      key={contract.id} 
+                      className={`flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                      onClick={() => handleSelectContract(contract)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
+                          <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
+                          <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
+                        </div>
                       </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteContract(contract);
                         }}
-                        className="text-red-500 hover:text-red-700"
+                        className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -534,12 +542,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                 <div className="px-4 py-2 text-sm text-gray-500">No smart contracts found</div>
               )}
               <div className="border-t border-gray-100"></div>
-                <button
+              <button
                 className="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-gray-50"
-                  onClick={handleOpenAddContractModal}
-                >
+                onClick={handleOpenAddContractModal}
+              >
                 + Add new smart contract
-                </button>
+              </button>
             </div>
           </div>
         )}
