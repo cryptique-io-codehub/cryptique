@@ -223,7 +223,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             token_symbol: contract.tokenSymbol || tx.token_symbol,
             value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
           }));
-          console.log('Transactions:', transactions);
           break;
           
         case 'Ethereum':
