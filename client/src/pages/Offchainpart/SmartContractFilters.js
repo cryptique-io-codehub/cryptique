@@ -76,6 +76,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [contractToDelete, setContractToDelete] = useState(null);
   const [contractAddress, setContractAddress] = useState('');
   const [contractName, setContractName] = useState('');
+  const [tokenSymbol, setTokenSymbol] = useState('');
   const [blockchain, setBlockchain] = useState('Ethereum');
   const [contractError, setContractError] = useState('');
   const [addingContract, setAddingContract] = useState(false);
@@ -271,6 +272,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowDropdown(false);
     setContractAddress('');
     setContractName('');
+    setTokenSymbol('');
     setBlockchain('Ethereum');
     setContractError('');
   };
@@ -299,34 +301,36 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // Create contract instance
       const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
       
-      // Get token symbol
-      let tokenSymbol;
-      try {
-        tokenSymbol = await contract.methods.symbol().call();
-      } catch (error) {
-        console.warn("Could not fetch token symbol, using default:", error);
-        // Use default token symbol based on blockchain
-        switch (blockchain) {
-          case 'Ethereum':
-            tokenSymbol = 'ETH';
-            break;
-          case 'BNB Chain':
-            tokenSymbol = 'BNB';
-            break;
-          case 'Base':
-            tokenSymbol = 'ETH';
-            break;
-          case 'Polygon':
-            tokenSymbol = 'MATIC';
-            break;
-          case 'Arbitrum':
-            tokenSymbol = 'ETH';
-            break;
-          case 'Optimism':
-            tokenSymbol = 'ETH';
-            break;
-          default:
-            tokenSymbol = 'ETH';
+      // Get token symbol if not manually provided
+      let finalTokenSymbol = tokenSymbol;
+      if (!finalTokenSymbol) {
+        try {
+          finalTokenSymbol = await contract.methods.symbol().call();
+        } catch (error) {
+          console.warn("Could not fetch token symbol, using default:", error);
+          // Use default token symbol based on blockchain
+          switch (blockchain) {
+            case 'Ethereum':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'BNB Chain':
+              finalTokenSymbol = 'BNB';
+              break;
+            case 'Base':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'Polygon':
+              finalTokenSymbol = 'MATIC';
+              break;
+            case 'Arbitrum':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'Optimism':
+              finalTokenSymbol = 'ETH';
+              break;
+            default:
+              finalTokenSymbol = 'ETH';
+          }
         }
       }
 
@@ -337,7 +341,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         address: contractAddress,
         name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
         blockchain: blockchain,
-        tokenSymbol: tokenSymbol,
+        tokenSymbol: finalTokenSymbol,
         added_at: new Date().toISOString(),
         verified: true
       };
@@ -584,6 +588,21 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                             value={contractName}
                             onChange={(e) => setContractName(e.target.value)}
                           />
+                        </div>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Token Symbol (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="ETH"
+                            value={tokenSymbol}
+                            onChange={(e) => setTokenSymbol(e.target.value)}
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            If left empty, the system will try to fetch the symbol from the contract or use a default based on the blockchain.
+                          </p>
                         </div>
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
