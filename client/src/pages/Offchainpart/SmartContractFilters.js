@@ -85,6 +85,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [lastFetchTime, setLastFetchTime] = useState({});
   const [storedTransactions, setStoredTransactions] = useState({});
 
+  // Change API base URL to use existing environment variable
+  const API_BASE_URL = process.env.REACT_APP_API_SERVER_URL ? `${process.env.REACT_APP_API_SERVER_URL}/api` : 'http://localhost:3001/api';
+
   // Initialize web3 when component mounts
   useEffect(() => {
     const initWeb3 = () => {
@@ -180,105 +183,115 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Load stored transactions from localStorage on component mount
-  useEffect(() => {
-    loadStoredTransactions();
-  }, []);
-
-  // Save transactions to localStorage whenever they change
-  useEffect(() => {
-    saveStoredTransactions();
-  }, [storedTransactions]);
-
-  const loadStoredTransactions = async () => {
-    try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) {
-        console.log('No team selected, skipping transaction load');
-        return;
-      }
-
-      console.log('Loading transactions from MongoDB for team:', currentTeam);
-      
-      const response = await axios.get(`/api/transactions/load?teamId=${currentTeam}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        withCredentials: true
-      });
-      
-      if (response.data.success) {
-        const { transactions, lastFetch } = response.data.data;
-        setStoredTransactions(transactions);
-        setLastFetchTime(lastFetch);
-        console.log('Successfully loaded transactions from MongoDB');
-        console.log('Loaded data:', {
-          transactionCount: Object.keys(transactions).length,
-          lastFetchCount: Object.keys(lastFetch).length
-        });
-      } else {
-        console.error('Failed to load transactions from MongoDB:', response.data.message);
-      }
-    } catch (error) {
-      console.error("Error loading stored transactions from MongoDB:", error.message);
-      if (error.response) {
-        console.error('Server response:', error.response.data);
-        console.error('Status:', error.response.status);
-        console.error('Headers:', error.response.headers);
-      }
-      if (error.request) {
-        console.error('Request:', error.request);
-      }
-    }
-  };
-
+  // Replace saveStoredTransactions with API call to MongoDB
   const saveStoredTransactions = async () => {
     try {
       const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) {
-        console.log('No team selected, skipping transaction save');
-        return;
-      }
+      if (!currentTeam || !selectedContract) return;
 
-      console.log('Saving transactions to MongoDB for team:', currentTeam);
-      console.log('Transaction data:', {
+      // Get transactions for the selected contract
+      const contractTransactions = storedTransactions[selectedContract.id];
+      if (!contractTransactions || contractTransactions.length === 0) return;
+
+      console.log(`Saving ${contractTransactions.length} transactions to MongoDB for contract ${selectedContract.id}`);
+      
+      // Call the API to save transactions
+      await axios.post(`${API_BASE_URL}/transactions`, {
         teamId: currentTeam,
-        transactionCount: Object.keys(storedTransactions).length,
-        lastFetchCount: Object.keys(lastFetchTime).length
+        contractId: selectedContract.id,
+        transactions: contractTransactions
       });
       
-      const response = await axios.post('/api/transactions/save', {
-        teamId: currentTeam,
-        transactions: storedTransactions,
-        lastFetch: lastFetchTime
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        withCredentials: true
-      });
-
-      if (response.data.success) {
-        console.log('Successfully saved transactions to MongoDB');
-      } else {
-        console.error('Failed to save transactions to MongoDB:', response.data.message);
-      }
+      console.log('Saved transactions to MongoDB');
     } catch (error) {
-      console.error("Error saving transactions to MongoDB:", error.message);
-      if (error.response) {
-        console.error('Server response:', error.response.data);
-        console.error('Status:', error.response.status);
-        console.error('Headers:', error.response.headers);
-      }
-      if (error.request) {
-        console.error('Request:', error.request);
+      console.error("Error saving transactions to MongoDB:", error);
+      
+      // As a fallback, try to save to localStorage if possible
+      try {
+        // Only save metadata to localStorage, not the full transactions
+        const currentTeam = localStorage.getItem('selectedTeam');
+        if (!currentTeam) return;
+
+        const storageKey = `transactions_metadata_${currentTeam}`;
+        const data = {
+          lastFetch: lastFetchTime
+        };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        console.log('Saved transaction metadata to localStorage as fallback');
+      } catch (localStorageError) {
+        console.error("Error saving transaction metadata to localStorage:", localStorageError);
       }
     }
   };
 
-  // Polling effect for transactions
+  // Replace loadStoredTransactions with API call to MongoDB
+  const loadStoredTransactions = async () => {
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam || !selectedContract) return;
+
+      console.log(`Loading transactions from MongoDB for contract ${selectedContract.id}`);
+      
+      // Call the API to get transactions
+      const response = await axios.get(`${API_BASE_URL}/transactions/${currentTeam}/${selectedContract.id}`);
+      
+      if (response.data.success) {
+        setStoredTransactions(prev => ({
+          ...prev,
+          [selectedContract.id]: response.data.transactions
+        }));
+        
+        setLastFetchTime(prev => ({
+          ...prev,
+          [selectedContract.id]: new Date(response.data.lastUpdated).getTime()
+        }));
+        
+        console.log(`Loaded ${response.data.transactions.length} transactions from MongoDB`);
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        console.log('No transactions found in MongoDB, will fetch from blockchain');
+      } else {
+        console.error("Error loading transactions from MongoDB:", error);
+      }
+      
+      // As a fallback, try to load metadata from localStorage
+      try {
+        const currentTeam = localStorage.getItem('selectedTeam');
+        if (!currentTeam) return;
+
+        const storageKey = `transactions_metadata_${currentTeam}`;
+        const storedData = localStorage.getItem(storageKey);
+        
+        if (storedData) {
+          const { lastFetch } = JSON.parse(storedData);
+          setLastFetchTime(lastFetch);
+          console.log('Loaded transaction metadata from localStorage as fallback');
+        }
+      } catch (localStorageError) {
+        console.error("Error loading transaction metadata from localStorage:", localStorageError);
+      }
+    }
+  };
+
+  // Update the useEffect hooks for loading and saving transactions
+  useEffect(() => {
+    if (selectedContract) {
+      loadStoredTransactions();
+    }
+  }, [selectedContract]);
+
+  useEffect(() => {
+    if (selectedContract && storedTransactions[selectedContract.id]?.length > 0) {
+      const saveTimeout = setTimeout(() => {
+        saveStoredTransactions();
+      }, 2000); // Add a debounce of 2 seconds
+      
+      return () => clearTimeout(saveTimeout);
+    }
+  }, [storedTransactions, selectedContract]);
+
+  // Add polling effect for transactions
   useEffect(() => {
     const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 
@@ -314,6 +327,21 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }));
           
           console.log(`Updated transactions for contract ${selectedContract.id}:`, uniqueTransactions.length);
+          
+          // Save to MongoDB
+          const currentTeam = localStorage.getItem('selectedTeam');
+          if (currentTeam) {
+            try {
+              await axios.post(`${API_BASE_URL}/transactions`, {
+                teamId: currentTeam,
+                contractId: selectedContract.id,
+                transactions: uniqueTransactions
+              });
+              console.log(`Saved ${uniqueTransactions.length} transactions to MongoDB after polling`);
+            } catch (saveError) {
+              console.error("Error saving polled transactions to MongoDB:", saveError);
+            }
+          }
         }
       }
     };
@@ -404,16 +432,64 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     // Fetch initial transactions if not already stored
     if (!storedTransactions[contract.id]) {
-      const transactions = await fetchContractTransactions(contract);
-      if (transactions && transactions.length > 0) {
-        setStoredTransactions(prev => ({
-          ...prev,
-          [contract.id]: transactions
-        }));
-        setLastFetchTime(prev => ({
-          ...prev,
-          [contract.id]: Date.now()
-        }));
+      try {
+        // Try to load from MongoDB first
+        const currentTeam = localStorage.getItem('selectedTeam');
+        if (currentTeam) {
+          try {
+            const response = await axios.get(`${API_BASE_URL}/transactions/${currentTeam}/${contract.id}`);
+            
+            if (response.data.success) {
+              setStoredTransactions(prev => ({
+                ...prev,
+                [contract.id]: response.data.transactions
+              }));
+              
+              setLastFetchTime(prev => ({
+                ...prev,
+                [contract.id]: new Date(response.data.lastUpdated).getTime()
+              }));
+              
+              console.log(`Loaded ${response.data.transactions.length} transactions from MongoDB`);
+              setShowDropdown(false);
+              return;
+            }
+          } catch (error) {
+            if (error.response && error.response.status !== 404) {
+              console.error("Error fetching transactions from MongoDB:", error);
+            }
+          }
+        }
+        
+        // If MongoDB fetch fails or returns no data, fetch from blockchain
+        const transactions = await fetchContractTransactions(contract);
+        if (transactions && transactions.length > 0) {
+          setStoredTransactions(prev => ({
+            ...prev,
+            [contract.id]: transactions
+          }));
+          
+          setLastFetchTime(prev => ({
+            ...prev,
+            [contract.id]: Date.now()
+          }));
+          
+          // Save to MongoDB
+          if (currentTeam) {
+            try {
+              await axios.post(`${API_BASE_URL}/transactions`, {
+                teamId: currentTeam,
+                contractId: contract.id,
+                transactions
+              });
+              console.log(`Saved ${transactions.length} transactions to MongoDB`);
+            } catch (saveError) {
+              console.error("Error saving transactions to MongoDB:", saveError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error handling contract selection:", error);
       }
     }
     
@@ -626,22 +702,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowDeleteModal(false);
     setContractToDelete(null);
   };
-
-  // Add this function to help debug
-  const debugState = () => {
-    console.log('Current State:', {
-      selectedTeam: localStorage.getItem('selectedTeam'),
-      storedTransactions: storedTransactions,
-      lastFetchTime: lastFetchTime,
-      selectedContract: selectedContract,
-      selectedContracts: selectedContracts
-    });
-  };
-
-  // Expose debug function to window for easy access
-  useEffect(() => {
-    window.debugSmartContractState = debugState;
-  }, [storedTransactions, lastFetchTime, selectedContract, selectedContracts]);
 
   return (
     <div className="smart-contract-filters relative">
