@@ -5,11 +5,11 @@ const crypto = require('crypto');
 // Get all smart contracts for a team
 exports.getTeamContracts = async (req, res) => {
   try {
-    const { teamId } = req.params;
+    const { teamName } = req.params;
     
-    // Verify team exists and user has access
+    // Find team by name
     const team = await Team.findOne({ 
-      _id: teamId,
+      name: teamName,
       $or: [
         { createdBy: req.userId },
         { "user.userId": req.userId }
@@ -20,7 +20,7 @@ exports.getTeamContracts = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to access this team's contracts" });
     }
     
-    const contracts = await SmartContract.find({ team: teamId });
+    const contracts = await SmartContract.find({ team: team._id });
     
     res.status(200).json({ contracts });
   } catch (error) {
@@ -32,16 +32,27 @@ exports.getTeamContracts = async (req, res) => {
 // Add a new smart contract
 exports.addSmartContract = async (req, res) => {
   try {
-    const { teamId, address, name, blockchain, tokenSymbol } = req.body;
+    const { teamId, teamName, address, name, blockchain, tokenSymbol } = req.body;
     
-    // Verify team exists and user has access
-    const team = await Team.findOne({ 
-      _id: teamId,
-      $or: [
-        { createdBy: req.userId },
-        { "user.userId": req.userId }
-      ]
-    });
+    // First try to find team by ID, then by name
+    let team;
+    if (teamId) {
+      team = await Team.findOne({ 
+        _id: teamId,
+        $or: [
+          { createdBy: req.userId },
+          { "user.userId": req.userId }
+        ]
+      });
+    } else if (teamName) {
+      team = await Team.findOne({ 
+        name: teamName,
+        $or: [
+          { createdBy: req.userId },
+          { "user.userId": req.userId }
+        ]
+      });
+    }
     
     if (!team) {
       return res.status(403).json({ message: "Not authorized to add contracts to this team" });
@@ -49,7 +60,7 @@ exports.addSmartContract = async (req, res) => {
 
     // Check if the contract already exists for this team
     const existingContract = await SmartContract.findOne({
-      team: teamId,
+      team: team._id,
       address: address.toLowerCase(),
       blockchain
     });
@@ -68,7 +79,7 @@ exports.addSmartContract = async (req, res) => {
       name: name || `Contract ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
       blockchain,
       tokenSymbol,
-      team: teamId,
+      team: team._id,
       verified: true,
       createdAt: new Date(),
       lastUpdated: new Date()

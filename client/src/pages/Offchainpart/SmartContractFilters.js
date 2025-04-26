@@ -599,7 +599,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         return;
       }
 
-      const response = await axiosInstance.get(`/api/contracts/team/${currentTeam}`);
+      const response = await axiosInstance.get(`/contracts/team/${currentTeam}`);
       
       if (response.data && response.data.contracts) {
         // Convert API contract format to local format
@@ -631,8 +631,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const currentTeam = localStorage.getItem('selectedTeam');
       if (!currentTeam) return null;
 
-      const response = await axiosInstance.post('/api/contracts', {
-        teamId: currentTeam,
+      const response = await axiosInstance.post('/contracts', {
+        teamName: currentTeam,
         address: contract.address,
         name: contract.name,
         blockchain: contract.blockchain,
@@ -656,7 +656,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Delete contract from API
   const deleteContractFromAPI = async (contractId) => {
     try {
-      await axiosInstance.delete(`/api/contracts/${contractId}`);
+      await axiosInstance.delete(`/contracts/${contractId}`);
       return true;
     } catch (error) {
       console.error("Error deleting contract from API:", error);

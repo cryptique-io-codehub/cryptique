@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(verifyToken);
 
 // Get all contracts for a team
-router.get('/team/:teamId', getTeamContracts);
+router.get('/team/:teamName', getTeamContracts);
 
 // Add a new contract
 router.post('/', addSmartContract);
