@@ -1,0 +1,27 @@
+const express = require('express');
+const { 
+  getTeamContracts, 
+  addSmartContract, 
+  deleteSmartContract, 
+  updateSmartContract 
+} = require('../controllers/smartContractController');
+const { verifyToken } = require('../middleware/authMiddleware');
+
+const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(verifyToken);
+
+// Get all contracts for a team
+router.get('/team/:teamId', getTeamContracts);
+
+// Add a new contract
+router.post('/', addSmartContract);
+
+// Delete a contract
+router.delete('/:contractId', deleteSmartContract);
+
+// Update a contract
+router.patch('/:contractId', updateSmartContract);
+
+module.exports = router; 

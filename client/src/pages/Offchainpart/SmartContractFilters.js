@@ -4,6 +4,7 @@ import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
 import { fetchBaseTransactions } from '../../utils/chains/baseChain';
 import { isValidAddress } from '../../utils/chainUtils';
+import axiosInstance from '../../axiosInstance';
 
 // ABI for ERC20/BEP20 token interface - minimal version for what we need
 const ERC20_ABI = [
@@ -84,6 +85,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [web3, setWeb3] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState({});
   const [storedTransactions, setStoredTransactions] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -117,6 +119,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     };
 
     initWeb3();
+  }, []);
+
+  // Load contracts from API on component mount
+  useEffect(() => {
+    fetchContractsFromAPI();
   }, []);
 
   // Load contracts from localStorage on component mount
@@ -153,9 +160,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         const contracts = JSON.parse(storedContracts);
         setcontractarray(contracts);
         console.log(`Loaded ${contracts.length} contracts from storage for team ${currentTeam}`);
-        
-        // Don't select any contract by default on first load
-        // If there's one stored in localStorage, we'd load that separately
       } else {
         console.log(`No contracts found in storage for team ${currentTeam}`);
       }
@@ -462,21 +466,27 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         verified: true
       };
       
+      // Save contract to API
+      const savedContract = await saveContractToAPI(newContract);
+      
+      // Use the saved contract if API call was successful
+      const contractToAdd = savedContract || newContract;
+      
       // Update contract array
-      const updatedContracts = [...contractarray, newContract];
+      const updatedContracts = [...contractarray, contractToAdd];
       setcontractarray(updatedContracts);
       
       // Update selected contracts
-      setSelectedContracts([...selectedContracts, newContract]);
+      setSelectedContracts([...selectedContracts, contractToAdd]);
       
       // Set as primary selected contract
-      setSelectedContract(newContract);
+      setSelectedContract(contractToAdd);
       
       setAddingContract(false);
       setShowAddContractModal(false);
       
       // Fetch transactions for the new contract
-      fetchContractTransactions(newContract);
+      fetchContractTransactions(contractToAdd);
       
       return true;
     } catch (error) {
@@ -528,36 +538,46 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowDropdown(false);
   };
 
-  const confirmDeleteContract = () => {
+  const confirmDeleteContract = async () => {
     if (!contractToDelete) return;
 
-    // Remove from contract array
-    const updatedContracts = contractarray.filter(c => c.id !== contractToDelete.id);
-    setcontractarray(updatedContracts);
-
-    // Remove from selected contracts
-    const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
-    setSelectedContracts(updatedSelectedContracts);
-
-    // If this was the primary selected contract, update it
-    if (selectedContract?.id === contractToDelete.id) {
-      if (updatedSelectedContracts.length > 0) {
-        setSelectedContract(updatedSelectedContracts[0]);
-      } else {
-        setSelectedContract(null);
-      }
-    }
-
-    // Save the updated contracts to localStorage
     try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (currentTeam) {
-        const storageKey = `contracts_${currentTeam}`;
-        localStorage.setItem(storageKey, JSON.stringify(updatedContracts));
-        console.log(`Saved ${updatedContracts.length} contracts to storage after deletion`);
+      // Delete from API first
+      const apiSuccess = await deleteContractFromAPI(contractToDelete.id);
+      
+      // Remove from contract array
+      const updatedContracts = contractarray.filter(c => c.id !== contractToDelete.id);
+      setcontractarray(updatedContracts);
+
+      // Remove from selected contracts
+      const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
+      setSelectedContracts(updatedSelectedContracts);
+
+      // If this was the primary selected contract, update it
+      if (selectedContract?.id === contractToDelete.id) {
+        if (updatedSelectedContracts.length > 0) {
+          setSelectedContract(updatedSelectedContracts[0]);
+        } else {
+          setSelectedContract(null);
+        }
+      }
+
+      // If API failed, save to localStorage as fallback
+      if (!apiSuccess) {
+        // Save the updated contracts to localStorage
+        try {
+          const currentTeam = localStorage.getItem('selectedTeam');
+          if (currentTeam) {
+            const storageKey = `contracts_${currentTeam}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedContracts));
+            console.log(`Saved ${updatedContracts.length} contracts to storage after deletion`);
+          }
+        } catch (error) {
+          console.error("Error saving contracts to storage after deletion:", error);
+        }
       }
     } catch (error) {
-      console.error("Error saving contracts to storage after deletion:", error);
+      console.error("Error in deletion process:", error);
     }
 
     setShowDeleteModal(false);
@@ -569,81 +589,163 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setContractToDelete(null);
   };
 
+  // Fetch contracts from API
+  const fetchContractsFromAPI = async () => {
+    try {
+      setIsLoading(true);
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) {
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await axiosInstance.get(`/api/contracts/team/${currentTeam}`);
+      
+      if (response.data && response.data.contracts) {
+        // Convert API contract format to local format
+        const apiContracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
+          address: contract.address,
+          name: contract.name,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol,
+          added_at: contract.createdAt,
+          verified: contract.verified
+        }));
+        
+        setcontractarray(apiContracts);
+        console.log(`Loaded ${apiContracts.length} contracts from API for team ${currentTeam}`);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching contracts from API:", error);
+      // Fallback to localStorage if API fails
+      loadContractsFromStorage();
+      setIsLoading(false);
+    }
+  };
+
+  // Save contracts to API
+  const saveContractToAPI = async (contract) => {
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return null;
+
+      const response = await axiosInstance.post('/api/contracts', {
+        teamId: currentTeam,
+        address: contract.address,
+        name: contract.name,
+        blockchain: contract.blockchain,
+        tokenSymbol: contract.tokenSymbol
+      });
+
+      if (response.data && response.data.contract) {
+        // Return the contract with API ID
+        return {
+          ...contract,
+          id: response.data.contract.contractId
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error saving contract to API:", error);
+      return null;
+    }
+  };
+
+  // Delete contract from API
+  const deleteContractFromAPI = async (contractId) => {
+    try {
+      await axiosInstance.delete(`/api/contracts/${contractId}`);
+      return true;
+    } catch (error) {
+      console.error("Error deleting contract from API:", error);
+      return false;
+    }
+  };
+
   return (
     <div className="smart-contract-filters relative">
-      <div className="relative inline-block text-left">
-        <div>
-          <button
-            type="button"
-            className="inline-flex w-full justify-between gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-            onClick={handleDropdownToggle}
-            aria-expanded={showDropdown}
-            aria-haspopup="true"
-          >
-            {selectedContract 
-              ? formatContractDisplay(selectedContract).name
-              : "Select Smart Contract"}
-            <svg className="-mr-1 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-            </svg>
-          </button>
+      {isLoading ? (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-sm text-gray-600">Loading contracts...</span>
         </div>
-
-        {showDropdown && (
-          <div className="absolute left-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-            <div className="py-1 max-h-96 overflow-y-auto">
-              {contractarray && contractarray.length > 0 ? (
-                contractarray.map((contract) => {
-                  const display = formatContractDisplay(contract);
-                  const isSelected = selectedContracts.some(c => c.id === contract.id);
-                  
-                  return (
-                    <div 
-                      key={contract.id} 
-                      className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
-                      onClick={() => handleSelectContract(contract)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
-                          <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
-                          <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteContract(contract);
-                        }}
-                        className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="px-3 py-2 text-sm text-gray-500">No smart contracts found</div>
-              )}
-              <div className="border-t border-gray-100"></div>
-              <button
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center"
-                onClick={handleOpenAddContractModal}
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add new smart contract
-              </button>
-            </div>
+      ) : (
+        <div className="relative inline-block text-left">
+          <div>
+            <button
+              type="button"
+              className="inline-flex w-full justify-between gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              onClick={handleDropdownToggle}
+              aria-expanded={showDropdown}
+              aria-haspopup="true"
+            >
+              {selectedContract 
+                ? formatContractDisplay(selectedContract).name
+                : "Select Smart Contract"}
+              <svg className="-mr-1 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
-        )}
-      </div>
+
+          {showDropdown && (
+            <div className="absolute left-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="py-1 max-h-96 overflow-y-auto">
+                {contractarray && contractarray.length > 0 ? (
+                  contractarray.map((contract) => {
+                    const display = formatContractDisplay(contract);
+                    const isSelected = selectedContracts.some(c => c.id === contract.id);
+                    
+                    return (
+                      <div 
+                        key={contract.id} 
+                        className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                        onClick={() => handleSelectContract(contract)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
+                            <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
+                            <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteContract(contract);
+                          }}
+                          className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">No smart contracts found</div>
+                )}
+                <div className="border-t border-gray-100"></div>
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center"
+                  onClick={handleOpenAddContractModal}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add new smart contract
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Selected contracts display */}
       {selectedContracts.length > 0 && (
