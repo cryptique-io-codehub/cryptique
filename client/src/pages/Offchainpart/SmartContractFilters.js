@@ -534,8 +534,29 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     } catch (error) {
       console.error("Error fetching contracts from API:", error);
       // Fallback to localStorage if API fails
-      loadContractsFromStorage();
+      loadContractsFromLocalStorage();
       setIsLoading(false);
+    }
+  };
+
+  // Fallback function to load contracts from localStorage
+  const loadContractsFromLocalStorage = () => {
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return;
+
+      const storageKey = `contracts_${currentTeam}`;
+      const storedContracts = localStorage.getItem(storageKey);
+      
+      if (storedContracts) {
+        const contracts = JSON.parse(storedContracts);
+        setcontractarray(contracts);
+        console.log(`Loaded ${contracts.length} contracts from localStorage for team ${currentTeam}`);
+      } else {
+        console.log(`No contracts found in localStorage for team ${currentTeam}`);
+      }
+    } catch (error) {
+      console.error("Error loading contracts from localStorage:", error);
     }
   };
 
