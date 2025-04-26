@@ -306,16 +306,22 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Base':
           console.log('Using Base Chain module');
-          const baseTransactions = await fetchBaseTransactions(contract.address, {
+          const baseResult = await fetchBaseTransactions(contract.address, {
             limit: 10000,
             startBlock: isPolling ? contract.lastBlock : undefined
           });
-          // Update token symbol in transactions
-          transactions = baseTransactions.map(tx => ({
-            ...tx,
-            token_symbol: contract.tokenSymbol || tx.token_symbol,
-            value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
-          }));
+          
+          if (baseResult.transactions?.length > 0) {
+            console.log(`Retrieved ${baseResult.transactions.length} transactions from BaseScan`);
+            // Update token symbol in transactions
+            transactions = baseResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
+            }));
+          } else {
+            console.log('No transactions found or there was an error:', baseResult.metadata?.message);
+          }
           break;
           
         case 'Ethereum':
