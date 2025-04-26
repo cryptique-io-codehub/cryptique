@@ -2,10 +2,25 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Transactions API is running'
+  });
+});
+
 // Save transactions for a team
 router.post('/save', async (req, res) => {
   try {
     const { teamId, transactions, lastFetch } = req.body;
+
+    if (!teamId) {
+      return res.status(400).json({
+        success: false,
+        message: 'teamId is required'
+      });
+    }
 
     // Find existing transactions for this team
     let existingTransactions = await Transaction.findOne({ teamId });
@@ -43,6 +58,13 @@ router.post('/save', async (req, res) => {
 router.get('/load', async (req, res) => {
   try {
     const { teamId } = req.query;
+
+    if (!teamId) {
+      return res.status(400).json({
+        success: false,
+        message: 'teamId is required'
+      });
+    }
 
     const transactions = await Transaction.findOne({ teamId });
 

@@ -193,43 +193,65 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const loadStoredTransactions = async () => {
     try {
       const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
+      if (!currentTeam) {
+        console.log('No team selected, skipping transaction load');
+        return;
+      }
 
-      // Load from MongoDB instead of localStorage
-      const response = await axios.get(`/api/transactions/load?teamId=${currentTeam}`);
+      console.log('Loading transactions from MongoDB for team:', currentTeam);
+      
+      const response = await axios.get(`/api/transactions/load?teamId=${currentTeam}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (response.data.success) {
         const { transactions, lastFetch } = response.data.data;
         setStoredTransactions(transactions);
         setLastFetchTime(lastFetch);
-        console.log('Loaded stored transactions from MongoDB');
+        console.log('Successfully loaded transactions from MongoDB');
       } else {
         console.error('Failed to load transactions from MongoDB:', response.data.message);
       }
     } catch (error) {
-      console.error("Error loading stored transactions from MongoDB:", error);
+      console.error("Error loading stored transactions from MongoDB:", error.message);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+      }
     }
   };
 
   const saveStoredTransactions = async () => {
     try {
       const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
+      if (!currentTeam) {
+        console.log('No team selected, skipping transaction save');
+        return;
+      }
 
-      // Save to MongoDB instead of localStorage
+      console.log('Saving transactions to MongoDB for team:', currentTeam);
+      
       const response = await axios.post('/api/transactions/save', {
         teamId: currentTeam,
         transactions: storedTransactions,
         lastFetch: lastFetchTime
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.data.success) {
-        console.log('Saved transactions to MongoDB');
+        console.log('Successfully saved transactions to MongoDB');
       } else {
         console.error('Failed to save transactions to MongoDB:', response.data.message);
       }
     } catch (error) {
-      console.error("Error saving transactions to MongoDB:", error);
+      console.error("Error saving transactions to MongoDB:", error.message);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+      }
     }
   };
 

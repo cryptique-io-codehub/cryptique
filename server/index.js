@@ -10,7 +10,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'https://app.cryptique.io'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -18,6 +18,7 @@ app.use(cors({
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
@@ -29,8 +30,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 
 // Routes
 app.use('/api/analytics', require('./routes/analytics'));
-const transactionsRoutes = require('./routes/transactions');
-app.use('/api/transactions', transactionsRoutes);
+app.use('/api/transactions', require('./routes/transactions'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
