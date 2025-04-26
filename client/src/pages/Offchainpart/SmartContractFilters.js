@@ -82,6 +82,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [web3, setWeb3] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState({});
+  const [storedTransactions, setStoredTransactions] = useState({});
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -178,8 +180,97 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Fetch transactions for the selected contract using the appropriate chain module
-  const fetchContractTransactions = async (contract) => {
+  // Load stored transactions from localStorage on component mount
+  useEffect(() => {
+    loadStoredTransactions();
+  }, []);
+
+  // Save transactions to localStorage whenever they change
+  useEffect(() => {
+    saveStoredTransactions();
+  }, [storedTransactions]);
+
+  const loadStoredTransactions = () => {
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return;
+
+      const storageKey = `transactions_${currentTeam}`;
+      const storedData = localStorage.getItem(storageKey);
+      
+      if (storedData) {
+        const { transactions, lastFetch } = JSON.parse(storedData);
+        setStoredTransactions(transactions);
+        setLastFetchTime(lastFetch);
+        console.log('Loaded stored transactions:', transactions);
+      }
+    } catch (error) {
+      console.error("Error loading stored transactions:", error);
+    }
+  };
+
+  const saveStoredTransactions = () => {
+    try {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return;
+
+      const storageKey = `transactions_${currentTeam}`;
+      const data = {
+        transactions: storedTransactions,
+        lastFetch: lastFetchTime
+      };
+      localStorage.setItem(storageKey, JSON.stringify(data));
+      console.log('Saved transactions to storage');
+    } catch (error) {
+      console.error("Error saving transactions to storage:", error);
+    }
+  };
+
+  // Polling effect for transactions
+  useEffect(() => {
+    const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+    const pollTransactions = async () => {
+      if (!selectedContract) return;
+
+      const now = Date.now();
+      const lastFetch = lastFetchTime[selectedContract.id] || 0;
+      
+      // Only fetch if it's been 15 minutes since last fetch
+      if (now - lastFetch >= POLLING_INTERVAL) {
+        console.log(`Polling new transactions for contract ${selectedContract.id}`);
+        const newTransactions = await fetchContractTransactions(selectedContract, true);
+        
+        if (newTransactions && newTransactions.length > 0) {
+          // Update stored transactions
+          const currentTransactions = storedTransactions[selectedContract.id] || [];
+          const updatedTransactions = [...newTransactions, ...currentTransactions];
+          
+          // Remove duplicates based on tx_hash
+          const uniqueTransactions = Array.from(
+            new Map(updatedTransactions.map(tx => [tx.tx_hash, tx])).values()
+          );
+          
+          setStoredTransactions(prev => ({
+            ...prev,
+            [selectedContract.id]: uniqueTransactions
+          }));
+          
+          setLastFetchTime(prev => ({
+            ...prev,
+            [selectedContract.id]: now
+          }));
+          
+          console.log(`Updated transactions for contract ${selectedContract.id}:`, uniqueTransactions.length);
+        }
+      }
+    };
+
+    const intervalId = setInterval(pollTransactions, POLLING_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [selectedContract, lastFetchTime, storedTransactions]);
+
+  const fetchContractTransactions = async (contract, isPolling = false) => {
     if (!contract || !contract.address) {
       console.error("No contract selected or contract address is missing");
       return;
@@ -195,7 +286,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'BNB Chain':
           console.log('Fetching up to 10,000 transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 10000
+            limit: 10000,
+            startBlock: isPolling ? contract.lastBlock : undefined
           });
           
           if (bnbResult.transactions?.length > 0) {
@@ -215,7 +307,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Base':
           console.log('Using Base Chain module');
           const baseTransactions = await fetchBaseTransactions(contract.address, {
-            limit: 10000
+            limit: 10000,
+            startBlock: isPolling ? contract.lastBlock : undefined
           });
           // Update token symbol in transactions
           transactions = baseTransactions.map(tx => ({
@@ -242,7 +335,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowDropdown(!showDropdown);
   };
 
-  const handleSelectContract = (contract) => {
+  const handleSelectContract = async (contract) => {
     // Set as the primary selected contract
     setSelectedContract(contract);
     
@@ -251,8 +344,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setSelectedContracts([...selectedContracts, contract]);
     }
     
-    // Fetch and display transactions for this contract
-    fetchContractTransactions(contract);
+    // Fetch initial transactions if not already stored
+    if (!storedTransactions[contract.id]) {
+      const transactions = await fetchContractTransactions(contract);
+      if (transactions && transactions.length > 0) {
+        setStoredTransactions(prev => ({
+          ...prev,
+          [contract.id]: transactions
+        }));
+        setLastFetchTime(prev => ({
+          ...prev,
+          [contract.id]: Date.now()
+        }));
+      }
+    }
     
     setShowDropdown(false);
   };
