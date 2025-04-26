@@ -4,7 +4,6 @@ import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
 import { fetchBaseTransactions } from '../../utils/chains/baseChain';
 import { isValidAddress } from '../../utils/chainUtils';
-import axiosInstance from '../../axiosInstance';
 
 // ABI for ERC20/BEP20 token interface - minimal version for what we need
 const ERC20_ABI = [
@@ -85,9 +84,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [web3, setWeb3] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState({});
   const [storedTransactions, setStoredTransactions] = useState({});
-
-  // Use the API base URL without modifying the path as the backend already has /api in its routes
-  const API_BASE_URL = process.env.REACT_APP_API_SERVER_URL || 'http://localhost:3001';
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -184,124 +180,53 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Replace saveStoredTransactions with API call to MongoDB
-  const saveStoredTransactions = async () => {
+  // Load stored transactions from localStorage on component mount
+  useEffect(() => {
+    loadStoredTransactions();
+  }, []);
+
+  // Save transactions to localStorage whenever they change
+  useEffect(() => {
+    saveStoredTransactions();
+  }, [storedTransactions]);
+
+  const loadStoredTransactions = () => {
     try {
       const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam || !selectedContract) return;
+      if (!currentTeam) return;
 
-      // Get transactions for the selected contract
-      const contractTransactions = storedTransactions[selectedContract.id];
-      if (!contractTransactions || contractTransactions.length === 0) return;
-
-      console.log(`Saving ${contractTransactions.length} transactions to MongoDB for contract ${selectedContract.id}`);
+      const storageKey = `transactions_${currentTeam}`;
+      const storedData = localStorage.getItem(storageKey);
       
-      // Call the API to save transactions using axiosInstance
-      await axiosInstance.post(`/transactions`, {
-        teamId: currentTeam,
-        contractId: selectedContract.id,
-        transactions: contractTransactions
-      });
-      
-      console.log('Saved transactions to MongoDB');
-    } catch (error) {
-      console.error("Error saving transactions to MongoDB:", error);
-      
-      // As a fallback, try to save to localStorage if possible
-      try {
-        // Only save metadata to localStorage, not the full transactions
-        const currentTeam = localStorage.getItem('selectedTeam');
-        if (!currentTeam) return;
-
-        const storageKey = `transactions_metadata_${currentTeam}`;
-        const data = {
-          lastFetch: lastFetchTime
-        };
-        localStorage.setItem(storageKey, JSON.stringify(data));
-        console.log('Saved transaction metadata to localStorage as fallback');
-      } catch (localStorageError) {
-        console.error("Error saving transaction metadata to localStorage:", localStorageError);
+      if (storedData) {
+        const { transactions, lastFetch } = JSON.parse(storedData);
+        setStoredTransactions(transactions);
+        setLastFetchTime(lastFetch);
+        console.log('Loaded stored transactions:', transactions);
       }
+    } catch (error) {
+      console.error("Error loading stored transactions:", error);
     }
   };
 
-  // Replace loadStoredTransactions with API call to MongoDB
-  const loadStoredTransactions = async () => {
+  const saveStoredTransactions = () => {
     try {
-      // First, test if the API is accessible at all
-      try {
-        console.log("Testing transactions API endpoint...");
-        const testResponse = await axiosInstance.get(`/transactions/test`);
-        console.log("Test response:", testResponse.data);
-      } catch (testError) {
-        console.error("Error testing transactions API:", testError);
-      }
-
       const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam || !selectedContract) return;
+      if (!currentTeam) return;
 
-      console.log(`Loading transactions from MongoDB for contract ${selectedContract.id}`);
-      
-      // Call the API to get transactions using axiosInstance
-      const response = await axiosInstance.get(`/transactions/${currentTeam}/${selectedContract.id}`);
-      
-      if (response.data.success) {
-        setStoredTransactions(prev => ({
-          ...prev,
-          [selectedContract.id]: response.data.transactions
-        }));
-        
-        setLastFetchTime(prev => ({
-          ...prev,
-          [selectedContract.id]: new Date(response.data.lastUpdated).getTime()
-        }));
-        
-        console.log(`Loaded ${response.data.transactions.length} transactions from MongoDB`);
-      }
+      const storageKey = `transactions_${currentTeam}`;
+      const data = {
+        transactions: storedTransactions,
+        lastFetch: lastFetchTime
+      };
+      localStorage.setItem(storageKey, JSON.stringify(data));
+      console.log('Saved transactions to storage');
     } catch (error) {
-      if (error.response && error.response.status === 404) {
-        console.log('No transactions found in MongoDB, will fetch from blockchain');
-      } else {
-        console.error("Error loading transactions from MongoDB:", error);
-      }
-      
-      // As a fallback, try to load metadata from localStorage
-      try {
-        const currentTeam = localStorage.getItem('selectedTeam');
-        if (!currentTeam) return;
-
-        const storageKey = `transactions_metadata_${currentTeam}`;
-        const storedData = localStorage.getItem(storageKey);
-        
-        if (storedData) {
-          const { lastFetch } = JSON.parse(storedData);
-          setLastFetchTime(lastFetch);
-          console.log('Loaded transaction metadata from localStorage as fallback');
-        }
-      } catch (localStorageError) {
-        console.error("Error loading transaction metadata from localStorage:", localStorageError);
-      }
+      console.error("Error saving transactions to storage:", error);
     }
   };
 
-  // Update the useEffect hooks for loading and saving transactions
-  useEffect(() => {
-    if (selectedContract) {
-      loadStoredTransactions();
-    }
-  }, [selectedContract]);
-
-  useEffect(() => {
-    if (selectedContract && storedTransactions[selectedContract.id]?.length > 0) {
-      const saveTimeout = setTimeout(() => {
-        saveStoredTransactions();
-      }, 2000); // Add a debounce of 2 seconds
-      
-      return () => clearTimeout(saveTimeout);
-    }
-  }, [storedTransactions, selectedContract]);
-
-  // Add polling effect for transactions
+  // Polling effect for transactions
   useEffect(() => {
     const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 
@@ -337,21 +262,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }));
           
           console.log(`Updated transactions for contract ${selectedContract.id}:`, uniqueTransactions.length);
-          
-          // Save to MongoDB
-          const currentTeam = localStorage.getItem('selectedTeam');
-          if (currentTeam) {
-            try {
-              await axiosInstance.post(`/transactions`, {
-                teamId: currentTeam,
-                contractId: selectedContract.id,
-                transactions: uniqueTransactions
-              });
-              console.log(`Saved ${uniqueTransactions.length} transactions to MongoDB after polling`);
-            } catch (saveError) {
-              console.error("Error saving polled transactions to MongoDB:", saveError);
-            }
-          }
         }
       }
     };
@@ -396,22 +306,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Base':
           console.log('Using Base Chain module');
-          const baseResult = await fetchBaseTransactions(contract.address, {
+          const baseTransactions = await fetchBaseTransactions(contract.address, {
             limit: 10000,
             startBlock: isPolling ? contract.lastBlock : undefined
           });
-          
-          if (baseResult.transactions?.length > 0) {
-            console.log(`Retrieved ${baseResult.transactions.length} transactions from BaseScan`);
-            // Update token symbol in transactions
-            transactions = baseResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
-            }));
-          } else {
-            console.log('No transactions found or there was an error:', baseResult.metadata?.message);
-          }
+          // Update token symbol in transactions
+          transactions = baseTransactions.map(tx => ({
+            ...tx,
+            token_symbol: contract.tokenSymbol || tx.token_symbol,
+            value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
+          }));
           break;
           
         case 'Ethereum':
@@ -442,113 +346,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     // Fetch initial transactions if not already stored
     if (!storedTransactions[contract.id]) {
-      try {
-        // Try to load from MongoDB first
-        const currentTeam = localStorage.getItem('selectedTeam');
-        if (currentTeam) {
-          try {
-            console.log(`Attempting to fetch transactions for team ${currentTeam} and contract ${contract.id}`);
-            console.log(`API endpoint: /transactions/${currentTeam}/${contract.id}`);
-            
-            // First test the API connection
-            try {
-              const testResponse = await axiosInstance.get('/transactions/test');
-              console.log("API test successful:", testResponse.data);
-            } catch (testError) {
-              console.error("API test failed:", testError.response || testError.message);
-            }
-            
-            // Use axiosInstance for API calls
-            const response = await axiosInstance.get(`/transactions/${currentTeam}/${contract.id}`);
-            
-            if (response.data.success) {
-              setStoredTransactions(prev => ({
-                ...prev,
-                [contract.id]: response.data.transactions
-              }));
-              
-              setLastFetchTime(prev => ({
-                ...prev,
-                [contract.id]: new Date(response.data.lastUpdated).getTime()
-              }));
-              
-              console.log(`Loaded ${response.data.transactions.length} transactions from MongoDB`);
-              setShowDropdown(false);
-              return;
-            }
-          } catch (error) {
-            console.log("Full error:", error);
-            
-            if (error.response) {
-              console.error("API error response:", {
-                status: error.response.status,
-                statusText: error.response.statusText,
-                data: error.response.data
-              });
-            } else if (error.request) {
-              console.error("No response received:", error.request);
-            } else {
-              console.error("Error setting up request:", error.message);
-            }
-            
-            if (error.response && error.response.status !== 404) {
-              console.error("Error fetching transactions from MongoDB:", error);
-            }
-          }
-        }
-        
-        // If MongoDB fetch fails or returns no data, fetch from blockchain
-        const transactions = await fetchContractTransactions(contract);
-        if (transactions && transactions.length > 0) {
-          setStoredTransactions(prev => ({
-            ...prev,
-            [contract.id]: transactions
-          }));
-          
-          setLastFetchTime(prev => ({
-            ...prev,
-            [contract.id]: Date.now()
-          }));
-          
-          // Save to MongoDB using axiosInstance
-          if (currentTeam) {
-            try {
-              console.log(`Attempting to save ${transactions.length} transactions to MongoDB`);
-              console.log("API endpoint: /transactions");
-              console.log("Request payload:", {
-                teamId: currentTeam,
-                contractId: contract.id,
-                transactionsCount: transactions.length
-              });
-              
-              const saveResponse = await axiosInstance.post(`/transactions`, {
-                teamId: currentTeam,
-                contractId: contract.id,
-                transactions
-              });
-              
-              console.log(`Saved transactions to MongoDB:`, saveResponse.data);
-            } catch (saveError) {
-              console.log("Full save error:", saveError);
-              
-              if (saveError.response) {
-                console.error("API save error response:", {
-                  status: saveError.response.status,
-                  statusText: saveError.response.statusText,
-                  data: saveError.response.data
-                });
-              } else if (saveError.request) {
-                console.error("No save response received:", saveError.request);
-              } else {
-                console.error("Error setting up save request:", saveError.message);
-              }
-              
-              console.error("Error saving transactions to MongoDB:", saveError);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error handling contract selection:", error);
+      const transactions = await fetchContractTransactions(contract);
+      if (transactions && transactions.length > 0) {
+        setStoredTransactions(prev => ({
+          ...prev,
+          [contract.id]: transactions
+        }));
+        setLastFetchTime(prev => ({
+          ...prev,
+          [contract.id]: Date.now()
+        }));
       }
     }
     
