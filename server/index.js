@@ -29,6 +29,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 
 // Routes
 app.use('/api/analytics', require('./routes/analytics'));
+const transactionsRoutes = require('./routes/transactions');
+app.use('/api/transactions', transactionsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
