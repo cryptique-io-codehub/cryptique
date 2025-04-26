@@ -16,62 +16,17 @@ const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN
 // BscScan API endpoints
 const BSC_SCAN_BASE_URL = 'https://api.bscscan.com/api';
 const BSC_SCAN_ACCT_TX_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=account&action=txlist`;
-const BSC_SCAN_TOKEN_INFO_ENDPOINT = `${BSC_SCAN_BASE_URL}?module=token&action=tokeninfo`;
 
 // Max results per page
 const MAX_RESULTS = 10000;
-
-// Cache for token information to reduce API calls
-const tokenInfoCache = new Map();
-
-/**
- * Fetches token information from BscScan API with caching
- * 
- * @param {string} contractAddress - The token contract address
- * @returns {Promise<Object>} - Token information including symbol and decimals
- */
-const fetchTokenInfo = async (contractAddress) => {
-  // Check cache first
-  if (tokenInfoCache.has(contractAddress)) {
-    return tokenInfoCache.get(contractAddress);
-  }
-
-  try {
-    // Add delay between API calls to prevent rate limiting
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const response = await axios.get(BSC_SCAN_TOKEN_INFO_ENDPOINT, {
-      params: {
-        contractaddress: contractAddress,
-        apikey: BSC_SCAN_API_KEY
-      }
-    });
-
-    if (response.data.status === '1' && response.data.result.length > 0) {
-      const tokenInfo = {
-        symbol: response.data.result[0].symbol,
-        decimals: parseInt(response.data.result[0].decimals)
-      };
-      
-      // Cache the result
-      tokenInfoCache.set(contractAddress, tokenInfo);
-      return tokenInfo;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching token info:", error);
-    // Return null instead of throwing to allow the app to continue
-    return null;
-  }
-};
 
 /**
  * Process a BEP20 token transfer transaction
  * 
  * @param {Object} tx - Raw transaction data
- * @returns {Promise<Object>} - Processed transaction
+ * @returns {Object} - Processed transaction
  */
-const processBep20Transaction = async (tx) => {
+const processBep20Transaction = (tx) => {
   try {
     // Decode the BEP20 transfer data
     const decodedData = decodeERC20TransferInput(tx.input);
@@ -80,10 +35,8 @@ const processBep20Transaction = async (tx) => {
       return formatTransaction(tx, 'BNB');
     }
     
-    // Get token information
-    const tokenInfo = await fetchTokenInfo(tx.to);
-    const decimals = tokenInfo?.decimals || 18;
-    const symbol = tokenInfo?.symbol || 'BEP20';
+    // Default 18 decimals (most common)
+    const decimals = 18;
     
     // Format token amount with proper decimal placement
     let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
@@ -106,15 +59,15 @@ const processBep20Transaction = async (tx) => {
     // Create tokenData object for formatTransaction
     const tokenData = {
       isToken: true,
-      symbol: symbol,
-      value: `${displayAmount} ${symbol}`,
-      contractAddress: tx.to
+      symbol: 'BEP20', // Generic symbol since we don't have actual token info
+      value: `${displayAmount} BEP20`,
+      contractAddress: tx.to // Contract address is the 'to' field in tx
     };
     
     // Format transaction with token data
     return formatTransaction({
       ...tx,
-      to: decodedData.recipient
+      to: decodedData.recipient // Update recipient to actual token receiver
     }, 'BNB', tokenData);
   } catch (error) {
     console.error("Error processing BEP20 transaction:", error);
@@ -181,13 +134,13 @@ export const fetchBnbTransactions = async (address, options = {}) => {
     // Process successful response
     if (result.status === '1' && Array.isArray(result.result)) {
       // Process transactions and identify BEP20 token transfers
-      const transactions = await Promise.all(result.result.map(async tx => {
+      const transactions = result.result.map(tx => {
         // Check if this might be a BEP20 transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return await processBep20Transaction(tx);
+          return processBep20Transaction(tx);
         }
         return formatTransaction(tx, 'BNB');
-      }));
+      });
       
       console.log(`Retrieved ${transactions.length} transactions from BscScan`);
       

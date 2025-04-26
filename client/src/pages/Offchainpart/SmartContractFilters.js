@@ -296,14 +296,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setContractError('');
     
     try {
-      // Create new contract object directly without API verification
-      // since the backend API is not available yet
+      // Create contract instance
+      const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+      
+      // Get token symbol
+      let tokenSymbol;
+      try {
+        tokenSymbol = await contract.methods.symbol().call();
+      } catch (error) {
+        console.warn("Could not fetch token symbol, using default:", error);
+        // Use default token symbol based on blockchain
+        switch (blockchain) {
+          case 'Ethereum':
+            tokenSymbol = 'ETH';
+            break;
+          case 'BNB Chain':
+            tokenSymbol = 'BNB';
+            break;
+          case 'Base':
+            tokenSymbol = 'ETH';
+            break;
+          case 'Polygon':
+            tokenSymbol = 'MATIC';
+            break;
+          case 'Arbitrum':
+            tokenSymbol = 'ETH';
+            break;
+          case 'Optimism':
+            tokenSymbol = 'ETH';
+            break;
+          default:
+            tokenSymbol = 'ETH';
+        }
+      }
+
+      // Create new contract object
       const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newContract = {
         id: contractId,
         address: contractAddress,
         name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
         blockchain: blockchain,
+        tokenSymbol: tokenSymbol,
         added_at: new Date().toISOString(),
         verified: true
       };
@@ -363,7 +397,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       name: displayName,
       shortAddress: shortAddress,
       fullAddress: contract.address,
-      blockchain: contract.blockchain
+      blockchain: contract.blockchain,
+      tokenSymbol: contract.tokenSymbol
     };
   };
 
@@ -425,23 +460,27 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         {/* Selected contracts display (as tags) */}
         {selectedContracts.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
-            {selectedContracts.map(contract => (
-              <span 
-                key={contract.id} 
-                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                          ${selectedContract?.id === contract.id 
-                           ? 'bg-blue-100 text-blue-800' 
-                           : 'bg-gray-100 text-gray-800'}`}
-              >
-                {contract.name || contract.address.substring(0, 6) + '...' + contract.address.substring(contract.address.length - 4)}
-                <span 
-                  className="ml-1 h-4 w-4 rounded-full inline-flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-gray-600 cursor-pointer"
-                  onClick={(e) => handleRemoveContract(contract.id, e)}
-                >
-                  ×
-                </span>
-              </span>
-            ))}
+            {selectedContracts.map((contract) => {
+              const display = formatContractDisplay(contract);
+              return (
+                <div key={contract.id} className="flex items-center justify-between p-2 bg-gray-100 rounded-lg mb-2">
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-gray-900 mr-2">{display.name}</span>
+                    <span className="text-xs text-gray-500">({display.shortAddress})</span>
+                    <span className="text-xs text-gray-500 ml-2">[{display.blockchain}]</span>
+                    <span className="text-xs text-gray-500 ml-2">({display.tokenSymbol})</span>
+                  </div>
+                  <button
+                    onClick={(e) => handleRemoveContract(contract.id, e)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -450,32 +489,28 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             <div className="py-1">
               {contractarray && contractarray.length > 0 ? (
                 contractarray.map((contract) => {
-                  const displayInfo = formatContractDisplay(contract);
+                  const display = formatContractDisplay(contract);
                   const isSelected = selectedContracts.some(c => c.id === contract.id);
                   
                   return (
-                    <div key={contract.id} className="group">
-                    <button
-                        className={`w-full text-left px-4 py-2 text-sm ${isSelected ? 'bg-gray-100' : ''} hover:bg-gray-50`}
-                      onClick={() => handleSelectContract(contract)}
-                    >
-                        <div className="font-medium">{displayInfo.name}</div>
-                        <div className="text-xs text-gray-500 flex justify-between">
-                          <span>{displayInfo.shortAddress}</span>
-                          <span className="italic">{contract.blockchain}</span>
-                        </div>
-                      </button>
+                    <div key={contract.id} className="flex items-center justify-between p-2 bg-gray-100 rounded-lg mb-2">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-900 mr-2">{display.name}</span>
+                        <span className="text-xs text-gray-500">({display.shortAddress})</span>
+                        <span className="text-xs text-gray-500 ml-2">[{display.blockchain}]</span>
+                        <span className="text-xs text-gray-500 ml-2">({display.tokenSymbol})</span>
+                      </div>
                       <button
-                        className="absolute right-2 top-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteContract(contract);
                         }}
+                        className="text-red-500 hover:text-red-700"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                    </button>
+                      </button>
                     </div>
                   );
                 })
