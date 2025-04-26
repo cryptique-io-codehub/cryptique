@@ -627,6 +627,22 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setContractToDelete(null);
   };
 
+  // Add this function to help debug
+  const debugState = () => {
+    console.log('Current State:', {
+      selectedTeam: localStorage.getItem('selectedTeam'),
+      storedTransactions: storedTransactions,
+      lastFetchTime: lastFetchTime,
+      selectedContract: selectedContract,
+      selectedContracts: selectedContracts
+    });
+  };
+
+  // Expose debug function to window for easy access
+  useEffect(() => {
+    window.debugSmartContractState = debugState;
+  }, [storedTransactions, lastFetchTime, selectedContract, selectedContracts]);
+
   return (
     <div className="smart-contract-filters relative">
       <div className="relative inline-block text-left">
