@@ -206,6 +206,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               token_symbol: contract.tokenSymbol || tx.token_symbol,
               value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
             }));
+            console.log('Transactions:', transactions);
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
           }
@@ -222,6 +223,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             token_symbol: contract.tokenSymbol || tx.token_symbol,
             value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
           }));
+          console.log('Transactions:', transactions);
           break;
           
         case 'Ethereum':
