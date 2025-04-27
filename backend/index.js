@@ -22,7 +22,7 @@ connect(process.env.MONGODB_URI).then(() => {
 
 // Define CORS options for different routes
 const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io", "https://www.cryptique.io"],
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
@@ -40,64 +40,59 @@ const sdkCorsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Global middleware to handle OPTIONS requests
-app.options('*', (req, res, next) => {
-  if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
-  } else {
-    cors(mainCorsOptions)(req, res, next);
-  }
-});
+// Apply CORS middleware globally with appropriate configurations
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if(!origin) return callback(null, true);
+    
+    if(origin.includes('app.cryptique.io') || 
+       origin.includes('cryptique.io') || 
+       origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  maxAge: 86400
+}));
 
-// Apply CORS configuration based on route
+// Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
   // Set common security headers
   res.header('X-Content-Type-Options', 'nosniff');
   res.header('X-Frame-Options', 'DENY');
   res.header('X-XSS-Protection', '1; mode=block');
   
-  // Add explicit CORS handling for all routes
   const origin = req.headers.origin;
   
+  // For SDK routes, use wide open CORS
   if (req.path.startsWith('/api/sdk/')) {
-    // SDK routes - allow any origin
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', sdkCorsOptions.methods.join(', '));
-    res.header('Access-Control-Allow-Headers', sdkCorsOptions.allowedHeaders.join(', '));
-    res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
-  } else {
-    // For all other routes, including analytics and transactions
-    if (mainCorsOptions.origin.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Methods', mainCorsOptions.methods.join(', '));
-      res.header('Access-Control-Allow-Headers', mainCorsOptions.allowedHeaders.join(', '));
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
-    } else if (origin) {
-      // If origin is not in allowed list but is provided, log it for debugging
-      console.log(`Rejected CORS request from origin: ${origin}`);
-    }
-  }
-  
-  // Handle preflight OPTIONS requests
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+    res.header('Access-Control-Max-Age', '86400');
+  } 
+  // For all other routes, use more restrictive CORS
+  else if (origin && (origin.includes('app.cryptique.io') || 
+             origin.includes('cryptique.io') || 
+             origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
   }
   
   next();
 });
 
-// Increase payload size limit with explicit size limits
-app.use(bodyParser.json({ 
-  limit: '10mb',  // Reduced to 10MB to match Vercel limits
-  parameterLimit: 100000
-}));
-app.use(bodyParser.urlencoded({ 
-  limit: '10mb',  // Reduced to 10MB to match Vercel limits
-  extended: true, 
-  parameterLimit: 100000
-}));
+// Increase JSON body size limit to 50MB
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Debug endpoint to check environment variables
 app.get("/debug/env", (req, res) => {

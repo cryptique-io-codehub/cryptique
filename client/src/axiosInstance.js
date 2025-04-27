@@ -11,11 +11,12 @@ const axiosInstance = axios.create({
     // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
-  maxContentLength: 10 * 1024 * 1024, // Reduced to 10MB to avoid 413 errors
-  maxBodyLength: 10 * 1024 * 1024, // Reduced to 10MB to avoid 413 errors
+  maxContentLength: 50 * 1024 * 1024, // 50MB
+  maxBodyLength: 50 * 1024 * 1024, // 50MB
   // Ensure credentials are included for CORS requests if needed
   withCredentials: false,
-  timeout: 60000 // 60 second timeout
+  // Add timeout configuration
+  timeout: 60000 // 60 seconds timeout
 });
 
 // Add request interceptor to dynamically get the token before each request
@@ -29,7 +30,6 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   error => {
-    console.error("Request error:", error);
     return Promise.reject(error);
   }
 );
@@ -37,9 +37,23 @@ axiosInstance.interceptors.request.use(
 // Add response interceptor to handle common errors
 axiosInstance.interceptors.response.use(
   response => response,
-  error => {
+  async error => {
+    const originalRequest = error.config;
+    
+    // Implement retry logic for network errors
+    if (error.message === 'Network Error' && !originalRequest._retry) {
+      console.log('Network error detected, retrying...');
+      originalRequest._retry = true;
+      
+      // Add a small delay before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Return a new request
+      return axiosInstance(originalRequest);
+    }
+    
     // Log the error for debugging
-    console.error("API Error:", error);
+    console.error("API Error:", error.message);
     
     if (error.response && error.response.status === 401) {
       // Handle unauthorized access
@@ -55,47 +69,5 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Helper function to handle large transaction payloads by chunking
-axiosInstance.postTransactionsInChunks = async (url, transactionData, chunkSize = 500) => {
-  const { transactions } = transactionData;
-  
-  if (!transactions || transactions.length === 0) {
-    return axiosInstance.post(url, transactionData);
-  }
-  
-  // If transactions array is small enough, send as one request
-  if (transactions.length <= chunkSize) {
-    return axiosInstance.post(url, transactionData);
-  }
-  
-  console.log(`Splitting ${transactions.length} transactions into chunks of ${chunkSize}`);
-  
-  // Split transactions into chunks
-  const chunks = [];
-  for (let i = 0; i < transactions.length; i += chunkSize) {
-    chunks.push(transactions.slice(i, i + chunkSize));
-  }
-  
-  // Process each chunk sequentially
-  let totalResults = { inserted: 0, modified: 0, total: 0 };
-  
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    console.log(`Processing chunk ${i+1}/${chunks.length}, size: ${chunk.length}`);
-    
-    try {
-      const response = await axiosInstance.post(url, { transactions: chunk });
-      totalResults.inserted += response.data.inserted || 0;
-      totalResults.modified += response.data.modified || 0;
-      totalResults.total += response.data.total || 0;
-    } catch (error) {
-      console.error(`Error processing chunk ${i+1}:`, error);
-      throw error;
-    }
-  }
-  
-  return { data: { message: 'All chunks processed successfully', ...totalResults } };
-};
 
 export default axiosInstance;

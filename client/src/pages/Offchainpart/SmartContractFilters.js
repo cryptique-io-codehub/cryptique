@@ -248,27 +248,22 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`${contract.blockchain} chain not fully implemented yet for polling`);
       }
       
+      // If we found new transactions, save them to API
       if (newTransactions.length > 0) {
-        // Use the chunking method to save transactions to API
         try {
-          const response = await axiosInstance.postTransactionsInChunks(
-            `/transactions/contract/${contract.id}`, 
-            { transactions: newTransactions }
-          );
+          await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+            transactions: newTransactions
+          });
+          console.log(`Saved ${newTransactions.length} new transactions to API`);
           
-          console.log(`Saved ${newTransactions.length} new transactions to API:`, response.data);
-          
-          // Update transactions in state
-          setTransactions(prev => ({
-            ...prev,
-            [contract.id]: [...(prev[contract.id] || []), ...newTransactions]
-          }));
+          // Refresh the transactions from API to get the complete updated list
+          await fetchTransactionsFromAPI(contract.id);
         } catch (error) {
           console.error("Error saving new transactions to API:", error);
         }
       }
     } catch (error) {
-      console.error(`Error polling for transactions for ${contract.address}:`, error);
+      console.error(`Error polling for new transactions:`, error);
     }
     
     setIsFetchingTransactions(false);
@@ -332,14 +327,23 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
       
       if (newTransactions.length > 0) {
-        // Use the chunking method to save transactions to API
+        // Save transactions to API in smaller batches to avoid payload size issues
         try {
-          const response = await axiosInstance.postTransactionsInChunks(
-            `/transactions/contract/${contract.id}`, 
-            { transactions: newTransactions }
-          );
+          const BATCH_SIZE = 500;
+          let totalSaved = 0;
           
-          console.log(`Saved ${newTransactions.length} initial transactions to API:`, response.data);
+          for (let i = 0; i < newTransactions.length; i += BATCH_SIZE) {
+            const batch = newTransactions.slice(i, i + BATCH_SIZE);
+            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, newTransactions.length)} of ${newTransactions.length})`);
+            
+            await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+              transactions: batch
+            });
+            
+            totalSaved += batch.length;
+          }
+          
+          console.log(`Saved ${totalSaved} initial transactions to API in batches`);
           
           // Load the transactions into state
           setTransactions(prev => ({
