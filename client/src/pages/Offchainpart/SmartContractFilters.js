@@ -360,7 +360,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
     
     // NOTE: Removed explicit fetchTransactionsForContract call here
-    // The useEffect hook will handle fetching transactions when selectedContract changes
+    // The useEffect hook will handle fetching transactions when selectedContract changes 
     
     setShowDropdown(false);
   };
