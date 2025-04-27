@@ -1261,7 +1261,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         {message.role === 'assistant' && (
           <div className="flex items-center mb-2">
             <div className="logo-container mr-2">
-              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-spin-slow" />
+              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
             </div>
             <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
           </div>
@@ -1366,6 +1366,33 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       box-shadow: 0 4px 20px rgba(29, 12, 70, 0.07);
     }
 
+    /* Logo 3D effect */
+    .logo-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 800px;
+    }
+
+    .logo-container img {
+      transform-style: preserve-3d;
+      backface-visibility: visible;
+    }
+
+    .logo-container::after {
+      content: '';
+      position: absolute;
+      top: -15%;
+      left: -15%;
+      right: -15%;
+      bottom: -15%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(202, 169, 104, 0.2) 0%, rgba(29, 12, 70, 0) 70%);
+      z-index: -1;
+      animation: pulse-glow 3s infinite alternate;
+    }
+
     .markdown-content h3 {
       font-family: 'Montserrat', sans-serif;
       margin-top: 2rem;
@@ -1457,27 +1484,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       width: 50%;
       height: 1px;
       background: linear-gradient(to right, transparent, rgba(202, 169, 104, 0.5));
-    }
-
-    /* Logo container glow effect */
-    .logo-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .logo-container::after {
-      content: '';
-      position: absolute;
-      top: -15%;
-      left: -15%;
-      right: -15%;
-      bottom: -15%;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(202, 169, 104, 0.2) 0%, rgba(29, 12, 70, 0) 70%);
-      z-index: -1;
-      animation: pulse-glow 3s infinite alternate;
     }
 
     @keyframes pulse-glow {
@@ -1653,7 +1659,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
                 <div className="logo-container mb-6">
-                  <img src="/logo192.png" alt="Cryptique" className="w-16 h-16 animate-spin-slow" />
+                  <img src="/logo192.png" alt="Cryptique" className="w-16 h-16 animate-cube-spin" />
                 </div>
                 <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
           <p className="text-gray-600 max-w-md mb-8">
@@ -1734,7 +1740,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="logo-container">
-                  <img src="/logo192.png" alt="Cryptique" className="w-7 h-7 animate-spin-slow" />
+                  <img src="/logo192.png" alt="Cryptique" className="w-7 h-7 animate-cube-spin" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
