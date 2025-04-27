@@ -249,13 +249,63 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`${contract.blockchain} chain not fully implemented yet for polling`);
       }
       
-      // If we found new transactions, save them to API
+      // If we found new transactions, sanitize and save them to API
       if (newTransactions.length > 0) {
         try {
-          await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-            transactions: newTransactions
-          });
-          console.log(`Saved ${newTransactions.length} new transactions to API`);
+          // Ensure transactions have proper format and required fields
+          const sanitizedTransactions = newTransactions.map(tx => ({
+            ...tx,
+            tx_hash: tx.tx_hash || '',
+            block_number: parseInt(tx.block_number) || 0,
+            block_time: tx.block_time || new Date().toISOString(),
+            chain: tx.chain || contract.blockchain,
+            contract_address: tx.contract_address || contract.address,
+            contractId: contract.id
+          })).filter(tx => 
+            // Filter out invalid transactions
+            tx.tx_hash && 
+            tx.tx_hash.length > 0 && 
+            tx.block_number && 
+            typeof tx.block_number === 'number'
+          );
+          
+          console.log(`After sanitization, sending ${sanitizedTransactions.length} valid transactions`);
+          
+          if (sanitizedTransactions.length === 0) {
+            console.log("No valid transactions after sanitization");
+            setIsFetchingTransactions(false);
+            return;
+          }
+          
+          // Use the same batch approach as in fetchInitialTransactions
+          const BATCH_SIZE = 100;
+          let totalSaved = 0;
+          let batchErrors = [];
+          
+          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
+            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
+            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
+            
+            try {
+              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+                transactions: batch
+              });
+              
+              console.log('Batch save response:', response.data);
+              totalSaved += response.data.total || 0;
+            } catch (batchError) {
+              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+              batchErrors.push(batchError.message || 'Unknown batch error');
+              // Small delay before next batch to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+          
+          if (batchErrors.length > 0) {
+            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
+          }
+          
+          console.log(`Saved ${totalSaved} new transactions to API in batches`);
           
           // Refresh the transactions from API to get the complete updated list
           await fetchTransactionsFromAPI(contract.id);
@@ -344,20 +394,53 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
       
       if (newTransactions.length > 0) {
+        // Ensure transactions have proper format and required fields
+        const sanitizedTransactions = newTransactions.map(tx => ({
+          ...tx,
+          tx_hash: tx.tx_hash || '',
+          block_number: parseInt(tx.block_number) || 0,
+          block_time: tx.block_time || new Date().toISOString(),
+          chain: tx.chain || contract.blockchain,
+          contract_address: tx.contract_address || contract.address,
+          contractId: contract.id
+        })).filter(tx => 
+          // Filter out invalid transactions
+          tx.tx_hash && 
+          tx.tx_hash.length > 0 && 
+          tx.block_number && 
+          typeof tx.block_number === 'number'
+        );
+        
+        console.log(`After sanitization, sending ${sanitizedTransactions.length} valid transactions`);
+        
         // Save transactions to API in smaller batches to avoid payload size issues
         try {
-          const BATCH_SIZE = 500;
+          // Smaller batch size for better reliability
+          const BATCH_SIZE = 100;
           let totalSaved = 0;
+          let batchErrors = [];
           
-          for (let i = 0; i < newTransactions.length; i += BATCH_SIZE) {
-            const batch = newTransactions.slice(i, i + BATCH_SIZE);
-            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, newTransactions.length)} of ${newTransactions.length})`);
+          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
+            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
+            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
             
-            await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-              transactions: batch
-            });
-            
-            totalSaved += batch.length;
+            try {
+              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+                transactions: batch
+              });
+              
+              console.log('Batch save response:', response.data);
+              totalSaved += response.data.total || 0;
+            } catch (batchError) {
+              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+              batchErrors.push(batchError.message || 'Unknown batch error');
+              // Small delay before next batch to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+          
+          if (batchErrors.length > 0) {
+            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
           }
           
           console.log(`Saved ${totalSaved} initial transactions to API in batches`);
@@ -365,7 +448,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           // Load the transactions into state
           setTransactions(prev => ({
             ...prev,
-            [contract.id]: newTransactions
+            [contract.id]: sanitizedTransactions
           }));
           
           // After saving all transactions, fetch them from MongoDB to verify
@@ -381,8 +464,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log('===============================================');
           
           // Compare transaction counts
-          console.log(`Transaction count comparison - Explorer API: ${newTransactions.length}, MongoDB: ${savedTransactions.length}`);
-          if (newTransactions.length !== savedTransactions.length) {
+          console.log(`Transaction count comparison - Explorer API: ${sanitizedTransactions.length}, MongoDB: ${savedTransactions.length}`);
+          if (sanitizedTransactions.length !== savedTransactions.length) {
             console.warn(`Transaction count mismatch! Some transactions may not have been saved correctly.`);
           } else {
             console.log('✅ All transactions successfully saved to MongoDB!');

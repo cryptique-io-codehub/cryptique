@@ -8,15 +8,11 @@ exports.getContractTransactions = async (req, res) => {
     const { contractId } = req.params;
     const { limit = 1000, before, after } = req.query;
     
-    console.log(`[TransactionController] Fetching transactions for contract ${contractId}`);
-    
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
     if (!contract) {
-      console.log(`[TransactionController] Error: Contract ${contractId} not found`);
       return res.status(404).json({ message: "Contract not found" });
     }
-    console.log(`[TransactionController] Found contract: ${contract._id}`);
     
     // Verify user has access to the team
     const team = await Team.findOne({ 
@@ -28,19 +24,11 @@ exports.getContractTransactions = async (req, res) => {
     });
     
     if (!team) {
-      console.log(`[TransactionController] Error: User ${req.userId} not authorized for team ${contract.team}`);
       return res.status(403).json({ message: "Not authorized to access this contract's transactions" });
     }
-    console.log(`[TransactionController] User authorized for team ${team._id}`);
     
     // Build query
-    const query = { 
-      $or: [
-        { contractId },
-        { contract: contract._id }
-      ]
-    };
-    console.log(`[TransactionController] Query:`, JSON.stringify(query));
+    const query = { contractId };
     
     // Add time filtering if provided
     if (before) {
@@ -51,13 +39,10 @@ exports.getContractTransactions = async (req, res) => {
     }
     
     // Fetch transactions with pagination
-    console.log(`[TransactionController] Executing find with limit ${limit}`);
     const transactions = await Transaction.find(query)
       .sort({ block_number: -1 })
       .limit(parseInt(limit))
       .lean();
-    
-    console.log(`[TransactionController] Found ${transactions.length} transactions`);
     
     // Get the highest block number for future pagination
     const latestBlockNumber = transactions.length > 0 
@@ -65,8 +50,7 @@ exports.getContractTransactions = async (req, res) => {
       : 0;
     
     // Get total count for the contract
-    const total = await Transaction.countDocuments(query);
-    console.log(`[TransactionController] Total documents matching query: ${total}`);
+    const total = await Transaction.countDocuments({ contractId });
     
     res.status(200).json({ 
       transactions,
@@ -78,7 +62,7 @@ exports.getContractTransactions = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("[TransactionController] Error fetching transactions:", error);
+    console.error("Error fetching transactions:", error);
     res.status(500).json({ message: "Error fetching transactions", error: error.message });
   }
 };
@@ -89,26 +73,19 @@ exports.saveTransactions = async (req, res) => {
     const { contractId } = req.params;
     const { transactions } = req.body;
     
-    console.log(`[TransactionController] Received request to save transactions for contract ${contractId}`);
-    console.log(`[TransactionController] Number of transactions received: ${transactions.length}`);
+    // Log incoming request data for debugging
+    console.log(`Attempting to save transactions for contract ${contractId}`);
+    console.log(`Received ${transactions ? transactions.length : 0} transactions`);
     
     if (!Array.isArray(transactions) || transactions.length === 0) {
-      console.log('[TransactionController] Error: No transactions provided');
       return res.status(400).json({ message: "No transactions provided" });
     }
     
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
     if (!contract) {
-      console.log(`[TransactionController] Error: Contract ${contractId} not found`);
       return res.status(404).json({ message: "Contract not found" });
     }
-    console.log(`[TransactionController] Found contract:`, {
-      contractId: contract.contractId,
-      _id: contract._id,
-      address: contract.address,
-      blockchain: contract.blockchain
-    });
     
     // Verify user has access to the team
     const team = await Team.findOne({ 
@@ -120,16 +97,15 @@ exports.saveTransactions = async (req, res) => {
     });
     
     if (!team) {
-      console.log(`[TransactionController] Error: User ${req.userId} not authorized for team ${contract.team}`);
       return res.status(403).json({ message: "Not authorized to add transactions to this contract" });
     }
-    console.log(`[TransactionController] User authorized for team ${team._id}`);
     
     // Process transactions in smaller batches to avoid payload size issues
-    const BATCH_SIZE = 500; // Process 500 transactions at a time
+    const BATCH_SIZE = 100; // Reduced from 500 to 100 for better reliability
     let totalInserted = 0;
     let totalModified = 0;
     let highestBlockNumber = 0;
+    let errors = [];
     
     // Calculate the highest block number across all transactions first
     transactions.forEach(tx => {
@@ -137,91 +113,95 @@ exports.saveTransactions = async (req, res) => {
         highestBlockNumber = tx.block_number;
       }
     });
-    console.log(`[TransactionController] Highest block number in transactions: ${highestBlockNumber}`);
     
     // Process transactions in batches
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
-      const batch = transactions.slice(i, i + BATCH_SIZE);
-      console.log(`[TransactionController] Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(transactions.length/BATCH_SIZE)}`);
-      
-      // Create operations for this batch
-      const operations = batch.map(tx => {
-        const operation = {
+      try {
+        const batch = transactions.slice(i, i + BATCH_SIZE);
+        console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(transactions.length/BATCH_SIZE)}: ${batch.length} transactions`);
+        
+        // Validate each transaction and ensure required fields
+        const validTransactions = batch.filter(tx => {
+          // Ensure tx_hash exists and is a string
+          return tx && typeof tx.tx_hash === 'string' && tx.tx_hash.length > 0;
+        });
+        
+        if (validTransactions.length === 0) {
+          console.log("No valid transactions in this batch, skipping");
+          continue;
+        }
+        
+        // Create operations for this batch
+        const operations = validTransactions.map(tx => ({
           updateOne: {
             filter: { tx_hash: tx.tx_hash },
             update: { 
               $setOnInsert: {
                 ...tx,
                 contract: contract._id,
-                contractId,
+                contractId: contractId, // Ensure contractId is set correctly
                 createdAt: new Date()
               }
             },
             upsert: true
           }
-        };
-        console.log(`[TransactionController] Operation for tx ${tx.tx_hash}:`, {
-          contractId,
-          contract: contract._id,
-          block_number: tx.block_number
-        });
-        return operation;
-      });
-      
-      console.log(`[TransactionController] Executing bulkWrite for batch ${Math.floor(i/BATCH_SIZE) + 1}`);
-      try {
-        const batchResult = await Transaction.bulkWrite(operations);
-        console.log(`[TransactionController] Batch ${Math.floor(i/BATCH_SIZE) + 1} result:`, {
-          inserted: batchResult.upsertedCount,
-          modified: batchResult.modifiedCount,
-          matched: batchResult.matchedCount,
-          writeErrors: batchResult.writeErrors || [],
-          writeConcernErrors: batchResult.writeConcernErrors || []
-        });
+        }));
+        
+        // Log a sample operation for debugging
+        if (operations.length > 0) {
+          console.log("Sample operation:", JSON.stringify(operations[0]).slice(0, 200) + "...");
+        }
+        
+        const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
+        console.log(`Batch result: upserted=${batchResult.upsertedCount}, modified=${batchResult.modifiedCount}`);
         
         totalInserted += batchResult.upsertedCount;
         totalModified += batchResult.modifiedCount;
-      } catch (error) {
-        console.error(`[TransactionController] Error in batch ${Math.floor(i/BATCH_SIZE) + 1}:`, error);
-        throw error;
+      } catch (batchError) {
+        console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+        errors.push(batchError.message);
+        // Continue with next batch despite error
       }
     }
     
     // Update the contract with the latest block number
     if (highestBlockNumber > 0) {
-      console.log(`[TransactionController] Updating contract's last block number to ${highestBlockNumber}`);
-      const updateResult = await SmartContract.updateOne(
-        { contractId, lastBlock: { $lt: highestBlockNumber } },
-        { $set: { lastBlock: highestBlockNumber } }
-      );
-      console.log(`[TransactionController] Contract update result:`, updateResult);
+      try {
+        await SmartContract.updateOne(
+          { contractId, lastBlock: { $lt: highestBlockNumber } },
+          { $set: { lastBlock: highestBlockNumber, lastUpdated: new Date() } }
+        );
+        console.log(`Updated contract ${contractId} with latest block number: ${highestBlockNumber}`);
+      } catch (updateError) {
+        console.error("Error updating contract with latest block:", updateError);
+        errors.push(updateError.message);
+      }
     }
     
-    // Verify the transactions were saved
-    const savedCount = await Transaction.countDocuments({ 
-      $or: [
-        { contractId },
-        { contract: contract._id }
-      ]
-    });
-    console.log(`[TransactionController] Verification - Total transactions in database: ${savedCount}`);
-    
-    console.log(`[TransactionController] Final results:`, {
-      totalInserted,
-      totalModified,
-      total: totalInserted + totalModified,
-      verifiedCount: savedCount
-    });
-    
-    res.status(200).json({ 
-      message: "Transactions saved successfully",
-      inserted: totalInserted,
-      modified: totalModified,
-      total: totalInserted + totalModified,
-      verifiedCount: savedCount
-    });
+    // Return appropriate response
+    if (totalInserted > 0 || totalModified > 0) {
+      return res.status(200).json({ 
+        message: "Transactions saved successfully",
+        inserted: totalInserted,
+        modified: totalModified,
+        total: totalInserted + totalModified,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } else if (errors.length > 0) {
+      return res.status(500).json({ 
+        message: "Failed to save transactions",
+        errors
+      });
+    } else {
+      return res.status(200).json({
+        message: "No new transactions were added",
+        inserted: 0,
+        modified: 0,
+        total: 0
+      });
+    }
   } catch (error) {
-    console.error("[TransactionController] Error saving transactions:", error);
+    console.error("Error saving transactions:", error);
     res.status(500).json({ message: "Error saving transactions", error: error.message });
   }
 };
