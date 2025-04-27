@@ -3,6 +3,7 @@ import axios from 'axios';
 import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
 import { fetchBaseTransactions } from '../../utils/chains/baseChain';
+import { fetchEthereumTransactions } from '../../utils/chains/ethereumChain';
 import { isValidAddress } from '../../utils/chainUtils';
 import axiosInstance from '../../axiosInstance';
 
@@ -298,6 +299,25 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Ethereum':
+          console.log('Fetching new transactions from Etherscan');
+          const ethResult = await fetchEthereumTransactions(contract.address, {
+            limit: 1000,
+            startBlock: startBlock
+          });
+          
+          if (ethResult.transactions?.length > 0) {
+            console.log(`Retrieved ${ethResult.transactions.length} new transactions from Etherscan`);
+            // Update token symbol in transactions
+            newTransactions = ethResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ERC20', contract.tokenSymbol || 'ERC20')
+            }));
+          } else {
+            console.log('No new transactions found or error:', ethResult.metadata?.message);
+          }
+          break;
+          
         default:
           console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
       }
@@ -466,6 +486,32 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Ethereum':
+          console.log('Fetching up to 10,000 transactions from Etherscan');
+          const ethResult = await fetchEthereumTransactions(contract.address, {
+            limit: 10000
+          });
+          
+          if (ethResult.transactions?.length > 0) {
+            console.log(`Retrieved ${ethResult.transactions.length} transactions from Etherscan`);
+            // Update token symbol in transactions
+            newTransactions = ethResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ERC20', contract.tokenSymbol || 'ERC20')
+            }));
+            
+            // Log transactions from explorer API
+            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
+            console.log(`Total transactions: ${newTransactions.length}`);
+            console.log('First 5 transactions:', newTransactions.slice(0, 5));
+            console.log('Last 5 transactions:', newTransactions.slice(-5));
+            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
+            console.log('==================================================');
+          } else {
+            console.log('No transactions found or there was an error:', ethResult.metadata?.message);
+          }
+          break;
+          
         default:
           console.log(`${contract.blockchain} chain not fully implemented yet`);
       }
