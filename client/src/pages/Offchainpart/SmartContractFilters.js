@@ -193,6 +193,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
+      // Get current transaction count in database
+      const initialTransactions = await fetchTransactionsFromAPI(contract.id);
+      const initialCount = initialTransactions.length;
+      
+      console.log(`===== TRANSACTION COUNT BEFORE UPDATE =====`);
+      console.log(`Contract ${contract.address} has ${initialCount} transactions in database`);
+      console.log(`=========================================`);
+      
       // Get the latest block number from our database
       const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
       const startBlock = latestBlockResponse.data.latestBlockNumber;
@@ -255,6 +263,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
       }
       
+      let totalSaved = 0;
+      
       // If we found new transactions, sanitize and save them to API
       if (newTransactions.length > 0) {
         try {
@@ -282,7 +292,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           } else {
             // Save sanitized transactions in batches
             const BATCH_SIZE = 100;
-            let totalSaved = 0;
             let batchErrors = [];
             
             for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
@@ -317,6 +326,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Always fetch the latest transactions from MongoDB to display
       const freshTransactions = await fetchTransactionsFromAPI(contract.id);
+      const finalCount = freshTransactions.length;
+      
+      // Print transaction count information
+      console.log('======== TRANSACTION COUNT SUMMARY ========');
+      console.log(`Before update: ${initialCount} transactions`);
+      console.log(`New transactions saved: ${totalSaved}`);
+      console.log(`After update: ${finalCount} transactions`);
+      console.log(`Net increase: ${finalCount - initialCount} transactions`);
+      console.log('==========================================');
       
       // Print the latest 100 transactions to the console
       if (freshTransactions.length > 0) {
@@ -344,6 +362,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     console.log(`Fetching initial transactions for new contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
+      // Log initial state (should be 0 for new contracts)
+      console.log(`===== INITIAL TRANSACTION COUNT =====`);
+      console.log(`New contract ${contract.address} - expected 0 transactions in database`);
+      console.log(`====================================`);
+      
       // Fetch transactions from blockchain
       let newTransactions = [];
       
@@ -406,6 +429,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`${contract.blockchain} chain not fully implemented yet`);
       }
       
+      let totalSaved = 0;
+      
       if (newTransactions.length > 0) {
         // Ensure transactions have proper format and required fields
         const sanitizedTransactions = newTransactions.map(tx => ({
@@ -430,7 +455,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         try {
           // Smaller batch size for better reliability
           const BATCH_SIZE = 100;
-          let totalSaved = 0;
           let batchErrors = [];
           
           for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
@@ -467,6 +491,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           // After saving all transactions, fetch them from MongoDB to verify
           console.log('Fetching saved transactions from MongoDB to verify...');
           const savedTransactions = await fetchTransactionsFromAPI(contract.id);
+          
+          // Print transaction count summary
+          console.log('======== INITIAL TRANSACTION COUNT SUMMARY ========');
+          console.log(`Retrieved from blockchain: ${newTransactions.length} transactions`);
+          console.log(`After sanitization: ${sanitizedTransactions.length} valid transactions`);
+          console.log(`Successfully saved to database: ${totalSaved} transactions`);
+          console.log(`Final transaction count in database: ${savedTransactions.length}`);
+          console.log('=================================================');
           
           // Log transactions from MongoDB
           console.log('========== TRANSACTIONS FROM MONGODB ==========');
