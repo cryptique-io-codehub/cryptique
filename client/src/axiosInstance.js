@@ -11,8 +11,11 @@ const axiosInstance = axios.create({
     // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
+  maxContentLength: 10 * 1024 * 1024, // Reduced to 10MB to avoid 413 errors
+  maxBodyLength: 10 * 1024 * 1024, // Reduced to 10MB to avoid 413 errors
   // Ensure credentials are included for CORS requests if needed
-  withCredentials: false
+  withCredentials: false,
+  timeout: 60000 // 60 second timeout
 });
 
 // Add request interceptor to dynamically get the token before each request
@@ -26,6 +29,7 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   error => {
+    console.error("Request error:", error);
     return Promise.reject(error);
   }
 );
@@ -35,7 +39,7 @@ axiosInstance.interceptors.response.use(
   response => response,
   error => {
     // Log the error for debugging
-    console.error("API Error:", error.message);
+    console.error("API Error:", error);
     
     if (error.response && error.response.status === 401) {
       // Handle unauthorized access
@@ -51,5 +55,47 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Helper function to handle large transaction payloads by chunking
+axiosInstance.postTransactionsInChunks = async (url, transactionData, chunkSize = 500) => {
+  const { transactions } = transactionData;
+  
+  if (!transactions || transactions.length === 0) {
+    return axiosInstance.post(url, transactionData);
+  }
+  
+  // If transactions array is small enough, send as one request
+  if (transactions.length <= chunkSize) {
+    return axiosInstance.post(url, transactionData);
+  }
+  
+  console.log(`Splitting ${transactions.length} transactions into chunks of ${chunkSize}`);
+  
+  // Split transactions into chunks
+  const chunks = [];
+  for (let i = 0; i < transactions.length; i += chunkSize) {
+    chunks.push(transactions.slice(i, i + chunkSize));
+  }
+  
+  // Process each chunk sequentially
+  let totalResults = { inserted: 0, modified: 0, total: 0 };
+  
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    console.log(`Processing chunk ${i+1}/${chunks.length}, size: ${chunk.length}`);
+    
+    try {
+      const response = await axiosInstance.post(url, { transactions: chunk });
+      totalResults.inserted += response.data.inserted || 0;
+      totalResults.modified += response.data.modified || 0;
+      totalResults.total += response.data.total || 0;
+    } catch (error) {
+      console.error(`Error processing chunk ${i+1}:`, error);
+      throw error;
+    }
+  }
+  
+  return { data: { message: 'All chunks processed successfully', ...totalResults } };
+};
 
 export default axiosInstance;

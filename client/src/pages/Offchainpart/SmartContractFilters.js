@@ -248,22 +248,27 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`${contract.blockchain} chain not fully implemented yet for polling`);
       }
       
-      // If we found new transactions, save them to API
       if (newTransactions.length > 0) {
+        // Use the chunking method to save transactions to API
         try {
-          await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-            transactions: newTransactions
-          });
-          console.log(`Saved ${newTransactions.length} new transactions to API`);
+          const response = await axiosInstance.postTransactionsInChunks(
+            `/transactions/contract/${contract.id}`, 
+            { transactions: newTransactions }
+          );
           
-          // Refresh the transactions from API to get the complete updated list
-          await fetchTransactionsFromAPI(contract.id);
+          console.log(`Saved ${newTransactions.length} new transactions to API:`, response.data);
+          
+          // Update transactions in state
+          setTransactions(prev => ({
+            ...prev,
+            [contract.id]: [...(prev[contract.id] || []), ...newTransactions]
+          }));
         } catch (error) {
           console.error("Error saving new transactions to API:", error);
         }
       }
     } catch (error) {
-      console.error(`Error polling for new transactions:`, error);
+      console.error(`Error polling for transactions for ${contract.address}:`, error);
     }
     
     setIsFetchingTransactions(false);
@@ -327,12 +332,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
       
       if (newTransactions.length > 0) {
-        // Save transactions to API
+        // Use the chunking method to save transactions to API
         try {
-          await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-            transactions: newTransactions
-          });
-          console.log(`Saved ${newTransactions.length} initial transactions to API`);
+          const response = await axiosInstance.postTransactionsInChunks(
+            `/transactions/contract/${contract.id}`, 
+            { transactions: newTransactions }
+          );
+          
+          console.log(`Saved ${newTransactions.length} initial transactions to API:`, response.data);
           
           // Load the transactions into state
           setTransactions(prev => ({

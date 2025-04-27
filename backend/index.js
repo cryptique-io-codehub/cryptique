@@ -22,9 +22,9 @@ connect(process.env.MONGODB_URI).then(() => {
 
 // Define CORS options for different routes
 const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io"],
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io", "https://www.cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400
 };
@@ -56,24 +56,48 @@ app.use((req, res, next) => {
   res.header('X-Frame-Options', 'DENY');
   res.header('X-XSS-Protection', '1; mode=block');
   
+  // Add explicit CORS handling for all routes
+  const origin = req.headers.origin;
+  
   if (req.path.startsWith('/api/sdk/')) {
-    cors(sdkCorsOptions)(req, res, next);
+    // SDK routes - allow any origin
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', sdkCorsOptions.methods.join(', '));
+    res.header('Access-Control-Allow-Headers', sdkCorsOptions.allowedHeaders.join(', '));
+    res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
   } else {
-    // For all other routes, including analytics
-    const origin = req.headers.origin;
+    // For all other routes, including analytics and transactions
     if (mainCorsOptions.origin.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Methods', mainCorsOptions.methods.join(', '));
       res.header('Access-Control-Allow-Headers', mainCorsOptions.allowedHeaders.join(', '));
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Max-Age', mainCorsOptions.maxAge.toString());
+    } else if (origin) {
+      // If origin is not in allowed list but is provided, log it for debugging
+      console.log(`Rejected CORS request from origin: ${origin}`);
     }
-    next();
   }
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  
+  next();
 });
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Increase payload size limit with explicit size limits
+app.use(bodyParser.json({ 
+  limit: '10mb',  // Reduced to 10MB to match Vercel limits
+  parameterLimit: 100000
+}));
+app.use(bodyParser.urlencoded({ 
+  limit: '10mb',  // Reduced to 10MB to match Vercel limits
+  extended: true, 
+  parameterLimit: 100000
+}));
 
 // Debug endpoint to check environment variables
 app.get("/debug/env", (req, res) => {

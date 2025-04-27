@@ -73,8 +73,31 @@ exports.saveTransactions = async (req, res) => {
     const { contractId } = req.params;
     const { transactions } = req.body;
     
-    if (!Array.isArray(transactions) || transactions.length === 0) {
-      return res.status(400).json({ message: "No transactions provided" });
+    if (!Array.isArray(transactions)) {
+      return res.status(400).json({ message: "Invalid transactions format. Expected an array." });
+    }
+    
+    if (transactions.length === 0) {
+      return res.status(200).json({ 
+        message: "No transactions provided",
+        inserted: 0,
+        modified: 0,
+        total: 0
+      });
+    }
+    
+    // Check if the payload is too large
+    const payloadSize = JSON.stringify(req.body).length;
+    const maxSize = 9 * 1024 * 1024; // 9MB (leave some buffer)
+    
+    if (payloadSize > maxSize) {
+      return res.status(413).json({ 
+        message: "Payload too large. Please split into smaller batches.",
+        error: "PAYLOAD_TOO_LARGE",
+        payloadSize,
+        maxSize,
+        suggestedBatchSize: Math.floor(transactions.length * maxSize / payloadSize / 2) // Recommend half of calculated max
+      });
     }
     
     // Find the contract
@@ -96,23 +119,37 @@ exports.saveTransactions = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to add transactions to this contract" });
     }
     
-    // Process transactions - use bulkWrite for efficiency
-    const operations = transactions.map(tx => ({
-      updateOne: {
-        filter: { tx_hash: tx.tx_hash },
-        update: { 
-          $setOnInsert: {
-            ...tx,
-            contract: contract._id,
-            contractId,
-            createdAt: new Date()
-          }
-        },
-        upsert: true
-      }
-    }));
+    // Log the transaction count
+    console.log(`Processing ${transactions.length} transactions for contract ${contractId}`);
     
-    const result = await Transaction.bulkWrite(operations);
+    // Process transactions - use bulkWrite for efficiency
+    // Use smaller batches to prevent timeouts on large datasets
+    const BATCH_SIZE = 1000;
+    let result = { upsertedCount: 0, modifiedCount: 0 };
+    
+    // Process in batches to avoid memory issues
+    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
+      const batch = transactions.slice(i, i + BATCH_SIZE);
+      
+      const operations = batch.map(tx => ({
+        updateOne: {
+          filter: { tx_hash: tx.tx_hash },
+          update: { 
+            $setOnInsert: {
+              ...tx,
+              contract: contract._id,
+              contractId,
+              createdAt: new Date()
+            }
+          },
+          upsert: true
+        }
+      }));
+      
+      const batchResult = await Transaction.bulkWrite(operations);
+      result.upsertedCount += batchResult.upsertedCount || 0;
+      result.modifiedCount += batchResult.modifiedCount || 0;
+    }
     
     // Update the contract with the latest block number
     const highestBlockNumber = Math.max(...transactions.map(tx => tx.block_number || 0));
@@ -121,6 +158,8 @@ exports.saveTransactions = async (req, res) => {
         { contractId, lastBlock: { $lt: highestBlockNumber } },
         { $set: { lastBlock: highestBlockNumber } }
       );
+      
+      console.log(`Updated contract ${contractId} with lastBlock ${highestBlockNumber}`);
     }
     
     res.status(200).json({ 
