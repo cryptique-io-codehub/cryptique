@@ -4,6 +4,7 @@ import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
 import { fetchBaseTransactions } from '../../utils/chains/baseChain';
 import { fetchEthereumTransactions } from '../../utils/chains/ethereumChain';
+import { fetchPolygonTransactions } from '../../utils/chains/polygonChain';
 import { isValidAddress } from '../../utils/chainUtils';
 import axiosInstance from '../../axiosInstance';
 
@@ -318,6 +319,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }
           break;
           
+        case 'Polygon':
+          console.log('Fetching new transactions from Polygonscan');
+          const polygonResult = await fetchPolygonTransactions(contract.address, {
+            limit: 1000,
+            startBlock: startBlock
+          });
+          
+          if (polygonResult.transactions?.length > 0) {
+            console.log(`Retrieved ${polygonResult.transactions.length} new transactions from Polygonscan`);
+            // Update token symbol in transactions
+            newTransactions = polygonResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('MATIC', contract.tokenSymbol || 'MATIC')
+            }));
+          } else {
+            console.log('No new transactions found or error:', polygonResult.metadata?.message);
+          }
+          break;
+          
         default:
           console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
       }
@@ -509,6 +530,33 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             console.log('==================================================');
           } else {
             console.log('No transactions found or there was an error:', ethResult.metadata?.message);
+          }
+          break;
+          
+        case 'Polygon':
+          console.log('Fetching up to 10,000 transactions from Polygonscan');
+          const polygonResult = await fetchPolygonTransactions(contract.address, {
+            limit: 10000
+          });
+          
+          if (polygonResult.transactions?.length > 0) {
+            console.log(`Retrieved ${polygonResult.transactions.length} transactions from Polygonscan`);
+            // Update token symbol in transactions
+            newTransactions = polygonResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('MATIC', contract.tokenSymbol || 'MATIC')
+            }));
+            
+            // Log transactions from explorer API
+            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
+            console.log(`Total transactions: ${newTransactions.length}`);
+            console.log('First 5 transactions:', newTransactions.slice(0, 5));
+            console.log('Last 5 transactions:', newTransactions.slice(-5));
+            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
+            console.log('==================================================');
+          } else {
+            console.log('No transactions found or there was an error:', polygonResult.metadata?.message);
           }
           break;
           
