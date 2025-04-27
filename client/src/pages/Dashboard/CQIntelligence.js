@@ -105,13 +105,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     setIsContractLoading(true);
     try {
-      const response = await axiosInstance.get(`/contracts/list/${siteId}`);
-      if (response.data && response.data.contracts) {
-        setContractsArray(response.data.contracts);
-        // Reset selected contract when website changes
-        setSelectedContract('');
-        setContractData({});
+      // Using the /sdk/contracts endpoint instead of /contracts/list
+      const response = await axiosInstance.get(`/sdk/contracts/${siteId}`);
+      console.log("Smart contracts response:", response.data);
+      
+      // Check for different possible response structures
+      let contracts = [];
+      if (response.data?.contracts) {
+        contracts = response.data.contracts;
+      } else if (response.data?.data?.contracts) {
+        contracts = response.data.data.contracts;
+      } else if (Array.isArray(response.data)) {
+        contracts = response.data;
       }
+      
+      setContractsArray(contracts);
+      
+      if (contracts.length > 0) {
+        console.log(`Found ${contracts.length} smart contracts`);
+      } else {
+        console.log("No smart contracts found in the response");
+      }
+      
+      // Reset selected contract when website changes
+      setSelectedContract('');
+      setContractData({});
     } catch (error) {
       console.error("Error fetching smart contracts:", error);
       setContractsArray([]);
@@ -129,14 +147,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     setIsContractLoading(true);
     try {
-      const response = await axiosInstance.get(`/transactions/${contractId}`);
-      if (response.data && response.data.transactions) {
-        setContractData({
-          contractId,
-          transactions: response.data.transactions,
-          stats: response.data.stats || {}
-        });
+      // Using the /sdk/transactions endpoint instead
+      const response = await axiosInstance.get(`/sdk/transactions/${contractId}`);
+      console.log("Contract transaction data:", response.data);
+      
+      let transactions = [];
+      let stats = {};
+      
+      // Check for different possible response structures
+      if (response.data?.transactions) {
+        transactions = response.data.transactions;
+        stats = response.data.stats || {};
+      } else if (response.data?.data?.transactions) {
+        transactions = response.data.data.transactions;
+        stats = response.data.data.stats || {};
+      } else if (Array.isArray(response.data)) {
+        transactions = response.data;
       }
+      
+      setContractData({
+        contractId,
+        transactions,
+        stats
+      });
+      
+      console.log(`Loaded ${transactions.length} transactions for contract ${contractId}`);
     } catch (error) {
       console.error("Error fetching contract data:", error);
       setError("Failed to load transaction data for this contract.");
@@ -1080,9 +1115,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     // Add smart contract data if available
     if (selectedContract && contractData && Object.keys(contractData).length > 0) {
+      // Find contract details from the array
+      const contractDetails = contractsArray.find(c => 
+        (c.contractId === selectedContract) || 
+        (c.id === selectedContract) || 
+        (c.address === selectedContract)
+      );
+      
+      const contractName = 
+        contractDetails?.name || 
+        contractDetails?.contractName || 
+        (contractDetails?.address && `${contractDetails.address.substring(0, 8)}...`) || 
+        selectedContract;
+        
       fullAnalytics.contractData = {
         contractId: selectedContract,
-        contractName: contractsArray.find(c => c.contractId === selectedContract)?.name || selectedContract,
+        contractName,
         transactions: contractData.transactions || [],
         stats: contractData.stats || {}
       };
@@ -1138,7 +1186,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     // Update the system context to include expert knowledge and contract data info if available
     const contractContext = selectedContract ? 
       `
-      Selected Smart Contract: ${contractsArray.find(c => c.contractId === selectedContract)?.name || selectedContract}
+      Selected Smart Contract: ${
+        contractsArray.find(c => 
+          (c.contractId === selectedContract) || 
+          (c.id === selectedContract) || 
+          (c.address === selectedContract)
+        )?.name || 
+        contractsArray.find(c => 
+          (c.contractId === selectedContract) || 
+          (c.id === selectedContract) || 
+          (c.address === selectedContract)
+        )?.contractName || 
+        selectedContract
+      }
       You have access to transaction data for this smart contract. User might ask about:
       - Transaction volumes and patterns
       - Contract interaction frequency
@@ -1962,11 +2022,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                       className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       <option value="">Select a smart contract</option>
-                      {contractsArray.map(contract => (
-                        <option key={contract.contractId} value={contract.contractId}>
-                          {contract.name || contract.address?.substring(0, 8) + '...' || contract.contractId}
-                        </option>
-                      ))}
+                      {contractsArray.map(contract => {
+                        // Extract contract ID - could be in different properties
+                        const id = contract.contractId || contract.id || contract.address;
+                        // Extract contract name or label - could be in different properties
+                        const displayName = 
+                          contract.name || 
+                          contract.contractName || 
+                          (contract.address && `${contract.address.substring(0, 8)}...`) || 
+                          id;
+                        
+                        return (
+                          <option key={id} value={id}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
                     </select>
                     {isContractLoading && (
                       <div className="text-xs text-[#caa968] mt-1 flex items-center">
@@ -2021,8 +2092,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 <div className="w-2 h-2 bg-[#caa968] rounded-full mr-2"></div>
                 <span>Smart contract data is being analyzed: </span>
                 <span className="font-semibold ml-1">
-                  {contractsArray.find(c => c.contractId === selectedContract)?.name || 
-                   contractsArray.find(c => c.contractId === selectedContract)?.address?.substring(0, 8) + '...' || 
+                  {contractsArray.find(c => 
+                    (c.contractId === selectedContract) || 
+                    (c.id === selectedContract) || 
+                    (c.address === selectedContract)
+                  )?.name || 
+                   contractsArray.find(c => 
+                    (c.contractId === selectedContract) || 
+                    (c.id === selectedContract) || 
+                    (c.address === selectedContract)
+                   )?.contractName ||
+                   contractsArray.find(c => 
+                    (c.contractId === selectedContract) || 
+                    (c.id === selectedContract) || 
+                    (c.address === selectedContract)
+                   )?.address?.substring(0, 8) + '...' || 
                    selectedContract}
                 </span>
               </div>
