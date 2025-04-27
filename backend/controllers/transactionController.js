@@ -103,7 +103,12 @@ exports.saveTransactions = async (req, res) => {
       console.log(`[TransactionController] Error: Contract ${contractId} not found`);
       return res.status(404).json({ message: "Contract not found" });
     }
-    console.log(`[TransactionController] Found contract: ${contract._id}`);
+    console.log(`[TransactionController] Found contract:`, {
+      contractId: contract.contractId,
+      _id: contract._id,
+      address: contract.address,
+      blockchain: contract.blockchain
+    });
     
     // Verify user has access to the team
     const team = await Team.findOne({ 
@@ -140,31 +145,46 @@ exports.saveTransactions = async (req, res) => {
       console.log(`[TransactionController] Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(transactions.length/BATCH_SIZE)}`);
       
       // Create operations for this batch
-      const operations = batch.map(tx => ({
-        updateOne: {
-          filter: { tx_hash: tx.tx_hash },
-          update: { 
-            $setOnInsert: {
-              ...tx,
-              contract: contract._id,
-              contractId,
-              createdAt: new Date()
-            }
-          },
-          upsert: true
-        }
-      }));
-      
-      console.log(`[TransactionController] Executing bulkWrite for batch ${Math.floor(i/BATCH_SIZE) + 1}`);
-      const batchResult = await Transaction.bulkWrite(operations);
-      console.log(`[TransactionController] Batch ${Math.floor(i/BATCH_SIZE) + 1} result:`, {
-        inserted: batchResult.upsertedCount,
-        modified: batchResult.modifiedCount,
-        matched: batchResult.matchedCount
+      const operations = batch.map(tx => {
+        const operation = {
+          updateOne: {
+            filter: { tx_hash: tx.tx_hash },
+            update: { 
+              $setOnInsert: {
+                ...tx,
+                contract: contract._id,
+                contractId,
+                createdAt: new Date()
+              }
+            },
+            upsert: true
+          }
+        };
+        console.log(`[TransactionController] Operation for tx ${tx.tx_hash}:`, {
+          contractId,
+          contract: contract._id,
+          block_number: tx.block_number
+        });
+        return operation;
       });
       
-      totalInserted += batchResult.upsertedCount;
-      totalModified += batchResult.modifiedCount;
+      console.log(`[TransactionController] Executing bulkWrite for batch ${Math.floor(i/BATCH_SIZE) + 1}`);
+      try {
+        const batchResult = await Transaction.bulkWrite(operations);
+        console.log(`[TransactionController] Batch ${Math.floor(i/BATCH_SIZE) + 1} result:`, {
+          inserted: batchResult.upsertedCount,
+          modified: batchResult.modifiedCount,
+          matched: batchResult.matchedCount,
+          writeErrors: batchResult.writeErrors || [],
+          writeConcernErrors: batchResult.writeConcernErrors || []
+        });
+        
+        totalInserted += batchResult.upsertedCount;
+        totalModified += batchResult.modifiedCount;
+      } catch (error) {
+        console.error(`[TransactionController] Error in batch ${Math.floor(i/BATCH_SIZE) + 1}:`, error);
+        throw error;
+      }
     }
     
     // Update the contract with the latest block number
@@ -177,17 +197,28 @@ exports.saveTransactions = async (req, res) => {
       console.log(`[TransactionController] Contract update result:`, updateResult);
     }
     
+    // Verify the transactions were saved
+    const savedCount = await Transaction.countDocuments({ 
+      $or: [
+        { contractId },
+        { contract: contract._id }
+      ]
+    });
+    console.log(`[TransactionController] Verification - Total transactions in database: ${savedCount}`);
+    
     console.log(`[TransactionController] Final results:`, {
       totalInserted,
       totalModified,
-      total: totalInserted + totalModified
+      total: totalInserted + totalModified,
+      verifiedCount: savedCount
     });
     
     res.status(200).json({ 
       message: "Transactions saved successfully",
       inserted: totalInserted,
       modified: totalModified,
-      total: totalInserted + totalModified
+      total: totalInserted + totalModified,
+      verifiedCount: savedCount
     });
   } catch (error) {
     console.error("[TransactionController] Error saving transactions:", error);
