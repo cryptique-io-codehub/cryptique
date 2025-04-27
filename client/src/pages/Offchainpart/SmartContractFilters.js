@@ -126,25 +126,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     fetchContractsFromAPI();
   }, []);
 
-  // Polling effect for transactions
+  // Remove the polling effect and replace with on-demand fetching
   useEffect(() => {
     if (!selectedContract) return;
-    
-    const POLLING_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
     
     // Fetch transactions from MongoDB if not already loaded
     if (!transactions[selectedContract.id]) {
       fetchTransactionsFromAPI(selectedContract.id);
     }
-    
-    // Set up interval for polling new transactions
-    const intervalId = setInterval(() => {
-      // This will get only new transactions since the last fetch
-      pollNewTransactions(selectedContract);
-    }, POLLING_INTERVAL);
-    
-    return () => clearInterval(intervalId);
-  }, [selectedContract, transactions]);
+  }, [selectedContract]);
 
   // Fetch transactions from MongoDB API
   const fetchTransactionsFromAPI = async (contractId) => {
@@ -180,36 +170,52 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     return [];
   };
 
-  // Poll for new transactions to add to MongoDB
-  const pollNewTransactions = async (contract) => {
+  const handleSelectContract = async (contract) => {
+    // Set as the primary selected contract
+    setSelectedContract(contract);
+    
+    // Add to the array of selected contracts if not already there
+    if (!selectedContracts.find(c => c.id === contract.id)) {
+      setSelectedContracts([...selectedContracts, contract]);
+    }
+    
+    // Fetch latest transactions when contract is selected
+    await fetchLatestTransactions(contract);
+    
+    setShowDropdown(false);
+  };
+
+  // Function to fetch latest transactions when a contract is selected
+  const fetchLatestTransactions = async (contract) => {
     if (!contract || !contract.id) return;
     
-    console.log(`Polling for new transactions for contract ${contract.id}`);
     setIsFetchingTransactions(true);
+    console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
       // Get the latest block number from our database
       const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
       const startBlock = latestBlockResponse.data.latestBlockNumber;
       
-      // Only proceed if we have a valid block number to start from
+      // If we don't have any transactions yet, fetch them for the first time
       if (!startBlock) {
-        console.log("No previous transactions found, skipping poll");
+        console.log("No existing transactions found, fetching initial transactions");
+        await fetchInitialTransactions(contract);
         setIsFetchingTransactions(false);
         return;
       }
       
+      console.log(`Checking for new transactions since block ${startBlock} for contract: ${contract.address}`);
+      
       // Fetch only new transactions from blockchain API
       let newTransactions = [];
-      
-      console.log(`Checking for new transactions since block ${startBlock} for contract: ${contract.address}`);
       
       // Use the appropriate chain-specific module based on blockchain
       switch (contract.blockchain) {
         case 'BNB Chain':
           console.log('Fetching new transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 1000, // Smaller limit for polling
+            limit: 1000,
             startBlock: startBlock
           });
           
@@ -229,7 +235,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Base':
           console.log('Using Base Chain module for new transactions');
           const baseTransactions = await fetchBaseTransactions(contract.address, {
-            limit: 1000, // Smaller limit for polling
+            limit: 1000,
             startBlock: startBlock
           });
           
@@ -246,7 +252,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Ethereum':
         default:
-          console.log(`${contract.blockchain} chain not fully implemented yet for polling`);
+          console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
       }
       
       // If we found new transactions, sanitize and save them to API
@@ -273,48 +279,55 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
           if (sanitizedTransactions.length === 0) {
             console.log("No valid transactions after sanitization");
-            setIsFetchingTransactions(false);
-            return;
-          }
-          
-          // Use the same batch approach as in fetchInitialTransactions
-          const BATCH_SIZE = 100;
-          let totalSaved = 0;
-          let batchErrors = [];
-          
-          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
-            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
-            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
+          } else {
+            // Save sanitized transactions in batches
+            const BATCH_SIZE = 100;
+            let totalSaved = 0;
+            let batchErrors = [];
             
-            try {
-              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-                transactions: batch
-              });
+            for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
+              const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
+              console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
               
-              console.log('Batch save response:', response.data);
-              totalSaved += response.data.total || 0;
-            } catch (batchError) {
-              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
-              batchErrors.push(batchError.message || 'Unknown batch error');
-              // Small delay before next batch to avoid rate limiting
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              try {
+                const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+                  transactions: batch
+                });
+                
+                console.log('Batch save response:', response.data);
+                totalSaved += response.data.total || 0;
+              } catch (batchError) {
+                console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+                batchErrors.push(batchError.message || 'Unknown batch error');
+                // Small delay before next batch to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
             }
+            
+            if (batchErrors.length > 0) {
+              console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
+            }
+            
+            console.log(`Saved ${totalSaved} new transactions to API in batches`);
           }
-          
-          if (batchErrors.length > 0) {
-            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
-          }
-          
-          console.log(`Saved ${totalSaved} new transactions to API in batches`);
-          
-          // Refresh the transactions from API to get the complete updated list
-          await fetchTransactionsFromAPI(contract.id);
         } catch (error) {
           console.error("Error saving new transactions to API:", error);
         }
       }
+      
+      // Always fetch the latest transactions from MongoDB to display
+      const freshTransactions = await fetchTransactionsFromAPI(contract.id);
+      
+      // Print the latest 100 transactions to the console
+      if (freshTransactions.length > 0) {
+        console.log('======== LATEST 100 TRANSACTIONS FROM MONGODB ========');
+        console.log(`Total transactions in MongoDB: ${freshTransactions.length}`);
+        console.log('Latest 100 transactions:', freshTransactions.slice(0, 100));
+        console.log('=====================================================');
+      }
+      
     } catch (error) {
-      console.error(`Error polling for new transactions:`, error);
+      console.error(`Error fetching latest transactions:`, error);
     }
     
     setIsFetchingTransactions(false);
@@ -481,21 +494,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setIsFetchingTransactions(false);
   };
 
-  const handleSelectContract = async (contract) => {
-    // Set as the primary selected contract
-    setSelectedContract(contract);
-    
-    // Add to the array of selected contracts if not already there
-    if (!selectedContracts.find(c => c.id === contract.id)) {
-      setSelectedContracts([...selectedContracts, contract]);
-    }
-    
-    // NOTE: Removed explicit fetchTransactionsForContract call here
-    // The useEffect hook will handle fetching transactions when selectedContract changes 
-    
-    setShowDropdown(false);
-  };
-
   const handleDropdownToggle = () => {
     setShowDropdown(!showDropdown);
   };
@@ -620,7 +618,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setShowAddContractModal(false);
 
       // Fetch initial transactions for this new contract
-      fetchInitialTransactions(contractToAdd);
+      console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
+      await fetchInitialTransactions(contractToAdd);
       
       return true;
     } catch (error) {
