@@ -151,6 +151,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     if (!contractId) return [];
     
     setIsFetchingTransactions(true);
+    console.log(`Fetching transactions from MongoDB for contract ID: ${contractId}`);
     
     try {
       // Fetch transactions from our MongoDB API
@@ -167,12 +168,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           [contractId]: fetchedTransactions
         }));
         
-        console.log(`Loaded ${fetchedTransactions.length} transactions from API for contract ${contractId}`);
+        console.log(`Loaded ${fetchedTransactions.length} transactions from MongoDB for contract ${contractId}`);
         setIsFetchingTransactions(false);
         return fetchedTransactions;
       }
     } catch (error) {
-      console.error("Error fetching transactions from API:", error);
+      console.error("Error fetching transactions from MongoDB:", error);
     }
     
     setIsFetchingTransactions(false);
@@ -299,6 +300,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               token_symbol: contract.tokenSymbol || tx.token_symbol,
               value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
             }));
+            
+            // Log transactions from explorer API
+            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
+            console.log(`Total transactions: ${newTransactions.length}`);
+            console.log('First 5 transactions:', newTransactions.slice(0, 5));
+            console.log('Last 5 transactions:', newTransactions.slice(-5));
+            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
+            console.log('==================================================');
           } else {
             console.log('No transactions found or there was an error:', bnbResult.metadata?.message);
           }
@@ -318,6 +327,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
             }));
             console.log(`Retrieved ${newTransactions.length} transactions from Base API`);
+            
+            // Log transactions from explorer API
+            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
+            console.log(`Total transactions: ${newTransactions.length}`);
+            console.log('First 5 transactions:', newTransactions.slice(0, 5));
+            console.log('Last 5 transactions:', newTransactions.slice(-5));
+            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
+            console.log('==================================================');
           }
           break;
           
@@ -350,6 +367,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             ...prev,
             [contract.id]: newTransactions
           }));
+          
+          // After saving all transactions, fetch them from MongoDB to verify
+          console.log('Fetching saved transactions from MongoDB to verify...');
+          const savedTransactions = await fetchTransactionsFromAPI(contract.id);
+          
+          // Log transactions from MongoDB
+          console.log('========== TRANSACTIONS FROM MONGODB ==========');
+          console.log(`Total transactions from MongoDB: ${savedTransactions.length}`);
+          console.log('First 5 transactions from MongoDB:', savedTransactions.slice(0, 5));
+          console.log('Last 5 transactions from MongoDB:', savedTransactions.slice(-5));
+          console.log('Transaction hashes sample from MongoDB:', savedTransactions.slice(0, 10).map(tx => tx.tx_hash));
+          console.log('===============================================');
+          
+          // Compare transaction counts
+          console.log(`Transaction count comparison - Explorer API: ${newTransactions.length}, MongoDB: ${savedTransactions.length}`);
+          if (newTransactions.length !== savedTransactions.length) {
+            console.warn(`Transaction count mismatch! Some transactions may not have been saved correctly.`);
+          } else {
+            console.log('✅ All transactions successfully saved to MongoDB!');
+          }
         } catch (error) {
           console.error("Error saving initial transactions to API:", error);
         }
