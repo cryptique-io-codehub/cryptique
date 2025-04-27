@@ -1255,9 +1255,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return (
       <div className={`max-w-[90%] p-4 rounded-lg ${
         message.role === 'user'
-          ? 'bg-[#1d0c46] text-white'
-          : 'bg-white shadow-sm border border-gray-100'
+          ? 'bg-[#1d0c46] text-white user-message'
+          : 'bg-white shadow-sm border border-gray-100 assistant-message'
       }`}>
+        {message.role === 'assistant' && (
+          <div className="flex items-center mb-2">
+            <div className="logo-container mr-2">
+              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-spin-slow" />
+            </div>
+            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
+          </div>
+        )}
         <div className="prose prose-sm max-w-none">
           {message.role === 'assistant' ? (
             <div className="markdown-content">
@@ -1332,6 +1340,32 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       line-height: 1.6;
     }
 
+    /* Input field glow effect */
+    .input-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      border-radius: 0.5rem;
+      opacity: 0;
+      box-shadow: 0 0 0 2px rgba(202, 169, 104, 0.1), 0 0 15px 2px rgba(202, 169, 104, 0.1);
+      transition: opacity 0.3s ease;
+    }
+
+    input:focus + .input-glow {
+      opacity: 1;
+    }
+
+    input:focus {
+      box-shadow: 0 4px 20px rgba(29, 12, 70, 0.07) !important;
+    }
+
+    .focus\\:shadow-input:focus {
+      box-shadow: 0 4px 20px rgba(29, 12, 70, 0.07);
+    }
+
     .markdown-content h3 {
       font-family: 'Montserrat', sans-serif;
       margin-top: 2rem;
@@ -1388,12 +1422,88 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
     }
 
+    /* Futuristic Message Styling */
+    .user-message {
+      position: relative;
+      box-shadow: 0 0 20px rgba(29, 12, 70, 0.2);
+      overflow: hidden;
+    }
+
+    .user-message::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, #caa968, #1d0c46);
+    }
+
+    .assistant-message {
+      position: relative;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      background: linear-gradient(to right, #ffffff, #f9f9ff);
+      border-left: 2px solid #caa968 !important;
+      border-top: none !important;
+      border-right: none !important;
+      border-bottom: none !important;
+    }
+
+    .assistant-message::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 50%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(202, 169, 104, 0.5));
+    }
+
+    /* Logo container glow effect */
+    .logo-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-container::after {
+      content: '';
+      position: absolute;
+      top: -15%;
+      left: -15%;
+      right: -15%;
+      bottom: -15%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(202, 169, 104, 0.2) 0%, rgba(29, 12, 70, 0) 70%);
+      z-index: -1;
+      animation: pulse-glow 3s infinite alternate;
+    }
+
+    @keyframes pulse-glow {
+      0% { opacity: 0.5; transform: scale(0.9); }
+      100% { opacity: 0.8; transform: scale(1.1); }
+    }
+
     /* 3D Cube Animation */
     .cube-wrapper {
       width: 60px;
       height: 60px;
       perspective: 600px;
       margin: 1rem;
+      position: relative;
+    }
+
+    .cube-wrapper::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 10px;
+      background: radial-gradient(ellipse at center, rgba(202, 169, 104, 0.5) 0%, rgba(202, 169, 104, 0) 80%);
+      bottom: -10px;
+      left: 0;
+      border-radius: 50%;
+      filter: blur(3px);
     }
 
     .cube {
@@ -1401,7 +1511,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       height: 100%;
       position: relative;
       transform-style: preserve-3d;
-      animation: rotate 2s infinite linear;
+      animation: rotate 4s infinite linear;
     }
 
     .cube-face {
@@ -1409,8 +1519,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       width: 100%;
       height: 100%;
       background: linear-gradient(45deg, #caa968, #1d0c46);
-      opacity: 0.9;
-      border: 2px solid rgba(255, 255, 255, 0.1);
+      opacity: 0.8;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 10px rgba(202, 169, 104, 0.5);
     }
 
     .front  { transform: rotateY(0deg) translateZ(30px); }
@@ -1434,7 +1545,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       padding: 2rem;
       background: rgba(29, 12, 70, 0.03);
       border-radius: 1rem;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 15px rgba(202, 169, 104, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #caa968, transparent);
+      animation: scan-line 2s infinite linear;
+    }
+
+    @keyframes scan-line {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
     }
 
     .loading-text {
@@ -1443,13 +1572,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       font-family: 'Montserrat', sans-serif;
       font-weight: 500;
       font-size: 0.875rem;
-      letter-spacing: 0.025em;
+      letter-spacing: 0.05em;
       animation: pulse 1.5s infinite;
+      position: relative;
+    }
+
+    .loading-text::after {
+      content: '.';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.6; }
     }
   `;
 
@@ -1511,7 +1652,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-                <Bot size={64} className="mb-6 text-[#caa968]" />
+                <div className="logo-container mb-6">
+                  <img src="/logo192.png" alt="Cryptique" className="w-16 h-16 animate-spin-slow" />
+                </div>
                 <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
           <p className="text-gray-600 max-w-md mb-8">
                   I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
@@ -1590,7 +1733,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           <div className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Bot className="text-[#caa968]" size={24} />
+                <div className="logo-container">
+                  <img src="/logo192.png" alt="Cryptique" className="w-7 h-7 animate-spin-slow" />
+                </div>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
                   <p className="text-gray-500 mt-1">Ask anything about your website's analytics and performance</p>
@@ -1621,22 +1766,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
-                disabled={!selectedSite || isLoading}
-                className="flex-1 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] disabled:bg-gray-100 disabled:text-gray-400"
-              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
+                  disabled={!selectedSite || isLoading}
+                  className="w-full p-4 pl-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] focus:border-transparent focus:shadow-input disabled:bg-gray-100 disabled:text-gray-400 transition-all duration-300 bg-white"
+                />
+                <div className="input-glow"></div>
+              </div>
               <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim() || !selectedSite}
-                className={`px-8 rounded-lg flex items-center gap-2 ${
+                className={`px-8 rounded-lg flex items-center gap-2 transition-all duration-300 ${
                   isLoading || !input.trim() || !selectedSite
                     ? 'bg-gray-200 text-gray-400'
-                    : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90'
+                    : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90 hover:shadow-lg hover:shadow-[#1d0c46]/20'
                 }`}
               >
                 <Send size={20} />
