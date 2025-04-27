@@ -90,6 +90,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [isLoading, setIsLoading] = useState(false);
   const [transactions, setTransactions] = useState({});
   const [isFetchingTransactions, setIsFetchingTransactions] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+  const [processingStep, setProcessingStep] = useState('');
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -231,37 +234,55 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     if (!contract || !contract.id) return;
     
     setIsFetchingTransactions(true);
+    setLoadingStatus(`Checking for new transactions for ${contract.name || contract.address}`);
+    setProcessingStep('initializing');
+    setLoadingProgress({ current: 0, total: 100 });
+    
     console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
       // Get current transaction count in database - will fetch ALL transactions
+      setProcessingStep('counting_existing');
       const initialTransactions = await fetchTransactionsFromAPI(contract.id);
       const initialCount = initialTransactions.length;
+      
+      setLoadingStatus(`Found ${initialCount} existing transactions in database`);
+      setLoadingProgress({ current: 10, total: 100 });
       
       console.log(`===== TRANSACTION COUNT BEFORE UPDATE =====`);
       console.log(`Contract ${contract.address} has ${initialCount} transactions in database`);
       console.log(`=========================================`);
       
       // Get the latest block number from our database
+      setProcessingStep('getting_latest_block');
+      setLoadingStatus('Determining latest processed block...');
+      
       const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
       const startBlock = latestBlockResponse.data.latestBlockNumber;
       
+      setLoadingProgress({ current: 20, total: 100 });
+      
       // If we don't have any transactions yet, fetch them for the first time
       if (!startBlock) {
-        console.log("No existing transactions found, fetching initial transactions");
+        setLoadingStatus('No existing transactions found, starting initial fetch...');
         await fetchInitialTransactions(contract);
         setIsFetchingTransactions(false);
         return;
       }
       
+      setLoadingStatus(`Checking for new transactions since block ${startBlock}`);
       console.log(`Checking for new transactions since block ${startBlock} for contract: ${contract.address}`);
       
       // Fetch only new transactions from blockchain API
       let newTransactions = [];
       
       // Use the appropriate chain-specific module based on blockchain
+      setProcessingStep('fetching_new');
+      setLoadingProgress({ current: 30, total: 100 });
+      
       switch (contract.blockchain) {
         case 'BNB Chain':
+          setLoadingStatus(`Fetching new transactions from BscScan...`);
           console.log('Fetching new transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
             limit: 1000,
@@ -389,6 +410,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // If we found new transactions, sanitize and save them to API
       if (newTransactions.length > 0) {
+        setProcessingStep('processing');
+        setLoadingStatus(`Processing ${newTransactions.length} new transactions...`);
+        setLoadingProgress({ current: 60, total: 100 });
+        
         try {
           // Ensure transactions have proper format and required fields
           const sanitizedTransactions = newTransactions.map(tx => ({
@@ -407,46 +432,54 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             typeof tx.block_number === 'number'
           );
           
-          console.log(`After sanitization, sending ${sanitizedTransactions.length} valid transactions`);
+          setLoadingStatus(`Saving ${sanitizedTransactions.length} valid transactions...`);
+          setProcessingStep('saving');
+          setLoadingProgress({ current: 70, total: 100 });
           
-          if (sanitizedTransactions.length === 0) {
-            console.log("No valid transactions after sanitization");
-          } else {
-            // Save sanitized transactions in batches
-            const BATCH_SIZE = 100;
-            let batchErrors = [];
+          // Save sanitized transactions in batches
+          const BATCH_SIZE = 100;
+          let batchErrors = [];
+          
+          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
+            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
+            const progressPercent = Math.min(70 + Math.floor((i / sanitizedTransactions.length) * 20), 90);
+            setLoadingProgress({ current: progressPercent, total: 100 });
+            setLoadingStatus(`Saving batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(sanitizedTransactions.length/BATCH_SIZE)} (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
             
-            for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
-              const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
-              console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
+            try {
+              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+                transactions: batch
+              });
               
-              try {
-                const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-                  transactions: batch
-                });
-                
-                console.log('Batch save response:', response.data);
-                totalSaved += response.data.total || 0;
-              } catch (batchError) {
-                console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
-                batchErrors.push(batchError.message || 'Unknown batch error');
-                // Small delay before next batch to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
+              console.log('Batch save response:', response.data);
+              totalSaved += response.data.total || 0;
+            } catch (batchError) {
+              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+              batchErrors.push(batchError.message || 'Unknown batch error');
+              // Small delay before next batch to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            
-            if (batchErrors.length > 0) {
-              console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
-            }
-            
-            console.log(`Saved ${totalSaved} new transactions to API in batches`);
           }
+          
+          if (batchErrors.length > 0) {
+            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
+          }
+          
+          console.log(`Saved ${totalSaved} new transactions to API in batches`);
         } catch (error) {
           console.error("Error saving new transactions to API:", error);
+          setLoadingStatus(`Error saving transactions: ${error.message}`);
         }
+      } else {
+        setLoadingStatus('No new transactions found');
+        setLoadingProgress({ current: 90, total: 100 });
       }
       
       // Always fetch the latest transactions from MongoDB to display - this will fetch ALL transactions
+      setProcessingStep('finalizing');
+      setLoadingStatus('Finalizing and refreshing transaction list...');
+      setLoadingProgress({ current: 95, total: 100 });
+      
       const freshTransactions = await fetchTransactionsFromAPI(contract.id);
       const finalCount = freshTransactions.length;
       
@@ -458,19 +491,19 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.log(`Net increase: ${finalCount - initialCount} transactions`);
       console.log('==========================================');
       
-      // Print the latest 100 transactions to the console
-      if (freshTransactions.length > 0) {
-        console.log('======== LATEST 100 TRANSACTIONS FROM MONGODB ========');
-        console.log(`Total transactions in MongoDB: ${freshTransactions.length}`);
-        console.log('Latest 100 transactions:', freshTransactions.slice(0, 100));
-        console.log('=====================================================');
-      }
+      setLoadingStatus(`Transaction update complete. Added ${totalSaved} new transactions.`);
+      setLoadingProgress({ current: 100, total: 100 });
+      
+      // Final delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
     } catch (error) {
       console.error(`Error fetching latest transactions:`, error);
+      setLoadingStatus(`Error: ${error.message}`);
     }
     
     setIsFetchingTransactions(false);
+    setProcessingStep('');
   };
 
   // Function to fetch initial transactions when first adding a contract
@@ -481,10 +514,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
     
     setIsFetchingTransactions(true);
+    setLoadingStatus(`Starting initial transaction fetch for ${contract.name || contract.address}`);
+    setProcessingStep('initializing');
+    setLoadingProgress({ current: 0, total: 100 });
+    
     console.log(`Fetching initial transactions for new contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
       // Log initial state (should be 0 for new contracts)
+      setProcessingStep('checking_existing');
+      setLoadingStatus('Checking existing transactions...');
+      setLoadingProgress({ current: 5, total: 100 });
+      
       console.log(`===== INITIAL TRANSACTION COUNT =====`);
       console.log(`New contract ${contract.address} - expected 0 transactions in database`);
       console.log(`====================================`);
@@ -493,9 +534,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       let newTransactions = [];
       
       // Use the appropriate chain-specific module based on blockchain
+      setProcessingStep('fetching');
+      setLoadingStatus(`Fetching transactions from ${contract.blockchain}...`);
+      setLoadingProgress({ current: 10, total: 100 });
+      
       switch (contract.blockchain) {
         case 'BNB Chain':
-          console.log('Fetching up to 10,000 transactions from BscScan');
+          setLoadingStatus('Fetching up to 10,000 transactions from BscScan...');
           const bnbResult = await fetchBnbTransactions(contract.address, {
             limit: 10000
           });
@@ -663,6 +708,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       let totalSaved = 0;
       
       if (newTransactions.length > 0) {
+        setProcessingStep('processing');
+        setLoadingStatus(`Processing ${newTransactions.length} transactions...`);
+        setLoadingProgress({ current: 40, total: 100 });
+        
         // Ensure transactions have proper format and required fields
         const sanitizedTransactions = newTransactions.map(tx => ({
           ...tx,
@@ -680,6 +729,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           typeof tx.block_number === 'number'
         );
         
+        setLoadingStatus(`Preparing to save ${sanitizedTransactions.length} valid transactions...`);
         console.log(`After sanitization, sending ${sanitizedTransactions.length} valid transactions`);
         
         // Save transactions to API in smaller batches to avoid payload size issues
@@ -688,9 +738,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           const BATCH_SIZE = 100;
           let batchErrors = [];
           
+          setProcessingStep('saving');
+          setLoadingStatus(`Saving transactions in batches of ${BATCH_SIZE}...`);
+          setLoadingProgress({ current: 50, total: 100 });
+          
           for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
             const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
-            console.log(`Saving batch of ${batch.length} transactions (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
+            const progressPercent = Math.min(50 + Math.floor((i / sanitizedTransactions.length) * 40), 90);
+            setLoadingProgress({ current: progressPercent, total: 100 });
+            setLoadingStatus(`Saving batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(sanitizedTransactions.length/BATCH_SIZE)} (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
             
             try {
               const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
@@ -709,9 +765,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
           if (batchErrors.length > 0) {
             console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
+            setLoadingStatus(`Completed with ${batchErrors.length} errors. ${totalSaved} transactions saved successfully.`);
+          } else {
+            setLoadingStatus(`Successfully saved ${totalSaved} transactions to database.`);
           }
-          
-          console.log(`Saved ${totalSaved} initial transactions to API in batches`);
           
           // Load the transactions into state
           setTransactions(prev => ({
@@ -720,6 +777,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           }));
           
           // After saving all transactions, fetch them from MongoDB to verify
+          setProcessingStep('verifying');
+          setLoadingStatus('Verifying saved transactions...');
+          setLoadingProgress({ current: 95, total: 100 });
+          
           console.log('Fetching saved transactions from MongoDB to verify...');
           const savedTransactions = await fetchTransactionsFromAPI(contract.id);
           
@@ -731,30 +792,28 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           console.log(`Final transaction count in database: ${savedTransactions.length}`);
           console.log('=================================================');
           
-          // Log transactions from MongoDB
-          console.log('========== TRANSACTIONS FROM MONGODB ==========');
-          console.log(`Total transactions from MongoDB: ${savedTransactions.length}`);
-          console.log('First 5 transactions from MongoDB:', savedTransactions.slice(0, 5));
-          console.log('Last 5 transactions from MongoDB:', savedTransactions.slice(-5));
-          console.log('Transaction hashes sample from MongoDB:', savedTransactions.slice(0, 10).map(tx => tx.tx_hash));
-          console.log('===============================================');
+          setLoadingStatus(`Transaction fetch complete. Saved ${savedTransactions.length} transactions.`);
+          setLoadingProgress({ current: 100, total: 100 });
           
-          // Compare transaction counts
-          console.log(`Transaction count comparison - Explorer API: ${sanitizedTransactions.length}, MongoDB: ${savedTransactions.length}`);
-          if (sanitizedTransactions.length !== savedTransactions.length) {
-            console.warn(`Transaction count mismatch! Some transactions may not have been saved correctly.`);
-          } else {
-            console.log('✅ All transactions successfully saved to MongoDB!');
-          }
+          // Final delay to show completion
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
         } catch (error) {
           console.error("Error saving initial transactions to API:", error);
+          setLoadingStatus(`Error saving transactions: ${error.message}`);
         }
+      } else {
+        setLoadingStatus(`No transactions found for this contract on ${contract.blockchain}.`);
+        setLoadingProgress({ current: 100, total: 100 });
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (error) {
       console.error(`Error fetching initial transactions for ${contract.address}:`, error);
+      setLoadingStatus(`Error: ${error.message}`);
     }
     
     setIsFetchingTransactions(false);
+    setProcessingStep('');
   };
 
   const handleDropdownToggle = () => {
@@ -811,18 +870,27 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
     setAddingContract(true);
     setContractError('');
+    setIsFetchingTransactions(true);
+    setLoadingStatus('Verifying smart contract...');
+    setProcessingStep('verifying');
+    setLoadingProgress({ current: 0, total: 100 });
     
     try {
       // Create contract instance
+      setLoadingStatus('Creating contract instance...');
+      setLoadingProgress({ current: 10, total: 100 });
       const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
       
       // Get token symbol if not manually provided
       let finalTokenSymbol = tokenSymbol;
       if (!finalTokenSymbol) {
         try {
+          setLoadingStatus('Fetching token symbol...');
+          setLoadingProgress({ current: 20, total: 100 });
           finalTokenSymbol = await contract.methods.symbol().call();
         } catch (error) {
           console.warn("Could not fetch token symbol, using default:", error);
+          setLoadingStatus('Could not fetch token symbol, using default...');
           // Use default token symbol based on blockchain
           switch (blockchain) {
             case 'Ethereum':
@@ -849,6 +917,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         }
       }
 
+      setLoadingStatus('Creating contract object...');
+      setLoadingProgress({ current: 30, total: 100 });
+      
       // Create new contract object
       const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newContract = {
@@ -862,12 +933,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       };
       
       // Save contract to API
+      setLoadingStatus('Saving contract to database...');
+      setLoadingProgress({ current: 50, total: 100 });
       const savedContract = await saveContractToAPI(newContract);
       
       // Use the saved contract if API call was successful
       const contractToAdd = savedContract || newContract;
       
       // Update contract array
+      setLoadingStatus('Updating contract list...');
+      setLoadingProgress({ current: 70, total: 100 });
       const updatedContracts = [...contractarray, contractToAdd];
       setcontractarray(updatedContracts);
       
@@ -877,8 +952,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // Set as primary selected contract
       setSelectedContract(contractToAdd);
       
+      setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
+      setLoadingProgress({ current: 90, total: 100 });
       setAddingContract(false);
       setShowAddContractModal(false);
+
+      // Short delay to show success before fetching transactions
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Fetch initial transactions for this new contract
       console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
@@ -889,6 +969,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.error("Error adding smart contract:", error);
       setContractError(`Error adding contract: ${error.message}`);
       setAddingContract(false);
+      setIsFetchingTransactions(false);
+      setLoadingStatus(`Error: ${error.message}`);
       return false;
     }
   };
@@ -1384,9 +1466,32 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       )}
 
       {isFetchingTransactions && (
-        <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-3 z-40 flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-          <span className="text-sm text-gray-600">Syncing transactions...</span>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {processingStep === 'initializing' && 'Initializing...'}
+                {processingStep === 'counting_existing' && 'Counting existing transactions...'}
+                {processingStep === 'getting_latest_block' && 'Getting latest block...'}
+                {processingStep === 'fetching_new' && 'Fetching new transactions...'}
+                {processingStep === 'processing' && 'Processing transactions...'}
+                {processingStep === 'saving' && 'Saving transactions...'}
+                {processingStep === 'finalizing' && 'Finalizing...'}
+              </h3>
+              <p className="text-sm text-gray-500">{loadingStatus}</p>
+            </div>
+            
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+                style={{width: `${(loadingProgress.current / loadingProgress.total) * 100}%`}}
+              ></div>
+            </div>
+            
+            <p className="text-xs text-gray-500 text-right">
+              {Math.round((loadingProgress.current / loadingProgress.total) * 100)}% complete
+            </p>
+          </div>
         </div>
       )}
     </div>
