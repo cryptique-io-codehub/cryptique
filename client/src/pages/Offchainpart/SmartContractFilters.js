@@ -144,24 +144,61 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     console.log(`Fetching transactions from MongoDB for contract ID: ${contractId}`);
     
     try {
-      // Fetch transactions from our MongoDB API
-      const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-        params: { limit: 10000 }
-      });
+      let allTransactions = [];
+      let hasMore = true;
+      let page = 1;
+      const pageSize = 5000; // Fetch 5000 transactions per request
       
-      if (response.data && response.data.transactions) {
-        const fetchedTransactions = response.data.transactions;
+      // Loop to fetch all transactions with pagination
+      while (hasMore) {
+        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        // Store in component state
-        setTransactions(prev => ({
-          ...prev,
-          [contractId]: fetchedTransactions
-        }));
+        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+          params: { 
+            limit: pageSize,
+            page: page
+          }
+        });
         
-        console.log(`Loaded ${fetchedTransactions.length} transactions from MongoDB for contract ${contractId}`);
-        setIsFetchingTransactions(false);
-        return fetchedTransactions;
+        if (response.data && response.data.transactions) {
+          const fetchedTransactions = response.data.transactions;
+          
+          // Add to our accumulated transactions
+          allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
+          
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
+            hasMore = false;
+          }
+          
+          // Move to next page
+          page++;
+          
+          // Safety check - don't loop more than 10 times (50,000 transactions)
+          if (page > 10) {
+            console.log("Reached maximum page fetch limit (50,000 transactions)");
+            hasMore = false;
+          }
+        } else {
+          // No transactions or error
+          hasMore = false;
+        }
       }
+      
+      // Store in component state
+      setTransactions(prev => ({
+        ...prev,
+        [contractId]: allTransactions
+      }));
+      
+      console.log(`Loaded ${allTransactions.length} total transactions from MongoDB for contract ${contractId}`);
+      setIsFetchingTransactions(false);
+      return allTransactions;
     } catch (error) {
       console.error("Error fetching transactions from MongoDB:", error);
     }
@@ -193,7 +230,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
     
     try {
-      // Get current transaction count in database
+      // Get current transaction count in database - will fetch ALL transactions
       const initialTransactions = await fetchTransactionsFromAPI(contract.id);
       const initialCount = initialTransactions.length;
       
@@ -324,7 +361,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         }
       }
       
-      // Always fetch the latest transactions from MongoDB to display
+      // Always fetch the latest transactions from MongoDB to display - this will fetch ALL transactions
       const freshTransactions = await fetchTransactionsFromAPI(contract.id);
       const finalCount = freshTransactions.length;
       

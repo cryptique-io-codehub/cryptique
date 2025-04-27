@@ -6,7 +6,9 @@ const Team = require("../models/team");
 exports.getContractTransactions = async (req, res) => {
   try {
     const { contractId } = req.params;
-    const { limit = 1000, before, after } = req.query;
+    const { limit = 5000, before, after, page = 1 } = req.query;
+    
+    console.log(`Fetching transactions for contract ${contractId}, page ${page}, limit ${limit}`);
     
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
@@ -38,10 +40,19 @@ exports.getContractTransactions = async (req, res) => {
       query.block_time = { ...query.block_time, $gt: new Date(after) };
     }
     
+    // Parse pagination parameters
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Get total count for the contract
+    const total = await Transaction.countDocuments({ contractId });
+    
     // Fetch transactions with pagination
     const transactions = await Transaction.find(query)
       .sort({ block_number: -1 })
-      .limit(parseInt(limit))
+      .skip(skip)
+      .limit(limitNum)
       .lean();
     
     // Get the highest block number for future pagination
@@ -49,8 +60,7 @@ exports.getContractTransactions = async (req, res) => {
       ? Math.max(...transactions.map(tx => tx.block_number))
       : 0;
     
-    // Get total count for the contract
-    const total = await Transaction.countDocuments({ contractId });
+    console.log(`Found ${transactions.length} transactions for contract ${contractId} on page ${pageNum} (total: ${total})`);
     
     res.status(200).json({ 
       transactions,
@@ -58,7 +68,10 @@ exports.getContractTransactions = async (req, res) => {
         total,
         latestBlockNumber,
         count: transactions.length,
-        hasMore: total > transactions.length
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+        hasMore: skip + transactions.length < total
       }
     });
   } catch (error) {
