@@ -279,19 +279,21 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Base':
           console.log('Using Base Chain module for new transactions');
-          const baseTransactions = await fetchBaseTransactions(contract.address, {
+          const baseResult = await fetchBaseTransactions(contract.address, {
             limit: 1000,
             startBlock: startBlock
           });
           
-          if (baseTransactions.length > 0) {
+          if (baseResult.transactions?.length > 0) {
             // Update token symbol in transactions
-            newTransactions = baseTransactions.map(tx => ({
+            newTransactions = baseResult.transactions.map(tx => ({
               ...tx,
               token_symbol: contract.tokenSymbol || tx.token_symbol,
               value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
             }));
             console.log(`Retrieved ${newTransactions.length} new transactions from Base API`);
+          } else {
+            console.log('No new transactions found or error:', baseResult.metadata?.message);
           }
           break;
           
@@ -438,13 +440,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           
         case 'Base':
           console.log('Using Base Chain module');
-          const baseTransactions = await fetchBaseTransactions(contract.address, {
+          const baseResult = await fetchBaseTransactions(contract.address, {
             limit: 10000
           });
           
-          if (baseTransactions.length > 0) {
+          if (baseResult.transactions?.length > 0) {
             // Update token symbol in transactions
-            newTransactions = baseTransactions.map(tx => ({
+            newTransactions = baseResult.transactions.map(tx => ({
               ...tx,
               token_symbol: contract.tokenSymbol || tx.token_symbol,
               value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
@@ -458,6 +460,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             console.log('Last 5 transactions:', newTransactions.slice(-5));
             console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
             console.log('==================================================');
+          } else {
+            console.log('No transactions found or error:', baseResult.metadata?.message);
           }
           break;
           
