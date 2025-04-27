@@ -8,11 +8,15 @@ exports.getContractTransactions = async (req, res) => {
     const { contractId } = req.params;
     const { limit = 1000, before, after } = req.query;
     
+    console.log(`[TransactionController] Fetching transactions for contract ${contractId}`);
+    
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
     if (!contract) {
+      console.log(`[TransactionController] Error: Contract ${contractId} not found`);
       return res.status(404).json({ message: "Contract not found" });
     }
+    console.log(`[TransactionController] Found contract: ${contract._id}`);
     
     // Verify user has access to the team
     const team = await Team.findOne({ 
@@ -24,11 +28,19 @@ exports.getContractTransactions = async (req, res) => {
     });
     
     if (!team) {
+      console.log(`[TransactionController] Error: User ${req.userId} not authorized for team ${contract.team}`);
       return res.status(403).json({ message: "Not authorized to access this contract's transactions" });
     }
+    console.log(`[TransactionController] User authorized for team ${team._id}`);
     
     // Build query
-    const query = { contractId };
+    const query = { 
+      $or: [
+        { contractId },
+        { contract: contract._id }
+      ]
+    };
+    console.log(`[TransactionController] Query:`, JSON.stringify(query));
     
     // Add time filtering if provided
     if (before) {
@@ -39,10 +51,13 @@ exports.getContractTransactions = async (req, res) => {
     }
     
     // Fetch transactions with pagination
+    console.log(`[TransactionController] Executing find with limit ${limit}`);
     const transactions = await Transaction.find(query)
       .sort({ block_number: -1 })
       .limit(parseInt(limit))
       .lean();
+    
+    console.log(`[TransactionController] Found ${transactions.length} transactions`);
     
     // Get the highest block number for future pagination
     const latestBlockNumber = transactions.length > 0 
@@ -50,7 +65,8 @@ exports.getContractTransactions = async (req, res) => {
       : 0;
     
     // Get total count for the contract
-    const total = await Transaction.countDocuments({ contractId });
+    const total = await Transaction.countDocuments(query);
+    console.log(`[TransactionController] Total documents matching query: ${total}`);
     
     res.status(200).json({ 
       transactions,
@@ -62,7 +78,7 @@ exports.getContractTransactions = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error fetching transactions:", error);
+    console.error("[TransactionController] Error fetching transactions:", error);
     res.status(500).json({ message: "Error fetching transactions", error: error.message });
   }
 };
