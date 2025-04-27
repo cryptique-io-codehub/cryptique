@@ -2,7 +2,8 @@ const express = require('express');
 const { 
   getContractTransactions,
   saveTransactions,
-  getLatestBlockNumber
+  getLatestBlockNumber,
+  deleteContractTransactions
 } = require('../controllers/transactionController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
@@ -44,5 +45,8 @@ router.post('/contract/:contractId', validateTransactionData, saveTransactions);
 
 // Get latest block number for a contract
 router.get('/contract/:contractId/latest-block', getLatestBlockNumber);
+
+// Delete all transactions for a contract
+router.delete('/contract/:contractId', deleteContractTransactions);
 
 module.exports = router; 

@@ -650,6 +650,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     if (success) {
       console.log("Contract added successfully");
+      
+      // Close the modal
+      handleCloseAddContractModal();
     }
   };
 
@@ -676,7 +679,17 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     if (!contractToDelete) return;
 
     try {
-      // Delete from API first
+      // First delete all transactions associated with this contract
+      try {
+        console.log(`Deleting all transactions for contract ${contractToDelete.id}...`);
+        await axiosInstance.delete(`/transactions/contract/${contractToDelete.id}`);
+        console.log(`Successfully deleted all transactions for contract ${contractToDelete.id}`);
+      } catch (txError) {
+        console.error(`Error deleting transactions for contract ${contractToDelete.id}:`, txError);
+        // Continue with deletion even if transaction deletion fails
+      }
+      
+      // Delete contract from API
       const apiSuccess = await deleteContractFromAPI(contractToDelete.id);
       
       // Remove from contract array
@@ -695,6 +708,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setSelectedContract(null);
         }
       }
+
+      // Also clear the transactions from local state
+      setTransactions(prev => {
+        const updated = {...prev};
+        delete updated[contractToDelete.id];
+        return updated;
+      });
 
       // If API failed, save to localStorage as fallback
       if (!apiSuccess) {
@@ -786,6 +806,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const currentTeam = localStorage.getItem('selectedTeam');
       if (!currentTeam) return null;
 
+      console.log(`Saving contract to API: ${contract.address} on ${contract.blockchain}`);
+      
       const response = await axiosInstance.post('/contracts', {
         teamName: currentTeam,
         address: contract.address,
@@ -795,6 +817,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       });
 
       if (response.data && response.data.contract) {
+        console.log(`Contract saved successfully with ID: ${response.data.contract.contractId}`);
+        
+        // Check if this was an existing contract that was re-added
+        if (response.data.alreadyExists) {
+          console.log(`Contract existed already, will use existing contract ID: ${response.data.contract.contractId}`);
+        }
+        
         // Return the contract with API ID
         return {
           ...contract,
@@ -804,6 +833,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       return null;
     } catch (error) {
       console.error("Error saving contract to API:", error);
+      // Check if the error response contains a contract (happens if it already exists)
+      if (error.response && error.response.data && error.response.data.contract) {
+        console.log(`Using existing contract from error response: ${error.response.data.contract.contractId}`);
+        return {
+          ...contract,
+          id: error.response.data.contract.contractId
+        };
+      }
       return null;
     }
   };

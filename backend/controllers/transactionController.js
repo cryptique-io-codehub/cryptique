@@ -246,4 +246,51 @@ exports.getLatestBlockNumber = async (req, res) => {
     console.error("Error fetching latest block number:", error);
     res.status(500).json({ message: "Error fetching latest block number", error: error.message });
   }
+};
+
+// Delete all transactions for a contract
+exports.deleteContractTransactions = async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    
+    console.log(`Attempting to delete all transactions for contract ${contractId}`);
+    
+    // Find the contract
+    const contract = await SmartContract.findOne({ contractId });
+    
+    // If contract is not found, we can still proceed with deletion
+    // in case we're cleaning up after a contract was already deleted
+    if (contract) {
+      // Verify user has access to the team
+      const team = await Team.findOne({ 
+        _id: contract.team,
+        $or: [
+          { createdBy: req.userId },
+          { "user.userId": req.userId }
+        ]
+      });
+      
+      if (!team) {
+        return res.status(403).json({ message: "Not authorized to delete transactions for this contract" });
+      }
+    } else {
+      console.log(`Contract ${contractId} not found, but proceeding with transaction cleanup`);
+    }
+    
+    // Delete all transactions for this contract
+    const result = await Transaction.deleteMany({ contractId });
+    
+    console.log(`Deleted ${result.deletedCount} transactions for contract ${contractId}`);
+    
+    res.status(200).json({ 
+      message: `Successfully deleted ${result.deletedCount} transactions for contract ${contractId}`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error(`Error deleting transactions for contract ${req.params.contractId}:`, error);
+    res.status(500).json({ 
+      message: "Error deleting transactions", 
+      error: error.message 
+    });
+  }
 }; 

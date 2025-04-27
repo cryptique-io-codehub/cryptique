@@ -58,15 +58,42 @@ exports.addSmartContract = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to add contracts to this team" });
     }
 
+    const normalizedAddress = address.toLowerCase();
+    console.log(`Adding contract with address ${normalizedAddress} to team ${team.name} (${team._id})`);
+
     // Check if the contract already exists for this team
     const existingContract = await SmartContract.findOne({
       team: team._id,
-      address: address.toLowerCase(),
+      address: normalizedAddress,
       blockchain
     });
 
     if (existingContract) {
-      return res.status(400).json({ message: "Contract already exists for this team" });
+      console.log(`Contract already exists: ${existingContract.contractId}`);
+      
+      // For previously deleted contracts that were re-added, the db might have orphaned 
+      // entries due to the unique index. Let's handle this safely by returning existing contract info
+      return res.status(200).json({ 
+        message: "Contract already exists for this team", 
+        contract: existingContract,
+        alreadyExists: true
+      });
+    }
+    
+    // Ensure there are no leftover transactions for this address before creating new contract
+    try {
+      const Transaction = require("../models/transaction");
+      
+      // Use address to find any orphaned transactions
+      await Transaction.deleteMany({ 
+        contract_address: normalizedAddress,
+        blockchain
+      });
+      
+      console.log(`Cleaned up any orphaned transactions for address ${normalizedAddress}`);
+    } catch (cleanupError) {
+      console.error("Error cleaning up orphaned transactions:", cleanupError);
+      // Continue with contract creation even if cleanup fails
     }
     
     // Generate a unique contract ID
@@ -75,8 +102,8 @@ exports.addSmartContract = async (req, res) => {
     // Create new contract
     const newContract = new SmartContract({
       contractId,
-      address: address.toLowerCase(),
-      name: name || `Contract ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+      address: normalizedAddress,
+      name: name || `Contract ${normalizedAddress.substring(0, 6)}...${normalizedAddress.substring(normalizedAddress.length - 4)}`,
       blockchain,
       tokenSymbol,
       team: team._id,
@@ -87,12 +114,40 @@ exports.addSmartContract = async (req, res) => {
     
     await newContract.save();
     
+    console.log(`New contract created with ID: ${contractId}`);
+    
     res.status(201).json({ 
       message: "Contract added successfully", 
       contract: newContract 
     });
   } catch (error) {
     console.error("Error adding smart contract:", error);
+    
+    // Handle the case where the contract might exist but our check didn't catch it
+    // (e.g., race condition or duplicate key error)
+    if (error.name === 'MongoError' && error.code === 11000) {
+      // This is a duplicate key error
+      try {
+        // Try to fetch the existing contract
+        const normalizedAddress = (req.body.address || '').toLowerCase();
+        const existingContract = await SmartContract.findOne({
+          team: req.body.teamId,
+          address: normalizedAddress,
+          blockchain: req.body.blockchain
+        });
+        
+        if (existingContract) {
+          return res.status(200).json({
+            message: "Contract already exists due to concurrency issue",
+            contract: existingContract,
+            alreadyExists: true
+          });
+        }
+      } catch (findError) {
+        console.error("Error finding existing contract after duplicate key error:", findError);
+      }
+    }
+    
     res.status(500).json({ message: "Error adding contract", error: error.message });
   }
 };
@@ -101,6 +156,8 @@ exports.addSmartContract = async (req, res) => {
 exports.deleteSmartContract = async (req, res) => {
   try {
     const { contractId } = req.params;
+    
+    console.log(`Attempting to delete contract: ${contractId}`);
     
     const contract = await SmartContract.findOne({ contractId });
     
@@ -121,9 +178,25 @@ exports.deleteSmartContract = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to delete this contract" });
     }
     
+    // Delete any transactions associated with this contract
+    try {
+      const Transaction = require("../models/transaction");
+      const result = await Transaction.deleteMany({ contractId });
+      console.log(`Deleted ${result.deletedCount} transactions for contract ${contractId}`);
+    } catch (txError) {
+      console.error(`Error deleting transactions for contract ${contractId}:`, txError);
+      // Continue with deletion even if transaction deletion fails
+    }
+    
+    // Delete the contract
     await SmartContract.deleteOne({ contractId });
     
-    res.status(200).json({ message: "Contract deleted successfully" });
+    console.log(`Successfully deleted contract: ${contractId}`);
+    
+    res.status(200).json({ 
+      message: "Contract and associated transactions deleted successfully",
+      contractId
+    });
   } catch (error) {
     console.error("Error deleting smart contract:", error);
     res.status(500).json({ message: "Error deleting contract", error: error.message });
