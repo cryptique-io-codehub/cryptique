@@ -152,7 +152,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       // Get the website details to extract team info
-      const websiteResponse = await axiosInstance.get(`/website/${siteId}`);
+      const websiteResponse = await axiosInstance.get(`/website/${selectedSite}`);
       const teamName = websiteResponse?.data?.TeamName;
       
       if (!teamName) {
