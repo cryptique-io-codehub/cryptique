@@ -1224,9 +1224,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       return null;
     }
 
-    // Token value in USD (default to $4 per token)
-    const usdPerToken = 4;
-
     // Enhanced contract data structure
     const contractData = {
       contractInfo: {
@@ -1261,12 +1258,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             { min: 100, max: 1000, count: 0, volume: 0 },
             { min: 1000, max: Infinity, count: 0, volume: 0 }
           ]
-        },
-        usdValueSegmentation: {
-          small: { min: 0, max: 10, count: 0, volume: 0 }, // < $10
-          medium: { min: 10, max: 250, count: 0, volume: 0 }, // $10-$250
-          large: { min: 250, max: 1000, count: 0, volume: 0 }, // $250-$1000
-          whale: { min: 1000, max: Infinity, count: 0, volume: 0 } // > $1000
         }
       },
       timeSeries: {
@@ -1309,10 +1300,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           dolphins: [],    // Next 9% by volume
           fish: [],        // Next 40% by volume
           plankton: []     // Remaining 50% by volume
-        },
-        airdropFarmers: [], // Wallets with suspicious airdrop farming patterns
-        walletTurnover: {}, // Rate at which wallets send out received tokens
-        walletLifecycle: {} // Wallet lifecycle stages (new, active, dormant)
+        }
       },
       transactionPatterns: {
         timeOfDayDistribution: {
@@ -1385,31 +1373,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       adjacencyList: {}
     };
 
-    // Track wallet interactions for detecting airdrop farming
-    const walletInteractions = {};
-    const walletFirstActivity = {};
-    const walletLastActivity = {};
-    const smallIncomingTransactions = {};
-    const receivedAirdropsThenSent = {};
-    
     // Process transactions for detailed analytics
     let lastTransactionTime = null;
     transactions.forEach(tx => {
       const value = parseFloat(tx.value_eth) || 0;
-      const usdValue = value * usdPerToken;
       const txDate = new Date(tx.block_time);
-      
-      // Set first activity time for wallets
-      if (!walletFirstActivity[tx.from_address]) {
-        walletFirstActivity[tx.from_address] = txDate;
-      }
-      if (!walletFirstActivity[tx.to_address]) {
-        walletFirstActivity[tx.to_address] = txDate;
-      }
-      
-      // Update last activity time for wallets
-      walletLastActivity[tx.from_address] = txDate;
-      walletLastActivity[tx.to_address] = txDate;
       
       // Track active days and hours
       contractData.contractInfo.activeDays.add(txDate.toISOString().split('T')[0]);
@@ -1422,31 +1390,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           range.volume += value;
         }
       });
-      
-      // Update USD value segmentation
-      if (usdValue < 10) {
-        contractData.summary.usdValueSegmentation.small.count++;
-        contractData.summary.usdValueSegmentation.small.volume += value;
-        
-        // Track small incoming transactions for airdrop farming detection
-        if (!smallIncomingTransactions[tx.to_address]) {
-          smallIncomingTransactions[tx.to_address] = [];
-        }
-        smallIncomingTransactions[tx.to_address].push({
-          amount: value,
-          time: txDate,
-          from: tx.from_address
-        });
-      } else if (usdValue < 250) {
-        contractData.summary.usdValueSegmentation.medium.count++;
-        contractData.summary.usdValueSegmentation.medium.volume += value;
-      } else if (usdValue < 1000) {
-        contractData.summary.usdValueSegmentation.large.count++;
-        contractData.summary.usdValueSegmentation.large.volume += value;
-      } else {
-        contractData.summary.usdValueSegmentation.whale.count++;
-        contractData.summary.usdValueSegmentation.whale.volume += value;
-      }
 
       // Process time-based patterns
       const hour = txDate.getHours();
@@ -1473,61 +1416,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
       lastTransactionTime = tx.block_time;
 
-      // Track wallet interactions
+      // Build network graph
       if (tx.from_address && tx.to_address) {
-        // Track interactions between wallets for farming detection
-        const interactionKey = `${tx.from_address}-${tx.to_address}`;
-        if (!walletInteractions[interactionKey]) {
-          walletInteractions[interactionKey] = {
-            count: 0,
-            volume: 0,
-            firstInteraction: txDate,
-            lastInteraction: txDate,
-            transactions: []
-          };
-        }
-        
-        walletInteractions[interactionKey].count++;
-        walletInteractions[interactionKey].volume += value;
-        walletInteractions[interactionKey].lastInteraction = txDate;
-        walletInteractions[interactionKey].transactions.push({
-          amount: value,
-          time: txDate
-        });
-        
-        // Track if a wallet sends out tokens shortly after receiving (potential airdrop farming)
-        if (tx.from_address && smallIncomingTransactions[tx.from_address] && smallIncomingTransactions[tx.from_address].length > 0) {
-          // Look for outgoing transactions shortly after receiving small amounts
-          const recentIncomingTxs = smallIncomingTransactions[tx.from_address].filter(
-            inTx => (txDate - inTx.time) < 1000 * 60 * 60 * 24 // within 24 hours
-          );
-          
-          if (recentIncomingTxs.length > 0) {
-            if (!receivedAirdropsThenSent[tx.from_address]) {
-              receivedAirdropsThenSent[tx.from_address] = {
-                address: tx.from_address,
-                instances: 0,
-                totalReceived: 0,
-                totalSent: 0,
-                details: []
-              };
-            }
-            
-            receivedAirdropsThenSent[tx.from_address].instances++;
-            receivedAirdropsThenSent[tx.from_address].totalSent += value;
-            receivedAirdropsThenSent[tx.from_address].totalReceived += recentIncomingTxs.reduce((sum, inTx) => sum + inTx.amount, 0);
-            receivedAirdropsThenSent[tx.from_address].details.push({
-              received: recentIncomingTxs,
-              sent: {
-                amount: value,
-                time: txDate,
-                to: tx.to_address
-              }
-            });
-          }
-        }
-      
-        // Build network graph
         graph.nodes.add(tx.from_address);
         graph.nodes.add(tx.to_address);
         const edge = `${tx.from_address}-${tx.to_address}`;
@@ -1669,9 +1559,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     const walletVolumes = {};
     const walletCounts = {};
     const walletActivity = {};
-    const inflows = {};
-    const outflows = {};
-    const walletBalances = {};
 
     transactions.forEach(tx => {
       const value = parseFloat(tx.value_eth) || 0;
@@ -1696,12 +1583,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         walletActivity[tx.from_address].lastSeen = tx.block_time;
         walletActivity[tx.from_address].activeDays.add(new Date(tx.block_time).toISOString().split('T')[0]);
         walletActivity[tx.from_address].activeHours.add(new Date(tx.block_time).getHours());
-        
-        // Track outflows
-        outflows[tx.from_address] = (outflows[tx.from_address] || 0) + value;
-        
-        // Update wallet balance (deduct sent amount)
-        walletBalances[tx.from_address] = (walletBalances[tx.from_address] || 0) - value;
       }
       
       if (tx.to_address) {
@@ -1724,72 +1605,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         walletActivity[tx.to_address].lastSeen = tx.block_time;
         walletActivity[tx.to_address].activeDays.add(new Date(tx.block_time).toISOString().split('T')[0]);
         walletActivity[tx.to_address].activeHours.add(new Date(tx.block_time).getHours());
-        
-        // Track inflows
-        inflows[tx.to_address] = (inflows[tx.to_address] || 0) + value;
-        
-        // Update wallet balance (add received amount)
-        walletBalances[tx.to_address] = (walletBalances[tx.to_address] || 0) + value;
       }
     });
 
-    // Calculate wallet turnover (outflow/inflow ratio)
-    Object.keys(inflows).forEach(address => {
-      if (inflows[address] > 0) {
-        contractData.walletAnalytics.walletTurnover[address] = {
-          inflow: inflows[address],
-          outflow: outflows[address] || 0,
-          ratio: (outflows[address] || 0) / inflows[address],
-          balance: walletBalances[address] || 0
-        };
-      }
-    });
-    
-    // Identify wallet lifecycle stages
-    const now = new Date();
-    const DAY_MS = 24 * 60 * 60 * 1000;
-    Object.keys(walletActivity).forEach(address => {
-      const firstSeen = new Date(walletActivity[address].firstSeen);
-      const lastSeen = new Date(walletActivity[address].lastSeen);
-      const age = (now - firstSeen) / DAY_MS;
-      const daysSinceLastActivity = (now - lastSeen) / DAY_MS;
-      const totalActivity = (walletActivity[address].sent.count || 0) + (walletActivity[address].received.count || 0);
-      
-      let stage = 'unknown';
-      if (age < 7) {
-        stage = 'new';
-      } else if (daysSinceLastActivity > 30) {
-        stage = 'dormant';
-      } else if (totalActivity > 10) {
-        stage = 'active';
-      } else {
-        stage = 'casual';
-      }
-      
-      contractData.walletAnalytics.walletLifecycle[address] = {
-        age: Math.floor(age),
-        daysSinceLastActivity: Math.floor(daysSinceLastActivity),
-        totalActivity,
-        stage
-      };
-    });
-    
-    // Identify potential airdrop farmers
-    const potentialFarmers = Object.values(receivedAirdropsThenSent)
-      .filter(wallet => {
-        // Consider as potential farmer if:
-        // 1. Received small amounts multiple times
-        // 2. Quickly sent out most of received tokens
-        // 3. Has a high outflow/inflow ratio
-        return wallet.instances >= 3 && 
-               wallet.totalSent > wallet.totalReceived * 0.8 &&
-               contractData.walletAnalytics.walletTurnover[wallet.address]?.ratio > 0.9;
-      })
-      .sort((a, b) => b.instances - a.instances)
-      .slice(0, 50); // Top 50 most likely farmers
-    
-    contractData.walletAnalytics.airdropFarmers = potentialFarmers;
-    
     // Sort wallets by volume and categorize into clusters
     const sortedWallets = Object.entries(walletVolumes)
       .sort((a, b) => b[1] - a[1]);
@@ -1903,21 +1721,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const formatResponse = (response) => {
     let formattedText = response
       .trim()
-      
-      // Fix heading formatting - ensure proper spacing
-      .replace(/#+\s*(.*?)(?=\n|$)/g, '### $1\n')
-      
-      // Ensure bullet points are properly formatted with spacing
-      .replace(/\n\*\s+/g, '\n* ')
-      
-      // Fix numbered list formatting
-      .replace(/\n(\d+)\.\s+/g, '\n$1. ')
-      
-      // Ensure consistent spacing after headings
-      .replace(/###\s*(.*?)\n(?!\n)/g, '### $1\n\n')
-      
-      // Standardize section breaks
-      .replace(/\n---+\s*\n/g, '\n\n---\n\n')
+      // Fix heading formatting
+      .replace(/#+\s*(.*?)(?=\n|$)/g, '### $1')
       
       // Format metrics to be on the same line
       .replace(/(\*\*[^:]+):\*\*\s*\n+(`[^`]+`)/g, '**$1:** $2')
@@ -1932,351 +1737,148 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Format percentages to be on the same line
       .replace(/(\d+)%\s*\n+/g, '$1% ')
       
-      // Fix bullet point formatting with asterisks
-      .replace(/\n\*\s*\*\*([^:]+):\*\*\s*\n+/g, '\n* **$1:** ')
+      // Format bullet points with their content
+      .replace(/(\* [^\n]+)\s*\n+([^*\n][^\n]*?)(?=\n+\*|\n+$|\n+###|\n\n)/g, '$1 $2')
       
-      // Fix nested bullet points
-      .replace(/\n\s+\*\s+/g, '\n  * ')
+      // Format metrics with values in code blocks
+      .replace(/\*\*([^:]+):\*\*\s*\n+```([^`]+)```/g, '**$1:** `$2`')
       
-      // Fix bullet points with numbers
-      .replace(/\n\*\s+(\d+)/g, '\n* $1')
-      
-      // Remove excessive newlines between bullet points
+      // Clean up multiple newlines
       .replace(/\n{3,}/g, '\n\n')
       
-      // Clean up spacing around numbered lists
-      .replace(/\n\s*(\d+)\.\s*/g, '\n$1. ')
+      // Format metrics with their context on same line
+      .replace(/(\d+)\s*\n+\(([^)]+)\)/g, '$1 ($2)')
       
-      // Ensure proper spacing after bullet points
-      .replace(/(\*\s+[^\n]+)(?=\n[^\*\n])/g, '$1\n')
+      // Format metrics consistently
+      .replace(/\*\*([^:]+):\*\*\s*(`[^`]+`)/g, '**$1:** $2')
       
-      // Format list items that span multiple lines
-      .replace(/(\*\s+[^\n]+)\n([^\*\n][^\n]+)/g, '$1 $2')
+      // Clean up spacing around parentheses
+      .replace(/\s*\(\s*/g, ' (')
+      .replace(/\s*\)\s*/g, ') ')
       
-      // Ensure consistent spacing for section headings
-      .replace(/(#+\s+[^\n]+)\n+(\*\s+)/g, '$1\n\n$2');
+      // Fix common inline formatting issues
+      .replace(/^([\w\s]+):\s*\n+(\d+)/gm, '$1: $2')
+      .replace(/([\w\s]+):\s*\n+(\w+)/g, '$1: $2')
       
-    // Replace hash+star combinations that cause formatting issues
-    formattedText = formattedText
-      .replace(/###\s*\*/g, '### ')
-      .replace(/\n#([^#])/g, '\n# $1')
-      .replace(/\*\s+\*\*/g, '* **');
-    
-    // Ensure clean spacing between sections
-    formattedText = formattedText
-      .replace(/(\n\*[^\n]+\n)(\d+\.|#|###)/g, '$1\n$2');
+      // Fix sub-list formatting
+      .replace(/\n\s+([0-9]+)\.\s+/g, '\n$1. ')
       
-    return formattedText;
-  };
+      // Ensure proper spacing around sections
+      .replace(/---\s*/g, '\n---\n')
+      
+      // Remove extra spaces at line starts
+      .replace(/^\s+/gm, '')
+      
+      // Clean up multiple newlines between sections
+      .replace(/\n{3,}/g, '\n\n')
+      
+      // Format inline metrics properly 
+      .replace(/(\d+)\s*\n+([a-zA-Z])/g, '$1 $2')
+      
+      // Clean up spacing around backticks
+      .replace(/\s+`/g, ' `')
+      .replace(/`\s+/g, '` ')
+      
+      // Ensure colons and values are on the same line
+      .replace(/(:\s*)\n+/g, '$1')
+      
+      // Fix nested metrics that might be separated
+      .replace(/(\*\*[^*\n]+\*\*)\s*\n+(\d|`)/g, '$1 $2')
+      
+      // Ensure all bullet points have a space after the asterisk
+      .replace(/\n\*(?!\s)/g, '\n* ')
+      
+      // Fix subsection headings (numbered lists after headings)
+      .replace(/(### [^\n]+)\n+([0-9]+)\.\s+/g, '$1\n\n$2. ')
+      
+      // Fix paragraphs after bullet points
+      .replace(/(\* [^\n]+)\n+([^*#\n][^\n]+)/g, '$1\n$2')
+      
+      // Clean up section separations with proper spacing 
+      .replace(/(### [^\n]+)\n+/g, '$1\n\n')
+      
+      // Additional fixes for specific issues
+      .replace(/transactions\s*\n+/g, 'transactions ')
+      .replace(/visitors\s*\n+/g, 'visitors ')
+      .replace(/\n+based on/gi, ' based on');
 
-  const formatAnalyticsData = () => {
-    if (analysisMode === 'contract' && contractData && contractTransactions) {
-      return {
-        type: 'contract',
-        details: contractData,
-        data: processContractTransactions(contractData, contractTransactions)
-      };
-    } else if (website && websiteAnalytics) {
-      return {
-        type: 'website',
-        details: website,
-        data: websiteAnalytics
-      };
-    }
-    return null;
-  };
-  
-  // Create a compressed version of the analytics data with only essential metrics
-  const createCompressedAnalyticsSummary = () => {
-    if (analysisMode === 'contract' && contractData && contractTransactions) {
-      const processed = processContractTransactions(contractData, contractTransactions);
-      
-      // Skip if processing failed
-      if (!processed) return null;
-      
-      // Extract only the essential metrics
-      const summary = {
-        contractInfo: {
-          address: processed.contractInfo.address,
-          name: processed.contractInfo.name,
-          blockchain: processed.contractInfo.blockchain,
-          totalTransactions: processed.contractInfo.totalTransactions,
-          activeDays: processed.contractInfo.activeDays.size || 0
-        },
-        metrics: {
-          // Basic metrics
-          uniqueUsers: processed.summary.uniqueUsers,
-          uniqueReceivers: processed.summary.uniqueReceivers,
-          totalVolume: processed.summary.totalVolume,
-          avgTxValue: processed.summary.averageTransactionValue,
-          medianTxValue: processed.summary.medianTransactionValue,
-          
-          // USD value segmentation (condensed)
-          usdSegmentation: {
-            small: processed.summary.usdValueSegmentation?.small?.count || 0,
-            medium: processed.summary.usdValueSegmentation?.medium?.count || 0, 
-            large: processed.summary.usdValueSegmentation?.large?.count || 0,
-            whale: processed.summary.usdValueSegmentation?.whale?.count || 0
-          },
-          
-          // Time patterns (condensed)
-          timePatterns: {
-            mostActiveTimeOfDay: Object.entries(processed.transactionPatterns?.timeOfDayDistribution || {})
-              .sort((a, b) => b[1].count - a[1].count)
-              .map(([key]) => key)[0] || 'unknown',
-            mostActiveDayOfWeek: Object.entries(processed.transactionPatterns?.dayOfWeekDistribution || {})
-              .sort((a, b) => b[1].count - a[1].count)
-              .map(([key]) => key)[0] || 'unknown'
-          }
-        },
-        
-        // Recent activity (last 7 days only)
-        recentActivity: {
-          // Get only the last 7 days of daily data
-          daily: processed.timeSeries?.daily?.timestamps 
-            ? processed.timeSeries.daily.timestamps
-                .slice(-7)
-                .map((date, i) => ({
-                  date,
-                  transactions: processed.timeSeries.daily.transactions[processed.timeSeries.daily.transactions.length - 7 + i] || 0,
-                  volume: processed.timeSeries.daily.volume[processed.timeSeries.daily.volume.length - 7 + i] || 0,
-                  uniqueUsers: processed.timeSeries.daily.uniqueUsers[processed.timeSeries.daily.uniqueUsers.length - 7 + i] || 0
-                }))
-            : []
-        },
-        
-        // Top wallets (limited selection)
-        topWallets: {
-          // Only include top 5 of each category
-          topSenders: (processed.walletAnalytics?.topSenders || [])
-            .slice(0, 5)
-            .map(({ address, volume, transactionCount }) => ({ 
-              address, 
-              volume: parseFloat(volume.toFixed(4)), 
-              count: transactionCount 
-            })),
-            
-          topReceivers: (processed.walletAnalytics?.topReceivers || [])
-            .slice(0, 5)
-            .map(({ address, volume, transactionCount }) => ({ 
-              address, 
-              volume: parseFloat(volume.toFixed(4)), 
-              count: transactionCount 
-            })),
-            
-          // Only include first 5 potential farmers
-          airdropFarmers: (processed.walletAnalytics?.airdropFarmers || [])
-            .slice(0, 5)
-            .map(farmer => ({ 
-              address: farmer.address,
-              instances: farmer.instances
-            }))
-        },
-        
-        // Wallet segmentation (counts only)
-        walletSegmentation: {
-          whales: processed.walletAnalytics?.walletClusters?.whales?.length || 0,
-          dolphins: processed.walletAnalytics?.walletClusters?.dolphins?.length || 0,
-          fish: processed.walletAnalytics?.walletClusters?.fish?.length || 0,
-          plankton: processed.walletAnalytics?.walletClusters?.plankton?.length || 0
-        },
-        
-        // Network metrics (essential only)
-        network: {
-          clusteringCoefficient: processed.networkMetrics?.clusteringCoefficient || 0,
-          totalNodes: processed.networkMetrics ? 
-            Object.keys(processed.networkMetrics.degreeDistribution?.inDegree || {}).length : 0,
-          totalEdges: processed.networkMetrics ? 
-            Array.from(new Set(Object.values(processed.networkMetrics.degreeDistribution?.inDegree || {}))).reduce((a, b) => a + b, 0) : 0
-        }
-      };
-      
-      return {
-        type: 'contract',
-        details: {
-          address: contractData.address,
-          name: contractData.name,
-          blockchain: contractData.blockchain
-        },
-        data: summary
-      };
-    } else if (website && websiteAnalytics) {
-      // Similar compression for website analytics could be implemented here
-      return {
-        type: 'website',
-        details: {
-          id: website.id,
-          name: website.name,
-          url: website.url
-        },
-        data: {
-          // Compressed website analytics summary
-          summaryMetrics: {
-            totalVisits: websiteAnalytics.totalVisits || 0,
-            uniqueVisitors: websiteAnalytics.uniqueVisitors || 0,
-            averageSessionDuration: websiteAnalytics.averageSessionDuration || 0,
-            bounceRate: websiteAnalytics.bounceRate || 0
-          },
-          // Only include top sources and pages
-          topTrafficSources: (websiteAnalytics.trafficSources || []).slice(0, 5),
-          topPages: (websiteAnalytics.topPages || []).slice(0, 5)
-        }
-      };
-    }
-    return null;
+    return formattedText;
   };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    setIsLoading(true);
-    
-    const newMessage = {
-      role: 'user',
-      content: input,
-    };
-    
-    setMessages(prevMessages => [...prevMessages, newMessage]);
+    const userMessage = input.trim();
     setInput('');
-    
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const analyticsData = createCompressedAnalyticsSummary(); // Use compressed data
-      let model = 'gemini-2.0-flash'; // Default model
-      
+      const analyticsSummary = generateAnalyticsSummary(userMessage);
+      const messageWithContext = analyticsSummary;
+
+      let botMessage;
+
       try {
-        model = await verifyModel();
-        console.log(`Using model: ${model}`);
+        // Try SDK approach first
+        const ai = initializeAI();
+        const modelName = await verifyModel();
+        console.log("Using model for SDK:", modelName);
         
-        // Primary approach: use Gemini SDK
-        const genAI = initializeAI();
-        const geminiModel = genAI.getGenerativeModel({ model });
-        
-        // Prepare prompt with expert knowledge and concise instructions
-        const promptPrefix = expertContext && expertContext.length > 0 
-          ? `You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. You're built with expert knowledge in blockchain analytics, token metrics, and on-chain data analysis. 
-          
-IMPORTANT: Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content. Avoid lengthy explanations unless specifically requested.
-
-Some expert knowledge you have:\n\n${expertContext}\n\n`
-          : `You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. You're built with expert knowledge in blockchain analytics, token metrics, and on-chain data analysis.
-          
-IMPORTANT: Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content. Avoid lengthy explanations unless specifically requested.\n\n`;
-          
-        // Include analytics data if available (with reduced detail)
-        const analyticsInfo = analyticsData 
-          ? `\nHere is the analytics data to reference when responding. Focus on insights from this data rather than repeating raw numbers:\n${JSON.stringify(analyticsData, null, 2)}\n` 
-          : '';
-        
-        // Combine all messages into a conversation history
-        const history = messages.map(m => ({
-          role: m.role,
-          parts: [{ text: m.content }]
-        }));
-        
-        // Add prefix and analytics data to the prompt
-        if (history.length > 0 && history[0].role === 'user') {
-          history[0].parts[0].text = promptPrefix + analyticsInfo + history[0].parts[0].text;
-        }
-        
-        // Add the new user message with a reminder to be concise
-        history.push({
-          role: 'user',
-          parts: [{ text: `${newMessage.content}\n\nRemember to provide a concise response with insights rather than raw data.` }]
-        });
-
-        // Generate content with Gemini SDK
-        const result = await geminiModel.generateContent({
-          contents: history,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2000, // Reduced from 4000 to encourage brevity
-          },
-          safetySettings: [
-            {
-              category: 'HARM_CATEGORY_HARASSMENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-          ],
-        });
-        
-        // Get response text
-        const response = result.response.text();
-        console.log('Response:', response);
-        
-        // Format the response and add to messages
-        const formattedResponse = formatResponse(response);
-        setMessages(prevMessages => [...prevMessages, {
-          role: 'assistant',
-          content: formattedResponse,
-        }]);
-        
+        const model = ai.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(messageWithContext);
+        const response = await result.response;
+        botMessage = response.text();
       } catch (sdkError) {
-        console.error("Error using Gemini SDK:", sdkError);
+        console.log("SDK approach failed, falling back to REST API:", sdkError);
         
-        // Fallback: use backend API
-        console.log("Falling back to backend API...");
-        const response = await axiosInstance.post('/ai/generate', {
-          model,
-          messages: [
+        const modelName = await verifyModel();
+        console.log("Using model for REST API:", modelName);
+        
+        const requestBody = {
+          model: modelName,
+          contents: [
             {
-              role: 'system',
-              content: 'You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content.'
-            },
-            ...messages.map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            {
-              role: 'user',
-              content: analyticsData ? 
-                `Here is analytics data to reference. Focus on insights, not raw data: ${JSON.stringify(analyticsData)}\n\nUser question: ${newMessage.content}` : 
-                newMessage.content
+              parts: [
+                { text: messageWithContext }
+              ]
             }
-          ],
-          parameters: {
-            temperature: 0.7,
-            max_tokens: 2000 // Limiting token count to reduce response size
-          }
-        });
+          ]
+        };
+
+        console.log("Sending request to backend:", requestBody);
+        const response = await axiosInstance.post('/ai/generate', requestBody);
         
-        // Format the response and add to messages
-        const formattedResponse = formatResponse(response.data.content);
-        setMessages(prevMessages => [...prevMessages, {
-          role: 'assistant',
-          content: formattedResponse,
-        }]);
+        if (!response.data) {
+          throw new Error('No response data received from backend');
+        }
+
+        if (response.data.error) {
+          throw new Error(response.data.error);
+        }
+
+        botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
       }
-      
-    } catch (error) {
-      console.error("Error:", error);
-      
-      // Display error message to user
-      setMessages(prevMessages => [...prevMessages, {
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error while processing your request. Please try again with a more specific question or contact support if the issue persists.',
+
+      // Format the response before displaying
+      const formattedMessage = formatResponse(botMessage);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: formattedMessage,
+        timestamp: new Date().toISOString()
       }]);
+    } catch (err) {
+      console.error('Full Error Details:', err.response?.data || err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
+      setError(`Failed to get response: ${errorMessage}`);
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
     }
   };
 
   // Format analytics data for display
-  const formatDisplayAnalytics = () => {
+  const formatAnalyticsData = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
       return [];
     }
@@ -2295,76 +1897,65 @@ IMPORTANT: Provide concise responses that focus on insights rather than raw data
   // Update the message rendering function
   const renderMessage = (message) => {
     return (
-      <div className={`p-4 ${message.role === 'user' ? 'bg-gradient-to-r from-[#caa968] to-[#b58c50] text-white' : 'bg-gradient-to-r from-white to-gray-50 shadow-sm'} ${message.role === 'user' ? 'user-message' : 'assistant-message'} relative mb-3 rounded-xl`}>
-        <div className="relative z-10">
-          {message.role === 'assistant' && (
-            <div className="flex items-center mb-2">
-              <div className="logo-container mr-2">
-                <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
-              </div>
-              <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
+      <div className={`max-w-[90%] p-4 rounded-lg ${
+        message.role === 'user'
+          ? 'bg-[#1d0c46] text-white user-message'
+          : 'bg-white shadow-sm border border-gray-100 assistant-message'
+      }`}>
+        {message.role === 'assistant' && (
+          <div className="flex items-center mb-2">
+            <div className="logo-container mr-2">
+              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
             </div>
+            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
+          </div>
+        )}
+        <div className="prose prose-sm max-w-none">
+          {message.role === 'assistant' ? (
+            <div className="markdown-content">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h3: ({node, ...props}) => (
+                    <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
+                  ),
+                  p: ({node, ...props}) => (
+                    <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
+                  ),
+                  strong: ({node, ...props}) => (
+                    <strong className="font-semibold text-[#1d0c46]" {...props} />
+                  ),
+                  em: ({node, ...props}) => (
+                    <em className="text-gray-600 italic" {...props} />
+                  ),
+                  code: ({node, inline, ...props}) => 
+                    inline ? (
+                      <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
+                    ) : (
+                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />
+                    ),
+                  hr: ({node, ...props}) => (
+                    <hr className="my-6 border-t border-gray-200" {...props} />
+                  ),
+                  ul: ({node, ...props}) => (
+                    <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
+                  ),
+                  li: ({node, ...props}) => (
+                    <li className="text-gray-700" {...props} />
+                  ),
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
+                  )
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+              </div>
+          ) : (
+            message.content
           )}
-          <div className="prose prose-sm max-w-none">
-            {message.role === 'assistant' ? (
-              <div className="markdown-content">
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h3: ({node, ...props}) => (
-                      <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
-                    ),
-                    h2: ({node, ...props}) => (
-                      <h2 className="text-2xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
-                    ),
-                    h1: ({node, ...props}) => (
-                      <h1 className="text-3xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
-                    ),
-                    p: ({node, ...props}) => (
-                      <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
-                    ),
-                    strong: ({node, ...props}) => (
-                      <strong className="font-semibold text-[#1d0c46]" {...props} />
-                    ),
-                    em: ({node, ...props}) => (
-                      <em className="text-gray-600 italic" {...props} />
-                    ),
-                    code: ({node, inline, ...props}) => 
-                      inline ? (
-                        <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
-                      ) : (
-                        <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />
-                      ),
-                    hr: ({node, ...props}) => (
-                      <hr className="my-6 border-t border-gray-200" {...props} />
-                    ),
-                    ul: ({node, ...props}) => (
-                      <ul className="list-disc pl-5 space-y-2 mb-4" {...props} />
-                    ),
-                    ol: ({node, ...props}) => (
-                      <ol className="list-decimal pl-5 space-y-2 mb-4" {...props} />
-                    ),
-                    li: ({node, children, ...props}) => {
-                      // Check if the content is a paragraph and remove wrapper paragraph for cleaner list items
-                      if (children && children.length === 1 && React.isValidElement(children[0]) && children[0].type === 'p') {
-                        return <li className="text-gray-700 mb-1" {...props}>{children[0].props.children}</li>;
-                      }
-                      return <li className="text-gray-700 mb-1" {...props}>{children}</li>;
-                    },
-                    blockquote: ({node, ...props}) => (
-                      <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
-                    )
-                  }}
-                >
-                  {message.content}
-                </ReactMarkdown>
-                </div>
-            ) : (
-              message.content
-            )}
-              </div>
             </div>
-      </div>
+          </div>
     );
   };
 
