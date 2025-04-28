@@ -1969,75 +1969,309 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return formattedText;
   };
 
+  const formatAnalyticsData = () => {
+    if (analysisMode === 'contract' && contractData && contractTransactions) {
+      return {
+        type: 'contract',
+        details: contractData,
+        data: processContractTransactions(contractData, contractTransactions)
+      };
+    } else if (website && websiteAnalytics) {
+      return {
+        type: 'website',
+        details: website,
+        data: websiteAnalytics
+      };
+    }
+    return null;
+  };
+  
+  // Create a compressed version of the analytics data with only essential metrics
+  const createCompressedAnalyticsSummary = () => {
+    if (analysisMode === 'contract' && contractData && contractTransactions) {
+      const processed = processContractTransactions(contractData, contractTransactions);
+      
+      // Skip if processing failed
+      if (!processed) return null;
+      
+      // Extract only the essential metrics
+      const summary = {
+        contractInfo: {
+          address: processed.contractInfo.address,
+          name: processed.contractInfo.name,
+          blockchain: processed.contractInfo.blockchain,
+          totalTransactions: processed.contractInfo.totalTransactions,
+          activeDays: processed.contractInfo.activeDays.size || 0
+        },
+        metrics: {
+          // Basic metrics
+          uniqueUsers: processed.summary.uniqueUsers,
+          uniqueReceivers: processed.summary.uniqueReceivers,
+          totalVolume: processed.summary.totalVolume,
+          avgTxValue: processed.summary.averageTransactionValue,
+          medianTxValue: processed.summary.medianTransactionValue,
+          
+          // USD value segmentation (condensed)
+          usdSegmentation: {
+            small: processed.summary.usdValueSegmentation?.small?.count || 0,
+            medium: processed.summary.usdValueSegmentation?.medium?.count || 0, 
+            large: processed.summary.usdValueSegmentation?.large?.count || 0,
+            whale: processed.summary.usdValueSegmentation?.whale?.count || 0
+          },
+          
+          // Time patterns (condensed)
+          timePatterns: {
+            mostActiveTimeOfDay: Object.entries(processed.transactionPatterns?.timeOfDayDistribution || {})
+              .sort((a, b) => b[1].count - a[1].count)
+              .map(([key]) => key)[0] || 'unknown',
+            mostActiveDayOfWeek: Object.entries(processed.transactionPatterns?.dayOfWeekDistribution || {})
+              .sort((a, b) => b[1].count - a[1].count)
+              .map(([key]) => key)[0] || 'unknown'
+          }
+        },
+        
+        // Recent activity (last 7 days only)
+        recentActivity: {
+          // Get only the last 7 days of daily data
+          daily: processed.timeSeries?.daily?.timestamps 
+            ? processed.timeSeries.daily.timestamps
+                .slice(-7)
+                .map((date, i) => ({
+                  date,
+                  transactions: processed.timeSeries.daily.transactions[processed.timeSeries.daily.transactions.length - 7 + i] || 0,
+                  volume: processed.timeSeries.daily.volume[processed.timeSeries.daily.volume.length - 7 + i] || 0,
+                  uniqueUsers: processed.timeSeries.daily.uniqueUsers[processed.timeSeries.daily.uniqueUsers.length - 7 + i] || 0
+                }))
+            : []
+        },
+        
+        // Top wallets (limited selection)
+        topWallets: {
+          // Only include top 5 of each category
+          topSenders: (processed.walletAnalytics?.topSenders || [])
+            .slice(0, 5)
+            .map(({ address, volume, transactionCount }) => ({ 
+              address, 
+              volume: parseFloat(volume.toFixed(4)), 
+              count: transactionCount 
+            })),
+            
+          topReceivers: (processed.walletAnalytics?.topReceivers || [])
+            .slice(0, 5)
+            .map(({ address, volume, transactionCount }) => ({ 
+              address, 
+              volume: parseFloat(volume.toFixed(4)), 
+              count: transactionCount 
+            })),
+            
+          // Only include first 5 potential farmers
+          airdropFarmers: (processed.walletAnalytics?.airdropFarmers || [])
+            .slice(0, 5)
+            .map(farmer => ({ 
+              address: farmer.address,
+              instances: farmer.instances
+            }))
+        },
+        
+        // Wallet segmentation (counts only)
+        walletSegmentation: {
+          whales: processed.walletAnalytics?.walletClusters?.whales?.length || 0,
+          dolphins: processed.walletAnalytics?.walletClusters?.dolphins?.length || 0,
+          fish: processed.walletAnalytics?.walletClusters?.fish?.length || 0,
+          plankton: processed.walletAnalytics?.walletClusters?.plankton?.length || 0
+        },
+        
+        // Network metrics (essential only)
+        network: {
+          clusteringCoefficient: processed.networkMetrics?.clusteringCoefficient || 0,
+          totalNodes: processed.networkMetrics ? 
+            Object.keys(processed.networkMetrics.degreeDistribution?.inDegree || {}).length : 0,
+          totalEdges: processed.networkMetrics ? 
+            Array.from(new Set(Object.values(processed.networkMetrics.degreeDistribution?.inDegree || {}))).reduce((a, b) => a + b, 0) : 0
+        }
+      };
+      
+      return {
+        type: 'contract',
+        details: {
+          address: contractData.address,
+          name: contractData.name,
+          blockchain: contractData.blockchain
+        },
+        data: summary
+      };
+    } else if (website && websiteAnalytics) {
+      // Similar compression for website analytics could be implemented here
+      return {
+        type: 'website',
+        details: {
+          id: website.id,
+          name: website.name,
+          url: website.url
+        },
+        data: {
+          // Compressed website analytics summary
+          summaryMetrics: {
+            totalVisits: websiteAnalytics.totalVisits || 0,
+            uniqueVisitors: websiteAnalytics.uniqueVisitors || 0,
+            averageSessionDuration: websiteAnalytics.averageSessionDuration || 0,
+            bounceRate: websiteAnalytics.bounceRate || 0
+          },
+          // Only include top sources and pages
+          topTrafficSources: (websiteAnalytics.trafficSources || []).slice(0, 5),
+          topPages: (websiteAnalytics.topPages || []).slice(0, 5)
+        }
+      };
+    }
+    return null;
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!message.trim() || isLoading) return;
 
-    const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
-    setError(null);
-
+    
+    const newMessage = {
+      role: 'user',
+      content: message,
+    };
+    
+    setMessages(prevMessages => [...prevMessages, newMessage]);
+    setMessage('');
+    
     try {
-      const analyticsSummary = generateAnalyticsSummary(userMessage);
-      const messageWithContext = analyticsSummary;
-
-      let botMessage;
-
+      const analyticsData = createCompressedAnalyticsSummary(); // Use compressed data
+      let model = 'gemini-2.0-flash'; // Default model
+      
       try {
-        // Try SDK approach first
-        const ai = initializeAI();
-        const modelName = await verifyModel();
-        console.log("Using model for SDK:", modelName);
+        model = await verifyModel();
+        console.log(`Using model: ${model}`);
         
-        const model = ai.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(messageWithContext);
-        const response = await result.response;
-        botMessage = response.text();
-      } catch (sdkError) {
-        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        // Primary approach: use Gemini SDK
+        const genAI = initializeAI();
+        const geminiModel = genAI.getGenerativeModel({ model });
         
-        const modelName = await verifyModel();
-        console.log("Using model for REST API:", modelName);
+        // Prepare prompt with expert knowledge and concise instructions
+        const promptPrefix = expertContext && expertContext.length > 0 
+          ? `You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. You're built with expert knowledge in blockchain analytics, token metrics, and on-chain data analysis. 
+          
+IMPORTANT: Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content. Avoid lengthy explanations unless specifically requested.
+
+Some expert knowledge you have:\n\n${expertContext}\n\n`
+          : `You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. You're built with expert knowledge in blockchain analytics, token metrics, and on-chain data analysis.
+          
+IMPORTANT: Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content. Avoid lengthy explanations unless specifically requested.\n\n`;
+          
+        // Include analytics data if available (with reduced detail)
+        const analyticsInfo = analyticsData 
+          ? `\nHere is the analytics data to reference when responding. Focus on insights from this data rather than repeating raw numbers:\n${JSON.stringify(analyticsData, null, 2)}\n` 
+          : '';
         
-        const requestBody = {
-          model: modelName,
-          contents: [
+        // Combine all messages into a conversation history
+        const history = messages.map(m => ({
+          role: m.role,
+          parts: [{ text: m.content }]
+        }));
+        
+        // Add prefix and analytics data to the prompt
+        if (history.length > 0 && history[0].role === 'user') {
+          history[0].parts[0].text = promptPrefix + analyticsInfo + history[0].parts[0].text;
+        }
+        
+        // Add the new user message with a reminder to be concise
+        history.push({
+          role: 'user',
+          parts: [{ text: `${newMessage.content}\n\nRemember to provide a concise response with insights rather than raw data.` }]
+        });
+
+        // Generate content with Gemini SDK
+        const result = await geminiModel.generateContent({
+          contents: history,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2000, // Reduced from 4000 to encourage brevity
+          },
+          safetySettings: [
             {
-              parts: [
-                { text: messageWithContext }
-              ]
-            }
-          ]
-        };
-
-        console.log("Sending request to backend:", requestBody);
-        const response = await axiosInstance.post('/ai/generate', requestBody);
+              category: 'HARM_CATEGORY_HARASSMENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_HATE_SPEECH',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+          ],
+        });
         
-        if (!response.data) {
-          throw new Error('No response data received from backend');
-        }
-
-        if (response.data.error) {
-          throw new Error(response.data.error);
-        }
-
-        botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+        // Get response text
+        const response = result.response.text();
+        console.log('Response:', response);
+        
+        // Format the response and add to messages
+        const formattedResponse = formatResponse(response);
+        setMessages(prevMessages => [...prevMessages, {
+          role: 'assistant',
+          content: formattedResponse,
+        }]);
+        
+      } catch (sdkError) {
+        console.error("Error using Gemini SDK:", sdkError);
+        
+        // Fallback: use backend API
+        console.log("Falling back to backend API...");
+        const response = await axiosInstance.post('/ai/generate', {
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Cryptique Intelligence (CQ Intelligence), an AI-powered analytics assistant for Web3 and digital analytics. Provide concise responses that focus on insights rather than raw data. Aim for brevity while maintaining informative content.'
+            },
+            ...messages.map(m => ({
+              role: m.role,
+              content: m.content
+            })),
+            {
+              role: 'user',
+              content: analyticsData ? 
+                `Here is analytics data to reference. Focus on insights, not raw data: ${JSON.stringify(analyticsData)}\n\nUser question: ${newMessage.content}` : 
+                newMessage.content
+            }
+          ],
+          parameters: {
+            temperature: 0.7,
+            max_tokens: 2000 // Limiting token count to reduce response size
+          }
+        });
+        
+        // Format the response and add to messages
+        const formattedResponse = formatResponse(response.data.content);
+        setMessages(prevMessages => [...prevMessages, {
+          role: 'assistant',
+          content: formattedResponse,
+        }]);
       }
-
-      // Format the response before displaying
-      const formattedMessage = formatResponse(botMessage);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: formattedMessage,
-        timestamp: new Date().toISOString()
+      
+    } catch (error) {
+      console.error("Error:", error);
+      
+      // Display error message to user
+      setMessages(prevMessages => [...prevMessages, {
+        role: 'assistant',
+        content: 'I apologize, but I encountered an error while processing your request. Please try again with a more specific question or contact support if the issue persists.',
       }]);
-    } catch (err) {
-      console.error('Full Error Details:', err.response?.data || err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
-      setError(`Failed to get response: ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
     }
   };
 
