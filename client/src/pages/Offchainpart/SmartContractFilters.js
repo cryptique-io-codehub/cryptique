@@ -160,15 +160,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       while (hasMore) {
         console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+      const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
           params: { 
             limit: pageSize,
             page: page
           }
-        });
-        
-        if (response.data && response.data.transactions) {
-          const fetchedTransactions = response.data.transactions;
+      });
+      
+      if (response.data && response.data.transactions) {
+        const fetchedTransactions = response.data.transactions;
           
           // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
@@ -196,15 +196,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           hasMore = false;
         }
       }
-      
-      // Store in component state
-      setTransactions(prev => ({
-        ...prev,
+        
+        // Store in component state
+        setTransactions(prev => ({
+          ...prev,
         [contractId]: allTransactions
-      }));
-      
+        }));
+        
       console.log(`Loaded ${allTransactions.length} total transactions from MongoDB for contract ${contractId}`);
-      setIsFetchingTransactions(false);
+        setIsFetchingTransactions(false);
       return allTransactions;
     } catch (error) {
       console.error("Error fetching transactions from MongoDB:", error);
@@ -469,7 +469,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         } catch (error) {
           console.error("Error saving new transactions to API:", error);
           setLoadingStatus(`Error saving transactions: ${error.message}`);
-        }
+      }
       } else {
         setLoadingStatus('No new transactions found');
         setLoadingProgress({ current: 90, total: 100 });
@@ -750,9 +750,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             
             try {
               const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-                transactions: batch
-              });
-              
+              transactions: batch
+            });
+            
               console.log('Batch save response:', response.data);
               totalSaved += response.data.total || 0;
             } catch (batchError) {
@@ -760,7 +760,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               batchErrors.push(batchError.message || 'Unknown batch error');
               // Small delay before next batch to avoid rate limiting
               await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+          }
           }
           
           if (batchErrors.length > 0) {
@@ -919,7 +919,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
       setLoadingStatus('Creating contract object...');
       setLoadingProgress({ current: 30, total: 100 });
-      
+
       // Create new contract object
       const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newContract = {
@@ -1151,7 +1151,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       if (!currentTeam) return null;
 
       console.log(`Saving contract to API: ${contract.address} on ${contract.blockchain}`);
-      
+
       const response = await axiosInstance.post('/contracts', {
         teamName: currentTeam,
         address: contract.address,

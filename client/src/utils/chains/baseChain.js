@@ -17,7 +17,7 @@ const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || 'YOUR_BASESCA
 // BaseScan API endpoints
 const BASESCAN_API_URL = 'https://api.basescan.org/api';
 const BASESCAN_ACCT_TX_ENDPOINT = `${BASESCAN_API_URL}?module=account&action=txlist`;
-
+    
 // Max results per page
 const MAX_RESULTS = 10000;
 

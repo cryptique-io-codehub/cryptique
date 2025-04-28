@@ -130,7 +130,7 @@ exports.saveTransactions = async (req, res) => {
     // Process transactions in batches
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
       try {
-        const batch = transactions.slice(i, i + BATCH_SIZE);
+      const batch = transactions.slice(i, i + BATCH_SIZE);
         console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(transactions.length/BATCH_SIZE)}: ${batch.length} transactions`);
         
         // Validate each transaction and ensure required fields
@@ -143,23 +143,23 @@ exports.saveTransactions = async (req, res) => {
           console.log("No valid transactions in this batch, skipping");
           continue;
         }
-        
-        // Create operations for this batch
+      
+      // Create operations for this batch
         const operations = validTransactions.map(tx => ({
-          updateOne: {
-            filter: { tx_hash: tx.tx_hash },
-            update: { 
-              $setOnInsert: {
-                ...tx,
-                contract: contract._id,
+        updateOne: {
+          filter: { tx_hash: tx.tx_hash },
+          update: { 
+            $setOnInsert: {
+              ...tx,
+              contract: contract._id,
                 contractId: contractId, // Ensure contractId is set correctly
-                createdAt: new Date()
-              }
-            },
-            upsert: true
-          }
-        }));
-        
+              createdAt: new Date()
+            }
+          },
+          upsert: true
+        }
+      }));
+      
         // Log a sample operation for debugging
         if (operations.length > 0) {
           console.log("Sample operation:", JSON.stringify(operations[0]).slice(0, 200) + "...");
@@ -168,8 +168,8 @@ exports.saveTransactions = async (req, res) => {
         const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
         console.log(`Batch result: upserted=${batchResult.upsertedCount}, modified=${batchResult.modifiedCount}`);
         
-        totalInserted += batchResult.upsertedCount;
-        totalModified += batchResult.modifiedCount;
+      totalInserted += batchResult.upsertedCount;
+      totalModified += batchResult.modifiedCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);
@@ -180,10 +180,10 @@ exports.saveTransactions = async (req, res) => {
     // Update the contract with the latest block number
     if (highestBlockNumber > 0) {
       try {
-        await SmartContract.updateOne(
-          { contractId, lastBlock: { $lt: highestBlockNumber } },
+      await SmartContract.updateOne(
+        { contractId, lastBlock: { $lt: highestBlockNumber } },
           { $set: { lastBlock: highestBlockNumber, lastUpdated: new Date() } }
-        );
+      );
         console.log(`Updated contract ${contractId} with latest block number: ${highestBlockNumber}`);
       } catch (updateError) {
         console.error("Error updating contract with latest block:", updateError);
@@ -194,9 +194,9 @@ exports.saveTransactions = async (req, res) => {
     // Return appropriate response
     if (totalInserted > 0 || totalModified > 0) {
       return res.status(200).json({ 
-        message: "Transactions saved successfully",
-        inserted: totalInserted,
-        modified: totalModified,
+      message: "Transactions saved successfully",
+      inserted: totalInserted,
+      modified: totalModified,
         total: totalInserted + totalModified,
         errors: errors.length > 0 ? errors : undefined
       });
@@ -211,7 +211,7 @@ exports.saveTransactions = async (req, res) => {
         inserted: 0,
         modified: 0,
         total: 0
-      });
+    });
     }
   } catch (error) {
     console.error("Error saving transactions:", error);

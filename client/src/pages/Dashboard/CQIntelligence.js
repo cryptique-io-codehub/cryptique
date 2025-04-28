@@ -104,81 +104,96 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (!siteId) return;
     
     setIsContractLoading(true);
+    
     try {
-      // Using the /sdk/contracts endpoint instead of /contracts/list
-      const response = await axiosInstance.get(`/sdk/contracts/${siteId}`);
-      console.log("Smart contracts response:", response.data);
+      // Get the website details to extract team info
+      const websiteResponse = await axiosInstance.get(`/website/${siteId}`);
+      const teamName = websiteResponse?.data?.TeamName;
       
-      // Check for different possible response structures
-      let contracts = [];
+      if (!teamName) {
+        console.error("No team name found for website");
+        setContractsArray([]);
+        setIsContractLoading(false);
+        return;
+      }
+      
+      // Fetch contracts for the team
+      const response = await axiosInstance.get(`/contracts/team/${teamName}`);
+      
       if (response.data?.contracts) {
-        contracts = response.data.contracts;
-      } else if (response.data?.data?.contracts) {
-        contracts = response.data.data.contracts;
-      } else if (Array.isArray(response.data)) {
-        contracts = response.data;
-      }
-      
-      setContractsArray(contracts);
-      
-      if (contracts.length > 0) {
-        console.log(`Found ${contracts.length} smart contracts`);
+        const contracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
+          address: contract.address,
+          name: contract.name,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol
+        }));
+        
+        setContractsArray(contracts);
+        console.log(`Loaded ${contracts.length} contracts for team ${teamName}`);
       } else {
-        console.log("No smart contracts found in the response");
+        console.log("No contracts found for team");
+        setContractsArray([]);
       }
-      
-      // Reset selected contract when website changes
-      setSelectedContract('');
-      setContractData({});
     } catch (error) {
       console.error("Error fetching smart contracts:", error);
       setContractsArray([]);
-    } finally {
-      setIsContractLoading(false);
     }
+    
+    setIsContractLoading(false);
   };
 
   // Function to fetch transaction data for a selected contract
-  const fetchContractData = async (contractId) => {
-    if (!contractId) {
-      setContractData({});
-      return;
-    }
+  const fetchContractData = async (contractAddress) => {
+    if (!contractAddress) return;
     
     setIsContractLoading(true);
+    setContractData({});
+    
     try {
-      // Using the /sdk/transactions endpoint instead
-      const response = await axiosInstance.get(`/sdk/transactions/${contractId}`);
-      console.log("Contract transaction data:", response.data);
+      // Get the website details to extract team info
+      const websiteResponse = await axiosInstance.get(`/website/${siteId}`);
+      const teamName = websiteResponse?.data?.TeamName;
       
-      let transactions = [];
-      let stats = {};
-      
-      // Check for different possible response structures
-      if (response.data?.transactions) {
-        transactions = response.data.transactions;
-        stats = response.data.stats || {};
-      } else if (response.data?.data?.transactions) {
-        transactions = response.data.data.transactions;
-        stats = response.data.data.stats || {};
-      } else if (Array.isArray(response.data)) {
-        transactions = response.data;
+      if (!teamName) {
+        console.error("No team name found for website");
+        setIsContractLoading(false);
+        return;
       }
       
-      setContractData({
-        contractId,
-        transactions,
-        stats
-      });
+      // Fetch contract details
+      const response = await axiosInstance.get(`/contracts/${contractAddress}/details`);
       
-      console.log(`Loaded ${transactions.length} transactions for contract ${contractId}`);
+      if (response.data) {
+        const contractDetails = response.data;
+        
+        // Format the contract data
+        const formattedData = {
+          name: contractDetails.name || 'Unnamed Contract',
+          symbol: contractDetails.symbol || 'N/A',
+          decimals: contractDetails.decimals || 18,
+          totalSupply: contractDetails.totalSupply || '0',
+          owner: contractDetails.owner || 'N/A',
+          blockchain: contractDetails.blockchain || 'Unknown',
+          verified: contractDetails.verified || false,
+          creationDate: contractDetails.creationDate || 'Unknown',
+          lastUpdated: contractDetails.lastUpdated || 'Unknown',
+          transactions: contractDetails.transactions || 0,
+          holders: contractDetails.holders || 0
+        };
+        
+        setContractData(formattedData);
+        console.log("Contract data loaded successfully");
+      } else {
+        console.log("No contract details found");
+        setContractData({});
+      }
     } catch (error) {
       console.error("Error fetching contract data:", error);
-      setError("Failed to load transaction data for this contract.");
       setContractData({});
-    } finally {
-      setIsContractLoading(false);
     }
+    
+    setIsContractLoading(false);
   };
 
   // Handle website selection change
