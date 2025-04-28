@@ -1224,7 +1224,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       return null;
     }
 
-    // Enhanced contract data structure
+    // Start with basic contract info
     const contractData = {
       contractInfo: {
         address: contractDetails.address,
@@ -1233,9 +1233,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         tokenSymbol: contractDetails.tokenSymbol || 'Unknown',
         totalTransactions: transactions.length,
         firstTransaction: null,
-        latestTransaction: null,
-        activeDays: new Set(),
-        activeHours: new Set()
+        latestTransaction: null
       },
       summary: {
         uniqueUsers: new Set(transactions.map(tx => tx.from_address)).size,
@@ -1245,97 +1243,40 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           return isNaN(value) ? sum : sum + value;
         }, 0),
         averageTransactionValue: 0,
-        medianTransactionValue: 0,
-        maxTransactionValue: 0,
-        minTransactionValue: Infinity,
-        transactionValueDistribution: {
-          ranges: [
-            { min: 0, max: 0.01, count: 0, volume: 0 },
-            { min: 0.01, max: 0.1, count: 0, volume: 0 },
-            { min: 0.1, max: 1, count: 0, volume: 0 },
-            { min: 1, max: 10, count: 0, volume: 0 },
-            { min: 10, max: 100, count: 0, volume: 0 },
-            { min: 100, max: 1000, count: 0, volume: 0 },
-            { min: 1000, max: Infinity, count: 0, volume: 0 }
-          ]
-        }
+        medianTransactionValue: 0
       },
       timeSeries: {
-        hourly: {
-          timestamps: [],
-          transactions: [],
-          volume: [],
-          uniqueUsers: [],
-          averageValue: []
-        },
-        daily: {
-          dates: [],
-          transactions: [],
-          volume: [],
-          uniqueUsers: [],
-          averageValue: []
-        },
-        weekly: {
-          weeks: [],
-          transactions: [],
-          volume: [],
-          uniqueUsers: [],
-          averageValue: []
-        },
-        monthly: {
-          months: [],
-          transactions: [],
-          volume: [],
-          uniqueUsers: [],
-          averageValue: []
-        }
+        hourly: {},
+        daily: {},
+        weekly: {},
+        monthly: {}
       },
       walletAnalytics: {
         topSenders: [],
         topReceivers: [],
         mostFrequentUsers: [],
-        walletActivity: {},
-        walletClusters: {
-          whales: [],      // Top 1% by volume
-          dolphins: [],    // Next 9% by volume
-          fish: [],        // Next 40% by volume
-          plankton: []     // Remaining 50% by volume
-        }
+        walletActivity: {}
       },
-      transactionPatterns: {
-        timeOfDayDistribution: {
-          morning: { count: 0, volume: 0 },   // 6am - 12pm
-          afternoon: { count: 0, volume: 0 }, // 12pm - 6pm
-          evening: { count: 0, volume: 0 },   // 6pm - 12am
-          night: { count: 0, volume: 0 }      // 12am - 6am
-        },
-        dayOfWeekDistribution: {
-          monday: { count: 0, volume: 0 },
-          tuesday: { count: 0, volume: 0 },
-          wednesday: { count: 0, volume: 0 },
-          thursday: { count: 0, volume: 0 },
-          friday: { count: 0, volume: 0 },
-          saturday: { count: 0, volume: 0 },
-          sunday: { count: 0, volume: 0 }
-        },
-        transactionIntervals: {
-          lessThan1Min: 0,
-          oneToFiveMins: 0,
-          fiveToFifteenMins: 0,
-          fifteenToThirtyMins: 0,
-          thirtyToSixtyMins: 0,
-          moreThan1Hour: 0
-        }
+      transactionSizeDistribution: {
+        small: 0,     // < 0.1
+        medium: 0,    // 0.1 - 1
+        large: 0,     // 1 - 10
+        whale: 0      // > 10
       },
-      networkMetrics: {
-        averagePathLength: 0,
-        clusteringCoefficient: 0,
-        degreeDistribution: {
-          inDegree: {},
-          outDegree: {}
-        },
-        connectedComponents: 0,
-        largestComponentSize: 0
+      timeOfDayDistribution: {
+        morning: 0,   // 6am - 12pm
+        afternoon: 0, // 12pm - 6pm
+        evening: 0,   // 6pm - 12am
+        night: 0      // 12am - 6am
+      },
+      dayOfWeekDistribution: {
+        monday: 0,
+        tuesday: 0,
+        wednesday: 0,
+        thursday: 0,
+        friday: 0,
+        saturday: 0,
+        sunday: 0
       }
     };
 
@@ -1350,13 +1291,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       contractData.contractInfo.latestTransaction = sortedTransactions[sortedTransactions.length - 1].block_time;
     }
 
-    // Calculate transaction value metrics
+    // Calculate average and median transaction values
     const values = transactions.map(tx => parseFloat(tx.value_eth) || 0).filter(val => !isNaN(val) && val > 0);
     
     if (values.length > 0) {
       contractData.summary.averageTransactionValue = values.reduce((a, b) => a + b, 0) / values.length;
-      contractData.summary.maxTransactionValue = Math.max(...values);
-      contractData.summary.minTransactionValue = Math.min(...values);
       
       // Calculate median
       const sortedValues = [...values].sort((a, b) => a - b);
@@ -1366,296 +1305,222 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         : sortedValues[mid];
     }
 
-    // Initialize network analysis data structures
-    const graph = {
-      nodes: new Set(),
-      edges: new Set(),
-      adjacencyList: {}
-    };
-
-    // Process transactions for detailed analytics
-    let lastTransactionTime = null;
-    transactions.forEach(tx => {
-      const value = parseFloat(tx.value_eth) || 0;
-      const txDate = new Date(tx.block_time);
-      
-      // Track active days and hours
-      contractData.contractInfo.activeDays.add(txDate.toISOString().split('T')[0]);
-      contractData.contractInfo.activeHours.add(txDate.getHours());
-
-      // Update transaction value distribution
-      contractData.summary.transactionValueDistribution.ranges.forEach(range => {
-        if (value >= range.min && value < range.max) {
-          range.count++;
-          range.volume += value;
-        }
-      });
-
-      // Process time-based patterns
-      const hour = txDate.getHours();
-      const timeOfDay = hour >= 6 && hour < 12 ? 'morning' :
-                       hour >= 12 && hour < 18 ? 'afternoon' :
-                       hour >= 18 ? 'evening' : 'night';
-      
-      contractData.transactionPatterns.timeOfDayDistribution[timeOfDay].count++;
-      contractData.transactionPatterns.timeOfDayDistribution[timeOfDay].volume += value;
-
-      const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][txDate.getDay()];
-      contractData.transactionPatterns.dayOfWeekDistribution[dayOfWeek].count++;
-      contractData.transactionPatterns.dayOfWeekDistribution[dayOfWeek].volume += value;
-
-      // Calculate transaction intervals
-      if (lastTransactionTime) {
-        const interval = (txDate - new Date(lastTransactionTime)) / 1000 / 60; // in minutes
-        if (interval < 1) contractData.transactionPatterns.transactionIntervals.lessThan1Min++;
-        else if (interval < 5) contractData.transactionPatterns.transactionIntervals.oneToFiveMins++;
-        else if (interval < 15) contractData.transactionPatterns.transactionIntervals.fiveToFifteenMins++;
-        else if (interval < 30) contractData.transactionPatterns.transactionIntervals.fifteenToThirtyMins++;
-        else if (interval < 60) contractData.transactionPatterns.transactionIntervals.thirtyToSixtyMins++;
-        else contractData.transactionPatterns.transactionIntervals.moreThan1Hour++;
-      }
-      lastTransactionTime = tx.block_time;
-
-      // Build network graph
-      if (tx.from_address && tx.to_address) {
-        graph.nodes.add(tx.from_address);
-        graph.nodes.add(tx.to_address);
-        const edge = `${tx.from_address}-${tx.to_address}`;
-        graph.edges.add(edge);
-        
-        if (!graph.adjacencyList[tx.from_address]) graph.adjacencyList[tx.from_address] = new Set();
-        if (!graph.adjacencyList[tx.to_address]) graph.adjacencyList[tx.to_address] = new Set();
-        graph.adjacencyList[tx.from_address].add(tx.to_address);
-        graph.adjacencyList[tx.to_address].add(tx.from_address);
-      }
-    });
-
-    // Calculate network metrics
-    const nodes = Array.from(graph.nodes);
-    const edges = Array.from(graph.edges);
-    
-    // Calculate degree distribution
-    nodes.forEach(node => {
-      const inDegree = edges.filter(e => e.endsWith(node)).length;
-      const outDegree = edges.filter(e => e.startsWith(node)).length;
-      
-      contractData.networkMetrics.degreeDistribution.inDegree[inDegree] = 
-        (contractData.networkMetrics.degreeDistribution.inDegree[inDegree] || 0) + 1;
-      contractData.networkMetrics.degreeDistribution.outDegree[outDegree] = 
-        (contractData.networkMetrics.degreeDistribution.outDegree[outDegree] || 0) + 1;
-    });
-
-    // Calculate average path length and clustering coefficient
-    let totalPathLength = 0;
-    let totalPaths = 0;
-    let totalClustering = 0;
-    
-    nodes.forEach(node => {
-      const neighbors = Array.from(graph.adjacencyList[node] || []);
-      if (neighbors.length > 1) {
-        // Calculate local clustering coefficient
-        let possibleEdges = (neighbors.length * (neighbors.length - 1)) / 2;
-        let actualEdges = 0;
-        
-        for (let i = 0; i < neighbors.length; i++) {
-          for (let j = i + 1; j < neighbors.length; j++) {
-            if (graph.edges.has(`${neighbors[i]}-${neighbors[j]}`) || 
-                graph.edges.has(`${neighbors[j]}-${neighbors[i]}`)) {
-              actualEdges++;
-            }
-          }
-        }
-        
-        totalClustering += actualEdges / possibleEdges;
-      }
-    });
-    
-    contractData.networkMetrics.clusteringCoefficient = nodes.length > 0 ? totalClustering / nodes.length : 0;
-
-    // Generate time series data
-    const generateTimeSeries = (data, timeUnit) => {
-      const series = {
-        timestamps: [],
-        transactions: [],
-        volume: [],
-        uniqueUsers: [],
-        averageValue: []
-      };
-
-      Object.entries(data).forEach(([timestamp, metrics]) => {
-        series.timestamps.push(timestamp);
-        series.transactions.push(metrics.count);
-        series.volume.push(metrics.volume);
-        series.uniqueUsers.push(metrics.uniqueAddresses.size);
-        series.averageValue.push(metrics.volume / metrics.count);
-      });
-
-      return series;
-    };
-
-    // Process hourly data
-    const hourlyData = {};
-    transactions.forEach(tx => {
-      const date = new Date(tx.block_time);
-      const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
-      if (!hourlyData[hourKey]) {
-        hourlyData[hourKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      hourlyData[hourKey].count++;
-      hourlyData[hourKey].volume += parseFloat(tx.value_eth) || 0;
-      hourlyData[hourKey].uniqueAddresses.add(tx.from_address);
-    });
-
-    contractData.timeSeries.hourly = generateTimeSeries(hourlyData, 'hourly');
-
-    // Process daily data
-    const dailyData = {};
-    transactions.forEach(tx => {
-      const date = new Date(tx.block_time);
-      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      if (!dailyData[dayKey]) {
-        dailyData[dayKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      dailyData[dayKey].count++;
-      dailyData[dayKey].volume += parseFloat(tx.value_eth) || 0;
-      dailyData[dayKey].uniqueAddresses.add(tx.from_address);
-    });
-
-    contractData.timeSeries.daily = generateTimeSeries(dailyData, 'daily');
-
-    // Process weekly data
-    const weeklyData = {};
-    transactions.forEach(tx => {
-      const date = new Date(tx.block_time);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1));
-      const weekKey = `${weekStart.getFullYear()}-${String(Math.ceil((((weekStart - new Date(weekStart.getFullYear(), 0, 1)) / 86400000) + 1) / 7)).padStart(2, '0')}`;
-      if (!weeklyData[weekKey]) {
-        weeklyData[weekKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      weeklyData[weekKey].count++;
-      weeklyData[weekKey].volume += parseFloat(tx.value_eth) || 0;
-      weeklyData[weekKey].uniqueAddresses.add(tx.from_address);
-    });
-
-    contractData.timeSeries.weekly = generateTimeSeries(weeklyData, 'weekly');
-
-    // Process monthly data
-    const monthlyData = {};
-    transactions.forEach(tx => {
-      const date = new Date(tx.block_time);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      monthlyData[monthKey].count++;
-      monthlyData[monthKey].volume += parseFloat(tx.value_eth) || 0;
-      monthlyData[monthKey].uniqueAddresses.add(tx.from_address);
-    });
-
-    contractData.timeSeries.monthly = generateTimeSeries(monthlyData, 'monthly');
-
-    // Process wallet analytics
-    const walletVolumes = {};
-    const walletCounts = {};
+    // Create wallet analysis
+    const senderVolumes = {};
+    const receiverVolumes = {};
+    const senderCounts = {};
+    const receiverCounts = {};
     const walletActivity = {};
 
+    // Process transaction size distribution
     transactions.forEach(tx => {
       const value = parseFloat(tx.value_eth) || 0;
-      
+      if (!isNaN(value) && value > 0) {
+        if (value < 0.1) contractData.transactionSizeDistribution.small++;
+        else if (value < 1) contractData.transactionSizeDistribution.medium++;
+        else if (value < 10) contractData.transactionSizeDistribution.large++;
+        else contractData.transactionSizeDistribution.whale++;
+      }
+
+      // Track sender volumes and counts
       if (tx.from_address) {
-        walletVolumes[tx.from_address] = (walletVolumes[tx.from_address] || 0) + value;
-        walletCounts[tx.from_address] = (walletCounts[tx.from_address] || 0) + 1;
+        senderCounts[tx.from_address] = (senderCounts[tx.from_address] || 0) + 1;
+        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + (parseFloat(tx.value_eth) || 0);
         
         if (!walletActivity[tx.from_address]) {
           walletActivity[tx.from_address] = {
             sent: { count: 0, volume: 0 },
             received: { count: 0, volume: 0 },
             firstSeen: tx.block_time,
-            lastSeen: tx.block_time,
-            activeDays: new Set(),
-            activeHours: new Set()
+            lastSeen: tx.block_time
           };
+        } else {
+          walletActivity[tx.from_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.from_address].lastSeen) 
+            ? tx.block_time 
+            : walletActivity[tx.from_address].lastSeen;
         }
         
         walletActivity[tx.from_address].sent.count++;
-        walletActivity[tx.from_address].sent.volume += value;
-        walletActivity[tx.from_address].lastSeen = tx.block_time;
-        walletActivity[tx.from_address].activeDays.add(new Date(tx.block_time).toISOString().split('T')[0]);
-        walletActivity[tx.from_address].activeHours.add(new Date(tx.block_time).getHours());
+        walletActivity[tx.from_address].sent.volume += (parseFloat(tx.value_eth) || 0);
       }
-      
+
+      // Track receiver volumes and counts
       if (tx.to_address) {
-        walletVolumes[tx.to_address] = (walletVolumes[tx.to_address] || 0) + value;
-        walletCounts[tx.to_address] = (walletCounts[tx.to_address] || 0) + 1;
+        receiverCounts[tx.to_address] = (receiverCounts[tx.to_address] || 0) + 1;
+        receiverVolumes[tx.to_address] = (receiverVolumes[tx.to_address] || 0) + (parseFloat(tx.value_eth) || 0);
         
         if (!walletActivity[tx.to_address]) {
           walletActivity[tx.to_address] = {
             sent: { count: 0, volume: 0 },
             received: { count: 0, volume: 0 },
             firstSeen: tx.block_time,
-            lastSeen: tx.block_time,
-            activeDays: new Set(),
-            activeHours: new Set()
+            lastSeen: tx.block_time
           };
+        } else {
+          walletActivity[tx.to_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.to_address].lastSeen) 
+            ? tx.block_time 
+            : walletActivity[tx.to_address].lastSeen;
         }
         
         walletActivity[tx.to_address].received.count++;
-        walletActivity[tx.to_address].received.volume += value;
-        walletActivity[tx.to_address].lastSeen = tx.block_time;
-        walletActivity[tx.to_address].activeDays.add(new Date(tx.block_time).toISOString().split('T')[0]);
-        walletActivity[tx.to_address].activeHours.add(new Date(tx.block_time).getHours());
+        walletActivity[tx.to_address].received.volume += (parseFloat(tx.value_eth) || 0);
+      }
+
+      // Parse date for time-based analytics
+      const txDate = new Date(tx.block_time);
+      
+      // Time of day distribution
+      const hour = txDate.getHours();
+      if (hour >= 6 && hour < 12) contractData.timeOfDayDistribution.morning++;
+      else if (hour >= 12 && hour < 18) contractData.timeOfDayDistribution.afternoon++;
+      else if (hour >= 18) contractData.timeOfDayDistribution.evening++;
+      else contractData.timeOfDayDistribution.night++;
+      
+      // Day of week distribution
+      const day = txDate.getDay();
+      switch (day) {
+        case 0: contractData.dayOfWeekDistribution.sunday++; break;
+        case 1: contractData.dayOfWeekDistribution.monday++; break;
+        case 2: contractData.dayOfWeekDistribution.tuesday++; break;
+        case 3: contractData.dayOfWeekDistribution.wednesday++; break;
+        case 4: contractData.dayOfWeekDistribution.thursday++; break;
+        case 5: contractData.dayOfWeekDistribution.friday++; break;
+        case 6: contractData.dayOfWeekDistribution.saturday++; break;
       }
     });
 
-    // Sort wallets by volume and categorize into clusters
-    const sortedWallets = Object.entries(walletVolumes)
-      .sort((a, b) => b[1] - a[1]);
-    
-    const totalWallets = sortedWallets.length;
-    const whaleThreshold = Math.ceil(totalWallets * 0.01);
-    const dolphinThreshold = Math.ceil(totalWallets * 0.1);
-    const fishThreshold = Math.ceil(totalWallets * 0.5);
+    // Get top senders and receivers by volume and frequency
+    contractData.walletAnalytics.topSenders = Object.entries(senderVolumes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, volume]) => ({
+        address,
+        volume,
+        transactionCount: senderCounts[address] || 0
+      }));
 
-    sortedWallets.forEach(([address, volume], index) => {
-      if (index < whaleThreshold) {
-        contractData.walletAnalytics.walletClusters.whales.push({
-          address,
-          volume,
-          transactionCount: walletCounts[address],
-          activity: walletActivity[address]
-        });
-      } else if (index < dolphinThreshold) {
-        contractData.walletAnalytics.walletClusters.dolphins.push({
-          address,
-          volume,
-          transactionCount: walletCounts[address],
-          activity: walletActivity[address]
-        });
-      } else if (index < fishThreshold) {
-        contractData.walletAnalytics.walletClusters.fish.push({
-          address,
-          volume,
-          transactionCount: walletCounts[address],
-          activity: walletActivity[address]
-        });
-      } else {
-        contractData.walletAnalytics.walletClusters.plankton.push({
-          address,
-          volume,
-          transactionCount: walletCounts[address],
-          activity: walletActivity[address]
-        });
-      }
-    });
+    contractData.walletAnalytics.topReceivers = Object.entries(receiverVolumes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, volume]) => ({
+        address,
+        volume,
+        transactionCount: receiverCounts[address] || 0
+      }));
 
-    // Convert Sets to counts for wallet activity
+    // Most active wallets by total transaction count (sent + received)
+    const combinedActivity = {};
     Object.keys(walletActivity).forEach(address => {
-      walletActivity[address].activeDays = walletActivity[address].activeDays.size;
-      walletActivity[address].activeHours = walletActivity[address].activeHours.size;
+      combinedActivity[address] = walletActivity[address].sent.count + walletActivity[address].received.count;
     });
 
-    contractData.walletAnalytics.walletActivity = walletActivity;
+    contractData.walletAnalytics.mostFrequentUsers = Object.entries(combinedActivity)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, totalCount]) => ({
+        address,
+        totalTransactions: totalCount,
+        sentTransactions: walletActivity[address].sent.count,
+        receivedTransactions: walletActivity[address].received.count,
+        totalVolume: walletActivity[address].sent.volume + walletActivity[address].received.volume,
+        firstSeen: walletActivity[address].firstSeen,
+        lastSeen: walletActivity[address].lastSeen
+      }));
+
+    // Generate time series data
+    const hourlyData = {};
+    const dailyData = {};
+    const weeklyData = {};
+    const monthlyData = {};
+
+    transactions.forEach(tx => {
+      const date = new Date(tx.block_time);
+      const value = parseFloat(tx.value_eth) || 0;
+      
+      // Hourly aggregation - format: "YYYY-MM-DD HH:00"
+      const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+      if (!hourlyData[hourKey]) {
+        hourlyData[hourKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
+      }
+      hourlyData[hourKey].count++;
+      hourlyData[hourKey].volume += value;
+      hourlyData[hourKey].uniqueAddresses.add(tx.from_address);
+      
+      // Daily aggregation - format: "YYYY-MM-DD"
+      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      if (!dailyData[dayKey]) {
+        dailyData[dayKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
+      }
+      dailyData[dayKey].count++;
+      dailyData[dayKey].volume += value;
+      dailyData[dayKey].uniqueAddresses.add(tx.from_address);
+      
+      // Weekly aggregation - format: "YYYY-WW" (ISO week)
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1)); // Adjust to Monday
+      const weekNumber = Math.ceil((((weekStart - new Date(date.getFullYear(), 0, 1)) / 86400000) + 1) / 7);
+      const weekKey = `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
+      }
+      weeklyData[weekKey].count++;
+      weeklyData[weekKey].volume += value;
+      weeklyData[weekKey].uniqueAddresses.add(tx.from_address);
+      
+      // Monthly aggregation - format: "YYYY-MM"
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
+      }
+      monthlyData[monthKey].count++;
+      monthlyData[monthKey].volume += value;
+      monthlyData[monthKey].uniqueAddresses.add(tx.from_address);
+    });
+
+    // Convert time series data to arrays and process Sets for uniqueAddresses
+    contractData.timeSeries.hourly = Object.entries(hourlyData)
+      .map(([time, data]) => ({
+        time,
+        count: data.count,
+        volume: data.volume,
+        uniqueAddresses: data.uniqueAddresses.size
+      }))
+      .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    contractData.timeSeries.daily = Object.entries(dailyData)
+      .map(([date, data]) => ({
+        date,
+        count: data.count,
+        volume: data.volume,
+        uniqueAddresses: data.uniqueAddresses.size
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    contractData.timeSeries.weekly = Object.entries(weeklyData)
+      .map(([week, data]) => ({
+        week,
+        count: data.count,
+        volume: data.volume,
+        uniqueAddresses: data.uniqueAddresses.size
+      }))
+      .sort((a, b) => {
+        const [aYear, aWeek] = a.week.split('-W').map(Number);
+        const [bYear, bWeek] = b.week.split('-W').map(Number);
+        return aYear !== bYear ? aYear - bYear : aWeek - bWeek;
+      });
+
+    contractData.timeSeries.monthly = Object.entries(monthlyData)
+      .map(([month, data]) => ({
+        month,
+        count: data.count,
+        volume: data.volume,
+        uniqueAddresses: data.uniqueAddresses.size
+      }))
+      .sort((a, b) => {
+        const [aYear, aMonth] = a.month.split('-').map(Number);
+        const [bYear, bMonth] = b.month.split('-').map(Number);
+        return aYear !== bYear ? aYear - bYear : aMonth - bMonth;
+      });
 
     return contractData;
   };
