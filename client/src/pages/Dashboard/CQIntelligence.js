@@ -1167,17 +1167,27 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     `;
 
     const formattingInstructions = `
-      FORMATTING INSTRUCTIONS:
-      1. Always keep metrics and their values on the same line
-      2. Format metrics as "**Metric Name:** \`value\`" (no line breaks)
-      3. Format page metrics as "**Page Path:** \`value\` views"
-      4. Keep contextual information on the same line as its metric
-      5. Use proper spacing between different metrics
-      6. Format percentages inline as \`X%\`
-      7. Keep parenthetical information on the same line
-      8. Use bullet points (*) for insights, keeping all related text on same line
-      9. Use consistent formatting for all numerical values
-      10. Maintain proper section spacing with single blank lines
+      FORMATTING INSTRUCTIONS (CRITICALLY IMPORTANT):
+      1. Format all responses with extreme care for readability and conciseness
+      2. Always keep metrics and their values on the same line - never split them with line breaks
+      3. Format metrics uniformly as "**Metric Name:** value" (no line breaks)
+      4. Format page metrics as "**Page Path:** value views"
+      5. Use proper spacing and maintain consistent indentation
+      6. Format percentages inline as "X%"
+      7. Keep parenthetical information on the same line as the data it elaborates on
+      8. Format lists consistently - use bullet points (*) with clear, concise text
+      9. Maintain a structured hierarchy with section headings (use ###)
+      10. Always properly format numerical values with appropriate units
+      11. When displaying multiple metrics, group related ones together
+      12. Keep the output visually clean and structured
+      13. Ensure each heading is followed by explanatory text, not immediately by metrics
+      14. Place all bulleted items at the same indentation level
+      15. Format numbered lists with consistent indentation
+      16. Always maintain a clear, professional tone focused on insights
+      17. Sections should be clearly demarcated with proper spacing
+      18. Keep explanations concise but informative
+      19. Never repeat the same information in different sections
+      20. Avoid unnecessary line breaks between related content
     `;
 
     return `
@@ -1576,43 +1586,86 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const formatResponse = (response) => {
     let formattedText = response
       .trim()
+      // Fix heading formatting
+      .replace(/#+\s*(.*?)(?=\n|$)/g, '### $1')
+      
       // Format metrics to be on the same line
-      .replace(/(\*\*[^:]+):\*\*\s*\n+(`[^`]+`)/g, '$1:** $2')
-      .replace(/(\*\*[^:]+):\*\*\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '$1:** $2')
+      .replace(/(\*\*[^:]+):\*\*\s*\n+(`[^`]+`)/g, '**$1:** $2')
+      .replace(/(\*\*[^:]+):\*\*\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '**$1:** $2')
+      
+      // Fix metric value formatting (value on newline)
+      .replace(/([^:]+):\s*\n+(\d[^\n]*|`[^`]+`)(?=\n)/g, '$1: $2')
+      
       // Format page metrics to be on the same line
       .replace(/(`[^`]+`):\s*\n+(\d+)\s*\n+views/g, '$1: $2 views')
+      
       // Format percentages to be on the same line
       .replace(/(\d+)%\s*\n+/g, '$1% ')
+      
+      // Format bullet points with their content
+      .replace(/(\* [^\n]+)\s*\n+([^*\n][^\n]*?)(?=\n+\*|\n+$|\n+###|\n\n)/g, '$1 $2')
+      
       // Format metrics with values in code blocks
       .replace(/\*\*([^:]+):\*\*\s*\n+```([^`]+)```/g, '**$1:** `$2`')
+      
       // Clean up multiple newlines
       .replace(/\n{3,}/g, '\n\n')
+      
       // Format metrics with their context on same line
       .replace(/(\d+)\s*\n+\(([^)]+)\)/g, '$1 ($2)')
-      // Format headers properly
-      .replace(/###\s*(.*?)(?=\n)/g, '### $1')
+      
       // Format metrics consistently
       .replace(/\*\*([^:]+):\*\*\s*(`[^`]+`)/g, '**$1:** $2')
+      
       // Clean up spacing around parentheses
       .replace(/\s*\(\s*/g, ' (')
       .replace(/\s*\)\s*/g, ') ')
-      // Format bullet points consistently, keeping content on same line
-      .replace(/^\* (.*?)(?:\n+)(?!\*|$|#)/gm, '* $1 ')
+      
+      // Fix common inline formatting issues
+      .replace(/^([\w\s]+):\s*\n+(\d+)/gm, '$1: $2')
+      .replace(/([\w\s]+):\s*\n+(\w+)/g, '$1: $2')
+      
+      // Fix sub-list formatting
+      .replace(/\n\s+([0-9]+)\.\s+/g, '\n$1. ')
+      
       // Ensure proper spacing around sections
       .replace(/---\s*/g, '\n---\n')
+      
       // Remove extra spaces at line starts
       .replace(/^\s+/gm, '')
+      
       // Clean up multiple newlines between sections
       .replace(/\n{3,}/g, '\n\n')
+      
       // Format inline metrics properly 
       .replace(/(\d+)\s*\n+([a-zA-Z])/g, '$1 $2')
+      
       // Clean up spacing around backticks
       .replace(/\s+`/g, ' `')
       .replace(/`\s+/g, '` ')
+      
       // Ensure colons and values are on the same line
       .replace(/(:\s*)\n+/g, '$1')
+      
       // Fix nested metrics that might be separated
-      .replace(/(\*\*[^*\n]+\*\*)\s*\n+(\d|`)/g, '$1 $2');
+      .replace(/(\*\*[^*\n]+\*\*)\s*\n+(\d|`)/g, '$1 $2')
+      
+      // Ensure all bullet points have a space after the asterisk
+      .replace(/\n\*(?!\s)/g, '\n* ')
+      
+      // Fix subsection headings (numbered lists after headings)
+      .replace(/(### [^\n]+)\n+([0-9]+)\.\s+/g, '$1\n\n$2. ')
+      
+      // Fix paragraphs after bullet points
+      .replace(/(\* [^\n]+)\n+([^*#\n][^\n]+)/g, '$1\n$2')
+      
+      // Clean up section separations with proper spacing 
+      .replace(/(### [^\n]+)\n+/g, '$1\n\n')
+      
+      // Additional fixes for specific issues
+      .replace(/transactions\s*\n+/g, 'transactions ')
+      .replace(/visitors\s*\n+/g, 'visitors ')
+      .replace(/\n+based on/gi, ' based on');
 
     return formattedText;
   };
