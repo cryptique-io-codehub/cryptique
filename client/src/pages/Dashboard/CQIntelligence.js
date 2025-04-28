@@ -39,6 +39,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [loadedTransactionCount, setLoadedTransactionCount] = useState(0);
 
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
@@ -123,6 +124,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       setIsLoadingTransactions(true);
+      setError(null); // Clear any previous errors
+      setLoadedTransactionCount(0); // Reset counter
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
@@ -147,6 +150,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
           
+          // Update the progress counter
+          setLoadedTransactionCount(allTransactions.length);
+          
           console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
           
           // Check if we need to fetch more
@@ -160,10 +166,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // Move to next page
           page++;
           
-          // Safety check - don't loop more than 5 times (5,000 transactions)
-          if (page > 5) {
-            console.log("Reached maximum page fetch limit (5,000 transactions)");
-            hasMore = false;
+          // No safety limit - fetch all transactions
+          if (page % 10 === 0) {
+            // Log progress every 10 pages
+            console.log(`Fetched ${allTransactions.length} transactions so far...`);
+            // Small delay to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         } else {
           hasMore = false;
@@ -171,6 +179,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
       
       setContractTransactions(allTransactions);
+      setError(null); // Clear any status messages
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       return allTransactions;
     } catch (error) {
@@ -1385,33 +1394,42 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     let formattedText = response
       .trim()
       // Format metrics to be on the same line
-      .replace(/([^:]+):\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '$1: $2')
-      // Format page metrics
+      .replace(/(\*\*[^:]+):\*\*\s*\n+(`[^`]+`)/g, '$1:** $2')
+      .replace(/(\*\*[^:]+):\*\*\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '$1:** $2')
+      // Format page metrics to be on the same line
       .replace(/(`[^`]+`):\s*\n+(\d+)\s*\n+views/g, '$1: $2 views')
+      // Format percentages to be on the same line
+      .replace(/(\d+)%\s*\n+/g, '$1% ')
+      // Format metrics with values in code blocks
+      .replace(/\*\*([^:]+):\*\*\s*\n+```([^`]+)```/g, '**$1:** `$2`')
       // Clean up multiple newlines
       .replace(/\n{3,}/g, '\n\n')
-      // Format metrics with their context
+      // Format metrics with their context on same line
       .replace(/(\d+)\s*\n+\(([^)]+)\)/g, '$1 ($2)')
       // Format headers properly
       .replace(/###\s*(.*?)(?=\n)/g, '### $1')
       // Format metrics consistently
-      .replace(/\*\*(.*?):\*\*\s*`(.*?)`/g, '**$1:** `$2`')
+      .replace(/\*\*([^:]+):\*\*\s*(`[^`]+`)/g, '**$1:** $2')
       // Clean up spacing around parentheses
       .replace(/\s*\(\s*/g, ' (')
       .replace(/\s*\)\s*/g, ') ')
-      // Format bullet points consistently
-      .replace(/^\* (.*?)$/gm, '* $1')
+      // Format bullet points consistently, keeping content on same line
+      .replace(/^\* (.*?)(?:\n+)(?!\*|$|#)/gm, '* $1 ')
       // Ensure proper spacing around sections
       .replace(/---\s*/g, '\n---\n')
       // Remove extra spaces at line starts
       .replace(/^\s+/gm, '')
       // Clean up multiple newlines between sections
       .replace(/\n{3,}/g, '\n\n')
-      // Format inline metrics properly
+      // Format inline metrics properly 
       .replace(/(\d+)\s*\n+([a-zA-Z])/g, '$1 $2')
       // Clean up spacing around backticks
       .replace(/\s+`/g, ' `')
-      .replace(/`\s+/g, '` ');
+      .replace(/`\s+/g, '` ')
+      // Ensure colons and values are on the same line
+      .replace(/(:\s*)\n+/g, '$1')
+      // Fix nested metrics that might be separated
+      .replace(/(\*\*[^*\n]+\*\*)\s*\n+(\d|`)/g, '$1 $2');
 
     return formattedText;
   };
@@ -2053,7 +2071,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
               {isLoadingTransactions && (
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-                  <span>Loading contract transactions...</span>
+                  <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
+                </div>
+              )}
+              {!isLoadingTransactions && selectedContract && contractTransactions.length > 0 && (
+                <div className="flex items-center text-gray-600">
+                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
                 </div>
               )}
             </div>
