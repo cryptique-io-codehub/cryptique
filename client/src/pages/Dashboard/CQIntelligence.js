@@ -1529,7 +1529,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const initializeAI = () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
                   window.ENV?.NEXT_PUBLIC_GEMINI_API || 
-                  'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
+                  'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
     return new GoogleGenerativeAI(apiKey, {
       apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta'
     });
