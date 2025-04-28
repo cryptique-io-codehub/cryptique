@@ -34,10 +34,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const messagesEndRef = useRef(null);
 
   // Add state for smart contract selection
-  const [contractsArray, setContractsArray] = useState([]);
+  const [contractArray, setContractArray] = useState([]);
   const [selectedContract, setSelectedContract] = useState('');
-  const [contractData, setContractData] = useState({});
-  const [isContractLoading, setIsContractLoading] = useState(false);
+  const [contractTransactions, setContractTransactions] = useState([]);
+  const [isLoadingContracts, setIsLoadingContracts] = useState(false);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
@@ -68,7 +69,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           if (savedWebsiteId) {
             setSelectedSite(savedWebsiteId);
             fetchAnalyticsData(savedWebsiteId);
-            fetchSmartContracts(savedWebsiteId);
           }
         }
       } catch (error) {
@@ -80,7 +80,119 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
 
     fetchWebsites();
+    fetchSmartContracts(); // Fetch smart contracts on component mount
   }, []);
+
+  // Function to fetch smart contracts for the current team
+  const fetchSmartContracts = async () => {
+    try {
+      setIsLoadingContracts(true);
+      const selectedTeam = localStorage.getItem("selectedTeam");
+      
+      if (!selectedTeam) {
+        setIsLoadingContracts(false);
+        return;
+      }
+
+      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
+      
+      if (response.data && response.data.contracts) {
+        // Format contract data
+        const contracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
+          address: contract.address,
+          name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol
+        }));
+        
+        setContractArray(contracts);
+        console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
+      }
+    } catch (error) {
+      console.error("Error fetching smart contracts:", error);
+      setError("Failed to load smart contracts. Please try again later.");
+    } finally {
+      setIsLoadingContracts(false);
+    }
+  };
+
+  // Function to fetch transactions for a selected smart contract
+  const fetchContractTransactions = async (contractId) => {
+    if (!contractId) return;
+    
+    try {
+      setIsLoadingTransactions(true);
+      console.log(`Fetching transactions for contract ID: ${contractId}`);
+      
+      let allTransactions = [];
+      let hasMore = true;
+      let page = 1;
+      const pageSize = 1000; // Fetch 1000 transactions per request
+      
+      // Loop to fetch all transactions with pagination
+      while (hasMore) {
+        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
+        
+        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+          params: { 
+            limit: pageSize,
+            page: page
+          }
+        });
+        
+        if (response.data && response.data.transactions) {
+          const fetchedTransactions = response.data.transactions;
+          
+          // Add to our accumulated transactions
+          allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
+          
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
+            hasMore = false;
+          }
+          
+          // Move to next page
+          page++;
+          
+          // Safety check - don't loop more than 5 times (5,000 transactions)
+          if (page > 5) {
+            console.log("Reached maximum page fetch limit (5,000 transactions)");
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      setContractTransactions(allTransactions);
+      console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
+      return allTransactions;
+    } catch (error) {
+      console.error("Error fetching contract transactions:", error);
+      setError("Failed to load contract transactions. Please try again.");
+      return [];
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
+  // Handle contract selection change
+  const handleContractChange = async (e) => {
+    const contractId = e.target.value;
+    setSelectedContract(contractId);
+    
+    if (contractId) {
+      await fetchContractTransactions(contractId);
+    } else {
+      setContractTransactions([]);
+    }
+  };
 
   // Function to fetch analytics data for a selected website
   const fetchAnalyticsData = async (siteId) => {
@@ -99,103 +211,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Function to fetch available smart contracts
-  const fetchSmartContracts = async (siteId) => {
-    if (!siteId) return;
-    
-    setIsContractLoading(true);
-    
-    try {
-      // Get the website details to extract team info
-      const websiteResponse = await axiosInstance.get(`/website/${siteId}`);
-      const teamName = websiteResponse?.data?.TeamName;
-      
-      if (!teamName) {
-        console.error("No team name found for website");
-        setContractsArray([]);
-        setIsContractLoading(false);
-        return;
-      }
-      
-      // Fetch contracts for the team
-      const response = await axiosInstance.get(`/contracts/team/${teamName}`);
-      
-      if (response.data?.contracts) {
-        const contracts = response.data.contracts.map(contract => ({
-          id: contract.contractId,
-          address: contract.address,
-          name: contract.name,
-          blockchain: contract.blockchain,
-          tokenSymbol: contract.tokenSymbol
-        }));
-        
-        setContractsArray(contracts);
-        console.log(`Loaded ${contracts.length} contracts for team ${teamName}`);
-      } else {
-        console.log("No contracts found for team");
-        setContractsArray([]);
-      }
-    } catch (error) {
-      console.error("Error fetching smart contracts:", error);
-      setContractsArray([]);
-    }
-    
-    setIsContractLoading(false);
-  };
-
-  // Function to fetch transaction data for a selected contract
-  const fetchContractData = async (contractAddress) => {
-    if (!contractAddress) return;
-    
-    setIsContractLoading(true);
-    setContractData({});
-    
-    try {
-      // Get the website details to extract team info
-      const websiteResponse = await axiosInstance.get(`/website/${selectedSite}`);
-      const teamName = websiteResponse?.data?.TeamName;
-      
-      if (!teamName) {
-        console.error("No team name found for website");
-        setIsContractLoading(false);
-        return;
-      }
-      
-      // Fetch contract details
-      const response = await axiosInstance.get(`/contracts/${contractAddress}/details`);
-      
-      if (response.data) {
-        const contractDetails = response.data;
-        
-        // Format the contract data
-        const formattedData = {
-          name: contractDetails.name || 'Unnamed Contract',
-          symbol: contractDetails.symbol || 'N/A',
-          decimals: contractDetails.decimals || 18,
-          totalSupply: contractDetails.totalSupply || '0',
-          owner: contractDetails.owner || 'N/A',
-          blockchain: contractDetails.blockchain || 'Unknown',
-          verified: contractDetails.verified || false,
-          creationDate: contractDetails.creationDate || 'Unknown',
-          lastUpdated: contractDetails.lastUpdated || 'Unknown',
-          transactions: contractDetails.transactions || 0,
-          holders: contractDetails.holders || 0
-        };
-        
-        setContractData(formattedData);
-        console.log("Contract data loaded successfully");
-      } else {
-        console.log("No contract details found");
-        setContractData({});
-      }
-    } catch (error) {
-      console.error("Error fetching contract data:", error);
-      setContractData({});
-    }
-    
-    setIsContractLoading(false);
-  };
-
   // Handle website selection change
   const handleSiteChange = async (e) => {
     const siteId = e.target.value;
@@ -204,24 +219,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (siteId) {
       localStorage.setItem("idy", siteId);
       fetchAnalyticsData(siteId);
-      fetchSmartContracts(siteId);
     } else {
       setAnalytics({});
-      setContractsArray([]);
-      setSelectedContract('');
-      setContractData({});
-    }
-  };
-
-  // Handle contract selection change
-  const handleContractChange = async (e) => {
-    const contractId = e.target.value;
-    setSelectedContract(contractId);
-    
-    if (contractId) {
-      fetchContractData(contractId);
-    } else {
-      setContractData({});
     }
   };
 
@@ -1016,92 +1015,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       .sort((a, b) => b.count - a.count);
   };
 
-  // Helper function to process smart contract transaction data
-  const processContractTransactions = (transactions) => {
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-      return null;
-    }
-
-    // Initialize result object
-    const result = {
-      totalTransactions: transactions.length,
-      uniqueUsers: new Set(),
-      methodCalls: {},
-      valueDistribution: {
-        zero: 0,
-        low: 0,
-        medium: 0,
-        high: 0
-      },
-      timeDistribution: {
-        hourly: {},
-        daily: {},
-        monthly: {}
-      },
-      successRate: 0,
-      averageGas: 0
-    };
-
-    // Process each transaction
-    transactions.forEach(tx => {
-      // Count unique users (from addresses)
-      if (tx.from) {
-        result.uniqueUsers.add(tx.from.toLowerCase());
-      }
-
-      // Count method calls (using function signatures or names)
-      const method = tx.methodName || tx.methodSignature || 'unknown';
-      result.methodCalls[method] = (result.methodCalls[method] || 0) + 1;
-
-      // Process transaction value
-      const value = parseFloat(tx.value || 0);
-      if (value === 0) {
-        result.valueDistribution.zero++;
-      } else if (value < 0.1) {
-        result.valueDistribution.low++;
-      } else if (value < 1) {
-        result.valueDistribution.medium++;
-      } else {
-        result.valueDistribution.high++;
-      }
-
-      // Process timestamp distribution
-      if (tx.timestamp) {
-        const date = new Date(tx.timestamp);
-        const hour = date.getHours();
-        const day = date.getDay();
-        const month = date.getMonth();
-
-        result.timeDistribution.hourly[hour] = (result.timeDistribution.hourly[hour] || 0) + 1;
-        result.timeDistribution.daily[day] = (result.timeDistribution.daily[day] || 0) + 1;
-        result.timeDistribution.monthly[month] = (result.timeDistribution.monthly[month] || 0) + 1;
-      }
-
-      // Count successful transactions
-      if (tx.status === 'success' || tx.status === 1) {
-        result.successRate++;
-      }
-
-      // Sum gas used
-      if (tx.gasUsed) {
-        result.averageGas += parseFloat(tx.gasUsed);
-      }
-    });
-
-    // Calculate derived metrics
-    result.uniqueUsers = result.uniqueUsers.size;
-    result.successRate = (result.successRate / transactions.length) * 100;
-    result.averageGas = result.averageGas / transactions.length;
-
-    // Convert method calls to sorted array
-    result.topMethods = Object.entries(result.methodCalls)
-      .map(([method, count]) => ({ method, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    return result;
-  };
-
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
     if (!analytics || Object.keys(analytics).length === 0) {
@@ -1127,35 +1040,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         bounceRate: analytics.bounceRate || 0
       }
     };
-
-    // Add smart contract data if available
-    if (selectedContract && contractData && Object.keys(contractData).length > 0) {
-      // Find contract details from the array
-      const contractDetails = contractsArray.find(c => 
-        (c.contractId === selectedContract) || 
-        (c.id === selectedContract) || 
-        (c.address === selectedContract)
-      );
-      
-      const contractName = 
-        contractDetails?.name || 
-        contractDetails?.contractName || 
-        (contractDetails?.address && `${contractDetails.address.substring(0, 8)}...`) || 
-        selectedContract;
-        
-      fullAnalytics.contractData = {
-        contractId: selectedContract,
-        contractName,
-        transactions: contractData.transactions || [],
-        stats: contractData.stats || {}
-      };
-      
-      // Process transactions to get insights
-      const contractInsights = processContractTransactions(contractData.transactions);
-      if (contractInsights) {
-        fullAnalytics.contractInsights = contractInsights;
-      }
-    }
 
     // Add DAU/WAU/MAU if available
     const activityMetrics = calculateRetentionMetrics(analytics.sessions);
@@ -1187,6 +1071,18 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (geoData && isValidValue(geoData)) fullAnalytics.geography = geoData;
     if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
 
+    // Add smart contract transaction data if available
+    if (selectedContract && contractTransactions && contractTransactions.length > 0) {
+      // Find the selected contract details
+      const contractDetails = contractArray.find(contract => contract.id === selectedContract);
+      
+      // Process transaction data
+      if (contractDetails) {
+        const contractData = processContractTransactions(contractDetails, contractTransactions);
+        fullAnalytics.smartContract = contractData;
+      }
+    }
+
     // Remove empty sections
     Object.keys(fullAnalytics).forEach(key => {
       if (!isValidValue(fullAnalytics[key])) {
@@ -1198,31 +1094,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     console.log("Processed Analytics Data:", fullAnalytics);
     console.log("==============================================");
 
-    // Update the system context to include expert knowledge and contract data info if available
-    const contractContext = selectedContract ? 
-      `
-      Selected Smart Contract: ${
-        contractsArray.find(c => 
-          (c.contractId === selectedContract) || 
-          (c.id === selectedContract) || 
-          (c.address === selectedContract)
-        )?.name || 
-        contractsArray.find(c => 
-          (c.contractId === selectedContract) || 
-          (c.id === selectedContract) || 
-          (c.address === selectedContract)
-        )?.contractName || 
-        selectedContract
-      }
-      You have access to transaction data for this smart contract. User might ask about:
-      - Transaction volumes and patterns
-      - Contract interaction frequency
-      - User engagement with this contract
-      - Popular functions or methods called
-      - Transaction value analysis
-      - Temporal patterns in contract usage
-      ` : '';
-
+    // Update the system context to include expert knowledge
     const systemContext = `
       You are CQ Intelligence, the premier Web3 analytics and marketing intelligence platform and an expert web3 marketing consultant, providing expert insights for blockchain, DeFi, NFTs, and Web3 projects. As the platform provider, you represent the cutting edge of Web3 analytics. Your expertise includes:
       
@@ -1234,7 +1106,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       - DeFi user behavior analysis
       - Web3 funnel optimization
       - Blockchain-specific user journey mapping
-      ${contractContext}
       
       EXPERT KNOWLEDGE BASE:
       ${expertContext}
@@ -1319,7 +1190,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       4. DeFi/NFT market dynamics
       5. Cross-chain opportunities
       6. Web2 to Web3 conversion strategies
-      ${selectedContract ? "7. Smart contract transaction analysis and insights" : ""}
 
       Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
 
@@ -1327,6 +1197,130 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       ${message}
       [/USER QUESTION]
     `;
+  };
+
+  // Helper function to process smart contract transaction data
+  const processContractTransactions = (contractDetails, transactions) => {
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      return null;
+    }
+
+    const contractData = {
+      contractInfo: {
+        address: contractDetails.address,
+        name: contractDetails.name,
+        blockchain: contractDetails.blockchain,
+        tokenSymbol: contractDetails.tokenSymbol || 'Unknown'
+      },
+      transactionMetrics: {
+        totalTransactions: transactions.length,
+        uniqueUsers: new Set(transactions.map(tx => tx.from_address)).size,
+        transactionVolume: transactions.reduce((sum, tx) => {
+          const value = parseFloat(tx.value_eth) || 0;
+          return isNaN(value) ? sum : sum + value;
+        }, 0),
+        averageTransactionValue: 0
+      },
+      timeBasedMetrics: {
+        daily: {},
+        weekly: {},
+        monthly: {}
+      },
+      topAddresses: {
+        senders: [],
+        receivers: []
+      }
+    };
+
+    // Calculate average transaction value
+    if (contractData.transactionMetrics.totalTransactions > 0) {
+      contractData.transactionMetrics.averageTransactionValue = 
+        contractData.transactionMetrics.transactionVolume / contractData.transactionMetrics.totalTransactions;
+    }
+
+    // Add time-based analysis
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const weekMs = 7 * dayMs;
+    const monthMs = 30 * dayMs;
+
+    // Daily transactions (last 24 hours)
+    const dailyTxs = transactions.filter(tx => {
+      const txTime = new Date(tx.block_time);
+      return (now - txTime) <= dayMs;
+    });
+
+    // Weekly transactions (last 7 days)
+    const weeklyTxs = transactions.filter(tx => {
+      const txTime = new Date(tx.block_time);
+      return (now - txTime) <= weekMs;
+    });
+
+    // Monthly transactions (last 30 days)
+    const monthlyTxs = transactions.filter(tx => {
+      const txTime = new Date(tx.block_time);
+      return (now - txTime) <= monthMs;
+    });
+
+    if (dailyTxs.length > 0) {
+      contractData.timeBasedMetrics.daily = {
+        count: dailyTxs.length,
+        uniqueUsers: new Set(dailyTxs.map(tx => tx.from_address)).size,
+        volume: dailyTxs.reduce((sum, tx) => {
+          const value = parseFloat(tx.value_eth) || 0;
+          return isNaN(value) ? sum : sum + value;
+        }, 0)
+      };
+    }
+
+    if (weeklyTxs.length > 0) {
+      contractData.timeBasedMetrics.weekly = {
+        count: weeklyTxs.length,
+        uniqueUsers: new Set(weeklyTxs.map(tx => tx.from_address)).size,
+        volume: weeklyTxs.reduce((sum, tx) => {
+          const value = parseFloat(tx.value_eth) || 0;
+          return isNaN(value) ? sum : sum + value;
+        }, 0)
+      };
+    }
+
+    if (monthlyTxs.length > 0) {
+      contractData.timeBasedMetrics.monthly = {
+        count: monthlyTxs.length,
+        uniqueUsers: new Set(monthlyTxs.map(tx => tx.from_address)).size,
+        volume: monthlyTxs.reduce((sum, tx) => {
+          const value = parseFloat(tx.value_eth) || 0;
+          return isNaN(value) ? sum : sum + value;
+        }, 0)
+      };
+    }
+
+    // Calculate top senders and receivers
+    const senderCounts = {};
+    const receiverCounts = {};
+
+    transactions.forEach(tx => {
+      if (tx.from_address) {
+        senderCounts[tx.from_address] = (senderCounts[tx.from_address] || 0) + 1;
+      }
+      if (tx.to_address) {
+        receiverCounts[tx.to_address] = (receiverCounts[tx.to_address] || 0) + 1;
+      }
+    });
+
+    // Get top 10 senders
+    contractData.topAddresses.senders = Object.entries(senderCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, count]) => ({ address, count }));
+
+    // Get top 10 receivers
+    contractData.topAddresses.receivers = Object.entries(receiverCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, count]) => ({ address, count }));
+
+    return contractData;
   };
 
   // Initialize Gemini AI
@@ -2009,10 +2003,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 </div>
               </div>
               
-              {/* Selectors Container */}
-              <div className="flex items-center gap-3 min-w-[300px]">
+              {/* Selectors Section */}
+              <div className="flex items-center gap-4 min-w-[300px]">
                 {/* Website Selector */}
                 <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Website</label>
                   <select
                     value={selectedSite}
                     onChange={handleSiteChange}
@@ -2026,48 +2021,41 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                     ))}
                   </select>
                 </div>
-
+                
                 {/* Smart Contract Selector */}
-                {selectedSite && (
-                  <div className="flex-1">
-                    <select
-                      value={selectedContract}
-                      onChange={handleContractChange}
-                      disabled={isContractLoading || !selectedSite || contractsArray.length === 0}
-                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm disabled:bg-gray-100 disabled:text-gray-400"
-                    >
-                      <option value="">Select a smart contract</option>
-                      {contractsArray.map(contract => {
-                        // Extract contract ID - could be in different properties
-                        const id = contract.contractId || contract.id || contract.address;
-                        // Extract contract name or label - could be in different properties
-                        const displayName = 
-                          contract.name || 
-                          contract.contractName || 
-                          (contract.address && `${contract.address.substring(0, 8)}...`) || 
-                          id;
-                        
-                        return (
-                          <option key={id} value={id}>
-                            {displayName}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {isContractLoading && (
-                      <div className="text-xs text-[#caa968] mt-1 flex items-center">
-                        <div className="w-2 h-2 bg-[#caa968] rounded-full animate-pulse mr-1"></div>
-                        Loading contracts...
-                      </div>
-                    )}
-                    {!isContractLoading && selectedSite && contractsArray.length === 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        No smart contracts available
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
+                  <select
+                    value={selectedContract}
+                    onChange={handleContractChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                    disabled={isLoadingContracts}
+                  >
+                    <option value="">Select a contract</option>
+                    {contractArray.map(contract => (
+                      <option key={contract.id} value={contract.id}>
+                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+            </div>
+            
+            {/* Loading Indicators */}
+            <div className="flex mt-2 text-xs text-gray-500">
+              {isDataLoading && (
+                <div className="flex items-center mr-4">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1"></div>
+                  <span>Loading website analytics...</span>
+                </div>
+              )}
+              {isLoadingTransactions && (
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+                  <span>Loading contract transactions...</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2102,30 +2090,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 <span>Send</span>
               </button>
             </div>
-            {selectedContract && (
-              <div className="mt-3 text-sm flex items-center text-[#caa968]">
-                <div className="w-2 h-2 bg-[#caa968] rounded-full mr-2"></div>
-                <span>Smart contract data is being analyzed: </span>
-                <span className="font-semibold ml-1">
-                  {contractsArray.find(c => 
-                    (c.contractId === selectedContract) || 
-                    (c.id === selectedContract) || 
-                    (c.address === selectedContract)
-                  )?.name || 
-                   contractsArray.find(c => 
-                    (c.contractId === selectedContract) || 
-                    (c.id === selectedContract) || 
-                    (c.address === selectedContract)
-                   )?.contractName ||
-                   contractsArray.find(c => 
-                    (c.contractId === selectedContract) || 
-                    (c.id === selectedContract) || 
-                    (c.address === selectedContract)
-                   )?.address?.substring(0, 8) + '...' || 
-                   selectedContract}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </div>
