@@ -2127,17 +2127,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const handleSend = async () => {
-    if (!message.trim() || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     setIsLoading(true);
     
     const newMessage = {
       role: 'user',
-      content: message,
+      content: input,
     };
     
     setMessages(prevMessages => [...prevMessages, newMessage]);
-    setMessage('');
+    setInput('');
     
     try {
       const analyticsData = createCompressedAnalyticsSummary(); // Use compressed data
@@ -2276,7 +2276,7 @@ IMPORTANT: Provide concise responses that focus on insights rather than raw data
   };
 
   // Format analytics data for display
-  const formatAnalyticsData = () => {
+  const formatDisplayAnalytics = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
       return [];
     }
