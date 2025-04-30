@@ -131,7 +131,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         finalData[timeKey].visitors.add(visitorId);
         
         // Check if this session has a wallet connection
-        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
           finalData[timeKey].walletConnects.add(session.wallet.walletAddress);
           console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
             address: session.wallet.walletAddress,

@@ -129,7 +129,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         }
         
         // Track wallet connections (has non-empty address)
-        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
+        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
           // If wallet type is "No Wallet Detected" but has wallet address, count as web3 user too
           if (session.wallet.walletType === 'No Wallet Detected') {
             metrics[countryName].web3Users.add(userId);

@@ -613,7 +613,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
       
       // Track unique wallets by first source (wallet address not empty)
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '') {
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
         if (!walletsBySource[firstSource]) {
           walletsBySource[firstSource] = new Set();
         }

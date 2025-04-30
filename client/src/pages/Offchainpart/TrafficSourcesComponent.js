@@ -220,7 +220,9 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
         resultMap.get(userFirstSource).web3users.add(userId);
       }
       
-      if (walletAddress && walletAddress !== '') {
+      // Only count wallet as connected if it has a valid wallet address
+      // Make sure wallet address is not empty and not "No Wallet Detected"
+      if (walletAddress && walletAddress !== '' && walletAddress !== 'No Wallet Detected') {
         resultMap.get(userFirstSource).walletsConnected.add(userId);
       }
     }

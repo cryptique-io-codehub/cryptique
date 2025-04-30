@@ -244,7 +244,7 @@ class AnalyticsProcessor {
                 
                 const campaignData = campaigns.get(campaignKey);
                 campaignData.visitors++;
-                if (session.wallet && session.wallet.walletAddress) {
+                if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
                   campaignData.wallets++;
                 }
               }
@@ -265,7 +265,7 @@ class AnalyticsProcessor {
             sourceData.visitors++;
             
             // Count wallets if connected
-            if (session.wallet && session.wallet.walletAddress) {
+            if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
               sourceData.wallets++;
             }
           });
