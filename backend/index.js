@@ -2,6 +2,7 @@ const express = require("express");
 const { connect } = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
@@ -41,6 +42,9 @@ const sdkCorsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
+// Parse cookies
+app.use(cookieParser());
 
 // Use Helmet for security headers (except for SDK routes)
 app.use((req, res, next) => {
