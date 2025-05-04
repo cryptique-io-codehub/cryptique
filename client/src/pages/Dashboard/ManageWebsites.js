@@ -76,26 +76,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
 </script>`;
   };
 
-  // Helper function to generate GTM variable code
-  const generateGTMVariableCode = (siteId) => {
-    return `// 1. Create a Constant Variable in GTM
-Name: CryptiqueID
-Type: Constant
-Value: ${siteId}
-
-// 2. Create a Custom HTML Tag
-Name: Cryptique Analytics
-HTML:
-<script>
-  var script = document.createElement('script');
-  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-  script.setAttribute('site-id', '{{CryptiqueID}}');
-  document.head.appendChild(script);
-</script>
-
-// 3. Set the tag to fire on "All Pages" trigger`;
-  };
-
   // Function to show a message to the user
   const showMessage = (msg, type) => {
     setMessage(msg);
@@ -429,63 +409,14 @@ HTML:
                 </button>
               </div>
               
-              <div className="mb-6">
-                <p className="mb-4">
-                  To track analytics for <span className="font-semibold">{selectedWebsite.Domain}</span>, 
-                  choose the installation method that matches your website:
-                </p>
-                
-                {/* Traditional HTML */}
-                <div className="mb-4">
-                  <h3 className="text-md font-semibold mb-2">Option 1: Traditional HTML</h3>
-                  <p className="mb-2">
-                    Add the following script to the <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> 
-                    section of your website:
-                  </p>
-                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                    <pre className="text-sm text-gray-800">{scriptCode}</pre>
-                  </div>
-                </div>
-                
-                {/* TypeScript/JavaScript */}
-                <div className="mb-4">
-                  <h3 className="text-md font-semibold mb-2">Option 2: For TypeScript/JavaScript Projects</h3>
-                  <p className="mb-2">
-                    Add the following code to your main component or script file:
-                  </p>
-                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                    <pre className="text-sm text-gray-800">{`// Add this to your main component (e.g., in useEffect or componentDidMount)
-const script = document.createElement('script');
-script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
-script.setAttribute('site-id', '${selectedWebsite.siteId}');
-document.head.appendChild(script);`}</pre>
-                  </div>
-                </div>
-                
-                {/* Google Tag Manager */}
-                <div className="mb-4">
-                  <h3 className="text-md font-semibold mb-2">Option 3: Google Tag Manager</h3>
-                  <p className="mb-2">
-                    Add as a Custom HTML Tag in Google Tag Manager:
-                  </p>
-                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                    <pre className="text-sm text-gray-800">{generateGTMCode(selectedWebsite.siteId)}</pre>
-                  </div>
-                </div>
-                
-                {/* Google Tag Manager with Variable */}
-                <div>
-                  <h3 className="text-md font-semibold mb-2">Option 4: Google Tag Manager with Variables (Recommended)</h3>
-                  <p className="mb-2">
-                    For better management in GTM, use a variable for the site ID:
-                  </p>
-                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                    <pre className="text-sm text-gray-800">{generateGTMVariableCode(selectedWebsite.siteId)}</pre>
-                  </div>
-                </div>
-              </div>
+              <ScriptTabs 
+                siteId={selectedWebsite.siteId} 
+                domain={selectedWebsite.Domain}
+                scriptCode={scriptCode}
+                generateGTMCode={generateGTMCode}
+              />
 
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md mt-4">
                 <h3 className="text-md font-semibold text-blue-800 mb-1">Verification Note</h3>
                 <p className="text-sm text-blue-800">
                   After adding the script to your website, please make sure:
@@ -519,6 +450,132 @@ document.head.appendChild(script);`}</pre>
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Tab component for installation methods
+const ScriptTabs = ({ siteId, domain, scriptCode, generateGTMCode }) => {
+  const [activeTab, setActiveTab] = useState('html');
+  
+  const jsCode = `// Add this to your main component (e.g., in useEffect or componentDidMount)
+const script = document.createElement('script');
+script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
+script.setAttribute('site-id', '${siteId}');
+document.head.appendChild(script);`;
+
+  return (
+    <div>
+      <p className="mb-3">
+        To track analytics for <span className="font-semibold">{domain}</span>, 
+        select your preferred installation method:
+      </p>
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('html')}
+            className={`${
+              activeTab === 'html'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            HTML
+          </button>
+          <button
+            onClick={() => setActiveTab('js')}
+            className={`${
+              activeTab === 'js'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            JavaScript/React
+          </button>
+          <button
+            onClick={() => setActiveTab('gtm')}
+            className={`${
+              activeTab === 'gtm'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            Google Tag Manager
+          </button>
+        </nav>
+      </div>
+      
+      <div className="py-4">
+        {activeTab === 'html' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              Add this script to the <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> 
+              section of your website:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+              <pre className="text-sm text-gray-800">{scriptCode}</pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(scriptCode);
+                alert('Script copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {activeTab === 'js' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              For React, Next.js, or other JavaScript frameworks, add this code to your component:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+              <pre className="text-sm text-gray-800">{jsCode}</pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(jsCode);
+                alert('Code copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {activeTab === 'gtm' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              Create a new Custom HTML Tag in Google Tag Manager:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+              <pre className="text-sm text-gray-800">{generateGTMCode(siteId)}</pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(generateGTMCode(siteId));
+                alert('GTM code copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

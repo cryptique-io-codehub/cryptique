@@ -469,9 +469,9 @@ HTML:
     {/* Script Modal */}
     {scriptmodel && selectedWebsite && (
       <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4"> {/* Increased max-width */}
-          <div className="p-6"> {/* Increased padding */}
-            <div className="flex items-center justify-between mb-4"> {/* Added justify-between */}
+        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Installation Instructions</h2>
               <button onClick={handleClosescriptmodel} className="text-gray-500 hover:text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -480,65 +480,12 @@ HTML:
               </button>
             </div>
             
-            <div className="space-y-4">
-              {/* Option 1: Traditional HTML */}
-              <div>
-                <h3 className="text-md font-semibold mb-2">Option 1: Traditional HTML</h3>
-                <p className="mb-2 text-base text-gray-700">
-                  Add this script to your website's <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> section:
-                </p>
-                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
-                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
-                    {scriptcode}
-                  </pre>
-                </div>
-              </div>
-              
-              {/* Option 2: JavaScript/React */}
-              <div>
-                <h3 className="text-md font-semibold mb-2">Option 2: JavaScript/React Projects</h3>
-                <p className="mb-2 text-base text-gray-700">
-                  For modern JavaScript frameworks, add this to your component:
-                </p>
-                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
-                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
-{`// Add to your main component or App.js
-useEffect(() => {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
-  script.setAttribute('site-id', '${selectedWebsite.siteId}');
-  document.head.appendChild(script);
-}, []);`}
-                  </pre>
-                </div>
-              </div>
-              
-              {/* Option 3: Google Tag Manager */}
-              <div>
-                <h3 className="text-md font-semibold mb-2">Option 3: Google Tag Manager</h3>
-                <p className="mb-2 text-base text-gray-700">
-                  Add as a Custom HTML Tag in Google Tag Manager:
-                </p>
-                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
-                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
-                    {generateGTMCode(selectedWebsite.siteId)}
-                  </pre>
-                </div>
-              </div>
-              
-              {/* Option 4: GTM with Variables */}
-              <div>
-                <h3 className="text-md font-semibold mb-2">Option 4: GTM with Variables (Recommended)</h3>
-                <p className="mb-2 text-base text-gray-700">
-                  For better management in GTM, use a variable for the site ID:
-                </p>
-                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
-                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
-                    {generateGTMVariableCode(selectedWebsite.siteId)}
-                  </pre>
-                </div>
-              </div>
-            </div>
+            <InstallationTabs 
+              siteId={selectedWebsite.siteId}
+              domain={selectedWebsite.Domain}
+              scriptcode={scriptcode}
+              generateGTMCode={generateGTMCode}
+            />
             
             <div className="flex justify-center space-x-4 mt-6">
               {selectedWebsite && (selectedWebsite.isVerified === false) ? (
@@ -591,5 +538,139 @@ useEffect(() => {
   </div>
   );
 }
+
+// Tab component for installation methods
+const InstallationTabs = ({ siteId, domain, scriptcode, generateGTMCode }) => {
+  const [activeTab, setActiveTab] = useState('html');
+  
+  const jsCode = `// Add to your main component or App.js
+useEffect(() => {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
+  script.setAttribute('site-id', '${siteId}');
+  document.head.appendChild(script);
+}, []);`;
+
+  return (
+    <div>
+      <p className="mb-3">
+        To track analytics for <span className="font-semibold">{domain}</span>, 
+        select your preferred installation method:
+      </p>
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('html')}
+            className={`${
+              activeTab === 'html'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            HTML
+          </button>
+          <button
+            onClick={() => setActiveTab('js')}
+            className={`${
+              activeTab === 'js'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            JavaScript/React
+          </button>
+          <button
+            onClick={() => setActiveTab('gtm')}
+            className={`${
+              activeTab === 'gtm'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+          >
+            Google Tag Manager
+          </button>
+        </nav>
+      </div>
+      
+      <div className="py-4">
+        {activeTab === 'html' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              Add this script to the <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> 
+              section of your website:
+            </p>
+            <div className="bg-gray-50 rounded-md border border-gray-200 p-4 overflow-x-auto">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                {scriptcode}
+              </pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(scriptcode);
+                alert('Script copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {activeTab === 'js' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              For React, Next.js, or other JavaScript frameworks, add this code to your component:
+            </p>
+            <div className="bg-gray-50 rounded-md border border-gray-200 p-4 overflow-x-auto">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                {jsCode}
+              </pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(jsCode);
+                alert('Code copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {activeTab === 'gtm' && (
+          <div>
+            <p className="mb-2 text-sm text-gray-700">
+              Create a new Custom HTML Tag in Google Tag Manager:
+            </p>
+            <div className="bg-gray-50 rounded-md border border-gray-200 p-4 overflow-x-auto">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                {generateGTMCode(siteId)}
+              </pre>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(generateGTMCode(siteId));
+                alert('GTM code copied to clipboard!');
+              }}
+              className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Copy to Clipboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default Filters;
