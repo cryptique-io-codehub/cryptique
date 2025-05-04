@@ -116,6 +116,37 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     setIsDropdownOpen(false);
   }
 
+  // Generate GTM script code for Google Tag Manager
+  const generateGTMCode = (siteId) => {
+    return `// Custom HTML Tag in Google Tag Manager
+<script>
+  var script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+  script.setAttribute('site-id', '${siteId}');
+  document.head.appendChild(script);
+</script>`;
+  };
+
+  // Generate GTM variable code for better management
+  const generateGTMVariableCode = (siteId) => {
+    return `// 1. Create a Constant Variable in GTM
+Name: CryptiqueID
+Type: Constant
+Value: ${siteId}
+
+// 2. Create a Custom HTML Tag
+Name: Cryptique Analytics
+HTML:
+<script>
+  var script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+  script.setAttribute('site-id', '{{CryptiqueID}}');
+  document.head.appendChild(script);
+</script>
+
+// 3. Set the tag to fire on "All Pages" trigger`;
+  };
+
   const handleDropdownToggle = () => {
     const newDropdownState = !isDropdownOpen;
     setIsDropdownOpen(newDropdownState);
@@ -438,7 +469,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     {/* Script Modal */}
     {scriptmodel && selectedWebsite && (
       <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4"> {/* Increased max-width */}
+        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4"> {/* Increased max-width */}
           <div className="p-6"> {/* Increased padding */}
             <div className="flex items-center justify-between mb-4"> {/* Added justify-between */}
               <h2 className="text-xl font-semibold">Installation Instructions</h2>
@@ -449,17 +480,67 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
               </button>
             </div>
             
-            <p className="mb-4 text-base text-gray-700">
-              Add this script to your website to start tracking analytics:
-            </p>
-            
-            <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-6 relative">
-              <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
-                {scriptcode}
-              </pre>
+            <div className="space-y-4">
+              {/* Option 1: Traditional HTML */}
+              <div>
+                <h3 className="text-md font-semibold mb-2">Option 1: Traditional HTML</h3>
+                <p className="mb-2 text-base text-gray-700">
+                  Add this script to your website's <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> section:
+                </p>
+                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
+                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                    {scriptcode}
+                  </pre>
+                </div>
+              </div>
+              
+              {/* Option 2: JavaScript/React */}
+              <div>
+                <h3 className="text-md font-semibold mb-2">Option 2: JavaScript/React Projects</h3>
+                <p className="mb-2 text-base text-gray-700">
+                  For modern JavaScript frameworks, add this to your component:
+                </p>
+                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
+                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+{`// Add to your main component or App.js
+useEffect(() => {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
+  script.setAttribute('site-id', '${selectedWebsite.siteId}');
+  document.head.appendChild(script);
+}, []);`}
+                  </pre>
+                </div>
+              </div>
+              
+              {/* Option 3: Google Tag Manager */}
+              <div>
+                <h3 className="text-md font-semibold mb-2">Option 3: Google Tag Manager</h3>
+                <p className="mb-2 text-base text-gray-700">
+                  Add as a Custom HTML Tag in Google Tag Manager:
+                </p>
+                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
+                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                    {generateGTMCode(selectedWebsite.siteId)}
+                  </pre>
+                </div>
+              </div>
+              
+              {/* Option 4: GTM with Variables */}
+              <div>
+                <h3 className="text-md font-semibold mb-2">Option 4: GTM with Variables (Recommended)</h3>
+                <p className="mb-2 text-base text-gray-700">
+                  For better management in GTM, use a variable for the site ID:
+                </p>
+                <div className="bg-gray-50 rounded-md border border-gray-200 p-4 mb-2 relative">
+                  <pre className="text-base text-gray-800 whitespace-pre-wrap overflow-auto max-h-40">
+                    {generateGTMVariableCode(selectedWebsite.siteId)}
+                  </pre>
+                </div>
+              </div>
             </div>
             
-            <div className="flex justify-center space-x-4">
+            <div className="flex justify-center space-x-4 mt-6">
               {selectedWebsite && (selectedWebsite.isVerified === false) ? (
                 <button
                   onClick={handleVerify}

@@ -65,6 +65,37 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     setScriptCode(scriptHTML);
   };
 
+  // Helper function to generate GTM script code for a website
+  const generateGTMCode = (siteId) => {
+    return `// Custom HTML Tag in Google Tag Manager
+<script>
+  var script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+  script.setAttribute('site-id', '${siteId}');
+  document.head.appendChild(script);
+</script>`;
+  };
+
+  // Helper function to generate GTM variable code
+  const generateGTMVariableCode = (siteId) => {
+    return `// 1. Create a Constant Variable in GTM
+Name: CryptiqueID
+Type: Constant
+Value: ${siteId}
+
+// 2. Create a Custom HTML Tag
+Name: Cryptique Analytics
+HTML:
+<script>
+  var script = document.createElement('script');
+  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+  script.setAttribute('site-id', '{{CryptiqueID}}');
+  document.head.appendChild(script);
+</script>
+
+// 3. Set the tag to fire on "All Pages" trigger`;
+  };
+
   // Function to show a message to the user
   const showMessage = (msg, type) => {
     setMessage(msg);
@@ -387,7 +418,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       {/* Script Installation Modal */}
       {scriptModal && selectedWebsite && (
         <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Website Installation Script</h2>
@@ -417,7 +448,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                 </div>
                 
                 {/* TypeScript/JavaScript */}
-                <div>
+                <div className="mb-4">
                   <h3 className="text-md font-semibold mb-2">Option 2: For TypeScript/JavaScript Projects</h3>
                   <p className="mb-2">
                     Add the following code to your main component or script file:
@@ -428,6 +459,28 @@ const script = document.createElement('script');
 script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
 script.setAttribute('site-id', '${selectedWebsite.siteId}');
 document.head.appendChild(script);`}</pre>
+                  </div>
+                </div>
+                
+                {/* Google Tag Manager */}
+                <div className="mb-4">
+                  <h3 className="text-md font-semibold mb-2">Option 3: Google Tag Manager</h3>
+                  <p className="mb-2">
+                    Add as a Custom HTML Tag in Google Tag Manager:
+                  </p>
+                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-800">{generateGTMCode(selectedWebsite.siteId)}</pre>
+                  </div>
+                </div>
+                
+                {/* Google Tag Manager with Variable */}
+                <div>
+                  <h3 className="text-md font-semibold mb-2">Option 4: Google Tag Manager with Variables (Recommended)</h3>
+                  <p className="mb-2">
+                    For better management in GTM, use a variable for the site ID:
+                  </p>
+                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-800">{generateGTMVariableCode(selectedWebsite.siteId)}</pre>
                   </div>
                 </div>
               </div>
@@ -441,6 +494,7 @@ document.head.appendChild(script);`}</pre>
                   <li>Your website is deployed and publicly accessible</li>
                   <li>The script is properly loaded (check network tab in DevTools)</li>
                   <li>The site-id attribute is correctly set to <code className="bg-blue-100 px-1 py-0.5 rounded">{selectedWebsite.siteId}</code></li>
+                  <li>If using Google Tag Manager, publish your changes and verify the tag is firing</li>
                 </ul>
               </div>
               

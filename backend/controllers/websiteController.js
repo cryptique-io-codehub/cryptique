@@ -170,7 +170,16 @@ exports.verify = async (req, res) => {
                 new RegExp(`createElement\\(['"](script|script)['"]\\)[\\s\\S]*?${escapeRegExp(targetScriptSrc)}`),
                 
                 // Pattern 4: URL as variable then assigned
-                new RegExp(`${escapeRegExp(targetScriptSrc)}`)
+                new RegExp(`${escapeRegExp(targetScriptSrc)}`),
+                
+                // Pattern 5: GTM variable reference
+                new RegExp(`\\{\\{[^\\}]*CryptiqID[^\\}]*\\}\\}`),
+                
+                // Pattern 6: GTM variable with different naming
+                new RegExp(`\\{\\{[^\\}]*SiteID[^\\}]*\\}\\}`),
+                
+                // Pattern 7: GTM direct value
+                new RegExp(`dataLayer\\.push\\(\\s*\\{[^\\}]*${escapeRegExp(siteId)}[^\\}]*\\}\\s*\\)`)
             ];
             
             // Check if any pattern matches
@@ -187,7 +196,10 @@ exports.verify = async (req, res) => {
                         new RegExp(`setAttribute\\(['"]site-id['"]\\s*,\\s*['"]${escapeRegExp(siteId)}['"]\\)`),
                         
                         // Pattern 3: As variable
-                        new RegExp(`["']${escapeRegExp(siteId)}["']`)
+                        new RegExp(`["']${escapeRegExp(siteId)}["']`),
+                        
+                        // Pattern 4: GTM variable reference
+                        new RegExp(`\\{\\{[^\\}]*\\}\\}`)
                     ];
                     
                     for (const siteIdPattern of siteIdPatterns) {
@@ -200,6 +212,45 @@ exports.verify = async (req, res) => {
             }
         });
 
+        // Additional checks for GTM implementations
+        const checkForGTM = () => {
+            // Check for Google Tag Manager script
+            const hasGTM = $('script').filter((i, el) => {
+                const src = $(el).attr('src') || '';
+                return src.includes('googletagmanager.com/gtm.js') || 
+                       src.includes('googletagmanager.com/gtag/js');
+            }).length > 0;
+            
+            // If GTM is found, we'll be more lenient with verification
+            if (hasGTM) {
+                console.log('GTM script found on the page');
+                // If we found the script but not the site ID, and GTM is present,
+                // we'll assume the site ID might be set via GTM variables
+                if (foundScript && !foundSiteId) {
+                    console.log('GTM detected, assuming site-id is set via GTM variable');
+                    foundSiteId = true;
+                }
+                
+                // If we haven't found the script, but GTM is present,
+                // we'll check for potential custom variable patterns
+                if (!foundScript) {
+                    // Look for potential dataLayer pushes
+                    const dataLayerPushes = $('script').filter((i, el) => {
+                        const content = $(el).html() || '';
+                        return content.includes('dataLayer.push') || 
+                               content.includes('cryptique') ||
+                               content.includes(siteId);
+                    }).length > 0;
+                    
+                    if (dataLayerPushes) {
+                        console.log('GTM dataLayer pushes found, assuming script is loaded via GTM');
+                        foundScript = true;
+                        foundSiteId = true;
+                    }
+                }
+            }
+        };
+        
         // Additional check for scripts that might be injected by frameworks like Next.js/React
         const htmlContent = $.html();
         if (!foundScript) {
@@ -223,6 +274,11 @@ exports.verify = async (req, res) => {
             if (siteIdInHtml) {
                 foundSiteId = true;
             }
+        }
+        
+        // Check for GTM implementation if we haven't confirmed both script and site-id
+        if (!foundScript || !foundSiteId) {
+            checkForGTM();
         }
 
         if (!foundScript) {
