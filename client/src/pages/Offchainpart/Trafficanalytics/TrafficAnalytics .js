@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Legend, ZAxis } from 'recharts';
 import TrafficSourcesComponent from '../TrafficSourcesComponent';
+
 const AttributionJourneySankey = ({analytics}) => {
   // Process analytics data to generate Sankey diagram data
   const processAnalyticsData = () => {
@@ -30,21 +31,22 @@ const AttributionJourneySankey = ({analytics}) => {
       return domain.charAt(0).toUpperCase() + domain.slice(1);
     };
     
-    // First, determine the first source for each user
-    const userFirstSources = {};
+    // Group users by source and outcome
+    const userPathways = {};
     const userOutcomes = {};
     
-    // Sort sessions by timestamp to determine the first session per user
+    // Sort sessions by timestamp
     const sortedSessions = [...analytics.sessions].sort((a, b) => {
       return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
     });
     
-    // Determine the first source and final outcome for each user
+    // First pass: determine the first source and final outcome for each user
     sortedSessions.forEach(session => {
       const userId = session.userId;
+      if (!userId) return;
       
       // Skip if we already have the first source for this user
-      if (!userFirstSources[userId]) {
+      if (!userPathways[userId]) {
         // Determine the source (utm source or referrer)
         let source = 'Direct';
         
@@ -62,27 +64,47 @@ const AttributionJourneySankey = ({analytics}) => {
         }
         
         // Record the first source for this user
-        userFirstSources[userId] = source;
+        userPathways[userId] = {
+          source,
+          hasWallet: false,
+          hasWeb3: false
+        };
       }
       
-      // Update user outcome based on wallet connection
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
-        userOutcomes[userId] = 'Wallet Connected';
-      } else if (!userOutcomes[userId]) {
-        userOutcomes[userId] = 'No Wallet';
+      // Check for wallet connection and web3 availability
+      if (session.wallet) {
+        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && 
+            session.wallet.walletAddress !== 'No Wallet Detected') {
+          userPathways[userId].hasWallet = true;
+        }
+        
+        if (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
+          userPathways[userId].hasWeb3 = true;
+        }
+      }
+      
+      // Determine final outcome based on wallet status
+      if (userPathways[userId].hasWallet) {
+        userOutcomes[userId] = 'Connected Wallet';
+      } else if (userPathways[userId].hasWeb3) {
+        userOutcomes[userId] = 'Has Web3';
+      } else {
+        userOutcomes[userId] = 'No Web3';
       }
     });
     
     // Count users by source and outcome
     const sourceOutcomeCounts = {};
     
-    Object.entries(userFirstSources).forEach(([userId, source]) => {
-      const outcome = userOutcomes[userId] || 'No Wallet';
+    Object.entries(userPathways).forEach(([userId, pathway]) => {
+      const source = pathway.source;
+      const outcome = userOutcomes[userId];
       
       if (!sourceOutcomeCounts[source]) {
         sourceOutcomeCounts[source] = {
-          'Wallet Connected': 0,
-          'No Wallet': 0,
+          'Connected Wallet': 0,
+          'Has Web3': 0,
+          'No Web3': 0,
           total: 0
         };
       }
@@ -95,29 +117,22 @@ const AttributionJourneySankey = ({analytics}) => {
     const sankeyData = [];
     
     Object.entries(sourceOutcomeCounts).forEach(([source, counts]) => {
-      if (counts['Wallet Connected'] > 0) {
-        sankeyData.push({
-          source,
-          target: 'Wallet Connected',
-          value: counts['Wallet Connected'],
-          total: counts.total
-        });
-      }
-      
-      if (counts['No Wallet'] > 0) {
-        sankeyData.push({
-          source,
-          target: 'No Wallet',
-          value: counts['No Wallet'],
-          total: counts.total
-        });
-      }
+      ['Connected Wallet', 'Has Web3', 'No Web3'].forEach(outcome => {
+        if (counts[outcome] > 0) {
+          sankeyData.push({
+            source,
+            target: outcome,
+            value: counts[outcome],
+            total: counts.total
+          });
+        }
+      });
     });
     
     // Sort by total users and take top 5 sources
     return sankeyData
       .sort((a, b) => b.total - a.total)
-      .slice(0, 10); // Show top 5 sources (2 outcomes each = 10 flows)
+      .slice(0, 15); // Show top 5 sources (3 outcomes each = 15 flows max)
   };
   
   // Get the Sankey data
@@ -125,10 +140,9 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
-    { source: 'Direct', target: 'Wallet Connected', value: 3, total: 5 },
-    { source: 'Direct', target: 'No Wallet', value: 2, total: 5 },
-    { source: 'Google', target: 'Wallet Connected', value: 2, total: 4 },
-    { source: 'Google', target: 'No Wallet', value: 2, total: 4 }
+    { source: 'Direct', target: 'Connected Wallet', value: 1, total: 3 },
+    { source: 'Direct', target: 'Has Web3', value: 1, total: 3 },
+    { source: 'Direct', target: 'No Web3', value: 1, total: 3 }
   ];
   
   // Calculate total values for scaling
@@ -138,252 +152,267 @@ const AttributionJourneySankey = ({analytics}) => {
   const uniqueSources = [...new Set(finalData.map(item => item.source))];
   const uniqueTargets = [...new Set(finalData.map(item => item.target))];
   
-  // Define colors
-  const sourceColors = {
-    'Direct': '#7986cb', // Blue-ish
-    'Google': '#9c7df3', // Purple
-    'Twitter': '#5d9cf8', // Light Blue
-    'Facebook': '#7de2d1', // Teal
-    'Instagram': '#db77a2', // Pink
-    'Reddit': '#f7b844', // Orange
-    'Discord': '#66bb6a', // Green
-    'Telegram': '#ef5350', // Red
-  };
-
-  // If source doesn't have defined color, use default color scheme
-  const defaultColors = ['#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', '#f7b844', '#66bb6a', '#ef5350', '#7986cb'];
-  
   // Define fixed colors for targets
   const targetColors = {
-    'Wallet Connected': '#28a745', // Green for success
-    'No Wallet': '#dc3545'        // Red for no wallet
+    'Connected Wallet': '#28a745', // Green for success
+    'Has Web3': '#ffc107',        // Yellow for web3 but no wallet
+    'No Web3': '#dc3545'          // Red for no web3
   };
-
-  // Calculate percentages for each source
-  const sourcePercentages = {};
-  uniqueSources.forEach(source => {
+  
+  // Define node positions and dimensions
+  const nodes = {};
+  
+  // Set uniform spacing for sources
+  const sourceSpacing = 500 / (uniqueSources.length + 1);
+  
+  // Position source nodes
+  uniqueSources.forEach((source, index) => {
     const sourceData = finalData.filter(item => item.source === source);
-    const connectedValue = sourceData.find(item => item.target === 'Wallet Connected')?.value || 0;
-    const totalValue = sourceData[0].total;
-    sourcePercentages[source] = {
-      percentage: totalValue > 0 ? (connectedValue / totalValue) * 100 : 0,
-      connected: connectedValue,
-      total: totalValue
+    const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
+    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
+    
+    nodes[source] = {
+      x: 50,
+      y: (index + 1) * sourceSpacing - 50,
+      height: 80,
+      color: getColorForSource(source, index),
+      totalVisitors: totalVisitors
     };
   });
+  
+  // Set fixed positions for the target nodes
+  nodes['Connected Wallet'] = {
+    x: 650,
+    y: 100,
+    height: 80,
+    color: targetColors['Connected Wallet']
+  };
+  
+  nodes['Has Web3'] = {
+    x: 650,
+    y: 250,
+    height: 80,
+    color: targetColors['Has Web3']
+  };
+  
+  nodes['No Web3'] = {
+    x: 650,
+    y: 400,
+    height: 80,
+    color: targetColors['No Web3']
+  };
+  
+  // Helper function to generate colors for sources
+  function getColorForSource(source, index) {
+    const colors = [
+      '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
+      '#f7b844', '#66bb6a', '#ef5350', '#7986cb'
+    ];
+    
+    // Use consistent colors for common sources
+    if (source === 'Direct') return '#9c7df3';
+    if (source === 'Google') return '#5d9cf8';
+    if (source === 'Facebook') return '#3b5998';
+    if (source === 'Twitter') return '#1da1f2';
+    
+    return colors[index % colors.length];
+  }
+  
+  // Calculate flow paths
+  finalData.forEach(flow => {
+    const sourceNode = nodes[flow.source];
+    const targetNode = nodes[flow.target];
+    
+    // Calculate the vertical position within the source node
+    // based on the relative value of this flow
+    const sourceFlows = finalData.filter(f => f.source === flow.source);
+    const sourceTotal = sourceFlows.reduce((sum, f) => sum + f.value, 0);
+    
+    let sourceOffset = 0;
+    for (const f of sourceFlows) {
+      if (f === flow) break;
+      sourceOffset += (f.value / sourceTotal) * sourceNode.height;
+    }
+    
+    flow.sourceY = sourceNode.y + sourceOffset;
+    flow.sourceHeight = (flow.value / sourceTotal) * sourceNode.height;
+    
+    // Calculate vertical position within target node
+    const targetFlows = finalData.filter(f => f.target === flow.target);
+    const targetTotal = targetFlows.reduce((sum, f) => sum + f.value, 0);
+    
+    let targetOffset = 0;
+    for (const f of targetFlows) {
+      if (f === flow) break;
+      targetOffset += (f.value / targetTotal) * targetNode.height;
+    }
+    
+    flow.targetY = targetNode.y + targetOffset;
+    flow.targetHeight = (flow.value / targetTotal) * targetNode.height;
+  });
+  
+  // Create SVG paths for flows
+  const createSankeyPath = (flow) => {
+    const sourceX = nodes[flow.source].x + 80; // Source node width
+    const sourceY = flow.sourceY;
+    const sourceHeight = flow.sourceHeight;
+    
+    const targetX = nodes[flow.target].x;
+    const targetY = flow.targetY;
+    const targetHeight = flow.targetHeight;
+    
+    // Control point distance (1/3 of the total distance)
+    const cpDistance = (targetX - sourceX) / 3;
+    
+    // Start and end points
+    const startTop = { x: sourceX, y: sourceY };
+    const startBottom = { x: sourceX, y: sourceY + sourceHeight };
+    
+    const endTop = { x: targetX, y: targetY };
+    const endBottom = { x: targetX, y: targetY + targetHeight };
+    
+    // Control points
+    const cp1Top = { x: startTop.x + cpDistance, y: startTop.y };
+    const cp2Top = { x: endTop.x - cpDistance, y: endTop.y };
+    
+    const cp1Bottom = { x: startBottom.x + cpDistance, y: startBottom.y };
+    const cp2Bottom = { x: endBottom.x - cpDistance, y: endBottom.y };
+    
+    // Generate path
+    return `
+      M ${startTop.x} ${startTop.y}
+      C ${cp1Top.x} ${cp1Top.y}, ${cp2Top.x} ${cp2Top.y}, ${endTop.x} ${endTop.y}
+      L ${endBottom.x} ${endBottom.y}
+      C ${cp2Bottom.x} ${cp2Bottom.y}, ${cp1Bottom.x} ${cp1Bottom.y}, ${startBottom.x} ${startBottom.y}
+      Z
+    `;
+  };
+  
+  // Get flow color
+  const getFlowColor = (source, target) => {
+    return targetColors[target] || '#999';
+  };
+
+  // Calculate opacity based on value relative to total
+  const calculateOpacity = (value) => {
+    return 0.7 + (value / totalValue) * 0.3;
+  };
 
   return (
-    <div className="w-full bg-white rounded-lg p-4 font-poppins">
-      <div className="flex justify-between mb-6">
-        <div className="flex items-center">
-          <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
-          <span className="font-medium text-sm">Wallet Connected</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
-          <span className="font-medium text-sm">No Wallet</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-1">
-          <h3 className="text-base font-semibold mb-4 text-gray-700 font-montserrat">Traffic Sources</h3>
-          <div className="space-y-4">
-            {uniqueSources.map((source, index) => {
-              const sourceData = sourcePercentages[source];
-              const color = sourceColors[source] || defaultColors[index % defaultColors.length];
+    <div className="w-full">
+      <div className="font-poppins">
+        <svg width="100%" height="500" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
+          {/* Nodes */}
+          {Object.keys(nodes).map(key => (
+            <g key={key}>
+              <rect 
+                x={nodes[key].x}
+                y={nodes[key].y}
+                width={80}
+                height={nodes[key].height}
+                fill={nodes[key].color}
+                opacity={0.9}
+                rx={6}
+                ry={6}
+              />
+              <text 
+                x={nodes[key].x + 40} 
+                y={nodes[key].y - 10}
+                textAnchor="middle"
+                fontFamily="'Montserrat', sans-serif"
+                fontSize="14"
+                fontWeight="600"
+                style={{ fill: "#333333" }}
+              >
+                {key}
+              </text>
+              {/* Show total count for source nodes only */}
+              {nodes[key].totalVisitors && (
+                <text 
+                  x={nodes[key].x + 40} 
+                  y={nodes[key].y - 30}
+                  textAnchor="middle"
+                  fontFamily="'Poppins', sans-serif"
+                  fontSize="12"
+                  fontWeight="500"
+                  style={{ fill: "#666666" }}
+                >
+                  {nodes[key].totalVisitors} users
+                </text>
+              )}
+            </g>
+          ))}
+          
+          {/* Flows */}
+          {finalData.map((flow, index) => (
+            <g key={index} className="flow-path">
+              <path 
+                d={createSankeyPath(flow)}
+                fill={getFlowColor(flow.source, flow.target)}
+                fillOpacity={calculateOpacity(flow.value)}
+                stroke="none"
+              />
+              {/* Flow value label - Only show if flow is significant enough */}
+              {flow.value > 1 && (
+                <text 
+                  x={(nodes[flow.source].x + 80 + nodes[flow.target].x) / 2}
+                  y={(flow.sourceY + flow.sourceHeight / 2 + flow.targetY + flow.targetHeight / 2) / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="'Poppins', sans-serif"
+                  fontSize="12"
+                  fontWeight="500"
+                  fill="#333333"
+                >
+                  {flow.value}
+                </text>
+              )}
+            </g>
+          ))}
+          
+          {/* Legend */}
+          <g transform="translate(650, 20)">
+            <rect x="0" y="0" width="15" height="15" fill={targetColors['Connected Wallet']} />
+            <text 
+              x="25" 
+              y="12" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="12"
+              fontWeight="500"
+              style={{ fill: "#333333" }}
+            >
+              Connected Wallet
+            </text>
               
-              return (
-                <div key={source} className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-medium">{source}</span>
-                    <span className="text-sm text-gray-600">{sourceData.total} users</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="h-2.5 rounded-full" 
-                      style={{ 
-                        width: `${sourceData.percentage}%`, 
-                        backgroundColor: color 
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between mt-1 text-xs text-gray-600">
-                    <span>{sourceData.connected} connected ({sourceData.percentage.toFixed(1)}%)</span>
-                    <span>{sourceData.total - sourceData.connected} no wallet</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="col-span-2">
-          <h3 className="text-base font-semibold mb-4 text-gray-700 font-montserrat">Attribution Journey</h3>
-          <div className="relative h-80">
-            <svg width="100%" height="100%" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
-              {/* Source Nodes */}
-              {uniqueSources.map((source, index) => {
-                const sourceData = finalData.filter(item => item.source === source);
-                const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
-                const heightScale = 250 / uniqueSources.length;
-                const height = Math.max(20, Math.min(40, heightScale * 0.8));
-                const y = 20 + index * (heightScale);
-                const color = sourceColors[source] || defaultColors[index % defaultColors.length];
-                
-                return (
-                  <g key={`source-${source}`}>
-                    <rect 
-                      x={50} 
-                      y={y} 
-                      width={100} 
-                      height={height} 
-                      fill={color} 
-                      rx={4} 
-                      ry={4}
-                    />
-                    <text 
-                      x={100} 
-                      y={y - 8} 
-                      textAnchor="middle" 
-                      fontSize="12" 
-                      fontWeight="500" 
-                      fill="#333"
-                    >
-                      {source}
-                    </text>
-                    <text 
-                      x={100} 
-                      y={y + height + 16} 
-                      textAnchor="middle" 
-                      fontSize="10" 
-                      fill="#666"
-                    >
-                      {sourceData[0].total} users
-                    </text>
-                  </g>
-                );
-              })}
-              
-              {/* Target Nodes */}
-              {uniqueTargets.map((target, index) => {
-                const targetData = finalData.filter(item => item.target === target);
-                const totalTargetValue = targetData.reduce((sum, item) => sum + item.value, 0);
-                const y = index === 0 ? 80 : 180; // Position targets vertically spaced
-                const color = targetColors[target];
-                const percentage = ((totalTargetValue / totalValue) * 100).toFixed(1);
-                
-                return (
-                  <g key={`target-${target}`}>
-                    <rect 
-                      x={450} 
-                      y={y} 
-                      width={100} 
-                      height={50} 
-                      fill={color} 
-                      rx={4} 
-                      ry={4}
-                    />
-                    <text 
-                      x={500} 
-                      y={y - 10} 
-                      textAnchor="middle" 
-                      fontSize="12" 
-                      fontWeight="500" 
-                      fill="#333"
-                    >
-                      {target}
-                    </text>
-                    <text 
-                      x={500} 
-                      y={y + 30} 
-                      textAnchor="middle" 
-                      fontSize="14" 
-                      fontWeight="bold" 
-                      fill="#fff"
-                    >
-                      {totalTargetValue} ({percentage}%)
-                    </text>
-                  </g>
-                );
-              })}
-              
-              {/* Flow Paths */}
-              {finalData.map((flow, index) => {
-                const sourceIndex = uniqueSources.indexOf(flow.source);
-                const targetIndex = uniqueTargets.indexOf(flow.target);
-                const heightScale = 250 / uniqueSources.length;
-                const sourceY = 20 + sourceIndex * heightScale + (Math.max(20, Math.min(40, heightScale * 0.8)) / 2);
-                const targetY = targetIndex === 0 ? 105 : 205; // Center of target nodes
-                
-                // Calculate opacity based on value
-                const opacity = 0.7 + (flow.value / totalValue) * 0.3;
-                
-                // Determine color based on target
-                const flowColor = targetColors[flow.target];
-                
-                // Calculate curvature
-                const distance = 450 - 150; // Distance between right edge of source and left edge of target
-                const curvature = distance * 0.5;
-                
-                // Create bezier curve path
-                const path = `
-                  M 150 ${sourceY}
-                  C ${150 + curvature} ${sourceY}, ${450 - curvature} ${targetY}, ${450} ${targetY}
-                `;
-                
-                // Scale stroke width based on flow value, but keep it reasonable
-                const maxStrokeWidth = 20;
-                const minStrokeWidth = 2;
-                const strokeWidth = Math.max(minStrokeWidth, 
-                                     Math.min(maxStrokeWidth, 
-                                     (flow.value / Math.max(...finalData.map(d => d.value))) * maxStrokeWidth));
-                
-                return (
-                  <g key={`flow-${index}`}>
-                    <path 
-                      d={path} 
-                      fill="none" 
-                      stroke={flowColor} 
-                      strokeWidth={strokeWidth} 
-                      strokeOpacity={opacity}
-                      strokeLinecap="round"
-                    />
-                    {flow.value > 1 && (
-                      <text>
-                        <textPath 
-                          href={`#flow-path-${index}`}
-                          startOffset="50%" 
-                          fontSize="10" 
-                          fontWeight="500" 
-                          fill="#333" 
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                        >
-                          {flow.value}
-                        </textPath>
-                      </text>
-                    )}
-                    {/* Invisible path for text alignment */}
-                    <path 
-                      id={`flow-path-${index}`}
-                      d={path}
-                      fill="none"
-                      stroke="none"
-                    />
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </div>
+            <rect x="0" y="25" width="15" height="15" fill={targetColors['Has Web3']} />
+            <text 
+              x="25" 
+              y="37" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="12"
+              fontWeight="500"
+              style={{ fill: "#333333" }}
+            >
+              Has Web3
+            </text>
+            
+            <rect x="0" y="50" width="15" height="15" fill={targetColors['No Web3']} />
+            <text 
+              x="25" 
+              y="62" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="12"
+              fontWeight="500"
+              style={{ fill: "#333333" }}
+            >
+              No Web3
+            </text>
+          </g>
+        </svg>
       </div>
     </div>
   );
 };
-
-
-      
 
 // Helper component for responsive metric cards
 const MetricCard = ({ title, value, source }) => (
@@ -396,7 +425,6 @@ const MetricCard = ({ title, value, source }) => (
     </div>
   </div>
 );
-
 
 const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficSources }) => {
   // State for metrics
