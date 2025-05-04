@@ -58,9 +58,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        const response = await axiosInstance.post('/website/getWebsites', {
-          teamName: selectedTeam
-        });
+        // Use the correct GET endpoint with team name in path parameter
+        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites.length > 0) {
           setWebsiteArray(response.data.websites);

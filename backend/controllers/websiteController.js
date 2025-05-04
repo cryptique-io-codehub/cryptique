@@ -89,13 +89,13 @@ exports.deleteWebsite=async (req,res)=>{
 
 exports.getWebsitesOfTeam = async (req, res) => {
     try {
-        const { teamName } = req.body;
-        // console.log(req.body);
-        if (!teamName) return res.status(400).json({ message: "Required fields are missing" });
+        const teamName = req.params.teamName;
+        console.log("Getting websites for team:", teamName);
+        
+        if (!teamName) return res.status(400).json({ message: "Team name is required" });
 
         const team = await Team.findOne({ name: teamName }).populate('websites');
         if (!team) return res.status(404).json({ message: "Team not found" });
-
 
         return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {

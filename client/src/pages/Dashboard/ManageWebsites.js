@@ -27,9 +27,8 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const fetchWebsites = async () => {
     setIsLoading(true);
     try {
-      const response = await axiosInstance.post('/website/getWebsites', {
-        teamName: selectedTeam
-      });
+      // Use the correct GET endpoint with team name in path parameter
+      const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
       
       if (response.status === 200) {
         setWebsiteArray(response.data.websites);
@@ -202,6 +201,7 @@ Trigger Type: Page View / Window Loaded
     
     setDeleteLoading(true);
     try {
+      // The delete endpoint still accepts POST with webId
       const response = await axiosInstance.post('/website/delete', {
         teamName: selectedTeam,
         webId: website._id
@@ -222,6 +222,7 @@ Trigger Type: Page View / Window Loaded
           }
         }
         
+        // Fetch updated website list
         fetchWebsites();
       }
     } catch (error) {

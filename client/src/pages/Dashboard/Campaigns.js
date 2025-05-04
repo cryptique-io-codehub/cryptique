@@ -36,9 +36,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        const response = await axiosInstance.post('/website/getWebsites', {
-          teamName: selectedTeam
-        });
+        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites) {
           setWebsitearray(response.data.websites);

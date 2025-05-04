@@ -28,9 +28,8 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     const fetchWebsites = async () => {
       setIsLoading(true);
       try {
-        const response = await axiosInstance.post('/website/getWebsites', {
-          teamName: selectteam // use the value from localStorage directly
-        });
+        const response = await axiosInstance.get(`/website/team/${selectteam}`);
+        
         if (response.status === 200) {
           console.log("Fetched websites:", response.data.websites);
           if (response && response.data.websites.length > 0) {
@@ -187,9 +186,7 @@ HTML:
   const refreshWebsites = async () => {
     console.log("Manually refreshing websites");
     try {
-      const response = await axiosInstance.post('/website/getWebsites', {
-        teamName: selectedTeam
-      });
+      const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
       
       if (response.status === 200 && response.data.websites) {
         console.log("Refreshed websites data:", response.data.websites);
@@ -278,6 +275,7 @@ HTML:
 
   const handleDelete = async () => {
     try {
+      setdeleteload(true);
       // console.log(selectedWebsite);
     
       const response = await axiosInstance.post('/website/delete', {
@@ -286,45 +284,14 @@ HTML:
       });
   
       if (response.status === 200) {
-        setfalsemessage("website deleted successfully");
-        setSelectedWebsite();
+        setfalsemessage("Website deleted successfully");
+        setSelectedWebsite(null);
         localStorage.setItem("selectedWebsite", '');
-        // localStorage.removeItem("showInstallationPopup");
+        localStorage.setItem("idy", '');
         setscriptmodel(false);
 
-
-        const fetchWebsites = async () => {
-          setIsLoading(true);
-          
-          try {
-            const response = await axiosInstance.post('/website/getWebsites', {
-              teamName: localStorage.getItem("selectedTeam") // use the value from localStorage directly
-            });
-      
-            if (response.status === 200) {
-              // console.log('adf');
-              // console.log(response.data.websites);
-              if (response && response.data.websites.length > 0) {
-                setWebsitearray(response.data.websites);
-                if(localStorage.getItem("selectedWebsite") === null) {
-                const firstWebsite = response.data.websites[0];
-                localStorage.setItem("idy", firstWebsite.siteId);
-                localStorage.setItem("selectedWebsite", firstWebsite.Domain);
-                setSelectedWebsite(firstWebsite);
-                setidy(firstWebsite.siteId);
-                }
-                setfalsemessage('');
-                setscriptmodel(false);
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching websites:", error);
-          } finally {
-            setIsLoading(false);
-          }
-        };
-      
-        fetchWebsites();
+        // Use the updated refreshWebsites function to load websites after deletion
+        refreshWebsites();
       } 
     } catch (error) {
       // Handle specific status codes
@@ -333,6 +300,8 @@ HTML:
           setfalsemessage("Error while deleting the website");
         } 
       }
+    } finally {
+      setdeleteload(false);
     }
   };
   
