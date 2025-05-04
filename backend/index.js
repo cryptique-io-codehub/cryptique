@@ -34,11 +34,23 @@ const mainCorsOptions = {
 
 // SDK CORS configuration with explicit headers
 const sdkCorsOptions = {
-  origin: '*', // Allow all origins for SDK
+  origin: function(origin, callback) {
+    // Allow specific origins instead of wildcard
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    
+    // Check if origin is in our allowed list or if it's not provided (like in REST clients)
+    const originAllowed = !origin || allowedOrigins.includes(origin);
+    
+    if (originAllowed) {
+      callback(null, origin);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: false,
+  credentials: true, // Changed to true to allow credentials
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
@@ -95,12 +107,17 @@ app.use((req, res, next) => {
   
   const origin = req.headers.origin;
   
-  // For SDK routes, use wide open CORS
+  // For SDK routes, use origin-specific CORS instead of wide open
   if (req.path.startsWith('/api/sdk/')) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
-    res.header('Access-Control-Max-Age', '86400');
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Max-Age', '86400');
+    }
     
     // Handle preflight OPTIONS requests for SDK routes immediately
     if (req.method === 'OPTIONS') {

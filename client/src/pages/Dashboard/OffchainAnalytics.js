@@ -10,8 +10,7 @@ import GeoAnalyticss from '../Offchainpart/Trafficanalytics/GeoAnalyticss';
 import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalytics';
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../../axiosInstance';
-
+import sdkApi from '../../utils/sdkApi';
 
 const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
@@ -38,10 +37,10 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
       if(idt){
         setverifyload(true);
         try {
-          // Use a relative path
-          const new_response = await axiosInstance.get(`/sdk/analytics/${idt}`);
-          if (new_response.data && new_response.data.analytics) {
-            setanalytics(new_response.data.analytics);
+          // Use the SDK API utility instead of the axios instance
+          const response = await sdkApi.getAnalytics(idt);
+          if (response && response.analytics) {
+            setanalytics(response.analytics);
             // Initialize chart data if not already set
             if (!chartData) {
               setChartData({
@@ -258,14 +257,7 @@ function formatDuration(seconds) {
         // Fetch chart data from API - use try-catch for each request
         let chartResponse;
         try {
-          chartResponse = await axiosInstance.get(`/analytics/chart`, {
-            params: {
-              siteId: idy,
-              timeframe: 'hourly',
-              start: startDate,
-              end: endDate
-            }
-          });
+          chartResponse = await sdkApi.getChart(idy, startDate, endDate);
         } catch (chartError) {
           console.error('Chart API Error:', chartError);
           // Continue execution even if this request fails
@@ -297,13 +289,7 @@ function formatDuration(seconds) {
         // Fetch traffic sources data - use try-catch for each request
         let trafficResponse;
         try {
-          trafficResponse = await axiosInstance.get(`/analytics/traffic-sources`, {
-            params: {
-              siteId: idy,
-              start: startDate,
-              end: endDate
-            }
-          });
+          trafficResponse = await sdkApi.getTrafficSources(idy, startDate, endDate);
           
           if (trafficResponse?.data) {
             if (trafficResponse.data.error) {

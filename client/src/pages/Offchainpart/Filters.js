@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../axiosInstance';
+import axios from 'axios';
 import SmartContractFilter from './SmartContractFilters'
 import SmartContractFilters from './SmartContractFilters';
+import sdkApi from '../../utils/sdkApi';
+
 const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,analytics, setanalytics, selectedDate, setSelectedDate, selectedWebsite, setSelectedWebsite, selectedFilters, setSelectedFilters,idy,setidy,selectedPage}) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -179,21 +182,22 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   const handleVerify = async () => {
     try {
       setverifyload(true);
-      // console.log(selectedWebsite);
-    
+      
+      // Use the verify site method from the SDK API utility
       const response = await axiosInstance.post('/website/verify', {
         Domain: selectedWebsite.Domain,
         siteId: selectedWebsite.siteId
       });
-  
+
       if (response.status === 200) {
-        selectedWebsite.isVerified=true;
+        selectedWebsite.isVerified = true;
         localStorage.setItem("idy", selectedWebsite.siteId);
-        localStorage.setItem("selectedWebsite",selectedWebsite.Domain);
+        localStorage.setItem("selectedWebsite", selectedWebsite.Domain);
         setscriptmodel(false);
-        // localStorage.removeItem("showInstallationPopup");
-        const new_response = await axiosInstance.get(`/sdk/analytics/${verifyid || selectedWebsite.siteId}`);
-        setanalytics(new_response.data.analytics);
+        
+        // Use the SDK API utility for analytics
+        const analyticsResponse = await sdkApi.getAnalytics(verifyid || selectedWebsite.siteId);
+        setanalytics(analyticsResponse.analytics);
         console.log(analytics);
         setidy(selectedWebsite.siteId);
       } 
@@ -202,8 +206,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       if (error.response) {
         if (error.response.status === 404) {
           setfalsemessage("Cryptique analytics script not found on the page");
-        } else if(error.response.status === 403)
-        {
+        } else if (error.response.status === 403) {
           setfalsemessage("site-id does not match or is missing");
         }
       } else {
