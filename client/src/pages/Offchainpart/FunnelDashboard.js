@@ -32,6 +32,9 @@ const HorizontalFunnelVisualization = ({analytics}) => {
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow mb-6">
+      {/* Title inside the white box and left-aligned */}
+      <h1 className="text-lg font-semibold mb-4 font-montserrat">User Funnel Dashboard</h1>
+      
       {/* Stats display */}
       <div className="flex justify-end w-full mb-6">
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
@@ -174,7 +177,6 @@ const HorizontalFunnel = ({ data, analytics }) => {
 const FunnelDashboard = ({analytics}) => {
   return (
     <div className="w-full">
-      <h1 className="text-lg font-semibold mb-4 font-montserrat text-center">User Funnel Dashboard</h1>
       <HorizontalFunnelVisualization analytics={analytics}/>
     </div>
   );

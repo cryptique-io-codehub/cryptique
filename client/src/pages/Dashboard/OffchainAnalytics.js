@@ -521,7 +521,7 @@ return (
                                 textColor="text-black" 
                               />
                               <AnalyticsCard 
-                                label="Total Wallets Connected" 
+                                label="Wallets Connected" 
                                 data={analytics?.walletsConnected}
                                 bgColor="bg-white" 
                                 textColor="text-black" 
