@@ -138,7 +138,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
 
   // Function to delete a website
   const handleDelete = async (website) => {
-    if (!confirm(`Are you sure you want to delete ${website.Domain}?`)) {
+    if (!window.confirm(`Are you sure you want to delete ${website.Domain}?`)) {
       return;
     }
     
