@@ -4,13 +4,13 @@ const cors = require('cors');
 
 const router = express.Router();
 
-// Configure CORS for the SDK endpoints
+// Configure CORS for the SDK endpoints - make it fully permissive for the SDK
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+  origin: '*', // Allow requests from any origin for the SDK
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id', 'Accept'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: true,
+  credentials: false, // SDK doesn't need credentials
   maxAge: 86400, // 24 hours
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -21,16 +21,11 @@ router.use(cors(corsOptions));
 
 // Middleware to ensure CORS headers are set - this is a backup in case the cors middleware doesn't work
 router.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && (origin.includes('app.cryptique.io') || 
-                 origin.includes('cryptique.io') || 
-                 origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-  }
+  // For SDK routes, allow any origin
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept');
+  res.header('Access-Control-Max-Age', '86400');
   
   // Handle OPTIONS requests immediately
   if (req.method === 'OPTIONS') {

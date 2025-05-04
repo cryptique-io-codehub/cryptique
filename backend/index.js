@@ -77,7 +77,7 @@ app.use((req, res, next) => {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://app.cryptique.io", "https://cryptique.io"],
-        connectSrc: ["'self'", "https://api.cryptique.io", "https://cryptique-backend.vercel.app", "https://ipinfo.io"],
+        connectSrc: ["'self'", "https://api.cryptique.io", "https://cryptique-backend.vercel.app", "https://ipinfo.io", "*"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
