@@ -394,7 +394,12 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="w-full lg:w-3/5 bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4 font-montserrat">Details by country</h3>
-          <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+          <GeoAnalyticsMap 
+            analytics={analytics} 
+            selectedCountry={selectedCountry} 
+            setSelectedCountry={setSelectedCountry} 
+            hideTopCountries={true} 
+          />
         </div>
         
         <div className="w-full lg:w-2/5 bg-white rounded-lg shadow p-6">

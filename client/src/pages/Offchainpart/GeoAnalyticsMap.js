@@ -34,7 +34,7 @@ const countryCodeToName = {
   "SG": "Singapore"
 };
 
-const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
+const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry, hideTopCountries = false }) => {
   const getMetricsPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryMetrics = new Map();
@@ -127,7 +127,7 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow p-6 mb-6">
+    <div className="w-full">
       {/* Standardized header text */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold font-montserrat text-center">Users by Country</h2>
@@ -147,8 +147,8 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
 
       {/* Map and Countries side by side */}
       <div className="flex flex-col md:flex-row">
-        {/* World Map */}
-        <div className="w-full md:w-2/3 md:pr-4">
+        {/* World Map - uses full width when hideTopCountries is true */}
+        <div className={`w-full ${!hideTopCountries ? 'md:w-2/3 md:pr-4' : ''}`}>
           <WorldMap
             color="blue"
             title="Unique Users by Country"
@@ -161,30 +161,32 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
           />
         </div>
 
-        {/* Top Countries List with standardized text */}
-        <div className="w-full md:w-1/3 mt-4 md:mt-0">
-          <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
-          <ul className="space-y-3 text-sm text-gray-700 font-poppins">
-            {topCountries.map(({ country, value, web3Users, walletConnections }) => {
-              const countryCode = country.toUpperCase();
-              const countryName = countryCodeToName[countryCode] || countryCode;
-              const flagEmoji = getCountryFlag(countryCode);
-              return (
-                <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                  <span className="flex items-center">
-                    <span className="text-xl mr-3">{flagEmoji}</span>
-                    <span className="font-medium">{countryName}</span>
-                  </span>
-                  <div className="flex flex-col space-y-1">
-                    <span className="font-semibold">{value} users</span>
-                    <span className="text-purple-600">{web3Users} web3</span>
-                    <span className="text-green-600">{walletConnections} wallets</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        {/* Top Countries List - Only show if hideTopCountries is false */}
+        {!hideTopCountries && (
+          <div className="w-full md:w-1/3 mt-4 md:mt-0">
+            <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
+            <ul className="space-y-3 text-sm text-gray-700 font-poppins">
+              {topCountries.map(({ country, value, web3Users, walletConnections }) => {
+                const countryCode = country.toUpperCase();
+                const countryName = countryCodeToName[countryCode] || countryCode;
+                const flagEmoji = getCountryFlag(countryCode);
+                return (
+                  <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <span className="flex items-center">
+                      <span className="text-xl mr-3">{flagEmoji}</span>
+                      <span className="font-medium">{countryName}</span>
+                    </span>
+                    <div className="flex flex-col space-y-1">
+                      <span className="font-semibold">{value} users</span>
+                      <span className="text-purple-600">{web3Users} web3</span>
+                      <span className="text-green-600">{walletConnections} wallets</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
