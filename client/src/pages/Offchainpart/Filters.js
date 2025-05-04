@@ -4,10 +4,11 @@ import axios from 'axios';
 import SmartContractFilter from './SmartContractFilters'
 import SmartContractFilters from './SmartContractFilters';
 import sdkApi from '../../utils/sdkApi';
+import { useNavigate } from 'react-router-dom';
 
 const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,analytics, setanalytics, selectedDate, setSelectedDate, selectedWebsite, setSelectedWebsite, selectedFilters, setSelectedFilters,idy,setidy,selectedPage, onMenuClick}) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam"));
   const [scriptmodel, setscriptmodel] = useState(false);
@@ -421,7 +422,11 @@ HTML:
                     <li className="border-t border-gray-200">
                       <div 
                         className="px-3 py-2 text-sm text-indigo-600 font-medium hover:bg-gray-100 cursor-pointer flex items-center"
-                        onClick={() => onMenuClick('manage-websites')}
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          const teamName = localStorage.getItem("selectedTeam");
+                          navigate(`/${teamName}/managewebsites`);
+                        }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
