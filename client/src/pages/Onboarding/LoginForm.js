@@ -126,8 +126,9 @@ function LoginForm({ onSignupClick, toggleLoading }) {
       const aa=email.split('@')[0];
       if (response.data.user) {
         toggleLoading(false);
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam', aa);
+        localStorage.setItem('User', JSON.stringify(response.data.user));
         navigate(`/dashboard`);
       } else {
         toggleLoading(false);
@@ -165,8 +166,9 @@ function LoginForm({ onSignupClick, toggleLoading }) {
       const aa=user.email.split('@')[0];
       if (response.data.user) {
         toggleLoading(false);
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam', aa);
+        localStorage.setItem('User', JSON.stringify(response.data.user));
         navigate(`/dashboard`);
       }
     } catch (error) {

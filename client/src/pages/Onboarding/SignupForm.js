@@ -43,8 +43,10 @@ function SignupForm({ onBackToLogin }) {
         },
       });
       console.log(response);
-      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('accessToken', response.data.accessToken);
       if (response.data.user) {
+        // Store user data
+        localStorage.setItem('User', JSON.stringify(response.data.user));
         // Switch to OTP view
         setIsOtpView(true);
       }
@@ -87,8 +89,10 @@ function SignupForm({ onBackToLogin }) {
       console.log(response);
       const aa=email.split('@')[0];
       if (response.status===200) {
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam',aa);
+        // Store user data
+        localStorage.setItem('User', JSON.stringify(response.data.user));
         navigate(`/dashboard`);
       } else {
         // If verification fails, reset to signup view
@@ -121,8 +125,10 @@ function SignupForm({ onBackToLogin }) {
       const aa=user.email.split('@')[0];
       
       if (response.data.user) {
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam',aa);
+        // Store user data
+        localStorage.setItem('User', JSON.stringify(response.data.user));
         // Redirect to dashboard
         navigate(`/dashboard`);
       }

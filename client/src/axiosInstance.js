@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
   // Ensure credentials are included for CORS requests if needed
-  withCredentials: false,
+  withCredentials: true, // Changed to true to allow cookies to be sent
   // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
@@ -23,7 +23,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   config => {
     // Get token dynamically on each request - not from closure
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -39,6 +39,44 @@ axiosInstance.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
+    
+    // Handle 401 errors (token expired)
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Try to refresh the token
+        const refreshResponse = await axios.post(
+          `${baseURL}/api/auth/refresh-token`, 
+          {}, 
+          { withCredentials: true }
+        );
+        
+        if (refreshResponse.data.accessToken) {
+          // Save the new access token
+          localStorage.setItem("accessToken", refreshResponse.data.accessToken);
+          
+          // Update the original request with the new token
+          originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.accessToken}`;
+          
+          // Retry the original request
+          return axiosInstance(originalRequest);
+        }
+      } catch (refreshError) {
+        console.log("Token refresh failed:", refreshError);
+        
+        // If refresh token also fails, logout the user
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("User");
+        localStorage.removeItem("selectedTeam");
+        localStorage.removeItem("selectedWebsite");
+        
+        // Redirect to login page if not already there
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login';
+        }
+      }
+    }
     
     // Implement retry logic for network errors
     if (error.message === 'Network Error' && !originalRequest._retry) {
@@ -61,7 +99,10 @@ axiosInstance.interceptors.response.use(
       
       // Redirect to login page if unauthorized
       if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
-        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("User");
+        localStorage.removeItem("selectedTeam");
+        localStorage.removeItem("selectedWebsite");
         window.location.href = '/login';
       }
     }
