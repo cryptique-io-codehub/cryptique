@@ -30,61 +30,71 @@ const AttributionJourneySankey = ({analytics}) => {
       return domain.charAt(0).toUpperCase() + domain.slice(1);
     };
     
-    // First, determine the first source for each user
-    const userFirstSources = {};
-    const userOutcomes = {};
+    // Data structure to track all users
+    const users = {};
     
-    // Sort sessions by timestamp to determine the first session per user
-    const sortedSessions = [...analytics.sessions].sort((a, b) => {
-      return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
-    });
-    
-    // Determine the first source and final outcome for each user
-    sortedSessions.forEach(session => {
-      const userId = session.userId;
-      if (!userId) return; // Skip sessions without userId
+    // First, group all sessions by user ID
+    for (const session of analytics.sessions) {
+      if (!session.userId) continue;
       
-      // Skip if we already have the first source for this user
-      if (!userFirstSources[userId]) {
-        // Determine the source (utm source or referrer)
-        let source = 'Direct';
-        
-        if (session.utmData && session.utmData.source && session.utmData.source.trim() !== '') {
-          // Normalize UTM source
-          source = normalizeDomain(session.utmData.source);
-        } else if (session.referrer && session.referrer !== 'direct') {
-          // Extract and normalize domain from referrer
-          try {
-            const url = new URL(session.referrer);
-            source = normalizeDomain(url.hostname || url.host || session.referrer);
-          } catch (e) {
-            source = normalizeDomain(session.referrer);
-          }
+      if (!users[session.userId]) {
+        users[session.userId] = {
+          firstSource: null,
+          hasConnectedWallet: false,
+          firstSessionTimestamp: null,
+          sessions: []
+        };
+      }
+      
+      users[session.userId].sessions.push(session);
+    }
+    
+    // Sort each user's sessions by timestamp and determine first source and wallet status
+    for (const userId in users) {
+      const user = users[userId];
+      
+      // Sort sessions by timestamp (oldest first)
+      user.sessions.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+      
+      // Set the first session timestamp
+      if (user.sessions.length > 0) {
+        user.firstSessionTimestamp = user.sessions[0].timestamp;
+      }
+      
+      // Determine first source from the earliest session
+      const firstSession = user.sessions[0];
+      let source = 'Direct';
+      
+      if (firstSession.utmData && firstSession.utmData.source && firstSession.utmData.source.trim() !== '') {
+        source = normalizeDomain(firstSession.utmData.source);
+      } else if (firstSession.referrer && firstSession.referrer !== 'direct') {
+        try {
+          const url = new URL(firstSession.referrer);
+          source = normalizeDomain(url.hostname || url.host || firstSession.referrer);
+        } catch (e) {
+          source = normalizeDomain(firstSession.referrer);
         }
-        
-        // Record the first source for this user
-        userFirstSources[userId] = source;
       }
       
-      // Only update if we find a wallet connection
-      // Don't overwrite existing 'Wallet Connected' status
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
-        userOutcomes[userId] = 'Wallet Connected';
-      }
-    });
-    
-    // After processing all sessions, mark any users without outcomes as 'Dropped Off'
-    Object.keys(userFirstSources).forEach(userId => {
-      if (!userOutcomes[userId]) {
-        userOutcomes[userId] = 'Dropped Off';
-      }
-    });
+      user.firstSource = source;
+      
+      // Check if user has ever connected a wallet in any session
+      user.hasConnectedWallet = user.sessions.some(session => 
+        session.wallet && 
+        session.wallet.walletAddress && 
+        session.wallet.walletAddress.trim() !== '' && 
+        session.wallet.walletAddress !== 'No Wallet Detected'
+      );
+    }
     
     // Count users by source and outcome
     const sourceOutcomeCounts = {};
     
-    Object.entries(userFirstSources).forEach(([userId, source]) => {
-      const outcome = userOutcomes[userId];
+    // Process all users
+    for (const userId in users) {
+      const user = users[userId];
+      const source = user.firstSource;
+      const outcome = user.hasConnectedWallet ? 'Wallet Connected' : 'Dropped Off';
       
       if (!sourceOutcomeCounts[source]) {
         sourceOutcomeCounts[source] = {
@@ -96,12 +106,14 @@ const AttributionJourneySankey = ({analytics}) => {
       
       sourceOutcomeCounts[source][outcome]++;
       sourceOutcomeCounts[source].total++;
-    });
+    }
     
     // Convert to Sankey data format
     const sankeyData = [];
     
-    Object.entries(sourceOutcomeCounts).forEach(([source, counts]) => {
+    for (const source in sourceOutcomeCounts) {
+      const counts = sourceOutcomeCounts[source];
+      
       if (counts['Wallet Connected'] > 0) {
         sankeyData.push({
           source,
@@ -119,21 +131,30 @@ const AttributionJourneySankey = ({analytics}) => {
           total: counts.total
         });
       }
+    }
+    
+    // Sort sources by total users and limit to top 7 sources
+    const uniqueSources = [...new Set(sankeyData.map(item => item.source))];
+    const sourceWithTotals = uniqueSources.map(source => {
+      const total = sourceOutcomeCounts[source].total;
+      return { source, total };
     });
     
-    // Sort by total users and take top 7 sources
-    return sankeyData
+    // Sort by total and get top 7
+    const topSources = sourceWithTotals
       .sort((a, b) => b.total - a.total)
-      .filter((item, index, arr) => {
-        // Keep only unique source entries up to 7 sources
-        const uniqueSources = [...new Set(arr.map(i => i.source))];
-        const topSources = uniqueSources.slice(0, 7);
-        return topSources.includes(item.source);
-      });
+      .slice(0, 7)
+      .map(item => item.source);
+    
+    // Filter data to only include flows from top sources
+    return sankeyData.filter(item => topSources.includes(item.source));
   };
   
   // Get the Sankey data
   const attributionJourneyData = processAnalyticsData();
+  
+  // Debugging check
+  console.log('Attribution data:', attributionJourneyData);
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
