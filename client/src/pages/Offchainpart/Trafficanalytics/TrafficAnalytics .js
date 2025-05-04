@@ -183,6 +183,15 @@ const AttributionJourneySankey = ({analytics}) => {
   const nodeMargin = 35; // Increased margin between nodes for better spacing
   const minNodeHeight = 40; // Increased minimum height for better text display
   
+  // Helper function to generate colors - moved up before it's used
+  const getColorForIndex = (index) => {
+    const colors = [
+      '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
+      '#f7b844', '#66bb6a', '#ef5350', '#7986cb'
+    ];
+    return colors[index % colors.length];
+  };
+  
   // Define node positions and dimensions dynamically
   const nodes = {};
   
@@ -267,8 +276,12 @@ const AttributionJourneySankey = ({analytics}) => {
     });
   };
   
-  // Calculate node positions
-  calculateNodePositions();
+  // Calculate node positions once we have the finalData
+  // We need to defer this since finalData depends on attributionJourneyData
+  // But only calculate after finalData is ready
+  if (finalData && finalData.length > 0) {
+    calculateNodePositions();
+  }
   
   // Create source groups for proper flow ordering
   const sourceGroups = {};
