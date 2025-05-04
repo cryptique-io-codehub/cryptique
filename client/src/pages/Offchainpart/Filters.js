@@ -10,9 +10,6 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam"));
-  const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
-  const [newWebsiteDomain, setNewWebsiteDomain] = useState('');
-  const [newWebsiteName, setNewWebsiteName] = useState('');
   const [scriptmodel, setscriptmodel] = useState(false);
   const [scriptcode, setscriptcode] = useState('');
   const [verifyid, setverifyid] = useState('');
@@ -131,53 +128,11 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const handleOpenAddWebsiteModal = () => {
-    setShowAddWebsiteModal(true);
-    setIsDropdownOpen(false);
-  };
-
-  const handleCloseAddWebsiteModal = () => {
-    setShowAddWebsiteModal(false);
-  };
-
   const handleClosescriptmodel = () => {
     setfalsemessage('');
     setscriptmodel(false);
     // localStorage.removeItem("showInstallationPopup");
   }
-
-  const handleAddWebsite = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axiosInstance.post('/website/create',
-        {
-          Domain: newWebsiteDomain,
-          Name: newWebsiteName, // Use domain as name if no name provided
-          teamName: selectedTeam // Include team name in request body
-        }
-      );
-      setSelectedWebsite(response.data.website);
-      // console.log(response);
-      localStorage.setItem("selectedWebsite",response.data.website.Domain);
-      if(response.data.message === "Website added successfully" ) {
-        const iD = response.data.website.siteId;
-        localStorage.setItem("idy",iD);
-        setverifyid(iD);
-        const scriptHTML = `<script>
-        var script = document.createElement('script');
-        script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-        script.setAttribute('site-id', '${iD}');
-        document.head.appendChild(script);
-      </script>`;
-        setscriptcode(scriptHTML);
-        setscriptmodel(true);
-        // localStorage.setItem("showInstallationPopup", "true");
-        setShowAddWebsiteModal(false);
-      }
-    } catch (error) {
-      console.error("Error adding website:", error);
-    }
-  };
 
   const handleVerify = async () => {
     try {
@@ -365,20 +320,11 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
                       <li className="px-3 py-1.5 text-gray-500 text-base">No websites found</li>
                     )}
                     
-                    {/* Add website option */}
+                    {/* Add website option - replaced with a note about Manage Websites tab */}
                     <li className="border-t border-gray-200">
-                      <button
-                        type="button"
-                        className="flex items-center w-full px-3 py-1.5 text-base text-left text-blue-600 hover:bg-gray-100"
-                        onClick={handleOpenAddWebsiteModal}
-                      >
-                        <span className="inline-block w-5 h-5 mr-2 bg-blue-600 rounded-full text-white flex-shrink-0 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                          </svg>
-                        </span>
-                        <span className="text-base">Add new website</span>
-                      </button>
+                      <div className="px-3 py-1.5 text-sm text-gray-600 italic">
+                        To add or manage websites, please visit the <strong>Manage Websites</strong> tab
+                      </div>
                     </li>
                   </ul>
                 </div>
@@ -433,76 +379,8 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       </div>
     </div>
   
-    {/* Add Website Modal */}
-    {showAddWebsiteModal && (
-      <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-          <div className="p-4">
-            <div className="flex items-center mb-4">
-              <button onClick={handleCloseAddWebsiteModal} className="text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-              <h2 className="text-xl font-semibold ml-2">Add a new website</h2>
-            </div>
-            
-            <form onSubmit={handleAddWebsite}>
-              <div className="mb-4">
-                <label className="block font-medium text-gray-700 mb-2">Domain*</label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-base">
-                    https://
-                  </span>
-                  <input
-                    type="text"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="example.com"
-                    value={newWebsiteDomain}
-                    onChange={(e) => setNewWebsiteDomain(e.target.value)}
-                    required
-                  />
-                </div>
-                <p className="mt-1 text-base text-gray-500">
-                  Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
-                </p>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block font-medium text-gray-700 mb-2">Name (optional)</label>
-                <input
-                  type="text"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Please enter a name for your website"
-                  value={newWebsiteName}
-                  onChange={(e) => setNewWebsiteName(e.target.value)}
-                />
-                <p className="mt-1 text-base text-gray-500">
-                  This is the name that will be displayed in the dashboard
-                </p>
-              </div>
-              
-              <div className="text-center mb-4">
-                <p className="text-base text-gray-600">
-                  By adding a website, you agree to our privacy policy
-                </p>
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full flex justify-center items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none"
-              >
-                Add website
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )}
-    {scriptmodel && (
+    {/* Script Modal */}
+    {scriptmodel && selectedWebsite && (
       <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4"> {/* Increased max-width */}
           <div className="p-6"> {/* Increased padding */}
