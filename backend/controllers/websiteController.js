@@ -1,4 +1,3 @@
-
 const axios = require("axios");
 const cheerio = require("cheerio");
 const Website=require("../models/website");
@@ -108,8 +107,7 @@ exports.getWebsitesOfTeam = async (req, res) => {
 exports.verify = async (req, res) => {
     try {
         const { Domain, siteId } = req.body;
-        console.log('ac');
-        console.log(req.body);
+        console.log('Verifying website:', Domain, 'with siteId:', siteId);
         
         if (!Domain || !siteId) {
             return res.status(400).json({ message: "Domain and siteId are required" });
@@ -117,15 +115,26 @@ exports.verify = async (req, res) => {
 
         const targetScriptSrc = "https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js";
         
-        
+        // Try to access the website with HTTPS first, then fallback to HTTP
         let data;
         try {
-            data = await axios.get(`https://${Domain}`, { timeout: 5000 });
+            data = await axios.get(`https://${Domain}`, { 
+                timeout: 8000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            });
         } catch (httpsError) {
             try {
-                data = await axios.get(`http://${Domain}`, { timeout: 5000 });
+                data = await axios.get(`http://${Domain}`, { 
+                    timeout: 8000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    }
+                });
             } catch (httpError) {
-                return res.status(404).json({ message: "Could not access the website" });
+                console.error('Error accessing website:', httpError.message);
+                return res.status(404).json({ message: "Could not access the website. Make sure it's publicly accessible." });
             }
         }
 
@@ -133,48 +142,106 @@ exports.verify = async (req, res) => {
         let foundScript = false;
         let foundSiteId = false;
 
-        
+        // Check for script tags with src attribute
         $('script').each((i, element) => {
             const script = $(element);
             
-            
+            // Check direct script inclusion
             if (script.attr('src') === targetScriptSrc) {
                 foundScript = true;
                 if (script.attr('site-id') === siteId) {
                     foundSiteId = true;
                 }
-                return false; 
+                return false; // Exit the loop
             }
             
-            
+            // Check script content for dynamically created scripts
             const scriptContent = script.html() || '';
-            if (scriptContent.includes(targetScriptSrc)) {
-                foundScript = true;
+            
+            // Check various patterns of dynamic script injection
+            const patterns = [
+                // Pattern 1: Direct script.src assignment
+                new RegExp(`script\\.src\\s*=\\s*['"]${escapeRegExp(targetScriptSrc)}['"]`),
                 
-                const siteIdMatch = scriptContent.match(/script\.setAttribute\('site-id',\s*'([^']+)'/);
-                if (siteIdMatch && siteIdMatch[1] === siteId) {
-                    foundSiteId = true;
+                // Pattern 2: setAttribute style
+                new RegExp(`script\\.setAttribute\\(['"]src['"]\\s*,\\s*['"]${escapeRegExp(targetScriptSrc)}['"]\\)`),
+                
+                // Pattern 3: createElement style with multiple lines
+                new RegExp(`createElement\\(['"](script|script)['"]\\)[\\s\\S]*?${escapeRegExp(targetScriptSrc)}`),
+                
+                // Pattern 4: URL as variable then assigned
+                new RegExp(`${escapeRegExp(targetScriptSrc)}`)
+            ];
+            
+            // Check if any pattern matches
+            for (const pattern of patterns) {
+                if (pattern.test(scriptContent)) {
+                    foundScript = true;
+                    
+                    // Now check for site-id
+                    const siteIdPatterns = [
+                        // Pattern 1: Direct attribute assignment
+                        new RegExp(`site-id['":]\\s*['"]${escapeRegExp(siteId)}['"]`),
+                        
+                        // Pattern 2: setAttribute style
+                        new RegExp(`setAttribute\\(['"]site-id['"]\\s*,\\s*['"]${escapeRegExp(siteId)}['"]\\)`),
+                        
+                        // Pattern 3: As variable
+                        new RegExp(`["']${escapeRegExp(siteId)}["']`)
+                    ];
+                    
+                    for (const siteIdPattern of siteIdPatterns) {
+                        if (siteIdPattern.test(scriptContent)) {
+                            foundSiteId = true;
+                            return false; // Exit the loop
+                        }
+                    }
                 }
-                return false; 
             }
         });
 
+        // Additional check for scripts that might be injected by frameworks like Next.js/React
+        const htmlContent = $.html();
         if (!foundScript) {
-            console.log('k');
+            const scriptPatterns = [
+                new RegExp(`["']${escapeRegExp(targetScriptSrc)}["']`),
+                new RegExp(`src=["']${escapeRegExp(targetScriptSrc)}["']`)
+            ];
+            
+            for (const pattern of scriptPatterns) {
+                if (pattern.test(htmlContent)) {
+                    foundScript = true;
+                    break;
+                }
+            }
+        }
+        
+        // If script is found but site-id wasn't found yet, do another pass for site-id in the full HTML
+        if (foundScript && !foundSiteId) {
+            const siteIdInHtml = new RegExp(`site-id=["']${escapeRegExp(siteId)}["']`).test(htmlContent) ||
+                                 new RegExp(`["']site-id["']\\s*,\\s*["']${escapeRegExp(siteId)}["']`).test(htmlContent);
+            if (siteIdInHtml) {
+                foundSiteId = true;
+            }
+        }
+
+        if (!foundScript) {
+            console.log('Script not found on the page');
             return res.status(404).json({ message: "Cryptique analytics script not found on the page" });
         }
 
         if (!foundSiteId) {
+            console.log('Site ID not found or does not match');
             return res.status(403).json({ message: "site-id does not match or is missing" });
         }
 
-        
+        // Update website as verified
         await Website.findOneAndUpdate(
             { Domain },
             { $set: { isVerified: true } },
             { new: true }
         );
-        console.log("success")
+        console.log("Verification successful");
         return res.status(200).json({ message: "Verification successful" });
 
     } catch (e) {
@@ -182,3 +249,8 @@ exports.verify = async (req, res) => {
         return res.status(500).json({ message: 'Verification failed', error: e.message});
     }
 };
+
+// Helper function to escape special regex characters
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

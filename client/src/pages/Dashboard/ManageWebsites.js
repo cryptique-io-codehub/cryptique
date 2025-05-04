@@ -115,21 +115,33 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       });
 
       if (response.status === 200) {
-        showMessage("Website verified successfully!", "success");
+        showMessage("Website verified successfully! Analytics data will now be collected.", "success");
         fetchWebsites();
         setScriptModal(false);
       }
     } catch (error) {
       if (error.response) {
         if (error.response.status === 404) {
-          showMessage("Cryptique analytics script not found on the page", "error");
+          showMessage(
+            "Verification failed: Script not found on the page. For TypeScript/JavaScript sites, ensure the script has loaded before any verification requests.", 
+            "error"
+          );
         } else if (error.response.status === 403) {
-          showMessage("site-id does not match or is missing", "error");
+          showMessage(
+            "Verification failed: The site-id attribute doesn't match or is missing. Make sure the site-id is exactly as shown in the installation instructions.",
+            "error"
+          );
         } else {
-          showMessage("Verification failed", "error");
+          showMessage(
+            "Verification failed. Please make sure your site is publicly accessible and the script is properly loaded.",
+            "error"
+          );
         }
       } else {
-        showMessage("Verification failed", "error");
+        showMessage(
+          "Verification failed. This could be due to network issues or problems accessing your website. Please try again later.",
+          "error"
+        );
       }
     } finally {
       setVerifyLoading(false);
@@ -366,12 +378,47 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
               <div className="mb-6">
                 <p className="mb-4">
                   To track analytics for <span className="font-semibold">{selectedWebsite.Domain}</span>, 
-                  please add the following script to the <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> 
-                  section of your website:
+                  choose the installation method that matches your website:
                 </p>
-                <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                  <pre className="text-sm text-gray-800">{scriptCode}</pre>
+                
+                {/* Traditional HTML */}
+                <div className="mb-4">
+                  <h3 className="text-md font-semibold mb-2">Option 1: Traditional HTML</h3>
+                  <p className="mb-2">
+                    Add the following script to the <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;head&gt;</code> 
+                    section of your website:
+                  </p>
+                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-800">{scriptCode}</pre>
+                  </div>
                 </div>
+                
+                {/* TypeScript/JavaScript */}
+                <div>
+                  <h3 className="text-md font-semibold mb-2">Option 2: For TypeScript/JavaScript Projects</h3>
+                  <p className="mb-2">
+                    Add the following code to your main component or script file:
+                  </p>
+                  <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-800">{`// Add this to your main component (e.g., in useEffect or componentDidMount)
+const script = document.createElement('script');
+script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';
+script.setAttribute('site-id', '${selectedWebsite.siteId}');
+document.head.appendChild(script);`}</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <h3 className="text-md font-semibold text-blue-800 mb-1">Verification Note</h3>
+                <p className="text-sm text-blue-800">
+                  After adding the script to your website, please make sure:
+                </p>
+                <ul className="list-disc pl-5 mt-1 text-sm text-blue-800">
+                  <li>Your website is deployed and publicly accessible</li>
+                  <li>The script is properly loaded (check network tab in DevTools)</li>
+                  <li>The site-id attribute is correctly set to <code className="bg-blue-100 px-1 py-0.5 rounded">{selectedWebsite.siteId}</code></li>
+                </ul>
               </div>
               
               <div className="flex justify-between">
