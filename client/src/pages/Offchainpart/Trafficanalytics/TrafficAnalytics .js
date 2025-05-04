@@ -176,60 +176,99 @@ const AttributionJourneySankey = ({analytics}) => {
   };
   
   // Calculate better spacing for diagram
-  const svgHeight = 500; // Increased height for better spacing
-  const svgWidth = 800;  // Fixed width
-  const nodeWidth = 120;
-  const diagramPadding = 50; // Padding around the diagram
-  const nodeMargin = 20; // Reduced margin between nodes for better layout
-  const minNodeHeight = 30; // Minimum height for tiny flows
+  const svgHeight = 600; // Increased height for more vertical spacing
+  const svgWidth = 900;  // Increased width for better horizontal spacing
+  const nodeWidth = 130; // Wider nodes to fit text better
+  const diagramPadding = 70; // More padding around the diagram
+  const nodeMargin = 35; // Increased margin between nodes for better spacing
+  const minNodeHeight = 40; // Increased minimum height for better text display
   
   // Define node positions and dimensions dynamically
   const nodes = {};
   
-  // Position source nodes on the left side
-  const totalSourceHeight = uniqueSources.length * minNodeHeight + (uniqueSources.length - 1) * nodeMargin;
-  const sourceStartY = (svgHeight - totalSourceHeight) / 2;
-  
-  uniqueSources.forEach((source, index) => {
-    const sourceData = finalData.filter(item => item.source === source);
-    const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
-    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
-    const calculatedHeight = Math.max(minNodeHeight, (totalSourceValue / totalValue) * 250);
+  // Position source nodes on the left side with better spacing
+  // Calculate node placement to prevent overflow
+  const calculateNodePositions = () => {
+    // Get unique sources and targets for layout planning
+    const allSources = [...new Set(finalData.map(item => item.source))];
+    const allTargets = [...new Set(finalData.map(item => item.target))];
     
-    nodes[source] = {
-      x: diagramPadding,
-      y: sourceStartY + index * (minNodeHeight + nodeMargin) + (index * 10),
-      height: calculatedHeight,
-      color: getColorForIndex(index),
-      totalVisitors: totalVisitors
-    };
-  });
-  
-  // Position target nodes on the right side
-  const totalTargetHeight = uniqueTargets.length * minNodeHeight + (uniqueTargets.length - 1) * nodeMargin;
-  const targetStartY = (svgHeight - totalTargetHeight) / 2;
-  
-  uniqueTargets.forEach((target, index) => {
-    const targetData = finalData.filter(item => item.target === target);
-    const totalTargetValue = targetData.reduce((sum, item) => sum + item.value, 0);
-    const calculatedHeight = Math.max(minNodeHeight, (totalTargetValue / totalValue) * 250);
+    // Create source nodes first
+    let maxSourceNodeHeight = 0;
+    const totalValueBySource = {};
     
-    nodes[target] = {
-      x: svgWidth - diagramPadding - nodeWidth,
-      y: targetStartY + index * (minNodeHeight + nodeMargin) + (index * 10),
-      height: calculatedHeight,
-      color: targetColors[target]
-    };
-  });
+    // Calculate total value for each source for scaling
+    allSources.forEach(source => {
+      const sourceData = finalData.filter(item => item.source === source);
+      totalValueBySource[source] = sourceData.reduce((sum, item) => sum + item.value, 0);
+    });
+    
+    // Create scaled node heights based on values
+    // but ensure minimum spacing between nodes
+    const availableHeight = svgHeight - (2 * diagramPadding);
+    const totalNodesHeight = allSources.length * minNodeHeight;
+    const totalMarginHeight = (allSources.length - 1) * nodeMargin;
+    const remainingHeight = availableHeight - totalNodesHeight - totalMarginHeight;
+    
+    // Distribute remaining height proportionally based on values
+    const valueSum = Object.values(totalValueBySource).reduce((sum, val) => sum + val, 0);
+    let currentY = diagramPadding;
+    
+    // Position source nodes
+    allSources.forEach((source, index) => {
+      const sourceData = finalData.filter(item => item.source === source);
+      const totalVisitors = sourceData[0].total;
+      
+      // Calculate height based on value proportion plus minimum height
+      const valueRatio = totalValueBySource[source] / valueSum;
+      const additionalHeight = remainingHeight * valueRatio;
+      const nodeHeight = minNodeHeight + additionalHeight;
+      
+      nodes[source] = {
+        x: diagramPadding,
+        y: currentY,
+        width: nodeWidth,
+        height: nodeHeight,
+        color: getColorForIndex(index),
+        totalVisitors: totalVisitors
+      };
+      
+      // Update for next node
+      currentY += nodeHeight + nodeMargin;
+      maxSourceNodeHeight = Math.max(maxSourceNodeHeight, nodeHeight);
+    });
+    
+    // Now position target nodes with similar logic
+    let targetY = diagramPadding;
+    const targetValueSum = {};
+    allTargets.forEach(target => {
+      const targetData = finalData.filter(item => item.target === target);
+      targetValueSum[target] = targetData.reduce((sum, item) => sum + item.value, 0);
+    });
+    
+    const totalTargetValueSum = Object.values(targetValueSum).reduce((sum, val) => sum + val, 0);
+    
+    // Position target nodes
+    allTargets.forEach((target, index) => {
+      const valueRatio = targetValueSum[target] / totalTargetValueSum;
+      const additionalHeight = remainingHeight * valueRatio;
+      const nodeHeight = minNodeHeight + additionalHeight;
+      
+      nodes[target] = {
+        x: svgWidth - diagramPadding - nodeWidth,
+        y: targetY,
+        width: nodeWidth,
+        height: nodeHeight,
+        color: targetColors[target]
+      };
+      
+      // Update for next node
+      targetY += nodeHeight + nodeMargin;
+    });
+  };
   
-  // Helper function to generate colors
-  function getColorForIndex(index) {
-    const colors = [
-      '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
-      '#f7b844', '#66bb6a', '#ef5350', '#7986cb'
-    ];
-    return colors[index % colors.length];
-  }
+  // Calculate node positions
+  calculateNodePositions();
   
   // Create source groups for proper flow ordering
   const sourceGroups = {};
@@ -307,6 +346,12 @@ const AttributionJourneySankey = ({analytics}) => {
     `;
   };
   
+  // Helper function to truncate long source names
+  const truncateText = (text, maxChars = 15) => {
+    if (!text) return '';
+    return text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
+  };
+  
   // Get flow color - simplified color logic
   const getFlowColor = (target) => {
     return target === 'Wallet Connected' ? '#28a745' : '#dc3545';
@@ -318,7 +363,7 @@ const AttributionJourneySankey = ({analytics}) => {
         <div className="text-center text-sm text-gray-600 mb-4">
           User journey from traffic source to conversion or drop-off
         </div>
-        <div className="h-[500px]"> {/* Fixed height container to prevent overflow */}
+        <div className="h-[600px]"> {/* Increased height to match SVG height */}
           <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="xMidYMid meet">
             {/* Flows (render first so they appear behind nodes) */}
             <g className="flows">
@@ -352,7 +397,7 @@ const AttributionJourneySankey = ({analytics}) => {
             
             {/* Source Nodes */}
             <g className="source-nodes">
-              {uniqueSources.map(key => (
+              {Object.keys(nodes).filter(key => !['Wallet Connected', 'Dropped Off'].includes(key)).map(key => (
                 <g key={`source-${key}`}>
                   <rect 
                     x={nodes[key].x}
@@ -369,19 +414,19 @@ const AttributionJourneySankey = ({analytics}) => {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontFamily="'Montserrat', sans-serif"
-                    fontSize="13"
+                    fontSize="12"
                     fontWeight="600"
                     fill="#FFFFFF"
                   >
-                    {key}
+                    {truncateText(key, 12)}
                   </text>
-                  {/* Show total count for source nodes */}
+                  {/* Show total count for source nodes slightly more compact */}
                   <text 
                     x={nodes[key].x + nodeWidth/2} 
-                    y={nodes[key].y - 10}
+                    y={nodes[key].y - 8}
                     textAnchor="middle"
                     fontFamily="'Poppins', sans-serif"
-                    fontSize="12"
+                    fontSize="11"
                     fontWeight="500"
                     fill="#666666"
                   >
@@ -393,7 +438,7 @@ const AttributionJourneySankey = ({analytics}) => {
             
             {/* Target Nodes */}
             <g className="target-nodes">
-              {uniqueTargets.map(key => (
+              {['Wallet Connected', 'Dropped Off'].map(key => nodes[key] && (
                 <g key={`target-${key}`}>
                   <rect 
                     x={nodes[key].x}
