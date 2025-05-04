@@ -265,108 +265,101 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
     }
   };
 
-  // Add styling elements to match on-chain
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex justify-center items-center h-48">
-          <div className="text-red-500 font-poppins">{error}</div>
-        </div>
-      );
-    }
-
-    if (!allSources || allSources.length === 0) {
-      return (
-        <div className="flex justify-center items-center h-48">
-          <div className="text-gray-500 font-poppins">No traffic sources data available</div>
-        </div>
-      );
-    }
-
+  if (error) {
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 font-montserrat">Source</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 font-montserrat">Visitors</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 font-montserrat">Web3 Users</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 font-montserrat">Wallets Connected</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 font-montserrat">Conversion</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allSources.map((item, index) => {
-              const walletConversionRate = item.visitors > 0 
-                ? ((item.walletsConnected / item.visitors) * 100).toFixed(2) 
-                : "0.00";
-                
-              const web3ConversionRate = item.visitors > 0 
-                ? ((item.web3users / item.visitors) * 100).toFixed(2) 
-                : "0.00";
-                
-              return (
-                <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                  <td className="px-4 py-3 text-sm text-gray-800 font-poppins">{formatSourceName(item.source)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-800 font-poppins">{formatNumber(item.visitors)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-800 font-poppins">{formatNumber(item.web3users)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-800 font-poppins">{formatNumber(item.walletsConnected)}</td>
-                  <td className="px-4 py-3 text-sm text-right font-poppins">
-                    <span className={`${Number(walletConversionRate) > 5 ? 'text-green-600' : 'text-orange-500'}`}>
-                      {walletConversionRate}%
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow p-4">
+        <div className="text-red-500">Error: {error}</div>
       </div>
     );
-  };
-
+  }
+  
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      {/* Import fonts to match on-chain components */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-          
-          h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-          }
-          
-          body, p, span, div {
-            font-family: 'Poppins', sans-serif;
-          }
-        `}
-      </style>
-      
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 font-montserrat">Traffic Sources</h2>
+    <div className="bg-white shadow-md rounded-lg p-4 md:p-6 h-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 font-montserrat">Traffic Sources</h3>
         <select
           value={selectedMonth}
-          onChange={handleMonthChange}
-          className="p-2 border border-gray-300 rounded-md text-sm font-poppins bg-white text-gray-700"
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="text-sm rounded-md border-gray-300 font-poppins"
         >
           <option value="This Month">This Month</option>
           <option value="Last Month">Last Month</option>
           <option value="Last 3 Months">Last 3 Months</option>
-          <option value="Last 6 Months">Last 6 Months</option>
-          <option value="Last Year">Last Year</option>
-          <option value="All Time">All Time</option>
         </select>
       </div>
       
-      {renderContent()}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-500 font-poppins">{error}</div>
+        </div>
+      ) : allSources.length === 0 ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500 text-center font-poppins">
+            <p>No traffic source data available.</p>
+            <p className="mt-2 text-sm">This may be because there are no sessions recorded or all sessions have unknown sources.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                  Source
+                </th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                  Visitors
+                </th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                  Web3 Users
+                </th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                  Wallets
+                </th>
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                  Conversion
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 font-poppins">
+              {allSources.slice(0, 10).map((sourceData, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {sourceData.source}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {formatNumber(sourceData.visitors)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {formatNumber(sourceData.web3users)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {formatNumber(sourceData.walletsConnected)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {sourceData.visitors > 0 
+                      ? `${((sourceData.walletsConnected / sourceData.visitors) * 100).toFixed(1)}%` 
+                      : '0.0%'
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {allSources.length > 10 && (
+            <div className="mt-4 text-center">
+              <span className="text-gray-500 text-sm font-poppins">
+                Showing top 10 of {allSources.length} sources
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

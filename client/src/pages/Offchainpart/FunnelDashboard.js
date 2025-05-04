@@ -32,21 +32,6 @@ const HorizontalFunnelVisualization = ({analytics}) => {
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
-      {/* Import fonts to match on-chain components */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-          
-          h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-          }
-          
-          body, p, span, div {
-            font-family: 'Poppins', sans-serif;
-          }
-        `}
-      </style>
-      
       {/* Stats display */}
       <div className="flex justify-end w-full mb-6">
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
@@ -175,7 +160,7 @@ const HorizontalFunnel = ({ data, analytics }) => {
             fill="white"
             fontWeight="normal"
             fontSize="16"
-            fontFamily="'Poppins', sans-serif"
+            fontFamily="'Montserrat', sans-serif"
           >
             {textValue}
           </text>

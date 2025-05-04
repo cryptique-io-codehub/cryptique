@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import axiosInstance from '../../axiosInstance';
 
-// Match styling with on-chain components
+// Updated styles to use Montserrat and Poppins fonts
 const styles = {
-  container: {
-    fontFamily: "'Poppins', sans-serif"
-  },
+  container: {},
   heading: {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 600,
@@ -15,12 +13,12 @@ const styles = {
     backgroundColor: '#8b5cf6',
     color: 'white',
     fontWeight: 500,
-    fontFamily: "'Poppins', sans-serif"
+    fontFamily: "'Poppins', sans-serif",
   },
   buttonInactive: {
     backgroundColor: '#f3f4f6',
     color: '#4b5563',
-    fontFamily: "'Poppins', sans-serif"
+    fontFamily: "'Poppins', sans-serif",
   }
 };
 
@@ -195,7 +193,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (isLoading) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
+      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
         </div>
@@ -205,9 +203,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (error) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
+      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
-          <div className="text-red-500 font-poppins">{error}</div>
+          <div className="text-red-500">{error}</div>
         </div>
       </div>
     );
@@ -215,31 +213,16 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (!chartData || !chartData.labels.length) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
+      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
-          <div className="text-gray-500 font-poppins">No data available</div>
+          <div className="text-gray-500">No data available</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6" style={styles.container}>
-      {/* Import fonts to match on-chain components */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-          
-          h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-          }
-          
-          body, p, span, div {
-            font-family: 'Poppins', sans-serif;
-          }
-        `}
-      </style>
-      
+    <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold text-gray-800 font-montserrat" style={styles.heading}>Analytics Overview</h2>
         <div className="flex space-x-2">
@@ -269,43 +252,38 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             <XAxis
               dataKey="time"
               interval={getLabelInterval(chartData.labels.length)}
-              tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }}
+              tick={{ fill: '#6B7280', fontSize: 12 }}
             />
-            <YAxis tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'white', 
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.375rem',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                fontFamily: "'Poppins', sans-serif"
+            <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="bg-white p-3 border rounded-lg shadow-lg">
+                      <p className="font-semibold">{label}</p>
+                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
+                      <p className="text-purple-500">Wallets Connected: {payload[1]?.value || 0}</p>
+                    </div>
+                  );
+                }
+                return null;
               }}
-              labelStyle={{
-                fontWeight: 600,
-                fontFamily: "'Montserrat', sans-serif"
-              }}
             />
-            <Legend 
-              wrapperStyle={{ 
-                fontSize: 12, 
-                fontFamily: "'Poppins', sans-serif" 
-              }} 
+            <Area
+              type="monotone"
+              dataKey="visitors"
+              stackId="1"
+              stroke="#fcd34d"
+              fill="rgba(252, 211, 77, 0.5)"
+              isAnimationActive={false}
             />
-            <Area 
-              type="monotone" 
-              dataKey="visitors" 
-              stroke="#fcd34d" 
-              fill="rgba(252, 211, 77, 0.5)" 
-              strokeWidth={2}
-              name="Visitors"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="wallets" 
-              stroke="#8b5cf6" 
-              fill="rgba(139, 92, 246, 0.7)" 
-              strokeWidth={2}
-              name="Wallets"
+            <Area
+              type="monotone"
+              dataKey="wallets"
+              stackId="2"
+              stroke="#8b5cf6"
+              fill="rgba(139, 92, 246, 0.7)"
+              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>

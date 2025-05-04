@@ -127,31 +127,21 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow p-6 mt-4 mb-0">
-      {/* Import fonts to match on-chain components */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-          
-          h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-          }
-          
-          body, p, span, div {
-            font-family: 'Poppins', sans-serif;
-          }
-        `}
-      </style>
-      
+    <div className="w-full bg-white rounded-lg shadow p-6">
       {/* Standardized header text */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 font-montserrat">Users by Country</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold font-montserrat">Users by Country</h2>
         <div className="relative">
-          <select className="p-2 border border-gray-300 rounded-md text-sm font-poppins bg-white text-gray-700">
+          <select className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-sm font-poppins appearance-none">
             <option>This Month</option>
             <option>Last Month</option>
             <option>Last 3 Months</option>
           </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -171,8 +161,8 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
 
       {/* Top Countries List with standardized text */}
       <div className="pb-0">
-        <h3 className="text-base font-semibold mb-3 font-montserrat">Top Countries</h3>
-        <ul className="space-y-3">
+        <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
+        <ul className="space-y-3 text-sm text-gray-700 font-poppins">
           {topCountries.map(({ country, value, web3Users, walletConnections }) => {
             const countryCode = country.toUpperCase();
             const countryName = countryCodeToName[countryCode] || countryCode;
@@ -180,13 +170,13 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
             return (
               <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
                 <span className="flex items-center">
-                  <span className="text-lg mr-3">{flagEmoji}</span>
-                  <span className="font-medium text-sm font-poppins">{countryName}</span>
+                  <span className="text-xl mr-3">{flagEmoji}</span>
+                  <span className="font-medium">{countryName}</span>
                 </span>
                 <div className="flex space-x-6">
-                  <span className="font-medium text-sm font-poppins">{value} users</span>
-                  <span className="text-purple-600 text-sm font-poppins">{web3Users} web3</span>
-                  <span className="text-green-600 text-sm font-poppins">{walletConnections} wallets</span>
+                  <span className="font-semibold">{value} users</span>
+                  <span className="text-purple-600">{web3Users} web3</span>
+                  <span className="text-green-600">{walletConnections} wallets</span>
                 </div>
               </li>
             );
