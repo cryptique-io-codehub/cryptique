@@ -42,7 +42,7 @@ const AttributionJourneySankey = ({analytics}) => {
     // Determine the first source and final outcome for each user
     sortedSessions.forEach(session => {
       const userId = session.userId;
-      if (!userId) return;
+      if (!userId) return; // Skip sessions without userId
       
       // Skip if we already have the first source for this user
       if (!userFirstSources[userId]) {
@@ -66,8 +66,7 @@ const AttributionJourneySankey = ({analytics}) => {
         userFirstSources[userId] = source;
       }
       
-      // Update user outcome based on wallet connection
-      // If they connected a wallet in any session, mark them as converted
+      // Update user outcome based on wallet connection - only update from Dropped Off to Wallet Connected, never the reverse
       if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '') {
         userOutcomes[userId] = 'Wallet Connected';
       } else if (!userOutcomes[userId]) {
@@ -117,16 +116,14 @@ const AttributionJourneySankey = ({analytics}) => {
     });
     
     // Sort by total users and take top 7 sources
-    const sortedSankeyData = sankeyData.sort((a, b) => b.total - a.total);
-    
-    // Get unique sources sorted by total
-    const uniqueSources = [...new Set(sortedSankeyData.map(item => item.source))];
-    
-    // Take top 7 sources only
-    const topSources = uniqueSources.slice(0, 7);
-    
-    // Filter data to only include the top sources
-    return sortedSankeyData.filter(item => topSources.includes(item.source));
+    return sankeyData
+      .sort((a, b) => b.total - a.total)
+      .filter((item, index, arr) => {
+        // Keep only unique source entries up to 7 sources
+        const uniqueSources = [...new Set(arr.map(i => i.source))];
+        const topSources = uniqueSources.slice(0, 7);
+        return topSources.includes(item.source);
+      });
   };
   
   // Get the Sankey data
@@ -134,10 +131,8 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
-    { source: 'Direct', target: 'Wallet Connected', value: 3, total: 5 },
-    { source: 'Direct', target: 'Dropped Off', value: 2, total: 5 },
-    { source: 'Google', target: 'Wallet Connected', value: 2, total: 4 },
-    { source: 'Google', target: 'Dropped Off', value: 2, total: 4 }
+    { source: 'Direct', target: 'Wallet Connected', value: 3, total: 10 },
+    { source: 'Direct', target: 'Dropped Off', value: 7, total: 10 }
   ];
   
   // Calculate total values for scaling
@@ -149,204 +144,277 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Define fixed colors for targets
   const targetColors = {
-    'Wallet Connected': '#4CAF50', // A more vibrant green
-    'Dropped Off': '#F44336'      // A more vibrant red
+    'Wallet Connected': '#28a745', // Green for success
+    'Dropped Off': '#dc3545'      // Red for no wallet/drop-offs
   };
   
-  // Generate colors for sources
-  const sourceColors = {};
-  const colorPalette = [
-    '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
-    '#f7b844', '#66bb6a', '#7986cb', '#4db6ac'
-  ];
+  // Calculate better vertical spacing for diagram
+  const svgHeight = 400;
+  const nodeWidth = 120;
+  const nodeMargin = 40; // Margin between nodes
+  const minNodeHeight = 30; // Minimum height for tiny flows
   
-  uniqueSources.forEach((source, index) => {
-    sourceColors[source] = colorPalette[index % colorPalette.length];
-  });
-  
-  // Chart dimensions
-  const width = 900;
-  const height = 350;
-  const nodeWidth = 80;
-  const nodePadding = 30;
-  const marginTop = 40;
-  const marginBottom = 10;
-  
-  // Calculate vertical positions
-  const sourceHeight = (height - marginTop - marginBottom) / uniqueSources.length;
-  const targetHeight = (height - marginTop - marginBottom) / uniqueTargets.length;
-  
-  // Calculate source and target positions
+  // Define node positions and dimensions dynamically
   const nodes = {};
   
   // Position source nodes
+  const totalSourceHeight = uniqueSources.length * minNodeHeight + (uniqueSources.length - 1) * nodeMargin;
+  const sourceStartY = (svgHeight - totalSourceHeight) / 2;
+  
   uniqueSources.forEach((source, index) => {
+    const sourceData = finalData.filter(item => item.source === source);
+    const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
+    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
+    const calculatedHeight = Math.max(minNodeHeight, (totalSourceValue / totalValue) * 300);
+    
     nodes[source] = {
       x: 50,
-      y: marginTop + (index * sourceHeight) + (sourceHeight / 2) - 30,
-      width: nodeWidth,
-      height: 60,
-      color: sourceColors[source],
-      label: source
+      y: sourceStartY + index * (calculatedHeight + nodeMargin),
+      height: calculatedHeight,
+      color: getColorForIndex(index),
+      totalVisitors: totalVisitors
     };
   });
   
   // Position target nodes
+  const totalTargetHeight = uniqueTargets.length * minNodeHeight + (uniqueTargets.length - 1) * nodeMargin;
+  const targetStartY = (svgHeight - totalTargetHeight) / 2;
+  
   uniqueTargets.forEach((target, index) => {
+    const targetData = finalData.filter(item => item.target === target);
+    const totalTargetValue = targetData.reduce((sum, item) => sum + item.value, 0);
+    const calculatedHeight = Math.max(minNodeHeight, (totalTargetValue / totalValue) * 300);
+    
     nodes[target] = {
-      x: width - 150,
-      y: marginTop + (index * targetHeight) + (targetHeight / 2) - 30,
-      width: nodeWidth,
-      height: 60,
-      color: targetColors[target],
-      label: target
+      x: 650,
+      y: targetStartY + index * (calculatedHeight + nodeMargin),
+      height: calculatedHeight,
+      color: targetColors[target]
     };
   });
   
-  // Calculate link paths and values
-  const links = finalData.map(d => {
-    const sourceNode = nodes[d.source];
-    const targetNode = nodes[d.target];
-    
-    return {
-      ...d,
-      sourceX: sourceNode.x + sourceNode.width,
-      sourceY: sourceNode.y + sourceNode.height / 2,
-      targetX: targetNode.x,
-      targetY: targetNode.y + targetNode.height / 2,
-      width: Math.max(1, Math.sqrt(d.value) * 2)
-    };
-  });
+  // Helper function to generate colors
+  function getColorForIndex(index) {
+    const colors = [
+      '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
+      '#f7b844', '#66bb6a', '#ef5350', '#7986cb'
+    ];
+    return colors[index % colors.length];
+  }
   
-  // Generate curved path for links
-  const createPath = (link) => {
-    const dx = link.targetX - link.sourceX;
-    const control1X = link.sourceX + dx / 3;
-    const control2X = link.sourceX + dx * 2 / 3;
+  // Create source groups for proper flow ordering
+  const sourceGroups = {};
+  finalData.forEach(d => {
+    if (!sourceGroups[d.source]) {
+      sourceGroups[d.source] = { total: 0, flows: [] };
+    }
+    sourceGroups[d.source].flows.push(d);
+    sourceGroups[d.source].total += d.value;
+  });
+
+  // Create target groups for proper flow ordering
+  const targetGroups = {};
+  finalData.forEach(d => {
+    if (!targetGroups[d.target]) {
+      targetGroups[d.target] = { total: 0, flows: [] };
+    }
+    targetGroups[d.target].flows.push(d);
+    targetGroups[d.target].total += d.value;
+  });
+
+  // Calculate vertical offsets for each flow
+  Object.keys(sourceGroups).forEach(source => {
+    let currentOffset = 0;
+    sourceGroups[source].flows.forEach(flow => {
+      flow.sourceY = nodes[source].y + currentOffset;
+      flow.sourceHeight = (flow.value / sourceGroups[source].total) * nodes[source].height;
+      currentOffset += flow.sourceHeight;
+    });
+  });
+
+  Object.keys(targetGroups).forEach(target => {
+    let currentOffset = 0;
+    targetGroups[target].flows.forEach(flow => {
+      flow.targetY = nodes[target].y + currentOffset;
+      flow.targetHeight = (flow.value / targetGroups[target].total) * nodes[target].height;
+      currentOffset += flow.targetHeight;
+    });
+  });
+
+  // Generate SVG paths for each flow
+  const createSankeyPath = (flow) => {
+    const sourceX = nodes[flow.source].x + nodeWidth;
+    const sourceY = flow.sourceY;
+    const sourceHeight = flow.sourceHeight;
     
+    const targetX = nodes[flow.target].x;
+    const targetY = flow.targetY;
+    const targetHeight = flow.targetHeight;
+    
+    // Control point distance (1/3 of the total distance)
+    const cpDistance = (targetX - sourceX) / 3;
+    
+    // Start and end points
+    const startTop = { x: sourceX, y: sourceY };
+    const startBottom = { x: sourceX, y: sourceY + sourceHeight };
+    
+    const endTop = { x: targetX, y: targetY };
+    const endBottom = { x: targetX, y: targetY + targetHeight };
+    
+    // Control points
+    const cp1Top = { x: startTop.x + cpDistance, y: startTop.y };
+    const cp2Top = { x: endTop.x - cpDistance, y: endTop.y };
+    
+    const cp1Bottom = { x: startBottom.x + cpDistance, y: startBottom.y };
+    const cp2Bottom = { x: endBottom.x - cpDistance, y: endBottom.y };
+    
+    // Generate path
     return `
-      M ${link.sourceX} ${link.sourceY}
-      C ${control1X} ${link.sourceY}, ${control2X} ${link.targetY}, ${link.targetX} ${link.targetY}
+      M ${startTop.x} ${startTop.y}
+      C ${cp1Top.x} ${cp1Top.y}, ${cp2Top.x} ${cp2Top.y}, ${endTop.x} ${endTop.y}
+      L ${endBottom.x} ${endBottom.y}
+      C ${cp2Bottom.x} ${cp2Bottom.y}, ${cp1Bottom.x} ${cp1Bottom.y}, ${startBottom.x} ${startBottom.y}
+      Z
     `;
+  };
+  
+  // Get flow color - simplified color logic
+  const getFlowColor = (target) => {
+    return target === 'Wallet Connected' ? '#28a745' : '#dc3545';
   };
 
   return (
-    <div className="w-full font-poppins">
-      <div className="mb-4 text-center text-sm text-gray-600">
-        Top traffic sources and their conversion to wallet connections
-      </div>
-      <div className="overflow-x-auto">
-        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-          {/* Links */}
-          {links.map((link, i) => (
-            <g key={`link-${i}`}>
-              <path
-                d={createPath(link)}
-                stroke={link.target === 'Wallet Connected' ? targetColors['Wallet Connected'] : targetColors['Dropped Off']}
-                strokeWidth={link.width}
-                strokeOpacity="0.6"
-                fill="none"
-              />
-              {/* Link value labels */}
-              <text
-                x={(link.sourceX + link.targetX) / 2}
-                y={(link.sourceY + link.targetY) / 2 - 5}
-                fontSize="12"
-                fontWeight="500"
-                textAnchor="middle"
-                fill="#333"
-                className="font-poppins"
-              >
-                {link.value}
-              </text>
-            </g>
-          ))}
+    <div className="w-full">
+      <div className="font-poppins">
+        <div className="text-center text-sm text-gray-600 mb-4">
+          User journey from traffic source to conversion or drop-off
+        </div>
+        <svg width="100%" height="450" viewBox="0 0 850 400" preserveAspectRatio="xMidYMid meet">
+          {/* Flows (render first so they appear behind nodes) */}
+          <g className="flows">
+            {finalData.map((flow, index) => (
+              <g key={`flow-${index}`}>
+                <path 
+                  d={createSankeyPath(flow)}
+                  fill={getFlowColor(flow.target)}
+                  fillOpacity={0.3}
+                  stroke={getFlowColor(flow.target)}
+                  strokeWidth={1}
+                />
+                {/* Only show flow value if significant enough */}
+                {flow.value > 2 && (
+                  <text 
+                    x={(nodes[flow.source].x + nodeWidth + nodes[flow.target].x) / 2}
+                    y={(flow.sourceY + flow.sourceHeight / 2 + flow.targetY + flow.targetHeight / 2) / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="font-poppins"
+                    fontSize="12"
+                    fontWeight="500"
+                    fill="#333333"
+                  >
+                    {flow.value}
+                  </text>
+                )}
+              </g>
+            ))}
+          </g>
           
           {/* Source Nodes */}
-          {Object.keys(nodes).filter(k => uniqueSources.includes(k)).map((key) => (
-            <g key={`node-${key}`}>
-              <rect
-                x={nodes[key].x}
-                y={nodes[key].y}
-                width={nodes[key].width}
-                height={nodes[key].height}
-                fill={nodes[key].color}
-                rx="4"
-                ry="4"
-                opacity="0.85"
-              />
-              <text
-                x={nodes[key].x + nodes[key].width / 2}
-                y={nodes[key].y + nodes[key].height / 2}
-                fontSize="12"
-                fontWeight="600"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#fff"
-                className="font-montserrat"
-              >
-                {key}
-              </text>
-              {/* Total users count */}
-              <text
-                x={nodes[key].x + nodes[key].width / 2}
-                y={nodes[key].y - 10}
-                fontSize="10"
-                textAnchor="middle"
-                fill="#666"
-                className="font-poppins"
-              >
-                {finalData.find(d => d.source === key)?.total || 0} users
-              </text>
-            </g>
-          ))}
+          <g className="source-nodes">
+            {uniqueSources.map(key => (
+              <g key={`source-${key}`}>
+                <rect 
+                  x={nodes[key].x}
+                  y={nodes[key].y}
+                  width={nodeWidth}
+                  height={nodes[key].height}
+                  fill={nodes[key].color}
+                  rx={4}
+                  ry={4}
+                />
+                <text 
+                  x={nodes[key].x + nodeWidth/2} 
+                  y={nodes[key].y + nodes[key].height/2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="'Montserrat', sans-serif"
+                  fontSize="13"
+                  fontWeight="600"
+                  fill="#FFFFFF"
+                >
+                  {key}
+                </text>
+                {/* Show total count for source nodes */}
+                <text 
+                  x={nodes[key].x + nodeWidth/2} 
+                  y={nodes[key].y - 10}
+                  textAnchor="middle"
+                  fontFamily="'Poppins', sans-serif"
+                  fontSize="12"
+                  fontWeight="500"
+                  fill="#666666"
+                >
+                  {nodes[key].totalVisitors} users
+                </text>
+              </g>
+            ))}
+          </g>
           
           {/* Target Nodes */}
-          {Object.keys(nodes).filter(k => uniqueTargets.includes(k)).map((key) => (
-            <g key={`node-${key}`}>
-              <rect
-                x={nodes[key].x}
-                y={nodes[key].y}
-                width={nodes[key].width}
-                height={nodes[key].height}
-                fill={nodes[key].color}
-                rx="4"
-                ry="4"
-                opacity="0.85"
-              />
-              <text
-                x={nodes[key].x + nodes[key].width / 2}
-                y={nodes[key].y + nodes[key].height / 2}
-                fontSize="12"
-                fontWeight="600"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#fff"
-                className="font-montserrat"
-              >
-                {key}
-              </text>
-              {/* Total users count */}
-              <text
-                x={nodes[key].x + nodes[key].width / 2}
-                y={nodes[key].y - 10}
-                fontSize="10"
-                textAnchor="middle"
-                fill="#666"
-                className="font-poppins"
-              >
-                {finalData.filter(d => d.target === key).reduce((sum, d) => sum + d.value, 0)} users
-              </text>
-            </g>
-          ))}
+          <g className="target-nodes">
+            {uniqueTargets.map(key => (
+              <g key={`target-${key}`}>
+                <rect 
+                  x={nodes[key].x}
+                  y={nodes[key].y}
+                  width={nodeWidth}
+                  height={nodes[key].height}
+                  fill={nodes[key].color}
+                  rx={4}
+                  ry={4}
+                />
+                <text 
+                  x={nodes[key].x + nodeWidth/2} 
+                  y={nodes[key].y + nodes[key].height/2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="'Montserrat', sans-serif"
+                  fontSize="13"
+                  fontWeight="600"
+                  fill="#FFFFFF"
+                >
+                  {key}
+                </text>
+              </g>
+            ))}
+          </g>
           
           {/* Legend */}
-          <g transform="translate(50, 20)">
-            <rect x="0" y="0" width="12" height="12" fill={targetColors['Wallet Connected']} rx="2" ry="2" />
-            <text x="20" y="10" fontSize="12" className="font-poppins" fill="#333">Wallet Connected</text>
-            
-            <rect x="160" y="0" width="12" height="12" fill={targetColors['Dropped Off']} rx="2" ry="2" />
-            <text x="180" y="10" fontSize="12" className="font-poppins" fill="#333">Dropped Off</text>
+          <g transform="translate(20, 20)">
+            <rect x="0" y="0" width="15" height="15" fill="#28a745" />
+            <text 
+              x="25" 
+              y="12" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="14"
+              fontWeight="500"
+              fill="#333333"
+            >
+              Wallet Connected
+            </text>
+              
+            <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
+            <text 
+              x="25" 
+              y="42" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="14"
+              fontWeight="500"
+              fill="#333333"
+            >
+              Dropped Off
+            </text>
           </g>
         </svg>
       </div>
