@@ -1,6 +1,7 @@
 const express = require("express");
 const { connect } = require("mongoose");
 const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
@@ -40,6 +41,43 @@ const sdkCorsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
+// Use Helmet for security headers (except for SDK routes)
+app.use((req, res, next) => {
+  // Skip Helmet for SDK routes which need to be accessible from any origin
+  if (req.path.startsWith('/api/sdk/')) {
+    return next();
+  }
+  
+  // Apply Helmet middleware for all other routes
+  return helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://app.cryptique.io", "https://cryptique.io"],
+        connectSrc: ["'self'", "https://api.cryptique.io", "https://cryptique-backend.vercel.app", "https://ipinfo.io"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'self'"],
+        frameAncestors: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    // Enable other security features
+    xssFilter: true,
+    noSniff: true,
+    frameguard: { action: 'deny' },
+    hsts: {
+      maxAge: 31536000, // 1 year in seconds
+      includeSubDomains: true,
+      preload: true
+    }
+  })(req, res, next);
+});
 
 // We'll handle CORS per-route instead of globally
 // This prevents conflicts between different CORS policies

@@ -47,6 +47,18 @@ The application includes the following security features:
    - Strict CORS settings for main application routes
    - SDK routes have special CORS settings to allow for cross-origin tracking
 
+5. **Content Security Policy (CSP)**:
+   - Strict CSP headers to prevent XSS attacks
+   - Restricts which resources can be loaded and from where
+   - Configures frame protection, script sources, and other security policies
+
+6. **Additional Security Headers**:
+   - X-Content-Type-Options: Prevents MIME type sniffing
+   - X-Frame-Options: Prevents clickjacking attacks
+   - X-XSS-Protection: Additional XSS protection
+   - Strict-Transport-Security (HSTS): Enforces HTTPS connections
+   - Referrer-Policy: Controls what information is shared in referrer headers
+
 ## Getting Started
 
 1. Install dependencies:
