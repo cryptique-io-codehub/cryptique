@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import WorldMap from "react-svg-worldmap";
 
 // Extended ISO Alpha-2 code to country name map
@@ -35,6 +35,9 @@ const countryCodeToName = {
 };
 
 const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
   const getMetricsPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryMetrics = new Map();
