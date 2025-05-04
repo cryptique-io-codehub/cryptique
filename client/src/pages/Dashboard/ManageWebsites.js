@@ -17,6 +17,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Fetch websites when component mounts
   useEffect(() => {
@@ -41,13 +42,37 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           );
           if (currentWebsite) {
             setSelectedWebsite(currentWebsite);
-            generateScriptCode(currentWebsite.siteId);
           }
+        }
+        
+        // Auto-verify websites with analytics data
+        try {
+          await axiosInstance.post('/website/auto-verify-all');
+          console.log('Auto-verify process completed');
+          
+          // Get the updated websites with verification status
+          const updatedResponse = await axiosInstance.get(`/website/team/${selectedTeam}`);
+          if (updatedResponse.status === 200) {
+            setWebsiteArray(updatedResponse.data.websites);
+            
+            // If we had a selected website, make sure it's updated too
+            if (selectedWebsite) {
+              const updatedSelectedWebsite = updatedResponse.data.websites.find(
+                website => website.siteId === selectedWebsite.siteId
+              );
+              if (updatedSelectedWebsite) {
+                setSelectedWebsite(updatedSelectedWebsite);
+              }
+            }
+          }
+        } catch (verifyError) {
+          console.error('Error in auto-verify process:', verifyError);
+          // Continue with the websites we already have
         }
       }
     } catch (error) {
       console.error("Error fetching websites:", error);
-      showMessage("Failed to load websites. Please try again later.", "error");
+      setError("Failed to load websites. Please try again later.");
     } finally {
       setIsLoading(false);
     }

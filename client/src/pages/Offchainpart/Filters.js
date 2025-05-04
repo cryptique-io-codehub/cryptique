@@ -28,6 +28,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     const fetchWebsites = async () => {
       setIsLoading(true);
       try {
+        // Use the correct GET endpoint with team name in path parameter
         const response = await axiosInstance.get(`/website/team/${selectteam}`);
         
         if (response.status === 200) {
@@ -35,8 +36,23 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
           if (response && response.data.websites.length > 0) {
             setWebsitearray(response.data.websites);
             
-            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+            // Auto-verify websites with analytics data
+            try {
+              await axiosInstance.post('/website/auto-verify-all');
+              console.log('Auto-verify process completed');
+              
+              // Get the updated websites with verification status
+              const updatedResponse = await axiosInstance.get(`/website/team/${selectteam}`);
+              if (updatedResponse.status === 200) {
+                setWebsitearray(updatedResponse.data.websites);
+              }
+            } catch (verifyError) {
+              console.error('Error in auto-verify process:', verifyError);
+              // Continue with the websites we already have
+            }
             
+            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+             
             // If no website is selected or selection is empty
             if(!savedWebsiteDomain || savedWebsiteDomain === '') {
               const firstWebsite = response.data.websites[0];
@@ -76,16 +92,21 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
                 setscriptcode(scriptHTML);
               }
             }
+            
+            setIsDropdownOpen(false);
           }
         }
       } catch (error) {
-        console.error("Error fetching websites:", error);
+        console.error("Error refreshing websites:", error);
+        setfalsemessage("Error refreshing websites");
       } finally {
         setIsLoading(false);
       }
     };
-  
-    fetchWebsites();
+    
+    if (selectteam) {
+      fetchWebsites();
+    }
   }, []);
   
 

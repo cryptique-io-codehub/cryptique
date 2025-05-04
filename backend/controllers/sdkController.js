@@ -1,6 +1,7 @@
 const Analytics = require("../models/analytics");
 const Session = require("../models/session");
 const { HourlyStats, DailyStats, WeeklyStats, MonthlyStats } = require("../models/stats");
+const Website = require("../models/website");
 
 // Controller to handle posting the countryName
 exports.postAnalytics = async (req, res) => {
@@ -57,6 +58,9 @@ exports.postAnalytics = async (req, res) => {
           analytics.sessions.push(newSession._id);
           await analytics.save();
         }
+        
+        // Ensure this analytics record is connected to the website
+        await ensureWebsiteConnection(siteId, analytics._id);
         
         return res.status(200).json({ 
           message: 'New session created',
@@ -118,6 +122,9 @@ exports.postAnalytics = async (req, res) => {
           updatedData, 
           { new: true }
         );
+        
+        // Ensure this analytics record is connected to the website
+        await ensureWebsiteConnection(siteId, analytics._id);
         
         return res.status(200).json({ 
           message: 'Session updated',
@@ -183,7 +190,10 @@ exports.postAnalytics = async (req, res) => {
         newAnalytics.weeklyStats = newWeeklyStats._id;
         newAnalytics.monthlyStats = newMonthlyStats._id;
         await newAnalytics.save();
-
+        
+        // Connect the new analytics document to the website and auto-verify
+        await ensureWebsiteConnection(siteId, newAnalytics._id, true);
+        
         return res.status(200).json({ 
           message: "New analytics created", 
           analytics: newAnalytics 
@@ -230,6 +240,9 @@ exports.postAnalytics = async (req, res) => {
       
       await analytics.save();
       
+      // Ensure this analytics record is connected to the website
+      await ensureWebsiteConnection(siteId, analytics._id);
+      
       return res.status(200).json({ 
         message: "Analytics updated", 
         analytics 
@@ -246,6 +259,41 @@ exports.postAnalytics = async (req, res) => {
     });
   }
 };
+
+// Helper function to ensure connection between website and analytics
+async function ensureWebsiteConnection(siteId, analyticsId, autoVerify = false) {
+  try {
+    // Find the website with this siteId
+    const website = await Website.findOne({ siteId: siteId });
+    
+    if (website) {
+      // Check if the website already has this analytics ID
+      if (!website.analytics || !website.analytics.equals(analyticsId)) {
+        console.log(`Connecting analytics document ${analyticsId} to website ${siteId}`);
+        
+        // Set the analytics field and auto-verify if we've received data
+        let updateData = { analytics: analyticsId };
+        
+        // Auto-verify if requested or if the website has data but isn't verified yet
+        if (autoVerify && !website.isVerified) {
+          console.log(`Auto-verifying website ${siteId} since analytics data exists`);
+          updateData.isVerified = true;
+        }
+        
+        // Update the website document
+        await Website.findByIdAndUpdate(
+          website._id,
+          { $set: updateData },
+          { new: true }
+        );
+      }
+    } else {
+      console.log(`Website with siteId ${siteId} not found, can't connect analytics`);
+    }
+  } catch (error) {
+    console.error(`Error connecting analytics to website: ${error.message}`);
+  }
+}
 
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {

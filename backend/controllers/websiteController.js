@@ -134,7 +134,39 @@ exports.verify = async (req, res) => {
                 });
             } catch (httpError) {
                 console.error('Error accessing website:', httpError.message);
-                return res.status(404).json({ message: "Could not access the website. Make sure it's publicly accessible." });
+                
+                // Even if we can't access the website directly, check if we have analytics data
+                // which would confirm the script is working
+                const Analytics = require('../models/analytics');
+                const analyticsData = await Analytics.findOne({ siteId: siteId });
+                
+                if (analyticsData && analyticsData.totalVisitors > 0) {
+                    console.log('Website not accessible, but analytics data found, verifying...');
+                    // Update website as verified since we have analytics data
+                    const updatedWebsite = await Website.findOneAndUpdate(
+                        { siteId: siteId },
+                        { 
+                            $set: { 
+                                isVerified: true,
+                                analytics: analyticsData._id 
+                            } 
+                        },
+                        { new: true }
+                    );
+                    
+                    if (!updatedWebsite) {
+                        console.log('Website not found with siteId:', siteId);
+                        return res.status(404).json({ message: "Website not found with the provided siteId" });
+                    }
+                    
+                    console.log("Verification successful via analytics data");
+                    return res.status(200).json({ 
+                        message: "Verification successful via analytics data", 
+                        website: updatedWebsite 
+                    });
+                } else {
+                    return res.status(404).json({ message: "Could not access the website. Make sure it's publicly accessible." });
+                }
             }
         }
 
@@ -264,11 +296,9 @@ exports.verify = async (req, res) => {
         
         // SPECIAL CASE: Directly check for analytics data presence
         // If we have analytics data flowing but can't detect the script, we can still verify
-        try {
-            const website = await Website.findOne({ siteId: siteId });
-            if (website && website.analytics) {
-                // We have analytics data, which means the script is working
-                // Let's query the analytics to see if there's recent data
+        if (!foundScript || !foundSiteId) {
+            try {
+                // Check if we have analytics data for this siteId first
                 const Analytics = require('../models/analytics');
                 const analytics = await Analytics.findOne({ siteId: siteId });
                 
@@ -276,11 +306,20 @@ exports.verify = async (req, res) => {
                     console.log('Analytics data found, overriding script detection');
                     foundScript = true;
                     foundSiteId = true;
+                    
+                    // Find website and update analytics reference if needed
+                    const website = await Website.findOne({ siteId: siteId });
+                    if (website && (!website.analytics || !website.analytics.equals(analytics._id))) {
+                        // Update the analytics reference
+                        website.analytics = analytics._id;
+                        await website.save();
+                        console.log('Updated website with analytics reference');
+                    }
                 }
+            } catch (analyticsError) {
+                console.error('Error checking analytics data:', analyticsError);
+                // Continue with normal verification - don't fail because of this check
             }
-        } catch (analyticsError) {
-            console.error('Error checking analytics data:', analyticsError);
-            // Continue with normal verification - don't fail because of this check
         }
 
         if (!foundScript) {
