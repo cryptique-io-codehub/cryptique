@@ -222,7 +222,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6 mb-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold text-gray-800 font-montserrat" style={styles.heading}>Analytics Overview</h2>
         <div className="flex space-x-2">
@@ -238,7 +238,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
           ))}
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData.datasets[0].data.map((item, index) => ({

@@ -127,10 +127,10 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow p-6">
+    <div className="w-full bg-white rounded-lg shadow p-6 mb-6">
       {/* Standardized header text */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold font-montserrat">Users by Country</h2>
+        <h2 className="text-lg font-semibold font-montserrat text-center">Users by Country</h2>
         <div className="relative">
           <select className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-sm font-poppins appearance-none">
             <option>This Month</option>
@@ -161,7 +161,7 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
 
       {/* Top Countries List with standardized text */}
       <div className="pb-0">
-        <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
+        <h3 className="text-base font-medium mb-3 font-montserrat text-center">Top Countries</h3>
         <ul className="space-y-3 text-sm text-gray-700 font-poppins">
           {topCountries.map(({ country, value, web3Users, walletConnections }) => {
             const countryCode = country.toUpperCase();

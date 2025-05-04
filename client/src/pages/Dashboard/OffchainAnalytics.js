@@ -197,7 +197,7 @@ function formatDuration(seconds) {
   
   // Updated AnalyticsCard to match On-chain styling with Montserrat for headings and Poppins for body
   const AnalyticsCard = ({ label, data, bgColor, textColor }) => (
-    <div className={`${bgColor} ${textColor} p-4 rounded-lg shadow`}>
+    <div className={`${bgColor} ${textColor} p-4 rounded-lg shadow text-center`}>
       <h2 className="font-semibold text-lg mb-2 font-montserrat">{label}</h2>
       <h3 className="text-xl font-bold font-montserrat">{data}</h3>
       <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
@@ -509,11 +509,11 @@ return (
                     {/* MODIFICATION: Analytics cards in full width single row */}
                     {websitearray.length > 0 && analytics && Object.keys(analytics).length > 0 ? (
                       <div className="h-full flex flex-col">
-                        <div className="flex flex-col space-y-4">
+                        <div className="flex flex-col space-y-6">
                           {/* Analytics Cards */}
-                          <div className="w-full grid grid-rows-2 gap-4 h-auto">
+                          <div className="w-full grid grid-rows-2 gap-6 h-auto mb-6">
                             {/* First row - 4 cards */}
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-4 gap-6">
                               <AnalyticsCard 
                                 label="Unique visitors" 
                                 data={analytics?.uniqueVisitors} 
@@ -541,7 +541,7 @@ return (
                             </div>
                             
                             {/* Second row - 3 cards */}
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-3 gap-6">
                               <AnalyticsCard 
                                 label="Avg. visit duration" 
                                 data={avgVisitDuration} 
@@ -564,7 +564,7 @@ return (
                           </div>
                           
                           {/* Dynamic Analytics chart with spacing */}
-                          <div className="w-full mt-4">
+                          <div className="w-full">
                             <AnalyticsChart 
                               analytics={analytics}
                               setAnalytics={setanalytics}
@@ -573,13 +573,13 @@ return (
                             />
                           </div>
                           
-                          {/* Funnel Dashboard with spacing - REDUCED MARGIN */}
-                          <div className="w-full mt-4">
+                          {/* Funnel Dashboard with spacing */}
+                          <div className="w-full">
                             <FunnelDashboard analytics={analytics}/>
                           </div>
                           
                           {/* MODIFICATION: Traffic Sources & User Type cards in same line */}
-                          <div className="flex flex-col lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0 mt-4">
+                          <div className="flex flex-col lg:flex-row lg:space-x-6 space-y-6 lg:space-y-0">
                             {/* Traffic Sources Component - Now 50% width */}
                             <div className="w-full lg:w-1/2">
                               <TrafficSourcesComponent 
@@ -592,8 +592,8 @@ return (
                             </div>
                             
                             {/* User Type Donut Chart - Now 50% width */}
-                            <div className="w-full lg:w-1/2 bg-white shadow-md rounded-lg p-4 md:p-6">
-                              <h3 className="text-lg font-semibold mb-4 font-montserrat">User Type</h3>
+                            <div className="w-full lg:w-1/2 bg-white shadow-md rounded-lg p-6">
+                              <h3 className="text-lg font-semibold mb-4 font-montserrat text-center">User Type</h3>
                               <div className="h-48 md:h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <PieChart>
@@ -624,20 +624,20 @@ return (
                                   <table className="w-full text-left border-collapse">
                                     <thead>
                                       <tr className="border-b">
-                                        <th className="p-2 text-gray-600 text-sm font-montserrat">Type</th>
-                                        <th className="p-2 text-gray-600 text-sm font-montserrat">Visitors</th>
-                                        <th className="p-2 text-gray-600 text-sm font-montserrat">%</th>
+                                        <th className="p-2 text-gray-600 text-sm font-montserrat text-center">Type</th>
+                                        <th className="p-2 text-gray-600 text-sm font-montserrat text-center">Visitors</th>
+                                        <th className="p-2 text-gray-600 text-sm font-montserrat text-center">%</th>
                                       </tr>
                                     </thead>
                                     <tbody className="font-poppins">
                                       {data.map((item, index) => (
                                         <tr key={index} className="border-b">
-                                          <td className="p-2 flex items-center text-sm">
+                                          <td className="p-2 flex items-center text-sm justify-center">
                                             <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>
                                             {item.name}
                                           </td>
-                                          <td className="p-2 text-sm">{item.value}</td>
-                                          <td className="p-2 text-green-500 text-sm">{item.percentage}%</td>
+                                          <td className="p-2 text-sm text-center">{item.value}</td>
+                                          <td className="p-2 text-green-500 text-sm text-center">{item.percentage}%</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -648,8 +648,8 @@ return (
                           </div>
                           
                           {/* MODIFICATION: Full width Geo Analytics Map at bottom */}
-                          <div className="w-full mt-4 mb-4">
-                            <div className="w-full bg-white shadow-md rounded-lg p-4 md:p-6 min-h-128">
+                          <div className="w-full mb-4">
+                            <div className="w-full bg-white shadow-md rounded-lg p-6 min-h-128">
                               <GeoAnalyticsMap 
                                 analytics={analytics} 
                                 selectedCountry={selectedCountry} 

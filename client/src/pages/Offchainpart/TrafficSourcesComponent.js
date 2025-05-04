@@ -274,9 +274,9 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   }
   
   return (
-    <div className="bg-white shadow-md rounded-lg p-4 md:p-6 h-full">
+    <div className="bg-white shadow-md rounded-lg p-6 h-full">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 font-montserrat">Traffic Sources</h3>
+        <h3 className="text-lg font-semibold text-gray-800 font-montserrat text-center">Traffic Sources</h3>
         <select
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
