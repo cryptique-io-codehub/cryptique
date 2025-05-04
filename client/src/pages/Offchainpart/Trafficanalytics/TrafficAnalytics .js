@@ -125,8 +125,10 @@ const AttributionJourneySankey = ({analytics}) => {
   
   // Use fallback data if no real data is available
   const finalData = attributionJourneyData.length > 0 ? attributionJourneyData : [
-    { source: 'Direct', target: 'Wallet Connected', value: 1, total: 1 },
-    { source: 'Direct', target: 'No Wallet', value: 1, total: 1 }
+    { source: 'Direct', target: 'Wallet Connected', value: 3, total: 5 },
+    { source: 'Direct', target: 'No Wallet', value: 2, total: 5 },
+    { source: 'Google', target: 'Wallet Connected', value: 2, total: 4 },
+    { source: 'Google', target: 'No Wallet', value: 2, total: 4 }
   ];
   
   // Calculate total values for scaling
@@ -136,267 +138,245 @@ const AttributionJourneySankey = ({analytics}) => {
   const uniqueSources = [...new Set(finalData.map(item => item.source))];
   const uniqueTargets = [...new Set(finalData.map(item => item.target))];
   
-  // Calculate vertical spacing for nodes
-  const verticalSpacing = 700 / (uniqueSources.length + 1);
-  const targetVerticalSpacing = 700 / (uniqueTargets.length + 1);
+  // Define colors
+  const sourceColors = {
+    'Direct': '#7986cb', // Blue-ish
+    'Google': '#9c7df3', // Purple
+    'Twitter': '#5d9cf8', // Light Blue
+    'Facebook': '#7de2d1', // Teal
+    'Instagram': '#db77a2', // Pink
+    'Reddit': '#f7b844', // Orange
+    'Discord': '#66bb6a', // Green
+    'Telegram': '#ef5350', // Red
+  };
+
+  // If source doesn't have defined color, use default color scheme
+  const defaultColors = ['#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', '#f7b844', '#66bb6a', '#ef5350', '#7986cb'];
   
   // Define fixed colors for targets
   const targetColors = {
     'Wallet Connected': '#28a745', // Green for success
     'No Wallet': '#dc3545'        // Red for no wallet
   };
-  
-  // Define node positions and dimensions dynamically
-  const nodes = {};
-  
-  // Position source nodes
-  uniqueSources.forEach((source, index) => {
+
+  // Calculate percentages for each source
+  const sourcePercentages = {};
+  uniqueSources.forEach(source => {
     const sourceData = finalData.filter(item => item.source === source);
-    const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
-    const totalVisitors = sourceData[0].total; // All entries for this source have the same total
-    const heightRatio = totalSourceValue / totalValue;
-    
-    nodes[source] = {
-      x: 0,
-      y: (index + 1) * verticalSpacing - (heightRatio * 100),
-      height: Math.max(80, heightRatio * 300),
-      color: getColorForIndex(index),
-      totalVisitors: totalVisitors
+    const connectedValue = sourceData.find(item => item.target === 'Wallet Connected')?.value || 0;
+    const totalValue = sourceData[0].total;
+    sourcePercentages[source] = {
+      percentage: totalValue > 0 ? (connectedValue / totalValue) * 100 : 0,
+      connected: connectedValue,
+      total: totalValue
     };
   });
-  
-  // Position target nodes
-  uniqueTargets.forEach((target, index) => {
-    const targetData = finalData.filter(item => item.target === target);
-    const totalTargetValue = targetData.reduce((sum, item) => sum + item.value, 0);
-    const heightRatio = totalTargetValue / totalValue;
-    
-    nodes[target] = {
-      x: 720,
-      y: (index + 1) * targetVerticalSpacing - (heightRatio * 100),
-      height: Math.max(80, heightRatio * 300),
-      color: targetColors[target] || getColorForIndex(index + uniqueSources.length)
-    };
-  });
-  
-  // Helper function to generate colors
-  function getColorForIndex(index) {
-    const colors = [
-      '#9c7df3', '#7de2d1', '#5d9cf8', '#db77a2', 
-      '#f7b844', '#66bb6a', '#ef5350', '#7986cb'
-    ];
-    return colors[index % colors.length];
-  }
-  
-  // Create source groups for proper flow ordering
-  const sourceGroups = {};
-  finalData.forEach(d => {
-    if (!sourceGroups[d.source]) {
-      sourceGroups[d.source] = { total: 0, flows: [] };
-    }
-    sourceGroups[d.source].flows.push(d);
-    sourceGroups[d.source].total += d.value;
-  });
-
-  // Create target groups for proper flow ordering
-  const targetGroups = {};
-  finalData.forEach(d => {
-    if (!targetGroups[d.target]) {
-      targetGroups[d.target] = { total: 0, flows: [] };
-    }
-    targetGroups[d.target].flows.push(d);
-    targetGroups[d.target].total += d.value;
-  });
-
-  // Calculate vertical offsets for each flow
-  Object.keys(sourceGroups).forEach(source => {
-    let currentOffset = 0;
-    sourceGroups[source].flows.forEach(flow => {
-      flow.sourceY = nodes[source].y + currentOffset;
-      flow.sourceHeight = (flow.value / sourceGroups[source].total) * nodes[source].height;
-      currentOffset += flow.sourceHeight;
-    });
-  });
-
-  Object.keys(targetGroups).forEach(target => {
-    let currentOffset = 0;
-    targetGroups[target].flows.forEach(flow => {
-      flow.targetY = nodes[target].y + currentOffset;
-      flow.targetHeight = (flow.value / targetGroups[target].total) * nodes[target].height;
-      currentOffset += flow.targetHeight;
-    });
-  });
-
-  // Generate SVG paths for each flow
-  const createSankeyPath = (flow) => {
-    const sourceX = nodes[flow.source].x + 100; // Extra wide nodes
-    const sourceY = flow.sourceY;
-    const sourceHeight = flow.sourceHeight;
-    
-    const targetX = nodes[flow.target].x;
-    const targetY = flow.targetY;
-    const targetHeight = flow.targetHeight;
-    
-    // Control point distance (1/3 of the total distance)
-    const cpDistance = (targetX - sourceX) / 3;
-    
-    // Start and end points
-    const startTop = { x: sourceX, y: sourceY };
-    const startBottom = { x: sourceX, y: sourceY + sourceHeight };
-    
-    const endTop = { x: targetX, y: targetY };
-    const endBottom = { x: targetX, y: targetY + targetHeight };
-    
-    // Control points
-    const cp1Top = { x: startTop.x + cpDistance, y: startTop.y };
-    const cp2Top = { x: endTop.x - cpDistance, y: endTop.y };
-    
-    const cp1Bottom = { x: startBottom.x + cpDistance, y: startBottom.y };
-    const cp2Bottom = { x: endBottom.x - cpDistance, y: endBottom.y };
-    
-    // Generate path
-    return `
-      M ${startTop.x} ${startTop.y}
-      C ${cp1Top.x} ${cp1Top.y}, ${cp2Top.x} ${cp2Top.y}, ${endTop.x} ${endTop.y}
-      L ${endBottom.x} ${endBottom.y}
-      C ${cp2Bottom.x} ${cp2Bottom.y}, ${cp1Bottom.x} ${cp1Bottom.y}, ${startBottom.x} ${startBottom.y}
-      Z
-    `;
-  };
-  
-  // Color blending logic for flows
-  const getFlowColor = (source, target) => {
-    if (target === 'Wallet Connected') {
-      return '#28a745'; // Green for wallet connect flows
-    } else if (target === 'No Wallet') {
-      return '#dc3545'; // Red for no wallet flows
-    } else {
-      // Blend colors for other flows
-      const sourceColor = nodes[source].color;
-      const targetColor = nodes[target].color;
-      
-      // Simple linear interpolation of colors
-      const r1 = parseInt(sourceColor.substring(1, 3), 16);
-      const g1 = parseInt(sourceColor.substring(3, 5), 16);
-      const b1 = parseInt(sourceColor.substring(5, 7), 16);
-      
-      const r2 = parseInt(targetColor.substring(1, 3), 16);
-      const g2 = parseInt(targetColor.substring(3, 5), 16);
-      const b2 = parseInt(targetColor.substring(5, 7), 16);
-      
-      const r = Math.round(r1 * 0.3 + r2 * 0.7);
-      const g = Math.round(g1 * 0.3 + g2 * 0.7);
-      const b = Math.round(b1 * 0.3 + b2 * 0.7);
-      
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-  };
-
-  // Calculate opacity based on value relative to total
-  const calculateOpacity = (value) => {
-    return 0.75 + (value / totalValue) * 0.25; // Increased base opacity for more prominence
-  };
 
   return (
-    <div className="w-full">
-      <div className="font-poppins">
-        <svg width="100%" height="500" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
-          {/* Nodes */}
-          {Object.keys(nodes).map(key => (
-            <g key={key}>
-              <rect 
-                x={nodes[key].x}
-                y={nodes[key].y}
-                width={100}
-                height={nodes[key].height}
-                fill={nodes[key].color}
-                opacity={0.9}
-                rx={4}
-                ry={4}
-              />
-              <text 
-                x={key === 'Wallet Connected' || key === 'No Wallet' ? nodes[key].x + 50 : nodes[key].x + 50} 
-                y={nodes[key].y - 10}
-                textAnchor="middle"
-                fontFamily="'Montserrat', sans-serif"
-                fontSize="14"
-                fontWeight="600"
-                style={{ fill: "#333333" }}
-              >
-                {key}
-              </text>
-              {/* Show total count for source nodes only */}
-              {nodes[key].totalVisitors && (
-                <text 
-                  x={nodes[key].x + 50} 
-                  y={nodes[key].y - 30}
-                  textAnchor="middle"
-                  fontFamily="'Poppins', sans-serif"
-                  fontSize="12"
-                  fontWeight="500"
-                  style={{ fill: "#666666" }}
-                >
-                  {nodes[key].totalVisitors} users
-                </text>
-              )}
-            </g>
-          ))}
-          
-          {/* Flows */}
-          {finalData.map((flow, index) => (
-            <g key={index}>
-              <path 
-                d={createSankeyPath(flow)}
-                fill="none"
-                stroke={getFlowColor(flow.source, flow.target)}
-                strokeWidth={Math.max(2, flow.sourceHeight)}
-                strokeOpacity={calculateOpacity(flow.value)}
-              />
-              {/* Flow value label - Only show if flow is significant enough */}
-              {flow.value > 1 && (
-                <text 
-                  x={(nodes[flow.source].x + 100 + nodes[flow.target].x) / 2}
-                  y={(flow.sourceY + flow.sourceHeight / 2 + flow.targetY + flow.targetHeight / 2) / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontFamily="'Poppins', sans-serif"
-                  fontSize="12"
-                  fontWeight="500"
-                  style={{ fill: "#333333" }}
-                >
-                  {flow.value}
-                </text>
-              )}
-            </g>
-          ))}
-          
-          {/* Legend */}
-          <g transform="translate(20, 20)">
-            <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-            <text 
-              x="25" 
-              y="12" 
-              fontFamily="'Poppins', sans-serif"
-              fontSize="14"
-              fontWeight="500"
-              style={{ fill: "#333333" }}
-            >
-              Wallet Connected
-            </text>
+    <div className="w-full bg-white rounded-lg p-4 font-poppins">
+      <div className="flex justify-between mb-6">
+        <div className="flex items-center">
+          <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
+          <span className="font-medium text-sm">Wallet Connected</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
+          <span className="font-medium text-sm">No Wallet</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-1">
+          <h3 className="text-base font-semibold mb-4 text-gray-700 font-montserrat">Traffic Sources</h3>
+          <div className="space-y-4">
+            {uniqueSources.map((source, index) => {
+              const sourceData = sourcePercentages[source];
+              const color = sourceColors[source] || defaultColors[index % defaultColors.length];
               
-            <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
-            <text 
-              x="25" 
-              y="42" 
-              fontFamily="'Poppins', sans-serif"
-              fontSize="14"
-              fontWeight="500"
-              style={{ fill: "#333333" }}
-            >
-              No Wallet
-            </text>
-          </g>
-        </svg>
+              return (
+                <div key={source} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-medium">{source}</span>
+                    <span className="text-sm text-gray-600">{sourceData.total} users</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className="h-2.5 rounded-full" 
+                      style={{ 
+                        width: `${sourceData.percentage}%`, 
+                        backgroundColor: color 
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between mt-1 text-xs text-gray-600">
+                    <span>{sourceData.connected} connected ({sourceData.percentage.toFixed(1)}%)</span>
+                    <span>{sourceData.total - sourceData.connected} no wallet</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="col-span-2">
+          <h3 className="text-base font-semibold mb-4 text-gray-700 font-montserrat">Attribution Journey</h3>
+          <div className="relative h-80">
+            <svg width="100%" height="100%" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
+              {/* Source Nodes */}
+              {uniqueSources.map((source, index) => {
+                const sourceData = finalData.filter(item => item.source === source);
+                const totalSourceValue = sourceData.reduce((sum, item) => sum + item.value, 0);
+                const heightScale = 250 / uniqueSources.length;
+                const height = Math.max(20, Math.min(40, heightScale * 0.8));
+                const y = 20 + index * (heightScale);
+                const color = sourceColors[source] || defaultColors[index % defaultColors.length];
+                
+                return (
+                  <g key={`source-${source}`}>
+                    <rect 
+                      x={50} 
+                      y={y} 
+                      width={100} 
+                      height={height} 
+                      fill={color} 
+                      rx={4} 
+                      ry={4}
+                    />
+                    <text 
+                      x={100} 
+                      y={y - 8} 
+                      textAnchor="middle" 
+                      fontSize="12" 
+                      fontWeight="500" 
+                      fill="#333"
+                    >
+                      {source}
+                    </text>
+                    <text 
+                      x={100} 
+                      y={y + height + 16} 
+                      textAnchor="middle" 
+                      fontSize="10" 
+                      fill="#666"
+                    >
+                      {sourceData[0].total} users
+                    </text>
+                  </g>
+                );
+              })}
+              
+              {/* Target Nodes */}
+              {uniqueTargets.map((target, index) => {
+                const targetData = finalData.filter(item => item.target === target);
+                const totalTargetValue = targetData.reduce((sum, item) => sum + item.value, 0);
+                const y = index === 0 ? 80 : 180; // Position targets vertically spaced
+                const color = targetColors[target];
+                const percentage = ((totalTargetValue / totalValue) * 100).toFixed(1);
+                
+                return (
+                  <g key={`target-${target}`}>
+                    <rect 
+                      x={450} 
+                      y={y} 
+                      width={100} 
+                      height={50} 
+                      fill={color} 
+                      rx={4} 
+                      ry={4}
+                    />
+                    <text 
+                      x={500} 
+                      y={y - 10} 
+                      textAnchor="middle" 
+                      fontSize="12" 
+                      fontWeight="500" 
+                      fill="#333"
+                    >
+                      {target}
+                    </text>
+                    <text 
+                      x={500} 
+                      y={y + 30} 
+                      textAnchor="middle" 
+                      fontSize="14" 
+                      fontWeight="bold" 
+                      fill="#fff"
+                    >
+                      {totalTargetValue} ({percentage}%)
+                    </text>
+                  </g>
+                );
+              })}
+              
+              {/* Flow Paths */}
+              {finalData.map((flow, index) => {
+                const sourceIndex = uniqueSources.indexOf(flow.source);
+                const targetIndex = uniqueTargets.indexOf(flow.target);
+                const heightScale = 250 / uniqueSources.length;
+                const sourceY = 20 + sourceIndex * heightScale + (Math.max(20, Math.min(40, heightScale * 0.8)) / 2);
+                const targetY = targetIndex === 0 ? 105 : 205; // Center of target nodes
+                
+                // Calculate opacity based on value
+                const opacity = 0.7 + (flow.value / totalValue) * 0.3;
+                
+                // Determine color based on target
+                const flowColor = targetColors[flow.target];
+                
+                // Calculate curvature
+                const distance = 450 - 150; // Distance between right edge of source and left edge of target
+                const curvature = distance * 0.5;
+                
+                // Create bezier curve path
+                const path = `
+                  M 150 ${sourceY}
+                  C ${150 + curvature} ${sourceY}, ${450 - curvature} ${targetY}, ${450} ${targetY}
+                `;
+                
+                // Scale stroke width based on flow value, but keep it reasonable
+                const maxStrokeWidth = 20;
+                const minStrokeWidth = 2;
+                const strokeWidth = Math.max(minStrokeWidth, 
+                                     Math.min(maxStrokeWidth, 
+                                     (flow.value / Math.max(...finalData.map(d => d.value))) * maxStrokeWidth));
+                
+                return (
+                  <g key={`flow-${index}`}>
+                    <path 
+                      d={path} 
+                      fill="none" 
+                      stroke={flowColor} 
+                      strokeWidth={strokeWidth} 
+                      strokeOpacity={opacity}
+                      strokeLinecap="round"
+                    />
+                    {flow.value > 1 && (
+                      <text>
+                        <textPath 
+                          href={`#flow-path-${index}`}
+                          startOffset="50%" 
+                          fontSize="10" 
+                          fontWeight="500" 
+                          fill="#333" 
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                        >
+                          {flow.value}
+                        </textPath>
+                      </text>
+                    )}
+                    {/* Invisible path for text alignment */}
+                    <path 
+                      id={`flow-path-${index}`}
+                      d={path}
+                      fill="none"
+                      stroke="none"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
       </div>
     </div>
   );
