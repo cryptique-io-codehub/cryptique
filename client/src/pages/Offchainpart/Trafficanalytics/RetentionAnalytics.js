@@ -523,39 +523,38 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
   }
 
   return (
-    <div className="w-full px-4 md:px-6 py-6">
-      {/* Updated title text with larger font size matching the sidebar */}
-      <h1 className="text-2xl md:text-3xl font-bold mb-6">Retention</h1>
+    <div className="w-full px-4 md:px-6 py-6 font-poppins">
+      {/* Updated title text with consistent font styles */}
+      <h1 className="text-xl font-bold mb-6 font-montserrat">Retention Analytics</h1>
       
-      {/* Active Users Summary Cards with improved text sizes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      {/* Active Users Summary Cards with consistent styling */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {retentionData.summaryCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-lg p-6 shadow">
-            <h3 className="text-center text-lg md:text-xl font-semibold mb-3">{card.title}</h3>
-            <p className="text-center text-2xl md:text-3xl font-bold">{card.value}</p>
-            <p className="text-center text-green-500 text-sm md:text-base mt-1">{card.increase}</p>
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <span className="text-lg">{card.flag}</span>
-              <span className="text-sm text-gray-600">{card.country}</span>
+          <div key={index} className="bg-white rounded-lg shadow p-4 flex flex-col text-center">
+            <div className="text-base text-gray-500 mb-2 font-montserrat">{card.title}</div>
+            <div className="text-xl font-bold mb-2 font-montserrat">{card.value}</div>
+            <div className="text-sm flex items-center justify-center text-gray-600 font-poppins">
+              <span className="font-medium mr-1">{card.flag}</span>
+              <span>{card.country || 'N/A'}</span>
             </div>
           </div>
         ))}
       </div>
       
-      {/* Retention Chart with improved text visibility */}
-      <div className="bg-white rounded-lg p-6 shadow mb-8">
-        <h3 className="text-xl font-semibold mb-4">Active Users Over Time</h3>
-        <div className="h-64 md:h-96">
+      {/* Retention Chart with consistent card styling */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold mb-4 font-montserrat">Active Users Over Time</h3>
+        <div className="h-64 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={retentionData.retentionChart}
               margin={{ top: 10, right: 20, left: 5, bottom: 10 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: '0.875rem' }} />
-              <YAxis tick={{ fontSize: '0.875rem' }} />
-              <Tooltip contentStyle={{ fontSize: '0.875rem' }} />
-              <Legend wrapperStyle={{ fontSize: '0.875rem' }} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
+              <YAxis tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
+              <Tooltip contentStyle={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
+              <Legend wrapperStyle={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
               <Line type="monotone" dataKey="DAU" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="WAU" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="MAU" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} />
@@ -564,17 +563,17 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         </div>
       </div>
       
-      {/* Visitors Retention Section with improved visibility */}
-      <div className="bg-white rounded-lg p-6 shadow">
+      {/* Visitors Retention Section with consistent card styling */}
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
           <div>
-            <h3 className="text-xl font-semibold mb-1">Visitors retention</h3>
-            <p className="text-sm md:text-base text-gray-600">The retention rate shows how many unique users return to your site in subsequent periods</p>
+            <h3 className="text-lg font-semibold mb-2 font-montserrat">Visitors Retention</h3>
+            <p className="text-sm text-gray-600 font-poppins">The retention rate shows how many unique users return to your site in subsequent periods</p>
           </div>
           
           <div className="self-start sm:self-center">
             <select 
-              className="border border-gray-300 rounded px-3 py-2 text-sm md:text-base"
+              className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-sm font-poppins appearance-none"
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
             >
@@ -586,15 +585,15 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
           </div>
         </div>
         
-        {/* Retention Cohort Table with improved text sizes */}
+        {/* Retention Cohort Table with consistent text styles */}
         <div className="overflow-x-auto -mx-4 px-4 pb-4">
           <div className="min-w-max">
-            <table className="min-w-full border-collapse text-sm md:text-base">
+            <table className="min-w-full border-collapse text-sm font-poppins">
               <thead>
                 <tr>
-                  <th className="p-2 md:p-3 bg-gray-50 border text-left font-medium text-gray-600 uppercase tracking-wider sticky left-0 z-10">Day</th>
+                  <th className="p-2 md:p-3 bg-gray-50 border text-left font-medium text-gray-600 sticky left-0 z-10">Day</th>
                   {Array.from({ length: 8 }, (_, i) => (
-                    <th key={i} className="p-2 md:p-3 bg-gray-50 border text-center font-medium text-gray-600 uppercase tracking-wider">
+                    <th key={i} className="p-2 md:p-3 bg-gray-50 border text-center font-medium text-gray-600">
                       {i === 0 ? 'Initial' : `Day ${i}`}
                     </th>
                   ))}
@@ -604,8 +603,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 {retentionData.cohortData.map((cohort, index) => (
                   <tr key={index}>
                     <td className="p-2 md:p-3 border bg-gray-50 sticky left-0 z-10">
-                      <div className="font-medium text-sm md:text-base">{cohort.date}</div>
-                      <div className="text-sm text-gray-600">Users: {cohort.initialUsers}</div>
+                      <div className="font-medium">{cohort.date}</div>
+                      <div className="text-xs text-gray-600">Users: {cohort.initialUsers}</div>
                     </td>
                     {cohort.retentionByDay.slice(0, 8).map((day, dayIndex) => (
                       <td 
