@@ -114,8 +114,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
-                    
-
+                    onMenuClick={onMenuClick}
                   />
                       <OnchainDashboard/>
                       </>
@@ -140,6 +139,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
+                    onMenuClick={onMenuClick}
                   />
                         <OnchainTraffic/>
                       </>
@@ -163,7 +163,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
-
+                    onMenuClick={onMenuClick}
                   />
                         <Onchainuserinsights/>
                       </>
@@ -187,6 +187,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                                            idy={idy}
                                            setidy={setidy}
                                            selectedPage={selectedPage}
+                                           onMenuClick={onMenuClick}
                        
                                          />
                         <OnchainmarketInsights/>
@@ -211,6 +212,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                                             idy={idy}
                                             setidy={setidy}
                                             selectedPage={selectedPage}
+                                            onMenuClick={onMenuClick}
                         
                                           />
                         <Onchainwalletinsights/>

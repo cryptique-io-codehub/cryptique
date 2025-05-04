@@ -461,6 +461,7 @@ return (
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
+                    onMenuClick={onMenuClick}
                   />
                   {verifyload ? (
                     <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
@@ -678,6 +679,7 @@ return (
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
+                    onMenuClick={onMenuClick}
                   />
                   {analytics && Object.keys(analytics).length > 0 ? (
                     <TrafficAnalytics 
@@ -718,6 +720,7 @@ return (
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
+                    onMenuClick={onMenuClick}
                   />
                   {analytics && Object.keys(analytics).length > 0 ? (
                     <GeoAnalyticss analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
@@ -753,6 +756,7 @@ return (
                     idy={idy}
                     setidy={setidy}
                     selectedPage={selectedPage}
+                    onMenuClick={onMenuClick}
                   />
                   {analytics && Object.keys(analytics).length > 0 ? (
                     <RetentionAnalytics analytics={analytics} setanalytics={setanalytics}/>

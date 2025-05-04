@@ -309,6 +309,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           idy={idy}
                           setidy={setidy}
                           selectedPage={selectedPage}
+                          onMenuClick={onMenuClick}
                           />
         <div className="bg-gray-50 flex-1 p-4 overflow-auto" onClick={handleClickOutside}>
           <div className="flex justify-between items-center mb-4">
