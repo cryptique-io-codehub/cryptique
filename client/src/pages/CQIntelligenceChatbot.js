@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Lock, Bot, Send, AlertTriangle, ArrowLeft, X } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-const PIN_CODE = '29409071';
-const GEMINI_API_KEY = 'AIzaSyBNFkokKOYP4knvadeqxVupH5baqkML1dg';
+// Use environment variable instead of hardcoded PIN
+const PIN_CODE = process.env.REACT_APP_CQ_INTELLIGENCE_PIN;
+// Use environment variable instead of hardcoded API key
+const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY;
 
 const CQIntelligenceChatbot = () => {

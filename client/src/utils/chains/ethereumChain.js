@@ -10,8 +10,8 @@ import {
   decodeERC20TransferInput
 } from '../chainUtils';
 
-// API key should be in .env file
-const ETHERSCAN_API_KEY = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YOUR_ETHERSCAN_API_KEY';
+// API key from environment variables only
+const ETHERSCAN_API_KEY = process.env.REACT_APP_ETHERSCAN_API_KEY;
 
 // Etherscan API endpoints
 const ETHERSCAN_API_URL = 'https://api.etherscan.io/api';

@@ -2,6 +2,28 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Environment Variables
+
+This application requires the following environment variables to be set in a `.env` file in the root directory of the client project or in your deployment platform (e.g., Vercel):
+
+```
+# API Keys for blockchain explorers
+REACT_APP_ETHERSCAN_API_KEY=your_etherscan_api_key
+REACT_APP_POLYGONSCAN_API_KEY=your_polygonscan_api_key
+REACT_APP_ARBISCAN_API_KEY=your_arbiscan_api_key
+REACT_APP_OPTIMISM_API_KEY=your_optimism_api_key
+REACT_APP_BSC_SCAN_API_KEY=your_bscscan_api_key
+REACT_APP_BASESCAN_API_KEY=your_basescan_api_key
+
+# Google Gemini AI API Key
+REACT_APP_GEMINI_API_KEY=your_gemini_api_key
+
+# CQ Intelligence PIN for access control
+REACT_APP_CQ_INTELLIGENCE_PIN=your_pin_code
+```
+
+**Important**: Never commit your `.env` file to version control. Make sure to add it to `.gitignore`.
+
 ## Available Scripts
 
 In the project directory, you can run:

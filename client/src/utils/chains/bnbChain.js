@@ -11,7 +11,7 @@ import {
 } from '../chainUtils';
 
 // API key should be in .env file
-const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY || 'YOUR_BSCSCAN_API_KEY';
+const BSC_SCAN_API_KEY = process.env.REACT_APP_BSC_SCAN_API_KEY;
 
 // BscScan API endpoints
 const BSC_SCAN_BASE_URL = 'https://api.bscscan.com/api';

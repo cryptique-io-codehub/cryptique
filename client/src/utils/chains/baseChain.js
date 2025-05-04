@@ -12,7 +12,7 @@ import {
 } from '../chainUtils';
 
 // API key should be in .env file
-const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || 'YOUR_BASESCAN_API_KEY';
+const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY;
 
 // BaseScan API endpoints
 const BASESCAN_API_URL = 'https://api.basescan.org/api';

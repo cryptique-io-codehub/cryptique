@@ -11,7 +11,7 @@ import {
 } from '../chainUtils';
 
 // API key should be in .env file
-const OPTIMISTIC_ETHERSCAN_API_KEY = process.env.REACT_APP_OPTIMISM_API_KEY || 'YOUR_OPTIMISM_API_KEY';
+const OPTIMISTIC_ETHERSCAN_API_KEY = process.env.REACT_APP_OPTIMISM_API_KEY;
 
 // Optimistic Etherscan API endpoints
 const OPTIMISTIC_ETHERSCAN_API_URL = 'https://api-optimistic.etherscan.io/api';

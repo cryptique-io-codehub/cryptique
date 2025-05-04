@@ -11,7 +11,7 @@ import {
 } from '../chainUtils';
 
 // API key should be in .env file
-const POLYGONSCAN_API_KEY = process.env.REACT_APP_POLYGONSCAN_API_KEY || 'YOUR_POLYGONSCAN_API_KEY';
+const POLYGONSCAN_API_KEY = process.env.REACT_APP_POLYGONSCAN_API_KEY;
 
 // Polygonscan API endpoints
 const POLYGONSCAN_API_URL = 'https://api.polygonscan.com/api';

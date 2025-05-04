@@ -11,7 +11,7 @@ import {
 } from '../chainUtils';
 
 // API key should be in .env file
-const ARBISCAN_API_KEY = process.env.REACT_APP_ARBISCAN_API_KEY || 'YOUR_ARBISCAN_API_KEY';
+const ARBISCAN_API_KEY = process.env.REACT_APP_ARBISCAN_API_KEY;
 
 // Arbiscan API endpoints
 const ARBISCAN_API_URL = 'https://api.arbiscan.io/api';

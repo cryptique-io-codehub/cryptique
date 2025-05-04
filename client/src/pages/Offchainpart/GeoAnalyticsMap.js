@@ -73,7 +73,7 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
       
       // Track wallet connections (has wallet address)
       if (session.userId && session.wallet && session.wallet.walletAddress && 
-          session.wallet.walletAddress.trim() !== '') {
+          session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
         metrics.walletConnections.add(session.userId);
       }
       
