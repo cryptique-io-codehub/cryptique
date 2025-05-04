@@ -343,85 +343,83 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
   };
 
   return (
-    <div className="w-full px-4 py-6 md:px-6 lg:px-8 font-poppins">
-      <h1 className="text-xl md:text-2xl font-montserrat font-bold mb-4">GeoAnalytics</h1>
+    <div className="bg-gray-50 min-h-screen p-6 font-poppins">
+      {/* Import the fonts in the head */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+      `}</style>
+
+      <h1 className="text-2xl font-bold mb-6 font-montserrat">Geographic Analytics</h1>
       
-      {/* First row of metric cards - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
-        <MetricCard 
-          title="Most Users" 
-          value={globalMetrics ? countryMetrics[globalMetrics.maxUsersCountry]?.users.toLocaleString() : 0} 
-          country={globalMetrics?.maxUsersCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.maxUsersCountry)} 
-        />
-        <MetricCard 
-          title="Most Web3 Users" 
-          value={globalMetrics ? countryMetrics[globalMetrics.maxWeb3UsersCountry]?.web3Users.toLocaleString() : 0} 
-          country={globalMetrics?.maxWeb3UsersCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.maxWeb3UsersCountry)} 
-        />
-        <MetricCard 
-          title="Most Wallet Connects" 
-          value={globalMetrics ? countryMetrics[globalMetrics.maxWalletConnectsCountry]?.walletConnects.toLocaleString() : 0} 
-          country={globalMetrics?.maxWalletConnectsCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.maxWalletConnectsCountry)} 
-        />
-      </div>
-      
-      {/* Second row of metric cards - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
-        <MetricCard 
-          title="Highest Conversion" 
-          value={globalMetrics ? countryMetrics[globalMetrics.maxConversionCountry]?.conversionRate : "0%"} 
-          country={globalMetrics?.maxConversionCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.maxConversionCountry)} 
-        />
-        <MetricCard 
-          title="Lowest Conversion" 
-          value={globalMetrics ? countryMetrics[globalMetrics.minConversionCountry]?.conversionRate : "0%"} 
-          country={globalMetrics?.minConversionCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.minConversionCountry)} 
-        />
-        <MetricCard 
-          title="Highest Bounce Rate" 
-          value={globalMetrics ? countryMetrics[globalMetrics.maxBounceRateCountry]?.bounceRate : "0%"} 
-          country={globalMetrics?.maxBounceRateCountry || "None"} 
-          flag={getCountryFlag(globalMetrics?.maxBounceRateCountry)} 
-        />
-      </div>
-      
-      {/* Map and country details section - stack on mobile, side by side on larger screens */}
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
-        <div className="w-full lg:w-3/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
-          <h2 className="text-base md:text-lg font-montserrat font-semibold mb-3 md:mb-4">Details by country</h2>
-          <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* World Map */}
+        <div className="bg-white rounded-lg shadow p-6 col-span-1 lg:col-span-2">
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Global User Distribution</h2>
+          {/* Map component */}
+          <div className="h-64 md:h-80 lg:h-96">
+            <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+          </div>
         </div>
         
-        <div className="w-full lg:w-2/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h2 className="text-base md:text-lg font-montserrat font-semibold">Chosen Country:</h2>
-            <div className="flex items-center">
-              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">
-                {normalizeCountry(selectedCountry) || "Select a country"}
-              </span>
-              <span className="ml-2">{getCountryFlag(selectedCountry)}</span>
-            </div>
-          </div>
-          
-          <div className="space-y-2 md:space-y-3 overflow-y-auto max-h-96 md:max-h-none">
-            <DetailRow label="Number of Users:" value={countryData.users.toLocaleString()} />
-            <DetailRow label="Number of Web3 Users:" value={countryData.web3Users.toLocaleString()} />
-            <DetailRow label="Number of Wallet Connects:" value={countryData.walletConnects.toLocaleString()} />
-            <DetailRow label="Conversion Rate:" value={countryData.conversionRate} />
-            <DetailRow label="Most Common Wallet:" value={countryData.commonWallet} />
-            <DetailRow label="Best Source by web3 traffic:" value={countryData.webTrafficSource} />
-            <DetailRow label="Bounce rate:" value={countryData.bounceRate} />
-            <DetailRow label="Total Page views:" value={countryData.totalPageViews} />
-            <DetailRow label="Avg Page view per visit:" value={countryData.avgPageViewPerVisit} />
-            <DetailRow label="Avg Visit Duration:" value={countryData.avgVisitDuration} />
-            <DetailRow label="Retention:" value={countryData.retention} />
+        {/* Top Countries */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Top Countries</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Country</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Users</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Web3 Users</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200 font-poppins">
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics?.maxUsersCountry || "None"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxUsersCountry]?.users.toLocaleString() : 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxUsersCountry]?.web3Users.toLocaleString() : 0}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics?.maxWeb3UsersCountry || "None"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxWeb3UsersCountry]?.users.toLocaleString() : 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxWeb3UsersCountry]?.web3Users.toLocaleString() : 0}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics?.maxWalletConnectsCountry || "None"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxWalletConnectsCountry]?.walletConnects.toLocaleString() : 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {globalMetrics ? countryMetrics[globalMetrics.maxWalletConnectsCountry]?.web3Users.toLocaleString() : 0}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
+        
+        {/* Regional Analysis */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Regional Analysis</h2>
+          {/* ... regional analysis content ... */}
+        </div>
+        
       </div>
     </div>
   );

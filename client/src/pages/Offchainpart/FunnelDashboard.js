@@ -173,7 +173,7 @@ const HorizontalFunnel = ({ data, analytics }) => {
 const FunnelDashboard = ({analytics}) => {
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-medium mb-4" style={{fontFamily: 'Poppins, sans-serif'}}>User Funnel Dashboard</h1>
+      <h2 className="text-lg font-semibold mb-4 font-montserrat">User Funnel Dashboard</h2>
       <HorizontalFunnelVisualization analytics={analytics}/>
     </div>
   );

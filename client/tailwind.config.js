@@ -5,6 +5,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        montserrat: ['Montserrat', 'sans-serif'],
+        poppins: ['Poppins', 'sans-serif'],
+      },
       animation: {
         'spin-slow': 'spin 6s linear infinite',
         'cube-spin': 'cube-rotate 6s infinite linear',

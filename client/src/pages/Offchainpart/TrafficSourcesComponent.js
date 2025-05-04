@@ -274,63 +274,78 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   }
   
   return (
-    <div className="mt-1 pt-4 border-t bg-white rounded-lg shadow h-full">
-      <div className="flex justify-between items-center mb-4 px-3">
-        <h3 className="text-xl font-semibold">Traffic sources</h3>
-        <div className="relative">
-          <select
-            className="text-base bg-gray-50 border border-gray-200 rounded-md px-2 py-1 pr-8 appearance-none"
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            disabled={isLoading}
-          >
-            <option>This Month</option>
-            <option>Last Month</option>
-            <option>Last 3 Months</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-            </svg>
-          </div>
-        </div>
+    <div className="bg-white rounded-lg shadow p-6 font-poppins">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold font-montserrat">Traffic Sources</h2>
+        <select
+          value={selectedMonth}
+          onChange={handleMonthChange}
+          className="p-2 border rounded-md text-sm font-poppins"
+        >
+          <option value="This Month">This Month</option>
+          <option value="Last Month">Last Month</option>
+          <option value="Last 3 Months">Last 3 Months</option>
+        </select>
       </div>
       
-      <div className="bg-gray-50 rounded-lg overflow-hidden">
-        {/* Table header */}
-        <div className="grid grid-cols-12 bg-gray-100 p-3 text-base font-medium text-gray-600 sticky top-0">
-          <div className="col-span-4">Traffic source</div>
-          <div className="col-span-2 text-right">Visitors</div>
-          <div className="col-span-1"></div> {/* Empty column for spacing */}
-          <div className="col-span-2 text-right">Web3 Users</div>
-          <div className="col-span-3 text-right">Wallets Connected</div>
+      {isLoading && (
+        <div className="h-64 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
         </div>
-        
-        {/* Table rows - fixed height to show ~7 rows by default */}
-        <div className="max-h-80 overflow-y-auto">
-          {isLoading ? (
-            <div className="p-4 text-center text-gray-500 text-base">Loading data...</div>
-          ) : (
-            <div className="divide-y divide-dashed divide-blue-200 border-t border-b border-blue-200">
-              {allSources.length > 0 ? (
-                allSources.map((source, index) => (
-                  <div key={index} className="grid grid-cols-12 p-3 text-base hover:bg-gray-100">
-                    <div className="col-span-4 flex items-center">
-                      <span className="truncate">{formatSourceName(source.source)}</span>
+      )}
+      
+      {error && !isLoading && (
+        <div className="text-red-500 p-4 text-center font-poppins">{error}</div>
+      )}
+      
+      {!isLoading && !error && allSources.length === 0 && (
+        <div className="text-gray-500 p-4 text-center font-poppins">No traffic source data available</div>
+      )}
+      
+      {!isLoading && !error && allSources.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Source</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Visitors</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Web3 Users</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Wallets Connected</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 font-poppins">
+              {allSources.map((item, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="text-sm font-medium text-gray-900">{formatSourceName(item.source)}</div>
                     </div>
-                    <div className="col-span-2 text-right">{formatNumber(source.visitors)}</div>
-                    <div className="col-span-1"></div>
-                    <div className="col-span-2 text-right">{formatNumber(source.web3users)}</div>
-                    <div className="col-span-3 text-right">{formatNumber(source.walletsConnected)}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-gray-500 text-base">No data available</div>
-              )}
-            </div>
-          )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{formatNumber(item.visitors)}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{formatNumber(item.web3users)}</div>
+                    <div className="text-xs text-gray-500">
+                      {item.visitors > 0 
+                        ? `${((item.web3users / item.visitors) * 100).toFixed(1)}%` 
+                        : '0%'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{formatNumber(item.walletsConnected)}</div>
+                    <div className="text-xs text-gray-500">
+                      {item.visitors > 0 
+                        ? `${((item.walletsConnected / item.visitors) * 100).toFixed(1)}%` 
+                        : '0%'}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </div>
   );
 };

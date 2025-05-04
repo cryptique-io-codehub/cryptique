@@ -329,234 +329,250 @@ HTML:
   
   console.log(selectedPage);
   return (
-    <div className="bg-white p-3 shadow-sm rounded-2xl mx-4 mb-4 font-['Inter']">
-    <div className="max-w-7xl mx-auto">
-      {/* Main flex container to put all three items in one row */}
-      <div className="flex space-x-4">
-        {/* Website selector - with reduced size */}
-        <div className="flex-1">
-          <div className="select-website">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Select website
-            </label>
-            
-            <div className="relative">
-              <button
-                type="button"
-                className="flex items-center justify-between w-full px-3 py-1.5 text-base bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
-                onClick={handleDropdownToggle}
-                disabled={isLoading}
-              >
-                {localStorage.getItem("selectedWebsite") !== null ? (
-                  <div className="flex items-center">
-                    {selectedWebsite && selectedWebsite.isVerified === true ? (
-                      <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    ) : (
-                      <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    )}
-                    <span className="text-gray-800 text-base">{localStorage.getItem("selectedWebsite")}</span>
-                  </div>
-                ) : (
-                  <span className="text-gray-500 text-base">Select a website</span>
-                )}
-                {isLoading ? (
-                  <svg className="animate-spin h-4 w-4 ml-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-              
-              {/* Dropdown menu */}
-              {isDropdownOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
-                  <ul className="py-1 max-h-60 overflow-auto">
-                    {isLoading ? (
-                      <li className="px-3 py-1.5 text-gray-500 text-base">Loading websites...</li>
-                    ) : websitearray.length > 0 ? (
-                      websitearray.map((website, index) => (
-                        <li key={website.siteId || index}>
-                          <button
-                            type="button"
-                            className="flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100"
-                            onClick={() => handleSelectWebsite(website)}
-                          >
-                            {website.isVerified === true ? (
-                              <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                </svg>
-                              </span>
-                            ) : (
-                              <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                            )}
-                            <span className="text-base">{website.Domain}</span>
-                          </button>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-3 py-1.5 text-gray-500 text-base">No websites found</li>
-                    )}
-                    
-                    {/* Add website option - replaced with a note about Manage Websites tab */}
-                    <li className="border-t border-gray-200">
-                      <div 
-                        className="px-3 py-2 text-sm text-indigo-600 font-medium hover:bg-gray-100 cursor-pointer flex items-center"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          const teamName = localStorage.getItem("selectedTeam");
-                          navigate(`/${teamName}/managewebsites`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Add/Manage Websites
+    <div className="bg-gray-50 p-4 font-poppins">
+      {/* Global font styles */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
+        
+        h1, h2, h3, h4, h5, h6 {
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        body, p, div, span, td, th {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
+
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <h2 className="text-lg font-semibold mb-4 font-montserrat">Filter Data</h2>
+        <div className="max-w-7xl mx-auto">
+          {/* Main flex container to put all three items in one row */}
+          <div className="flex space-x-4">
+            {/* Website selector - with reduced size */}
+            <div className="flex-1">
+              <div className="select-website">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Select website
+                </label>
+                
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="flex items-center justify-between w-full px-3 py-1.5 text-base bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none"
+                    onClick={handleDropdownToggle}
+                    disabled={isLoading}
+                  >
+                    {localStorage.getItem("selectedWebsite") !== null ? (
+                      <div className="flex items-center">
+                        {selectedWebsite && selectedWebsite.isVerified === true ? (
+                          <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                        <span className="text-gray-800 text-base">{localStorage.getItem("selectedWebsite")}</span>
                       </div>
-                    </li>
-                  </ul>
+                    ) : (
+                      <span className="text-gray-500 text-base">Select a website</span>
+                    )}
+                    {isLoading ? (
+                      <svg className="animate-spin h-4 w-4 ml-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
+                      <ul className="py-1 max-h-60 overflow-auto">
+                        {isLoading ? (
+                          <li className="px-3 py-1.5 text-gray-500 text-base">Loading websites...</li>
+                        ) : websitearray.length > 0 ? (
+                          websitearray.map((website, index) => (
+                            <li key={website.siteId || index}>
+                              <button
+                                type="button"
+                                className="flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100"
+                                onClick={() => handleSelectWebsite(website)}
+                              >
+                                {website.isVerified === true ? (
+                                  <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </span>
+                                ) : (
+                                  <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                                )}
+                                <span className="text-base">{website.Domain}</span>
+                              </button>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="px-3 py-1.5 text-gray-500 text-base">No websites found</li>
+                        )}
+                        
+                        {/* Add website option - replaced with a note about Manage Websites tab */}
+                        <li className="border-t border-gray-200">
+                          <div 
+                            className="px-3 py-2 text-sm text-indigo-600 font-medium hover:bg-gray-100 cursor-pointer flex items-center"
+                            onClick={() => {
+                              setIsDropdownOpen(false);
+                              const teamName = localStorage.getItem("selectedTeam");
+                              navigate(`/${teamName}/managewebsites`);
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add/Manage Websites
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
+    
+            {selectedPage.selectedPage==='onchain-explorer' && <>
+            <SmartContractFilters 
+            contractarray={contractarray} 
+            setcontractarray={setcontractarray}
+            selectedContract={selectedContract}
+            setSelectedContract={setSelectedContract}/>
+            </>}
+    
+    
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Dates
+              </label>
+              <select 
+                className="w-full border text-base px-3 py-1.5 bg-gray-100 border-gray-300 rounded-md shadow-sm focus:outline-none"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              >
+                <option>Select Date</option>
+                <option>Last 7 days</option>
+                <option>Last 30 days</option>
+                <option>This month</option>
+                <option>Custom range</option>
+              </select>
+            </div>
+           
+    
+            {/* Filters selector - smaller size */}
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Filters
+              </label>
+              <select 
+                className="w-full border text-base px-3 py-1.5 bg-gray-100 border-gray-300 rounded-md shadow-sm focus:outline-none"
+                value={selectedFilters}
+                onChange={(e) => setSelectedFilters(e.target.value)}
+              >
+                <option>Select Filters</option>
+                <option>New users</option>
+                <option>Returning users</option>
+                <option>All traffic sources</option>
+              </select>
             </div>
           </div>
         </div>
-  
-        {selectedPage.selectedPage==='onchain-explorer' && <>
-        <SmartContractFilters 
-        contractarray={contractarray} 
-        setcontractarray={setcontractarray}
-        selectedContract={selectedContract}
-        setSelectedContract={setSelectedContract}/>
-        </>}
-  
-  
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Dates
-          </label>
-          <select 
-            className="w-full border text-base px-3 py-1.5 bg-gray-100 border-gray-300 rounded-md shadow-sm focus:outline-none"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          >
-            <option>Select Date</option>
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-            <option>This month</option>
-            <option>Custom range</option>
-          </select>
-        </div>
-       
-  
-        {/* Filters selector - smaller size */}
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Filters
-          </label>
-          <select 
-            className="w-full border text-base px-3 py-1.5 bg-gray-100 border-gray-300 rounded-md shadow-sm focus:outline-none"
-            value={selectedFilters}
-            onChange={(e) => setSelectedFilters(e.target.value)}
-          >
-            <option>Select Filters</option>
-            <option>New users</option>
-            <option>Returning users</option>
-            <option>All traffic sources</option>
-          </select>
-        </div>
+    
+        {/* Script Modal */}
+        {scriptmodel && selectedWebsite && (
+          <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Installation Instructions</h2>
+                  <button onClick={handleClosescriptmodel} className="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <InstallationTabs 
+                  siteId={selectedWebsite.siteId}
+                  domain={selectedWebsite.Domain}
+                  scriptcode={scriptcode}
+                  generateGTMCode={generateGTMCode}
+                />
+                
+                <div className="flex justify-center space-x-4 mt-6">
+                  {selectedWebsite && (selectedWebsite.isVerified === false) ? (
+                    <button
+                      onClick={handleVerify}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
+                      disabled={verifyload}
+                    >
+                    {verifyload ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Verifying...
+                      </>
+                    ):(
+                      <>
+                     
+                      Verify Installation
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      </>
+                    )}
+                    </button>
+                  ) : (
+                    <></>
+                  )}
+                  
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
+                  >
+                    Delete
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                <div className='flex justify-center text-red-500 my-2'>
+                  {falsemessage && (
+                    <>{falsemessage}</>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  
-    {/* Script Modal */}
-    {scriptmodel && selectedWebsite && (
-      <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Installation Instructions</h2>
-              <button onClick={handleClosescriptmodel} className="text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            
-            <InstallationTabs 
-              siteId={selectedWebsite.siteId}
-              domain={selectedWebsite.Domain}
-              scriptcode={scriptcode}
-              generateGTMCode={generateGTMCode}
-            />
-            
-            <div className="flex justify-center space-x-4 mt-6">
-              {selectedWebsite && (selectedWebsite.isVerified === false) ? (
-                <button
-                  onClick={handleVerify}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
-                  disabled={verifyload}
-                >
-                {verifyload ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Verifying...
-                  </>
-                ):(
-                  <>
-                 
-                  Verify Installation
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  </>
-                )}
-                </button>
-              ) : (
-                <></>
-              )}
-              
-              <button
-                onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md transition duration-150 flex items-center"
-              >
-                Delete
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            <div className='flex justify-center text-red-500 my-2'>
-              {falsemessage && (
-                <>{falsemessage}</>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
   );
 }
 

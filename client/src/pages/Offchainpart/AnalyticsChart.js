@@ -2,23 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import axiosInstance from '../../axiosInstance';
 
-// Removed custom font styles to match second code snippet
-const styles = {
-  container: {},
-  heading: {
-    fontWeight: 600,
-  },
-  buttonActive: {
-    backgroundColor: '#8b5cf6',
-    color: 'white',
-    fontWeight: 500,
-  },
-  buttonInactive: {
-    backgroundColor: '#f3f4f6',
-    color: '#4b5563',
-  }
-};
-
+// Remove custom styles and use Tailwind with consistent font classes
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState({
     labels: [],
@@ -190,7 +174,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (isLoading) {
     return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="h-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
         </div>
@@ -200,9 +184,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (error) {
     return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="h-64 flex items-center justify-center">
-          <div className="text-red-500">{error}</div>
+          <div className="text-red-500 font-poppins">{error}</div>
         </div>
       </div>
     );
@@ -210,9 +194,9 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (!chartData || !chartData.labels.length) {
     return (
-      <div className="bg-white p-4 rounded-2xl mt-4 w-full">
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="h-64 flex items-center justify-center">
-          <div className="text-gray-500">No data available</div>
+          <div className="text-gray-500 font-poppins">No data available</div>
         </div>
       </div>
     );
@@ -221,14 +205,17 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800" style={styles.heading}>Analytics Overview</h2>
+        <h2 className="text-lg font-semibold text-gray-800 font-montserrat">Analytics Overview</h2>
         <div className="flex space-x-2">
           {['daily', 'weekly', 'monthly', 'yearly'].map((period) => (
             <button
               key={period}
               onClick={() => setTimeframe(period)}
-              className={`px-3 py-1 rounded-md text-sm`}
-              style={timeframe === period ? styles.buttonActive : styles.buttonInactive}
+              className={`px-3 py-1 rounded-md text-sm font-poppins ${
+                timeframe === period 
+                  ? 'bg-purple-500 text-white font-medium' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}
             >
               {period.charAt(0).toUpperCase() + period.slice(1)}
             </button>
@@ -246,41 +233,33 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              interval={getLabelInterval(chartData.labels.length)}
-              tick={{ fill: '#6B7280', fontSize: 12 }}
+            <XAxis 
+              dataKey="time" 
+              tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
             />
-            <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} />
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="bg-white p-3 border rounded-lg shadow-lg">
-                      <p className="font-semibold">{label}</p>
-                      <p className="text-yellow-500">Visitors: {payload[0]?.value || 0}</p>
-                      <p className="text-purple-500">Wallets Connected: {payload[1]?.value || 0}</p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
+            <YAxis 
+              tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
+            />
+            <Tooltip 
+              contentStyle={{ fontFamily: "'Poppins', sans-serif" }}
+              labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }}
+            />
+            <Legend 
+              wrapperStyle={{ fontFamily: "'Poppins', sans-serif" }}
             />
             <Area
               type="monotone"
               dataKey="visitors"
-              stackId="1"
               stroke="#fcd34d"
               fill="rgba(252, 211, 77, 0.5)"
-              isAnimationActive={false}
+              name="Visitors"
             />
             <Area
               type="monotone"
               dataKey="wallets"
-              stackId="2"
               stroke="#8b5cf6"
               fill="rgba(139, 92, 246, 0.7)"
-              isAnimationActive={false}
+              name="Wallets"
             />
           </AreaChart>
         </ResponsiveContainer>
