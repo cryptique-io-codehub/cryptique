@@ -30,29 +30,37 @@ EMAIL_PASS=your_app_password
 
 The application includes the following security features:
 
-1. **Rate Limiting**:
+1. **MongoDB Security**:
+   - Secure connection with SSL/TLS in production
+   - Authentication required with username and password
+   - Connection pool management to prevent resource exhaustion
+   - Timeout settings to prevent slow connection attacks
+   - Write and read concern configurations for data integrity
+   - Automatic reconnection with retries for stability
+
+2. **Rate Limiting**:
    - General API rate limiting: 100 requests per 15 minutes per IP address
    - Authentication endpoints (signup, login): 10 requests per hour per IP address
    - Failed login attempts: 5 failed attempts per hour per IP address
 
-2. **JWT Authentication**:
+3. **JWT Authentication**:
    - Tokens expire after 2 hours
    - Uses a secure secret key for signing
 
-3. **Password Security**:
+4. **Password Security**:
    - Passwords are hashed using bcrypt with 10 rounds
    - OTP verification for email authentication
 
-4. **CORS Protection**:
+5. **CORS Protection**:
    - Strict CORS settings for main application routes
    - SDK routes have special CORS settings to allow for cross-origin tracking
 
-5. **Content Security Policy (CSP)**:
+6. **Content Security Policy (CSP)**:
    - Strict CSP headers to prevent XSS attacks
    - Restricts which resources can be loaded and from where
    - Configures frame protection, script sources, and other security policies
 
-6. **Additional Security Headers**:
+7. **Additional Security Headers**:
    - X-Content-Type-Options: Prevents MIME type sniffing
    - X-Frame-Options: Prevents clickjacking attacks
    - X-XSS-Protection: Additional XSS protection

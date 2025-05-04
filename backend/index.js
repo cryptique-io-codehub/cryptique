@@ -1,5 +1,4 @@
 const express = require("express");
-const { connect } = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
@@ -8,6 +7,8 @@ const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
 const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
+const { connectToDatabase } = require("./config/database");
+const healthRouter = require("./routes/healthRouter");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -18,10 +19,15 @@ console.log('Main app environment check:', {
   envKeys: Object.keys(process.env)
 });
 
-// Connect to MongoDB
-connect(process.env.MONGODB_URI).then(() => {
-  console.log("Connected to the database");
-});
+// Connect to MongoDB using secure configuration
+connectToDatabase()
+  .then(() => {
+    console.log('MongoDB connection established successfully');
+  })
+  .catch(err => {
+    console.error('MongoDB connection failed:', err);
+    process.exit(1); // Exit on database connection failure
+  });
 
 // Define CORS options for different routes
 const mainCorsOptions = {
@@ -187,6 +193,9 @@ app.get("/debug/routes", (req, res) => {
 
 // Load routes with specific CORS configurations
 console.log('Loading routes...');
+
+// Health check routes - minimal CORS and no rate limiting
+app.use("/health", healthRouter);
 
 // Apply specific CORS for SDK routes
 app.use("/api/sdk", cors(sdkCorsOptions), require("./routes/sdkRouter"));

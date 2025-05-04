@@ -2,12 +2,28 @@ const mongoose = require('mongoose');
 const Analytics = require('../models/analytics');
 const { HourlyStats, DailyStats, WeeklyStats, MonthlyStats } = require('../models/stats');
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
+const { connectToDatabase } = require('../config/database');
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/cryptique', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
+console.log('Connecting to database and generating test data...');
+
+// Connect to MongoDB using secure configuration
+connectToDatabase()
+  .then(() => {
+    console.log('MongoDB connection established successfully');
+    generateTestData()
+      .then(() => {
+        console.log('Test data generation complete');
+        process.exit(0);
+      })
+      .catch(err => {
+        console.error('Error generating test data:', err);
+        process.exit(1);
+      });
+  })
+  .catch(err => {
+    console.error('MongoDB connection failed:', err);
+    process.exit(1);
+  });
 
 const generateTestData = async () => {
   try {
@@ -68,6 +84,4 @@ const generateTestData = async () => {
     console.error('Error generating test data:', error);
     process.exit(1);
   }
-};
-
-generateTestData(); 
+}; 
