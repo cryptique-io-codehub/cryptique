@@ -281,7 +281,7 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
             value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
           className="text-sm rounded-md border-gray-300 font-poppins"
-        >
+          >
           <option value="This Month">This Month</option>
           <option value="Last Month">Last Month</option>
           <option value="Last 3 Months">Last 3 Months</option>
@@ -303,7 +303,7 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
             <p className="mt-2 text-sm">This may be because there are no sessions recorded or all sessions have unknown sources.</p>
                     </div>
                   </div>
-      ) : (
+              ) : (
         <div className="w-full" style={{ maxHeight: '350px', overflowY: 'auto', overflowX: 'hidden' }}>
           <table className="w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50 sticky top-0 z-10">
