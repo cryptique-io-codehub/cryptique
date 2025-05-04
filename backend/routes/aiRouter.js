@@ -1,7 +1,41 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const cors = require('cors');
 require('dotenv').config();
+
+// Configure CORS specifically for AI endpoints
+const aiCorsOptions = {
+  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
+
+// Apply CORS middleware specifically to this router
+router.use(cors(aiCorsOptions));
+
+// Middleware to ensure CORS headers are set correctly
+router.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('app.cryptique.io') || 
+                 origin.includes('cryptique.io') || 
+                 origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+  }
+  
+  // Handle preflight OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
+  next();
+});
 
 // Debug environment variables
 console.log('Environment check on router load:', {

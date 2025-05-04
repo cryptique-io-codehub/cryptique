@@ -198,7 +198,7 @@ console.log('Loading routes...');
 app.use("/health", healthRouter);
 
 // Apply specific CORS for SDK routes
-app.use("/api/sdk", cors(sdkCorsOptions), require("./routes/sdkRouter"));
+app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
 
 // Apply main CORS for all other routes
 app.use("/api/auth", cors(mainCorsOptions), userRouter);
@@ -213,7 +213,7 @@ app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactio
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/api/ai", cors(mainCorsOptions), aiRouter);
+  app.use("/api/ai", aiRouter);  // Removed cors(mainCorsOptions) to use the router's own CORS settings
   console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);

@@ -5,7 +5,7 @@ const AnalyticsProcessor = require('../utils/analyticsProcessor');
 
 // Configure CORS for analytics endpoints
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://app.cryptique.io'],
+  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
