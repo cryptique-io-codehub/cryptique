@@ -298,170 +298,105 @@ const AttributionJourneySankey = ({analytics}) => {
   };
 
   return (
-    <div className="bg-white rounded-lg w-full">
-      <h3 className="text-lg md:text-xl font-bold px-4 pt-4 pb-2">Top 5 First-Source Attribution Journey</h3>
-      <div className="w-full">
-        {/* Make SVG responsive with proper aspect ratio */}
-        <div className="w-full aspect-[4/3] md:aspect-[16/9] relative overflow-hidden">
-          <svg width="100%" height="100%" viewBox="0 0 800 750" preserveAspectRatio="xMidYMid meet">
-            {/* Background highlight for sources */}
-            {Object.entries(nodes).filter(([name]) => uniqueSources.includes(name)).map(([name, node]) => (
-              <rect
-                key={`highlight-${name}`}
-                x={node.x - 15}
-                y={node.y - 15}
-                width="130"
-                height={node.height + 30}
-                fill="#f8f9fa"
-                rx="12"
-                ry="12"
+    <div className="w-full">
+      <div className="font-poppins">
+        <svg width="100%" height="500" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
+          {/* Nodes */}
+          {Object.keys(nodes).map(key => (
+            <g key={key}>
+              <rect 
+                x={nodes[key].x}
+                y={nodes[key].y}
+                width={100}
+                height={nodes[key].height}
+                fill={nodes[key].color}
+                opacity={0.9}
+                rx={4}
+                ry={4}
               />
-            ))}
-            
-            {/* Background highlight for targets */}
-            {Object.entries(nodes).filter(([name]) => uniqueTargets.includes(name)).map(([name, node]) => (
-              <rect
-                key={`highlight-${name}`}
-                x={node.x - 15}
-                y={node.y - 15}
-                width="120"
-                height={node.height + 30}
-                fill="#f8f9fa"
-                rx="12"
-                ry="12"
-              />
-            ))}
-            
-            {/* Flow paths with target-colored flows */}
-            {finalData.map((flow, index) => (
-              <path
-                key={`flow-${index}`}
-                d={createSankeyPath(flow)}
-                fill={getFlowColor(flow.source, flow.target)}
-                opacity={calculateOpacity(flow.value)}
-                stroke="white"
-                strokeWidth="2"
-              />
-            ))}
-            
-            {/* Node rectangles - wider and more prominent */}
-            {Object.entries(nodes).map(([name, node]) => (
-              <rect
-                key={`node-${name}`}
-                x={node.x}
-                y={node.y}
-                width="100"
-                height={node.height}
-                fill={node.color}
-                rx="8"
-                ry="8"
-                stroke="#ffffff"
-                strokeWidth="2"
-              />
-            ))}
-            
-            {/* Node labels with enhanced visibility */}
-            {Object.entries(nodes).map(([name, node]) => {
-              // Check if it's a source or target node
-              const isSource = uniqueSources.includes(name);
-              const textX = node.x + (isSource ? 50 : 50);
-              const textAnchor = "middle";
-              
-              return (
-                <g key={`label-group-${name}`}>
-                  <text
-                    key={`label-${name}`}
-                    x={textX}
-                    y={node.y + node.height/2}
-                    textAnchor={textAnchor}
-                    alignmentBaseline="middle"
-                    fontFamily="sans-serif"
-                    fontSize="16"
-                    fontWeight="600"
-                    style={{ 
-                      fill: "#ffffff",
-                      filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.7))"
-                    }}
-                  >
-                    {name}
-                  </text>
-                  
-                  {/* Show total visitors count for source nodes */}
-                  {isSource && (
-                    <text
-                      key={`visitors-${name}`}
-                      x={textX}
-                      y={node.y + node.height/2 + 24}
-                      textAnchor={textAnchor}
-                      alignmentBaseline="middle"
-                      fontFamily="sans-serif"
-                      fontSize="14"
-                      fontWeight="500"
-                      style={{ 
-                        fill: "#ffffff",
-                        filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.7))"
-                      }}
-                    >
-                      ({node.totalVisitors} visitors)
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-            
-            {/* Value labels on paths with better visibility */}
-            {finalData.map((flow, index) => {
-              const centerX = (nodes[flow.source].x + 100 + nodes[flow.target].x) / 2;
-              const centerY = (flow.sourceY + flow.sourceHeight/2 + flow.targetY + flow.targetHeight/2) / 2;
-              
-              return (
-                <text
-                  key={`value-${index}`}
-                  x={centerX}
-                  y={centerY}
+              <text 
+                x={key === 'Wallet Connected' || key === 'No Wallet' ? nodes[key].x + 50 : nodes[key].x + 50} 
+                y={nodes[key].y - 10}
+                textAnchor="middle"
+                fontFamily="'Montserrat', sans-serif"
+                fontSize="14"
+                fontWeight="600"
+                style={{ fill: "#333333" }}
+              >
+                {key}
+              </text>
+              {/* Show total count for source nodes only */}
+              {nodes[key].totalVisitors && (
+                <text 
+                  x={nodes[key].x + 50} 
+                  y={nodes[key].y - 30}
                   textAnchor="middle"
-                  alignmentBaseline="middle"
-                  fontFamily="sans-serif"
-                  fontSize="14"
-                  fontWeight="600"
-                  style={{ 
-                    fill: "#ffffff",
-                    filter: "drop-shadow(1px 1px 2px rgba(0,0,0,0.8))"
-                  }}
+                  fontFamily="'Poppins', sans-serif"
+                  fontSize="12"
+                  fontWeight="500"
+                  style={{ fill: "#666666" }}
+                >
+                  {nodes[key].totalVisitors} users
+                </text>
+              )}
+            </g>
+          ))}
+          
+          {/* Flows */}
+          {finalData.map((flow, index) => (
+            <g key={index}>
+              <path 
+                d={createSankeyPath(flow)}
+                fill="none"
+                stroke={getFlowColor(flow.source, flow.target)}
+                strokeWidth={Math.max(2, flow.sourceHeight)}
+                strokeOpacity={calculateOpacity(flow.value)}
+              />
+              {/* Flow value label - Only show if flow is significant enough */}
+              {flow.value > 1 && (
+                <text 
+                  x={(nodes[flow.source].x + 100 + nodes[flow.target].x) / 2}
+                  y={(flow.sourceY + flow.sourceHeight / 2 + flow.targetY + flow.targetHeight / 2) / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="'Poppins', sans-serif"
+                  fontSize="12"
+                  fontWeight="500"
+                  style={{ fill: "#333333" }}
                 >
                   {flow.value}
                 </text>
-              );
-            })}
-            
-            {/* Legend with improved typography */}
-            <g transform="translate(20, 20)">
-              <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-              <text 
-                x="25" 
-                y="12" 
-                fontFamily="sans-serif"
-                fontSize="14"
-                fontWeight="500"
-                style={{ fill: "#333333" }}
-              >
-                Wallet Connected
-              </text>
-              
-              <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
-              <text 
-                x="25" 
-                y="42" 
-                fontFamily="sans-serif"
-                fontSize="14"
-                fontWeight="500"
-                style={{ fill: "#333333" }}
-              >
-                No Wallet
-              </text>
+              )}
             </g>
-          </svg>
-        </div>
+          ))}
+          
+          {/* Legend */}
+          <g transform="translate(20, 20)">
+            <rect x="0" y="0" width="15" height="15" fill="#28a745" />
+            <text 
+              x="25" 
+              y="12" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="14"
+              fontWeight="500"
+              style={{ fill: "#333333" }}
+            >
+              Wallet Connected
+            </text>
+              
+            <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
+            <text 
+              x="25" 
+              y="42" 
+              fontFamily="'Poppins', sans-serif"
+              fontSize="14"
+              fontWeight="500"
+              style={{ fill: "#333333" }}
+            >
+              No Wallet
+            </text>
+          </g>
+        </svg>
       </div>
     </div>
   );
@@ -472,12 +407,12 @@ const AttributionJourneySankey = ({analytics}) => {
 
 // Helper component for responsive metric cards
 const MetricCard = ({ title, value, source }) => (
-  <div className="bg-white rounded-lg shadow p-2 md:p-4 flex flex-col">
-    <div className="text-sm md:text-base text-gray-500 mb-1">{title}</div>
-    <div className="text-xl md:text-2xl font-bold mb-1 md:mb-2">{value}</div>
-    <div className="text-xs md:text-sm flex items-center text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
-      <span className="font-medium">Best source: </span>
-      <span className="flex items-center ml-1 font-medium">{source}</span>
+  <div className="bg-white rounded-lg shadow p-4 flex flex-col text-center">
+    <div className="text-base text-gray-500 mb-2 font-montserrat">{title}</div>
+    <div className="text-xl font-bold mb-2 font-montserrat">{value}</div>
+    <div className="text-sm flex items-center justify-center text-gray-600 font-poppins">
+      <span className="font-medium">Best source:</span>
+      <span className="ml-1">{source || 'N/A'}</span>
     </div>
   </div>
 );
@@ -486,17 +421,17 @@ const MetricCard = ({ title, value, source }) => (
 const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficSources }) => {
   // State for metrics
   const [metrics, setMetrics] = useState({
-    bestSource: '',
+    bestSource: 'N/A',
     totalSessions: 0,
     web3Users: 0,
     walletsConnected: 0,
-    leastEffectiveSource: '',
+    leastEffectiveSource: 'N/A',
     avgConversion: '0%',
     avgBounceRate: '0%',
-    bestSourceByWeb3: '',
-    bestSourceByWallets: '',
-    bestSourceByConversion: '',
-    sourceWithHighestBounce: '',
+    bestSourceByWeb3: 'N/A',
+    bestSourceByWallets: 'N/A',
+    bestSourceByConversion: 'N/A',
+    sourceWithHighestBounce: 'N/A',
   });
 
   // State for traffic quality data
@@ -622,7 +557,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
     });
 
     // Find the source with the highest number of sessions
-    let maxSessionsSource = '';
+    let maxSessionsSource = 'N/A';
     let maxSessionsCount = 0;
     
     Object.entries(sourceCounts).forEach(([source, count]) => {
@@ -644,106 +579,91 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       // Calculate conversion rate (wallets connected / number of visitors)
       conversionRates[source] = totalVisitors > 0 ? (wallets / totalVisitors) * 100 : 0;
       
-      // Calculate bounce rate (100 - (wallets connected / web3 users))
-      bounceRates[source] = web3Users > 0 ? 100 - ((wallets / web3Users) * 100) : 100;
+      // Calculate bounce rate (bounces / sessions)
+      const sourceBounces = sourceBounceCounts[source] || 0;
+      const sourceSessionCount = sourceCounts[source] || 0;
+      bounceRates[source] = sourceSessionCount > 0 ? (sourceBounces / sourceSessionCount) * 100 : 0;
     });
     
-    // Find the source with the lowest conversion rate (least effective)
-    let lowestConversionSource = '';
-    let lowestConversionRate = 100;
-    let lowestConversionVisitors = 0;
+    // Calculate total unique web3 users and wallets connected across all sources
+    const totalWeb3Users = Object.values(web3UsersBySource).reduce((total, users) => total + users.size, 0);
+    const totalWallets = Object.values(walletsBySource).reduce((total, users) => total + users.size, 0);
     
-    Object.entries(conversionRates).forEach(([source, rate]) => {
-      const visitors = uniqueUserIdsBySource[source] ? uniqueUserIdsBySource[source].size : 0;
-      if (rate < lowestConversionRate || (rate === lowestConversionRate && visitors > lowestConversionVisitors)) {
-        lowestConversionRate = rate;
-        lowestConversionSource = source;
-        lowestConversionVisitors = visitors;
-      }
-    });
-    
-    // Find the source with the best conversion rate
-    let bestConversionSource = '';
-    let bestConversionRate = 0;
-    
-    Object.entries(conversionRates).forEach(([source, rate]) => {
-      if (rate > bestConversionRate) {
-        bestConversionRate = rate;
-        bestConversionSource = source;
-      }
-    });
-    
-    // Find the source with the highest bounce rate
-    let highestBounceSource = '';
-    let highestBounceRate = 0;
-    
-    Object.entries(bounceRates).forEach(([source, rate]) => {
-      if (rate > highestBounceRate) {
-        highestBounceRate = rate;
-        highestBounceSource = source;
-      }
-    });
-    
-    // Find the source with the highest number of unique web3 users
-    let maxWeb3Source = '';
+    // Find sources with best metrics
+    let bestSourceByWeb3 = 'N/A';
     let maxWeb3Count = 0;
+    let bestSourceByWallets = 'N/A';
+    let maxWalletsCount = 0;
+    let bestSourceByConversion = 'N/A';
+    let maxConversionRate = 0;
+    let leastEffectiveSource = 'N/A';
+    let minConversionRate = Infinity;
+    let sourceWithHighestBounce = 'N/A';
+    let maxBounceRate = 0;
     
-    Object.entries(web3UsersBySource).forEach(([source, users]) => {
-      const uniqueWeb3Users = users.size;
-      if (uniqueWeb3Users > maxWeb3Count) {
-        maxWeb3Count = uniqueWeb3Users;
-        maxWeb3Source = source;
+    Object.entries(uniqueUserIdsBySource).forEach(([source, userIds]) => {
+      // Only consider sources with at least 5 users to avoid statistical outliers
+      const totalVisitors = userIds.size;
+      if (totalVisitors < 5) return;
+      
+      const web3Count = web3UsersBySource[source] ? web3UsersBySource[source].size : 0;
+      const walletsCount = walletsBySource[source] ? walletsBySource[source].size : 0;
+      const conversionRate = conversionRates[source] || 0;
+      const bounceRate = bounceRates[source] || 0;
+      
+      // Update best source by Web3 users
+      if (web3Count > maxWeb3Count) {
+        maxWeb3Count = web3Count;
+        bestSourceByWeb3 = source;
+      }
+      
+      // Update best source by wallets
+      if (walletsCount > maxWalletsCount) {
+        maxWalletsCount = walletsCount;
+        bestSourceByWallets = source;
+      }
+      
+      // Update best source by conversion rate
+      if (conversionRate > maxConversionRate) {
+        maxConversionRate = conversionRate;
+        bestSourceByConversion = source;
+      }
+      
+      // Update least effective source
+      if (conversionRate < minConversionRate && totalVisitors >= 10) {
+        minConversionRate = conversionRate;
+        leastEffectiveSource = source;
+      }
+      
+      // Update source with highest bounce rate
+      if (bounceRate > maxBounceRate) {
+        maxBounceRate = bounceRate;
+        sourceWithHighestBounce = source;
       }
     });
     
-    // Find the source with the most unique wallet connections
-    let maxWalletSource = '';
-    let maxWalletCount = 0;
+    // Calculate average conversion and bounce rates across all sources
+    const avgConversionNum = Object.values(conversionRates).length > 0 
+      ? Object.values(conversionRates).reduce((sum, rate) => sum + rate, 0) / Object.values(conversionRates).length 
+      : 0;
     
-    Object.entries(walletsBySource).forEach(([source, wallets]) => {
-      const uniqueWallets = wallets.size;
-      if (uniqueWallets > maxWalletCount) {
-        maxWalletCount = uniqueWallets;
-        maxWalletSource = source;
-      }
-    });
+    const avgBounceNum = Object.values(bounceRates).length > 0 
+      ? Object.values(bounceRates).reduce((sum, rate) => sum + rate, 0) / Object.values(bounceRates).length 
+      : 0;
     
-    // Set default values if no sources found
-    if (maxSessionsSource === '') {
-      maxSessionsSource = 'Direct';
-    }
-    if (bestConversionSource === '') {
-      bestConversionSource = 'Direct';
-    }
-    if (lowestConversionSource === '') {
-      lowestConversionSource = 'Direct';
-    }
-    if (maxWeb3Source === '') {
-      maxWeb3Source = 'Direct';
-    }
-    if (maxWalletSource === '') {
-      maxWalletSource = 'Direct';
-    }
-    if (highestBounceSource === '') {
-      highestBounceSource = 'Direct';
-    }
-    
-    // Get metrics for the best source by sessions
-    const totalSessions = sourceCounts[maxSessionsSource] || 0;
-    const uniqueUsers = uniqueUserIdsBySource[maxSessionsSource] ? uniqueUserIdsBySource[maxSessionsSource].size : 0;
-    
+    // Update metrics state
     setMetrics({
       bestSource: maxSessionsSource,
-      totalSessions,
-      web3Users: maxWeb3Count,
-      walletsConnected: maxWalletCount,
-      leastEffectiveSource: lowestConversionSource,
-      avgConversion: `${bestConversionRate.toFixed(2)}%`,
-      avgBounceRate: `${highestBounceRate.toFixed(2)}%`,
-      bestSourceByWeb3: maxWeb3Source,
-      bestSourceByWallets: maxWalletSource,
-      bestSourceByConversion: bestConversionSource,
-      sourceWithHighestBounce: highestBounceSource
+      totalSessions: analytics.sessions.length,
+      web3Users: totalWeb3Users,
+      walletsConnected: totalWallets,
+      leastEffectiveSource: leastEffectiveSource,
+      avgConversion: `${avgConversionNum.toFixed(1)}%`,
+      avgBounceRate: `${avgBounceNum.toFixed(1)}%`,
+      bestSourceByWeb3: bestSourceByWeb3,
+      bestSourceByWallets: bestSourceByWallets,
+      bestSourceByConversion: bestSourceByConversion,
+      sourceWithHighestBounce: sourceWithHighestBounce
     });
 
     // Generate colors for sources
@@ -942,12 +862,12 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
   };
 
   return (
-    <div className="p-2 md:p-4 max-w-full overflow-hidden">
+    <div className="p-4 max-w-full overflow-hidden">
       {/* Page Title */}
-      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">TrafficAnalytics</h1>
+      <h1 className="text-xl font-bold mb-6 font-montserrat">Traffic Analytics</h1>
       
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
         <MetricCard title="Total Sessions" value={formatNumber(metrics.totalSessions)} source={metrics.bestSource} />
         <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSourceByWeb3} />
         <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSourceByWallets} />
@@ -957,16 +877,17 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       </div>
 
       {/* Attribution Journey Sankey - Full Width */}
-      <div className="w-full bg-white rounded-lg shadow mb-4 md:mb-6">
+      <div className="w-full bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold mb-4 font-montserrat">Attribution Journey</h3>
         <AttributionJourneySankey analytics={analytics} setanalytics={setanalytics} />
       </div>
 
       {/* Web3 Users by Medium (60%) + Traffic Sources (40%) - In one line */}
-      <div className="flex flex-col md:flex-row gap-4 mb-4 md:mb-6">
+      <div className="flex flex-col md:flex-row gap-6 mb-6">
         {/* Web3 Users by Medium - 60% width on md screens and up */}
-        <div className="w-full md:w-3/5 bg-white rounded-lg shadow p-2 md:p-4">
-          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Web3 Users by Medium</h3>
-          <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+        <div className="w-full md:w-3/5 bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 font-montserrat">Web3 Users by Medium</h3>
+          <div className="text-center text-sm text-gray-600 mb-2 font-poppins">
             {isSampleData ? (
               <span className="text-yellow-600">Sample Data - No real data available yet</span>
             ) : (
@@ -974,7 +895,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
             )}
           </div>
           {/* Increased height by 30% */}
-          <div className="h-64 md:h-80">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart 
                 data={web3UsersByTimeData} 
@@ -1022,27 +943,24 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         
         {/* Traffic Sources - 40% width on md screens and up */}
         {/* Adding a fixed height that matches the Web3 Users card */}
-        <div className="w-full md:w-2/5 h-auto">
-          <div className="h-full" style={{ minHeight: 'calc(100% - 2rem)' }}>
-            <TrafficSourcesComponent 
-              analytics={analytics}
-              setanalytics={setanalytics}
-              trafficSources={trafficSources} 
-              setTrafficSources={setTrafficSources} 
-              className="h-full"
-            />
-          </div>
+        <div className="w-full md:w-2/5">
+          <TrafficSourcesComponent 
+            analytics={analytics}
+            setanalytics={setanalytics}
+            trafficSources={trafficSources} 
+            setTrafficSources={setTrafficSources} 
+          />
         </div>
       </div>
 
       {/* Traffic Quality Analysis - Full Width */}
-      <div className="w-full bg-white rounded-lg shadow p-2 md:p-4">
-        <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
-        <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">
+      <div className="w-full bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4 font-montserrat">Traffic Quality Analysis</h3>
+        <div className="text-center text-sm text-gray-600 mb-2 font-poppins">
           Value-Per-Traffic-Source (Engagement vs Conversion)
         </div>
         {trafficQualityData.length > 0 ? (
-          <div className="h-48 md:h-64">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart
                 margin={{ top: 10, right: 10, bottom: 30, left: 30 }}
@@ -1056,7 +974,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
                     value: 'Avg. Engagement (mins)', 
                     position: 'bottom',
                     offset: 0,
-                    style: { fontSize: '0.75rem' }
+                    style: { fontSize: '0.75rem', fontFamily: "'Poppins', sans-serif" }
                   }}
                   domain={[0, 'dataMax + 5']}
                   tickCount={6}
@@ -1070,7 +988,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
                     value: 'Conversion Rate (%)', 
                     angle: -90, 
                     position: 'left',
-                    style: { fontSize: '0.75rem' }
+                    style: { fontSize: '0.75rem', fontFamily: "'Poppins', sans-serif" }
                   }}
                   domain={[0, 'dataMax + 5']}
                   tick={{ fontSize: 10 }}
@@ -1096,7 +1014,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
+          <div className="h-64 flex items-center justify-center text-gray-500 font-poppins">
             No traffic source data available
           </div>
         )}
