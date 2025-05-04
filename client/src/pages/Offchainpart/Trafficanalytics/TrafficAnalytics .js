@@ -477,33 +477,6 @@ const AttributionJourneySankey = ({analytics}) => {
                 </g>
               ))}
             </g>
-            
-            {/* Legend */}
-            <g transform="translate(20, 20)">
-              <rect x="0" y="0" width="15" height="15" fill="#28a745" />
-              <text 
-                x="25" 
-                y="12" 
-                fontFamily="'Poppins', sans-serif"
-                fontSize="14"
-                fontWeight="500"
-                fill="#333333"
-              >
-                Wallet Connected
-              </text>
-                
-              <rect x="0" y="30" width="15" height="15" fill="#dc3545" />
-              <text 
-                x="25" 
-                y="42" 
-                fontFamily="'Poppins', sans-serif"
-                fontSize="14"
-                fontWeight="500"
-                fill="#333333"
-              >
-                Dropped Off
-              </text>
-            </g>
           </svg>
         </div>
       </div>
@@ -991,10 +964,10 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         <AttributionJourneySankey analytics={analytics} setanalytics={setanalytics} />
       </div>
 
-      {/* Web3 Users by Medium (60%) + Traffic Sources (40%) - In one line */}
+      {/* Web3 Users by Medium (50%) + Traffic Sources (50%) - Evenly split */}
       <div className="flex flex-col md:flex-row gap-6 mb-6">
-        {/* Web3 Users by Medium - 60% width on md screens and up */}
-        <div className="w-full md:w-3/5 bg-white rounded-lg shadow p-6">
+        {/* Web3 Users by Medium - 50% width on md screens and up */}
+        <div className="w-full md:w-1/2 bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4 font-montserrat">Web3 Users by Medium</h3>
           <div className="text-center text-sm text-gray-600 mb-2 font-poppins">
             {isSampleData ? (
@@ -1003,7 +976,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
               "Distribution of Web3 Users Across Traffic Sources"
             )}
           </div>
-          {/* Increased height by 30% */}
+          {/* Maintain height for good visualization */}
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart 
@@ -1050,15 +1023,17 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
           </div>
         </div>
         
-        {/* Traffic Sources - 40% width on md screens and up */}
-        {/* Adding a fixed height that matches the Web3 Users card */}
-        <div className="w-full md:w-2/5">
-          <TrafficSourcesComponent 
-            analytics={analytics}
-            setanalytics={setanalytics}
-            trafficSources={trafficSources} 
-            setTrafficSources={setTrafficSources} 
-          />
+        {/* Traffic Sources - 50% width on md screens and up */}
+        <div className="w-full md:w-1/2 bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h3>
+          <div className="overflow-auto max-h-[350px]"> {/* Added scroll for vertical overflow */}
+            <TrafficSourcesComponent 
+              analytics={analytics}
+              setanalytics={setanalytics}
+              trafficSources={trafficSources} 
+              setTrafficSources={setTrafficSources} 
+            />
+          </div>
         </div>
       </div>
 
