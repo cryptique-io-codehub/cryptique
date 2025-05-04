@@ -344,10 +344,10 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
 
   return (
     <div className="w-full px-4 py-6 md:px-6 lg:px-8 font-poppins">
-      <h1 className="text-xl md:text-2xl font-montserrat font-bold mb-4">GeoAnalytics</h1>
+      <h1 className="text-xl font-bold mb-6 font-montserrat">GeoAnalytics</h1>
       
       {/* First row of metric cards - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
         <MetricCard 
           title="Most Users" 
           value={globalMetrics ? countryMetrics[globalMetrics.maxUsersCountry]?.users.toLocaleString() : 0} 
@@ -369,7 +369,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       </div>
       
       {/* Second row of metric cards - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
         <MetricCard 
           title="Highest Conversion" 
           value={globalMetrics ? countryMetrics[globalMetrics.maxConversionCountry]?.conversionRate : "0%"} 
@@ -391,24 +391,24 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       </div>
       
       {/* Map and country details section - stack on mobile, side by side on larger screens */}
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
-        <div className="w-full lg:w-3/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
-          <h2 className="text-base md:text-lg font-montserrat font-semibold mb-3 md:mb-4">Details by country</h2>
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="w-full lg:w-3/5 bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 font-montserrat">Details by country</h3>
           <GeoAnalyticsMap analytics={analytics} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
         </div>
         
-        <div className="w-full lg:w-2/5 bg-white rounded-xl p-4 md:p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h2 className="text-base md:text-lg font-montserrat font-semibold">Chosen Country:</h2>
+        <div className="w-full lg:w-2/5 bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold font-montserrat">Chosen Country:</h3>
             <div className="flex items-center">
-              <span className="font-medium text-sm md:text-base truncate max-w-32 md:max-w-48">
+              <span className="font-medium text-base truncate max-w-48">
                 {normalizeCountry(selectedCountry) || "Select a country"}
               </span>
               <span className="ml-2">{getCountryFlag(selectedCountry)}</span>
             </div>
           </div>
           
-          <div className="space-y-2 md:space-y-3 overflow-y-auto max-h-96 md:max-h-none">
+          <div className="space-y-3 overflow-y-auto max-h-[400px]">
             <DetailRow label="Number of Users:" value={countryData.users.toLocaleString()} />
             <DetailRow label="Number of Web3 Users:" value={countryData.web3Users.toLocaleString()} />
             <DetailRow label="Number of Wallet Connects:" value={countryData.walletConnects.toLocaleString()} />
@@ -430,12 +430,12 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
 // Metric Card Component
 const MetricCard = ({ title, value, country, flag }) => {
   return (
-    <div className="bg-white rounded-xl p-3 md:p-4 shadow-sm h-full">
-      <h3 className="text-xs md:text-sm font-montserrat font-medium mb-1 md:mb-2">{title}</h3>
-      <div className="text-lg md:text-2xl font-montserrat font-bold mb-1">{value}</div>
-      <div className="flex items-center text-xs text-gray-600 truncate">
-        <span className="mr-1">{flag}</span>
-        <span className="truncate">{country}</span>
+    <div className="bg-white rounded-lg shadow p-4 flex flex-col text-center">
+      <div className="text-base text-gray-500 mb-2 font-montserrat">{title}</div>
+      <div className="text-xl font-bold mb-2 font-montserrat">{value}</div>
+      <div className="text-sm flex items-center justify-center text-gray-600 font-poppins">
+        <span className="font-medium mr-1">{flag}</span>
+        <span>{country || 'N/A'}</span>
       </div>
     </div>
   );
@@ -444,9 +444,9 @@ const MetricCard = ({ title, value, country, flag }) => {
 // Detail Row Component
 const DetailRow = ({ label, value }) => {
   return (
-    <div className="flex justify-between items-center border-b border-gray-100 py-1">
-      <span className="text-xs md:text-sm text-gray-600">{label}</span>
-      <span className="text-xs md:text-sm font-medium truncate max-w-32 md:max-w-48 text-right">{value}</span>
+    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+      <span className="text-sm text-gray-600 font-poppins">{label}</span>
+      <span className="text-sm font-medium text-right font-poppins">{value}</span>
     </div>
   );
 };
