@@ -22,6 +22,8 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   useEffect(() => {
     const selectteam = localStorage.getItem("selectedTeam");
     setSelectedTeam(selectteam);
+    
+    console.log("Fetching websites, current selectedWebsite:", localStorage.getItem("selectedWebsite"));
   
     const fetchWebsites = async () => {
       setIsLoading(true);
@@ -30,12 +32,14 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
           teamName: selectteam // use the value from localStorage directly
         });
         if (response.status === 200) {
-          // console.log(response.data.websites);
+          console.log("Fetched websites:", response.data.websites);
           if (response && response.data.websites.length > 0) {
             setWebsitearray(response.data.websites);
-            // console.log('c');
-            if(localStorage.getItem("selectedWebsite") === '') {
-              // console.log('a');
+            
+            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+            
+            // If no website is selected or selection is empty
+            if(!savedWebsiteDomain || savedWebsiteDomain === '') {
               const firstWebsite = response.data.websites[0];
               localStorage.setItem("idy", firstWebsite.siteId);
               localStorage.setItem("selectedWebsite", firstWebsite.Domain);
@@ -51,20 +55,14 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
               document.head.appendChild(script);
             </script>`;
               setscriptcode(scriptHTML);
-              
-              // Show installation popup if needed for first website
-              if (!firstWebsite.isVerified) {
-                // setscriptmodel(true);
-                setidy(firstWebsite.siteId);
-                // localStorage.setItem("showInstallationPopup", "true");
-              }
             } else {
               // Find the selected website in the array
               const currentWebsite = response.data.websites.find(
-                website => website.Domain === localStorage.getItem("selectedWebsite")
+                website => website.Domain === savedWebsiteDomain
               );
               
               if (currentWebsite) {
+                console.log("Setting selected website:", currentWebsite);
                 setSelectedWebsite(currentWebsite);
                 setidy(currentWebsite.siteId);
                 
@@ -77,12 +75,6 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
                 document.head.appendChild(script);
               </script>`;
                 setscriptcode(scriptHTML);
-                
-                // Show installation popup if website is not verified
-                // if (!currentWebsite.isVerified) {
-                  // setscriptmodel(true);
-                  // localStorage.setItem("showInstallationPopup", "true");
-                // }
               }
             }
           }
@@ -95,7 +87,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     };
   
     fetchWebsites();
-  }, [localStorage.getItem("selectedWebsite")]);
+  }, []);
   
 
   const handleSelectWebsite = async (website) => {
@@ -125,7 +117,13 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   }
 
   const handleDropdownToggle = () => {
-    setIsDropdownOpen(!isDropdownOpen);
+    const newDropdownState = !isDropdownOpen;
+    setIsDropdownOpen(newDropdownState);
+    
+    // Refresh website data when opening the dropdown
+    if (newDropdownState === true) {
+      refreshWebsites();
+    }
   };
 
   const handleClosescriptmodel = () => {
@@ -133,6 +131,35 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     setscriptmodel(false);
     // localStorage.removeItem("showInstallationPopup");
   }
+
+  // Function to refresh website data
+  const refreshWebsites = async () => {
+    console.log("Manually refreshing websites");
+    try {
+      const response = await axiosInstance.post('/website/getWebsites', {
+        teamName: selectedTeam
+      });
+      
+      if (response.status === 200 && response.data.websites) {
+        console.log("Refreshed websites data:", response.data.websites);
+        setWebsitearray(response.data.websites);
+        
+        // Update the currently selected website if it exists in the new data
+        if (selectedWebsite) {
+          const refreshedWebsite = response.data.websites.find(
+            website => website.siteId === selectedWebsite.siteId
+          );
+          
+          if (refreshedWebsite) {
+            console.log("Updated selected website:", refreshedWebsite);
+            setSelectedWebsite(refreshedWebsite);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing websites:", error);
+    }
+  };
 
   const handleVerify = async () => {
     try {
@@ -164,6 +191,9 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
           // Handle legacy response format
           selectedWebsite.isVerified = true;
           setfalsemessage("Website verified successfully!");
+          
+          // Manual refresh to ensure UI is updated
+          await refreshWebsites();
         }
         
         localStorage.setItem("idy", selectedWebsite.siteId);
@@ -277,18 +307,20 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
               >
                 {localStorage.getItem("selectedWebsite") !== null ? (
                   <div className="flex items-center">
-                    {selectedWebsite && selectedWebsite.isVerified?(<span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                      </svg>
-                    </span>):(
+                    {selectedWebsite && selectedWebsite.isVerified === true ? (
+                      <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                    ) : (
                       <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                      </svg>
-                    </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                      </span>
                     )}
                     <span className="text-gray-800 text-base">{localStorage.getItem("selectedWebsite")}</span>
                   </div>
@@ -321,12 +353,14 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
                             className="flex items-center w-full px-3 py-1.5 text-base text-left hover:bg-gray-100"
                             onClick={() => handleSelectWebsite(website)}
                           >
-                            {website.isVerified ? (<span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>):(
+                            {website.isVerified === true ? (
+                              <span className="inline-block w-5 h-5 mr-2 bg-green-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                </svg>
+                              </span>
+                            ) : (
                               <span className="inline-block w-5 h-5 mr-2 bg-red-600 rounded-sm text-white flex-shrink-0 flex items-center justify-center">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
