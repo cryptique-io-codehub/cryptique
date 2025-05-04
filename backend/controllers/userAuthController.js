@@ -4,22 +4,36 @@ const Team = require('../models/team');
 const jwt = require('jsonwebtoken');
 const sendOtp = require('../utils/sendOtp');
 const tokenService = require('../utils/tokenService');
+const crypto = require('crypto');
+const { validatePassword, checkCommonPatterns } = require('../utils/passwordValidator');
 require('dotenv').config();
 
+// OTP configuration
+const OTP_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+// Generate a secure OTP using crypto
 const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000);
+  // Use cryptographically secure random number generation
+  return crypto.randomInt(100000, 999999);
 };
 
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const user = await User.findOne({ email, otp });
+    const user = await User.findOne({ email });
     
     if (!user) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: "Invalid email" });
+    }
+    
+    // Check if OTP is valid and not expired
+    if (user.otp !== parseInt(otp) || !user.otpExpiry || user.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
     
     user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
     await user.save();
     
     // Create a team
@@ -76,9 +90,24 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
     
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ message: passwordValidation.message });
+    }
+    
+    // Check for common patterns or user data in password
+    const patternCheck = checkCommonPatterns(password, { name, email });
+    if (!patternCheck.isValid) {
+      return res.status(400).json({ message: patternCheck.message });
+    }
+    
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOtp();
+    
+    // Calculate OTP expiry time
+    const otpExpiry = Date.now() + OTP_EXPIRY;
     
     // Send OTP to the user
     await sendOtp(email, 'Otp verification for Cryptique', `Thank you for signing up with Cryptique! Your OTP is ${otp}`);
@@ -88,7 +117,8 @@ exports.createUser = async (req, res) => {
       email,
       password: hashedPassword,
       avatar: avatar || '',
-      otp
+      otp,
+      otpExpiry
     });
 
     // Save the user to the database
@@ -314,5 +344,157 @@ exports.logout = async (req, res) => {
   } catch (error) {
     console.error('Error during logout:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add a method to resend OTP
+exports.resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Generate a new OTP
+    const otp = generateOtp();
+    const otpExpiry = Date.now() + OTP_EXPIRY;
+    
+    // Update user with new OTP
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
+    await user.save();
+    
+    // Send the new OTP
+    await sendOtp(email, 'New OTP verification for Cryptique', `Your new OTP is ${otp}`);
+    
+    res.status(200).json({ message: 'New OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error resending OTP', error: error.message });
+  }
+};
+
+// Generate a password reset token
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Find the user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Generate a secure token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Set token expiry (1 hour)
+    const resetTokenExpiry = Date.now() + 60 * 60 * 1000;
+    
+    // Hash the token before storing it
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    
+    // Store the token with the user
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = resetTokenExpiry;
+    await user.save({ validateBeforeSave: false });
+    
+    // Send the reset token to user's email
+    const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const message = `Forgot your password? Submit a request with your new password to: ${resetURL}\nIf you didn't forget your password, please ignore this email.`;
+    
+    await sendOtp(
+      user.email,
+      'Cryptique Password Reset (Valid for 1 hour)',
+      message
+    );
+    
+    res.status(200).json({
+      message: 'Password reset token sent to email'
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error sending password reset email',
+      error: error.message
+    });
+  }
+};
+
+// Reset password with token
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    
+    // Find user with this token and check if token is still valid
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'Token is invalid or has expired' });
+    }
+    
+    // Validate new password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ message: passwordValidation.message });
+    }
+    
+    // Check for common patterns or user data in password
+    const patternCheck = checkCommonPatterns(password, { 
+      name: user.name, 
+      email: user.email 
+    });
+    if (!patternCheck.isValid) {
+      return res.status(400).json({ message: patternCheck.message });
+    }
+    
+    // Update the password
+    user.password = await bcrypt.hash(password, 10);
+    
+    // Remove password reset fields
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    
+    // Save the user
+    await user.save();
+    
+    // Log the user in by generating tokens
+    const accessToken = tokenService.generateAccessToken({ userId: user._id });
+    
+    // Generate refresh token
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const refreshToken = await tokenService.createRefreshToken(user._id, ipAddress, userAgent);
+    
+    // Set refresh token as HTTP-only cookie
+    res.cookie('refreshToken', refreshToken.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: tokenService.REFRESH_TOKEN_EXPIRY_MS,
+      sameSite: 'strict'
+    });
+    
+    res.status(200).json({
+      message: 'Password has been reset successfully',
+      accessToken,
+      expiresIn: tokenService.ACCESS_TOKEN_EXPIRY_SECONDS
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error resetting password',
+      error: error.message
+    });
   }
 };
