@@ -1,15 +1,14 @@
 const express = require('express');
-const { createUser, getUser , googleLogin,login,verifyOtp} = require('../controllers/userAuthController');
+const { createUser, getUser, googleLogin, login, verifyOtp } = require('../controllers/userAuthController');
 const router = express.Router();
-const {verifyToken} = require('../middleware/auth')
+const { verifyToken } = require('../middleware/auth');
+const { authLimiter, loginFailureLimiter } = require('../middleware/rateLimiter');
 
-
-
-router.post('/verifyOTP',verifyOtp);
-router.post('/create',createUser);
-router.get('/get/:email',getUser);
-router.post('/google-login', googleLogin);
-router.post('/login',login)
-
+// Apply auth rate limiter to authentication endpoints
+router.post('/verifyOTP', authLimiter, verifyOtp);
+router.post('/create', authLimiter, createUser);
+router.get('/get/:email', getUser);
+router.post('/google-login', authLimiter, googleLogin);
+router.post('/login', loginFailureLimiter, login);
 
 module.exports = router;

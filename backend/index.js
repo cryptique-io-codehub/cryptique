@@ -5,6 +5,7 @@ require("dotenv").config();
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
 const bodyParser = require("body-parser");
+const { apiLimiter } = require("./middleware/rateLimiter");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -81,6 +82,17 @@ app.use((req, res, next) => {
 // Increase JSON body size limit to 50MB
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Apply general rate limiting to all routes except SDK routes
+app.use('/api', (req, res, next) => {
+  // Skip rate limiting for SDK routes which need to handle many requests
+  if (req.path.startsWith('/sdk/')) {
+    return next();
+  }
+  
+  // Apply rate limiting for all other API routes
+  apiLimiter(req, res, next);
+});
 
 // Debug endpoint to check environment variables
 app.get("/debug/env", (req, res) => {

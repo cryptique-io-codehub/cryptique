@@ -17,9 +17,35 @@ DUNE_API_KEY=your_dune_api_key
 
 # Port (optional, defaults to 3001)
 PORT=3001
+
+# Email configuration for sending OTPs
+EMAIL_SERVICE=gmail
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
 ```
 
 **Important**: Never commit your `.env` file to version control. Make sure to add it to `.gitignore`.
+
+## Security Features
+
+The application includes the following security features:
+
+1. **Rate Limiting**:
+   - General API rate limiting: 100 requests per 15 minutes per IP address
+   - Authentication endpoints (signup, login): 10 requests per hour per IP address
+   - Failed login attempts: 5 failed attempts per hour per IP address
+
+2. **JWT Authentication**:
+   - Tokens expire after 2 hours
+   - Uses a secure secret key for signing
+
+3. **Password Security**:
+   - Passwords are hashed using bcrypt with 10 rounds
+   - OTP verification for email authentication
+
+4. **CORS Protection**:
+   - Strict CORS settings for main application routes
+   - SDK routes have special CORS settings to allow for cross-origin tracking
 
 ## Getting Started
 

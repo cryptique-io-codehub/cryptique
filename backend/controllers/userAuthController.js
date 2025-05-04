@@ -157,31 +157,42 @@ res.status(200).json({ message: 'User logged in successfully', user, token });
   }
 };
 
-exports.login=async (req, res) => {
+exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
     // Fetch user from the database
     const user = await User.findOne({ email });
     if (!user) {
+      // Set a header that will be used by the rate limiter to track failed attempts
+      res.set('X-Login-Failed', 'true');
       return res.status(404).json({ message: 'User not found' });
     }
+    
     if (!user.isVerified) {
+      // This is not a failed login attempt for rate limiting purposes
       return res.status(402).json({ message: 'User not verified' });
     }
     
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      // Set a header that will be used by the rate limiter to track failed attempts
+      res.set('X-Login-Failed', 'true');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT
+    // Generate JWT with appropriate expiry
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '2h', // Token expires in 1 hour
+      expiresIn: '2h', // Token expires in 2 hours
     });
 
     // Return success with token
-    res.status(200).json({ message: 'Login successful', user, token });
+    res.status(200).json({ 
+      message: 'Login successful', 
+      user, 
+      token,
+      expiresIn: 7200 // 2 hours in seconds, useful for the frontend
+    });
 
   } catch (error) {
     console.error('Error during login:', error);
