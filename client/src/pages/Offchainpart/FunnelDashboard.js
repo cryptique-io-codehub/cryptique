@@ -31,17 +31,32 @@ const HorizontalFunnelVisualization = ({analytics}) => {
     0;
 
   return (
-    <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow font-sans" style={{fontFamily: 'Poppins, sans-serif'}}>
+    <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
+      {/* Import fonts to match on-chain components */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
+      
       {/* Stats display */}
       <div className="flex justify-end w-full mb-6">
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
-            <p className="text-sm font-normal">Conversion</p>
-            <p className="text-xl font-medium">{(((analytics?.walletsConnected)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-sm font-normal font-poppins">Conversion</p>
+            <p className="text-xl font-medium font-montserrat">{(((analytics?.walletsConnected)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
           </div>
           <div className="px-4 py-2">
-            <p className="text-sm font-normal">Web3 users</p>
-            <p className="text-xl font-medium">{(((analytics?.web3Visitors)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-sm font-normal font-poppins">Web3 users</p>
+            <p className="text-xl font-medium font-montserrat">{(((analytics?.web3Visitors)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
           </div>
         </div>
       </div>
@@ -61,7 +76,7 @@ const HorizontalFunnelVisualization = ({analytics}) => {
               className="w-4 h-4 mr-2" 
               style={{ backgroundColor: item.fill }}
             ></div>
-            <p className="text-base font-normal">{item.name}</p>
+            <p className="text-base font-normal font-poppins">{item.name}</p>
           </div>
         ))}
       </div>
@@ -160,6 +175,7 @@ const HorizontalFunnel = ({ data, analytics }) => {
             fill="white"
             fontWeight="normal"
             fontSize="16"
+            fontFamily="'Poppins', sans-serif"
           >
             {textValue}
           </text>
@@ -173,7 +189,7 @@ const HorizontalFunnel = ({ data, analytics }) => {
 const FunnelDashboard = ({analytics}) => {
   return (
     <div className="w-full">
-      <h2 className="text-lg font-semibold mb-4 font-montserrat">User Funnel Dashboard</h2>
+      <h1 className="text-lg font-semibold mb-4 font-montserrat">User Funnel Dashboard</h1>
       <HorizontalFunnelVisualization analytics={analytics}/>
     </div>
   );

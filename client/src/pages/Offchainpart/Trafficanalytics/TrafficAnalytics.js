@@ -68,20 +68,31 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
   }, [analytics]);
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6 font-poppins">
-      {/* Import the fonts in the head */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-      `}</style>
-
-      <h1 className="text-2xl font-bold mb-6 font-montserrat">Traffic Analytics</h1>
+    <div className="p-2 md:p-4 max-w-full overflow-hidden">
+      {/* Page Title */}
+      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">TrafficAnalytics</h1>
       
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Traffic Sources Component */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
+        <MetricCard title="Total Sessions" value={formatNumber(metrics.totalSessions)} source={metrics.bestSource} />
+        <MetricCard title="Web3 Users" value={formatNumber(metrics.web3Users)} source={metrics.bestSourceByWeb3} />
+        <MetricCard title="Wallets Connected" value={formatNumber(metrics.walletsConnected)} source={metrics.bestSourceByWallets} />
+        <div className="col-span-2 md:col-span-1 bg-white rounded-lg shadow p-2 md:p-4">
+          <div className="text-xs md:text-sm text-gray-500 mb-1">Least effective source</div>
+          <div className="flex items-center justify-center h-12 md:h-24">
+            <span className="text-lg md:text-xl font-bold">{metrics.leastEffectiveSource}</span>
+          </div>
+        </div>
+        <MetricCard title="Best Conversion" value={metrics.avgConversion} source={metrics.bestSource} />
+        <MetricCard title="Avg Bounce Rate" value={metrics.avgBounceRate} source={metrics.bestSource} />
+      </div>
+
+      {/* Attribution Journey + Traffic Sources */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="col-span-1 md:col-span-2 bg-white rounded-lg shadow">
+          <AttributionJourneySankey analytics={analytics} setanalytics={setanalytics} />
+        </div>
+        <div className="col-span-1 md:col-span-1">
           <TrafficSourcesComponent 
             analytics={analytics}
             setanalytics={setanalytics}
@@ -89,25 +100,60 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
             setTrafficSources={setTrafficSources} 
           />
         </div>
-        
-        {/* User Behavior Component */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">User Behavior</h2>
-          {/* ... user behavior content ... */}
+      </div>
+
+      {/* Traffic Quality + Web3 Users by Medium */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Traffic Quality Analysis */}
+        <div className="bg-white rounded-lg shadow p-2 md:p-4">
+          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-4">Traffic Quality Analysis</h3>
+          <div className="text-center text-xs md:text-sm text-gray-600 mb-1 md:mb-2">Value-Per-Traffic-Source</div>
+          {trafficQualityData.length > 0 ? (
+            <div className="h-48 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    type="number" 
+                    dataKey="engagement" 
+                    name="Engagement Time" 
+                    unit=" mins"
+                    domain={[0, 'dataMax + 1']}
+                  />
+                  <YAxis 
+                    type="number" 
+                    dataKey="conversion" 
+                    name="Conversion Rate" 
+                    unit="%" 
+                    domain={[0, 'dataMax + 5']}
+                  />
+                  <ZAxis type="category" dataKey="source" name="Source" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  {trafficQualityData.map(entry => (
+                    <Scatter 
+                      key={entry.source} 
+                      name={entry.source} 
+                      data={[entry]} 
+                      fill={entry.color} 
+                      shape="circle"
+                      legendType="circle"
+                    />
+                  ))}
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-48 md:h-64 flex items-center justify-center text-gray-500">
+              No traffic source data available
+            </div>
+          )}
         </div>
-        
-        {/* Geographic Distribution */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Geographic Distribution</h2>
-          {/* ... geographic distribution content ... */}
+
+        {/* Web3 Users by Medium */}
+        <div className="col-span-1">
+          <Web3UsersByMedium analytics={analytics} />
         </div>
-        
-        {/* Device Breakdown */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Device Breakdown</h2>
-          {/* ... device breakdown content ... */}
-        </div>
-        
       </div>
     </div>
   );

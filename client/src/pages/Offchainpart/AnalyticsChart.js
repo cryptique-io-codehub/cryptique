@@ -2,7 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import axiosInstance from '../../axiosInstance';
 
-// Remove custom styles and use Tailwind with consistent font classes
+// Match styling with on-chain components
+const styles = {
+  container: {
+    fontFamily: "'Poppins', sans-serif"
+  },
+  heading: {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600,
+  },
+  buttonActive: {
+    backgroundColor: '#8b5cf6',
+    color: 'white',
+    fontWeight: 500,
+    fontFamily: "'Poppins', sans-serif"
+  },
+  buttonInactive: {
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+    fontFamily: "'Poppins', sans-serif"
+  }
+};
+
 const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   const [chartData, setChartData] = useState({
     labels: [],
@@ -174,7 +195,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
         </div>
@@ -184,7 +205,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
           <div className="text-red-500 font-poppins">{error}</div>
         </div>
@@ -194,7 +215,7 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
 
   if (!chartData || !chartData.labels.length) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white p-4 rounded-lg shadow mt-4 w-full">
         <div className="h-64 flex items-center justify-center">
           <div className="text-gray-500 font-poppins">No data available</div>
         </div>
@@ -203,19 +224,31 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6" style={styles.container}>
+      {/* Import fonts to match on-chain components */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
+      
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 font-montserrat">Analytics Overview</h2>
+        <h2 className="text-lg font-semibold text-gray-800 font-montserrat" style={styles.heading}>Analytics Overview</h2>
         <div className="flex space-x-2">
           {['daily', 'weekly', 'monthly', 'yearly'].map((period) => (
             <button
               key={period}
               onClick={() => setTimeframe(period)}
-              className={`px-3 py-1 rounded-md text-sm font-poppins ${
-                timeframe === period 
-                  ? 'bg-purple-500 text-white font-medium' 
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+              className={`px-3 py-1 rounded-md text-sm font-poppins`}
+              style={timeframe === period ? styles.buttonActive : styles.buttonInactive}
             >
               {period.charAt(0).toUpperCase() + period.slice(1)}
             </button>
@@ -233,32 +266,45 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="time" 
-              tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
+            <XAxis
+              dataKey="time"
+              interval={getLabelInterval(chartData.labels.length)}
+              tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }}
             />
-            <YAxis 
-              tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
-            />
+            <YAxis tick={{ fontSize: 12, fontFamily: "'Poppins', sans-serif" }} />
             <Tooltip 
-              contentStyle={{ fontFamily: "'Poppins', sans-serif" }}
-              labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }}
+              contentStyle={{ 
+                backgroundColor: 'white', 
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.375rem',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                fontFamily: "'Poppins', sans-serif"
+              }}
+              labelStyle={{
+                fontWeight: 600,
+                fontFamily: "'Montserrat', sans-serif"
+              }}
             />
             <Legend 
-              wrapperStyle={{ fontFamily: "'Poppins', sans-serif" }}
+              wrapperStyle={{ 
+                fontSize: 12, 
+                fontFamily: "'Poppins', sans-serif" 
+              }} 
             />
-            <Area
-              type="monotone"
-              dataKey="visitors"
-              stroke="#fcd34d"
-              fill="rgba(252, 211, 77, 0.5)"
+            <Area 
+              type="monotone" 
+              dataKey="visitors" 
+              stroke="#fcd34d" 
+              fill="rgba(252, 211, 77, 0.5)" 
+              strokeWidth={2}
               name="Visitors"
             />
-            <Area
-              type="monotone"
-              dataKey="wallets"
-              stroke="#8b5cf6"
-              fill="rgba(139, 92, 246, 0.7)"
+            <Area 
+              type="monotone" 
+              dataKey="wallets" 
+              stroke="#8b5cf6" 
+              fill="rgba(139, 92, 246, 0.7)" 
+              strokeWidth={2}
               name="Wallets"
             />
           </AreaChart>

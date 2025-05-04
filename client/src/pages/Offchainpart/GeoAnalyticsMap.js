@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import WorldMap from "react-svg-worldmap";
 
 // Extended ISO Alpha-2 code to country name map
@@ -35,9 +35,6 @@ const countryCodeToName = {
 };
 
 const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
   const getMetricsPerCountry = (sessions) => {
     if (!Array.isArray(sessions)) return {};
     const countryMetrics = new Map();
@@ -130,75 +127,72 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry }) => 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold mb-4 font-montserrat">Geographic Distribution</h2>
-      
-      {/* Loading state */}
-      {loading && (
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
-        </div>
-      )}
-      
-      {/* Error state */}
-      {error && (
-        <div className="text-red-500 p-4 text-center font-poppins">{error}</div>
-      )}
-      
-      {/* No data state */}
-      {!loading && !error && Object.keys(countryMetrics).length === 0 && (
-        <div className="text-gray-500 p-4 text-center font-poppins">No geographic data available</div>
-      )}
-      
-      {/* Data visualization */}
-      {!loading && !error && Object.keys(countryMetrics).length > 0 && (
-        <div className="space-y-6">
-          {/* Map visualization */}
-          <div className="h-64 md:h-96 relative">
-            <WorldMap
-              color="blue"
-              title="Unique Users by Country"
-              valueSuffix=" users"
-              size="lg"
-              data={mapData}
-              onClickFunction={({ countryName, countryCode, countryValue }) => {
-                setSelectedCountry(countryCode.toUpperCase());
-              }}
-            />
-          </div>
+    <div className="w-full bg-white rounded-lg shadow p-6 mt-4 mb-0">
+      {/* Import fonts to match on-chain components */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
           
-          {/* Top countries table */}
-          <div>
-            <h3 className="text-md font-medium mb-2 font-montserrat">Top Countries</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Country</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Visitors</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Percentage</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200 font-poppins">
-                  {topCountries.map(({ country, value, web3Users, walletConnections }) => {
-                    const countryCode = country.toUpperCase();
-                    const countryName = countryCodeToName[countryCode] || countryCode;
-                    const flagEmoji = getCountryFlag(countryCode);
-                    return (
-                      <tr key={country}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-montserrat">{flagEmoji} {countryName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">{value} users</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">{web3Users} web3</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">{walletConnections} wallets</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
+      
+      {/* Standardized header text */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 font-montserrat">Users by Country</h2>
+        <div className="relative">
+          <select className="p-2 border border-gray-300 rounded-md text-sm font-poppins bg-white text-gray-700">
+            <option>This Month</option>
+            <option>Last Month</option>
+            <option>Last 3 Months</option>
+          </select>
         </div>
-      )}
+      </div>
+
+      {/* World Map */}
+      <div className="mb-6">
+        <WorldMap
+          color="blue"
+          title="Unique Users by Country"
+          valueSuffix=" users"
+          size="lg"
+          data={mapData}
+          onClickFunction={({ countryName, countryCode, countryValue }) => {
+            setSelectedCountry(countryCode.toUpperCase());
+          }}
+        />
+      </div>
+
+      {/* Top Countries List with standardized text */}
+      <div className="pb-0">
+        <h3 className="text-base font-semibold mb-3 font-montserrat">Top Countries</h3>
+        <ul className="space-y-3">
+          {topCountries.map(({ country, value, web3Users, walletConnections }) => {
+            const countryCode = country.toUpperCase();
+            const countryName = countryCodeToName[countryCode] || countryCode;
+            const flagEmoji = getCountryFlag(countryCode);
+            return (
+              <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                <span className="flex items-center">
+                  <span className="text-lg mr-3">{flagEmoji}</span>
+                  <span className="font-medium text-sm font-poppins">{countryName}</span>
+                </span>
+                <div className="flex space-x-6">
+                  <span className="font-medium text-sm font-poppins">{value} users</span>
+                  <span className="text-purple-600 text-sm font-poppins">{web3Users} web3</span>
+                  <span className="text-green-600 text-sm font-poppins">{walletConnections} wallets</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 };

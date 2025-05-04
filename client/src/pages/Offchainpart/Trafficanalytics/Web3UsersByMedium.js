@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Web3UsersByMedium = ({ analytics }) => {
   const [timeFrame, setTimeFrame] = useState('24h');
   const [chartData, setChartData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!analytics?.sessions?.length) {
@@ -95,56 +93,78 @@ const Web3UsersByMedium = ({ analytics }) => {
   }, [analytics, timeFrame]);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold mb-4 font-montserrat">Web3 Users by Source</h2>
-      
-      {isLoading && (
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
-        </div>
-      )}
-      
-      {error && (
-        <div className="text-red-500 p-4 text-center font-poppins">{error}</div>
-      )}
-      
-      {!isLoading && !error && chartData.length === 0 && (
-        <div className="text-gray-500 p-4 text-center font-poppins">No data available</div>
-      )}
-      
-      {!isLoading && !error && chartData.length > 0 && (
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 15 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="source" 
-                tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
-              />
-              <YAxis 
-                tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }}
-              />
-              <Tooltip 
-                contentStyle={{ fontFamily: "'Poppins', sans-serif" }}
-                labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }}
-              />
-              <Legend 
-                wrapperStyle={{ fontFamily: "'Poppins', sans-serif" }}
-              />
-              <Bar 
-                dataKey="web3users" 
-                name="Web3 Users" 
-                fill="#8884d8" 
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar 
-                dataKey="walletsConnected" 
-                name="Wallets Connected" 
-                fill="#82ca9d"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+    <div className="bg-white rounded-lg shadow p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Web3 Users by Medium</h3>
+        <select 
+          className="border rounded px-2 py-1 text-sm"
+          value={timeFrame}
+          onChange={(e) => setTimeFrame(e.target.value)}
+        >
+          <option value="24h">Last 24 Hours</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="365d">Last 365 Days</option>
+        </select>
+      </div>
+
+      {chartData.length > 0 ? (
+        <>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={chartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="medium" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === 'conversion') {
+                      return [`${value}%`, 'Conversion Rate'];
+                    }
+                    return [value, name === 'web3Users' ? 'Web3 Users' : 'Total Users'];
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="web3Users" 
+                  name="Web3 Users" 
+                  stroke="#8884d8" 
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="totalUsers" 
+                  name="Total Users" 
+                  stroke="#82ca9d" 
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold mb-2">Conversion Rates by Medium</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {chartData.map((item) => (
+                <div key={item.medium} className="bg-gray-50 p-2 rounded">
+                  <div className="text-sm font-medium">{item.medium}</div>
+                  <div className="text-lg font-bold">{item.conversion}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="h-64 flex items-center justify-center text-gray-500">
+          No data available for the selected period
         </div>
       )}
     </div>
