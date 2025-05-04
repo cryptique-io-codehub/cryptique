@@ -57,12 +57,13 @@ const cleanModelName = (modelName) => {
 
 // Helper function to create Google API request config
 const createGoogleApiConfig = (additionalHeaders = {}) => {
-    const apiKey = process.env.GEMINI_API;
-    console.log('API Key check:', { hasKey: !!apiKey });
+    // Check for environment variable, then use fallback
+    const apiKey = process.env.GEMINI_API || 'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+    console.log('API Key check:', { hasKey: !!apiKey, length: apiKey ? apiKey.length : 0 });
     
     if (!apiKey) {
-        console.error('Missing GEMINI_API environment variable');
-        throw new Error('GEMINI_API environment variable is not set');
+        console.error('Missing GEMINI_API environment variable and fallback key');
+        throw new Error('No API key available for Gemini');
     }
     
     return {
@@ -80,11 +81,11 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
 router.get('/models', async (req, res) => {
     try {
         console.log('Handling /models request');
-        const apiKey = process.env.GEMINI_API;
-        console.log('API Key status:', { exists: !!apiKey });
+        const apiKey = process.env.GEMINI_API || 'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+        console.log('API Key status:', { exists: !!apiKey, length: apiKey ? apiKey.length : 0 });
 
         if (!apiKey) {
-            throw new Error('GEMINI_API environment variable is not set');
+            throw new Error('No API key available for Gemini');
         }
 
         console.log('Fetching models from Google AI API...');

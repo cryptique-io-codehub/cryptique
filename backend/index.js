@@ -217,6 +217,35 @@ try {
   console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);
+  
+  // Create a fallback router that returns appropriate errors
+  const fallbackRouter = express.Router();
+  
+  // Configure CORS for the fallback router
+  fallbackRouter.use(cors({
+    origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS']
+  }));
+  
+  // Add fallback routes for the main AI endpoints
+  fallbackRouter.get('/models', (req, res) => {
+    res.status(503).json({
+      error: 'AI service temporarily unavailable',
+      details: 'The AI service is currently unavailable. Please try again later.'
+    });
+  });
+  
+  fallbackRouter.post('/generate', (req, res) => {
+    res.status(503).json({
+      error: 'AI service temporarily unavailable',
+      details: 'The AI service is currently unavailable. Please try again later.'
+    });
+  });
+  
+  // Add the fallback router
+  app.use("/api/ai", fallbackRouter);
+  console.log('Fallback AI router loaded');
 }
 
 // Add catch-all route for debugging
