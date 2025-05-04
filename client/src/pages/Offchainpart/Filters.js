@@ -145,7 +145,27 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       });
 
       if (response.status === 200) {
-        selectedWebsite.isVerified = true;
+        // Update the local website object with verified status
+        if (response.data.website) {
+          const updatedWebsite = response.data.website;
+          
+          // Update the current website with verified status
+          setSelectedWebsite(updatedWebsite);
+          
+          // Update the website in the websitearray
+          const updatedWebsites = websitearray.map(site => 
+            site.siteId === updatedWebsite.siteId ? updatedWebsite : site
+          );
+          setWebsitearray(updatedWebsites);
+          
+          // Set success message
+          setfalsemessage("Website verified successfully!");
+        } else {
+          // Handle legacy response format
+          selectedWebsite.isVerified = true;
+          setfalsemessage("Website verified successfully!");
+        }
+        
         localStorage.setItem("idy", selectedWebsite.siteId);
         localStorage.setItem("selectedWebsite", selectedWebsite.Domain);
         setscriptmodel(false);
@@ -160,12 +180,14 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       // Handle specific status codes
       if (error.response) {
         if (error.response.status === 404) {
-          setfalsemessage("Cryptique analytics script not found on the page");
+          setfalsemessage("Cryptique analytics script not found on the page. For JavaScript frameworks, make sure the script is loaded before verification.");
         } else if (error.response.status === 403) {
-          setfalsemessage("site-id does not match or is missing");
+          setfalsemessage("site-id does not match or is missing. Check your installation code.");
+        } else {
+          setfalsemessage("Verification failed. Please check that your site is accessible.");
         }
       } else {
-        setfalsemessage("Verification failed");
+        setfalsemessage("Verification failed. Please try again later.");
       }
     }
     finally {

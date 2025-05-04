@@ -236,13 +236,16 @@ exports.verify = async (req, res) => {
         }
 
         // Update website as verified
-        await Website.findOneAndUpdate(
+        const updatedWebsite = await Website.findOneAndUpdate(
             { Domain },
             { $set: { isVerified: true } },
             { new: true }
         );
         console.log("Verification successful");
-        return res.status(200).json({ message: "Verification successful" });
+        return res.status(200).json({ 
+            message: "Verification successful", 
+            website: updatedWebsite 
+        });
 
     } catch (e) {
         console.error('Verification error:', e);

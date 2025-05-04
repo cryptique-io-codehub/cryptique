@@ -116,7 +116,30 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
 
       if (response.status === 200) {
         showMessage("Website verified successfully! Analytics data will now be collected.", "success");
-        fetchWebsites();
+        
+        // Update the local state with the verified website
+        if (response.data.website) {
+          // Update the website in the array
+          const updatedWebsites = websiteArray.map(site => 
+            site.siteId === response.data.website.siteId ? response.data.website : site
+          );
+          setWebsiteArray(updatedWebsites);
+          
+          // Update selected website if it's the one being verified
+          if (selectedWebsite && selectedWebsite.siteId === response.data.website.siteId) {
+            setSelectedWebsite(response.data.website);
+          }
+          
+          // If this is the currently selected website in the app, update localStorage
+          if (localStorage.getItem("idy") === response.data.website.siteId) {
+            localStorage.setItem("idy", response.data.website.siteId);
+            localStorage.setItem("selectedWebsite", response.data.website.Domain);
+          }
+        } else {
+          // Fallback to reloading all websites if no website is returned
+          fetchWebsites();
+        }
+        
         setScriptModal(false);
       }
     } catch (error) {
