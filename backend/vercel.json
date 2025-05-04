@@ -8,6 +8,21 @@
   ],
   "routes": [
     {
+      "src": "/api/sdk/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-cryptique-site-id",
+        "Access-Control-Max-Age": "86400"
+      },
+      "continue": true
+    },
+    {
+      "src": "/api/sdk/(.*)",
+      "methods": ["OPTIONS"],
+      "dest": "/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "index.js"
     }
@@ -29,6 +44,5 @@
       "path": "/api/sdk/update-all-analytics-stats-monthly",
       "schedule": "*/30 * * * *"
     }
-
   ]
 }

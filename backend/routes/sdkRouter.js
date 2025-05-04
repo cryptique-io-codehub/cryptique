@@ -11,25 +11,27 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
   credentials: false,
-  maxAge: 86400 // 24 hours
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Middleware to ensure CORS headers are set
-const setCorsHeaders = (req, res, next) => {
+// Apply CORS to all routes in this router
+router.use(cors(corsOptions));
+
+// Middleware to ensure CORS headers are set - this is a backup in case the cors middleware doesn't work
+router.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
   res.header('Access-Control-Max-Age', '86400');
+  
+  // Handle OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
   next();
-};
-
-// Apply CORS and headers middleware to all routes
-router.use(cors(corsOptions));
-router.use(setCorsHeaders);
-
-// Handle preflight requests explicitly
-router.options('*', (req, res) => {
-  res.status(204).end();
 });
 
 // Define routes with error handling

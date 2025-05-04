@@ -40,25 +40,8 @@ const sdkCorsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware globally with appropriate configurations
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if(!origin) return callback(null, true);
-    
-    if(origin.includes('app.cryptique.io') || 
-       origin.includes('cryptique.io') || 
-       origin.includes('localhost')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true,
-  maxAge: 86400
-}));
+// We'll handle CORS per-route instead of globally
+// This prevents conflicts between different CORS policies
 
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
@@ -75,6 +58,11 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
     res.header('Access-Control-Max-Age', '86400');
+    
+    // Handle preflight OPTIONS requests for SDK routes immediately
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
   } 
   // For all other routes, use more restrictive CORS
   else if (origin && (origin.includes('app.cryptique.io') || 
@@ -129,20 +117,23 @@ app.get("/debug/routes", (req, res) => {
 // Load routes with specific CORS configurations
 console.log('Loading routes...');
 
-app.use("/api/auth", userRouter);
-app.use("/api/team", require("./routes/teamRouter"));
-app.use("/api/sdk", require("./routes/sdkRouter"));
-app.use("/api/website", require("./routes/websiteRouter"));
-app.use("/api/analytics", require("./routes/analytics"));
-app.use("/api/onchain", require("./routes/onChainRouter"));
-app.use("/api/campaign", campaignRouter);
-app.use("/api/contracts", require("./routes/smartContractRouter"));
-app.use("/api/transactions", require("./routes/transactionRouter"));
+// Apply specific CORS for SDK routes
+app.use("/api/sdk", cors(sdkCorsOptions), require("./routes/sdkRouter"));
+
+// Apply main CORS for all other routes
+app.use("/api/auth", cors(mainCorsOptions), userRouter);
+app.use("/api/team", cors(mainCorsOptions), require("./routes/teamRouter"));
+app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter"));
+app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
+app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));
+app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
+app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
+app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/api/ai", aiRouter);
+  app.use("/api/ai", cors(mainCorsOptions), aiRouter);
   console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);
