@@ -304,31 +304,31 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="w-full" style={{ maxHeight: '350px', overflowY: 'auto', overflowX: 'hidden' }}>
+          <table className="w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat w-2/5">
                   Source
                 </th>
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat w-1/5">
                   Visitors
                 </th>
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat w-1/5">
                   Web3 Users
                 </th>
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat w-1/5">
                   Wallets
                 </th>
-                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
+                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat w-1/5">
                   Conversion
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 font-poppins">
-              {allSources.slice(0, 10).map((sourceData, idx) => (
+              {allSources.map((sourceData, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 truncate">
                     {sourceData.source}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
@@ -350,14 +350,6 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
               ))}
             </tbody>
           </table>
-          
-          {allSources.length > 10 && (
-            <div className="mt-4 text-center">
-              <span className="text-gray-500 text-sm font-poppins">
-                Showing top 10 of {allSources.length} sources
-              </span>
-            </div>
-          )}
         </div>
       )}
     </div>

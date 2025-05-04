@@ -594,7 +594,7 @@ return (
                             {/* User Type Donut Chart - Now 50% width */}
                             <div className="w-full lg:w-1/2 bg-white shadow-md rounded-lg p-6">
                               <h3 className="text-lg font-semibold mb-4 font-montserrat text-center">User Type</h3>
-                              <div className="h-48 md:h-64">
+                              <div style={{ height: '250px' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                   <PieChart>
                                     <Pie
