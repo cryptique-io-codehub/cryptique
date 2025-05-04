@@ -141,131 +141,93 @@ exports.verify = async (req, res) => {
         const $ = cheerio.load(data.data);
         let foundScript = false;
         let foundSiteId = false;
-
-        // Check for script tags with src attribute
-        $('script').each((i, element) => {
-            const script = $(element);
-            
-            // Check direct script inclusion
-            if (script.attr('src') === targetScriptSrc) {
-                foundScript = true;
-                if (script.attr('site-id') === siteId) {
-                    foundSiteId = true;
-                }
-                return false; // Exit the loop
-            }
-            
-            // Check script content for dynamically created scripts
-            const scriptContent = script.html() || '';
-            
-            // Check various patterns of dynamic script injection
-            const patterns = [
-                // Pattern 1: Direct script.src assignment
-                new RegExp(`script\\.src\\s*=\\s*['"]${escapeRegExp(targetScriptSrc)}['"]`),
-                
-                // Pattern 2: setAttribute style
-                new RegExp(`script\\.setAttribute\\(['"]src['"]\\s*,\\s*['"]${escapeRegExp(targetScriptSrc)}['"]\\)`),
-                
-                // Pattern 3: createElement style with multiple lines
-                new RegExp(`createElement\\(['"](script|script)['"]\\)[\\s\\S]*?${escapeRegExp(targetScriptSrc)}`),
-                
-                // Pattern 4: URL as variable then assigned
-                new RegExp(`${escapeRegExp(targetScriptSrc)}`),
-                
-                // Pattern 5: GTM variable reference
-                new RegExp(`\\{\\{[^\\}]*CryptiqID[^\\}]*\\}\\}`),
-                
-                // Pattern 6: GTM variable with different naming
-                new RegExp(`\\{\\{[^\\}]*SiteID[^\\}]*\\}\\}`),
-                
-                // Pattern 7: GTM direct value
-                new RegExp(`dataLayer\\.push\\(\\s*\\{[^\\}]*${escapeRegExp(siteId)}[^\\}]*\\}\\s*\\)`)
+        
+        // First, check if this is a GTM implementation
+        // Check for Google Tag Manager script
+        const gtmScripts = $('script:contains("googletagmanager")');
+        const hasGTM = gtmScripts.length > 0 || 
+                       data.data.includes('dataLayer') || 
+                       data.data.includes('GTM-');
+        
+        // Store the full HTML for pattern matching (especially important for GTM)
+        const htmlContent = data.data;
+        
+        // Function to check for GTM implementation specifically
+        const checkForGTM = () => {
+            // Look for GTM patterns in the HTML content
+            const gtmPatterns = [
+                /googletagmanager\.com\/gtm\.js/i,
+                /googletagmanager\.com\/gtag\/js/i,
+                /new Date\(\)\.getTime\(\),event:'gtm\./i,
+                /dataLayer\.push\(/i,
+                /GTM-[A-Z0-9]{5,7}/i
             ];
             
-            // Check if any pattern matches
-            for (const pattern of patterns) {
-                if (pattern.test(scriptContent)) {
+            // If GTM is found, look for Cryptique patterns in the HTML
+            if (gtmPatterns.some(pattern => pattern.test(htmlContent))) {
+                console.log('GTM implementation detected, checking for Cryptique script in GTM');
+                
+                // Look for script patterns that might indicate our script is loaded through GTM
+                const cryptiquePatterns = [
+                    /cryptique\.io/i,
+                    /cryptique.*script/i,
+                    /CryptiqueSDK/i,
+                    new RegExp(`site-id=['"\\s]*${escapeRegExp(siteId)}['"\\s]*`, 'i'),
+                    new RegExp(`${escapeRegExp(siteId)}`, 'i')
+                ];
+                
+                // If any Cryptique pattern is found, consider the script present
+                if (cryptiquePatterns.some(pattern => pattern.test(htmlContent))) {
+                    console.log('Cryptique script markers found in GTM implementation');
                     foundScript = true;
                     
-                    // Now check for site-id
+                    // Check for site ID specifically
                     const siteIdPatterns = [
-                        // Pattern 1: Direct attribute assignment
-                        new RegExp(`site-id['":]\\s*['"]${escapeRegExp(siteId)}['"]`),
-                        
-                        // Pattern 2: setAttribute style
-                        new RegExp(`setAttribute\\(['"]site-id['"]\\s*,\\s*['"]${escapeRegExp(siteId)}['"]\\)`),
-                        
-                        // Pattern 3: As variable
-                        new RegExp(`["']${escapeRegExp(siteId)}["']`),
-                        
-                        // Pattern 4: GTM variable reference
-                        new RegExp(`\\{\\{[^\\}]*\\}\\}`)
+                        new RegExp(`site-id=['"\\s]*${escapeRegExp(siteId)}['"\\s]*`, 'i'),
+                        new RegExp(`["']${escapeRegExp(siteId)}["']`, 'i')
                     ];
                     
-                    for (const siteIdPattern of siteIdPatterns) {
-                        if (siteIdPattern.test(scriptContent)) {
-                            foundSiteId = true;
-                            return false; // Exit the loop
-                        }
-                    }
-                }
-            }
-        });
-
-        // Additional checks for GTM implementations
-        const checkForGTM = () => {
-            // Check for Google Tag Manager script
-            const hasGTM = $('script').filter((i, el) => {
-                const src = $(el).attr('src') || '';
-                return src.includes('googletagmanager.com/gtm.js') || 
-                       src.includes('googletagmanager.com/gtag/js');
-            }).length > 0;
-            
-            // If GTM is found, we'll be more lenient with verification
-            if (hasGTM) {
-                console.log('GTM script found on the page');
-                // If we found the script but not the site ID, and GTM is present,
-                // we'll assume the site ID might be set via GTM variables
-                if (foundScript && !foundSiteId) {
-                    console.log('GTM detected, assuming site-id is set via GTM variable');
-                    foundSiteId = true;
-                }
-                
-                // If we haven't found the script, but GTM is present,
-                // we'll check for potential custom variable patterns
-                if (!foundScript) {
-                    // Look for potential dataLayer pushes
-                    const dataLayerPushes = $('script').filter((i, el) => {
-                        const content = $(el).html() || '';
-                        return content.includes('dataLayer.push') || 
-                               content.includes('cryptique') ||
-                               content.includes(siteId);
-                    }).length > 0;
-                    
-                    if (dataLayerPushes) {
-                        console.log('GTM dataLayer pushes found, assuming script is loaded via GTM');
-                        foundScript = true;
+                    if (siteIdPatterns.some(pattern => pattern.test(htmlContent))) {
+                        console.log('Site ID found in GTM implementation');
                         foundSiteId = true;
                     }
                 }
             }
         };
         
-        // Additional check for scripts that might be injected by frameworks like Next.js/React
-        const htmlContent = $.html();
-        if (!foundScript) {
-            const scriptPatterns = [
-                new RegExp(`["']${escapeRegExp(targetScriptSrc)}["']`),
-                new RegExp(`src=["']${escapeRegExp(targetScriptSrc)}["']`)
-            ];
-            
-            for (const pattern of scriptPatterns) {
-                if (pattern.test(htmlContent)) {
-                    foundScript = true;
-                    break;
+        // Check for direct script implementation first
+        $('script').each((i, elem) => {
+            const src = $(elem).attr('src');
+            if (src && src.includes("cryptique")) {
+                foundScript = true;
+                console.log('Found Cryptique script:', src);
+                
+                // Check if the script has the correct site ID
+                const scriptContent = $(elem).toString();
+                if (scriptContent.includes(`site-id="${siteId}"`) || 
+                    scriptContent.includes(`site-id='${siteId}'`)) {
+                    foundSiteId = true;
+                    console.log('Found correct site ID in script tag');
                 }
             }
-        }
+        });
+        
+        // For inline scripts that might load our script
+        $('script:not([src])').each((i, elem) => {
+            const scriptContent = $(elem).html();
+            if (scriptContent && 
+                (scriptContent.includes("cryptique") || 
+                 scriptContent.includes("CryptiqueSDK"))) {
+                foundScript = true;
+                console.log('Found Cryptique reference in inline script');
+                
+                // Check for site ID in the inline script
+                if (scriptContent.includes(siteId)) {
+                    foundSiteId = true;
+                    console.log('Found site ID in inline script');
+                }
+            }
+        });
         
         // If script is found but site-id wasn't found yet, do another pass for site-id in the full HTML
         if (foundScript && !foundSiteId) {
@@ -273,12 +235,52 @@ exports.verify = async (req, res) => {
                                  new RegExp(`["']site-id["']\\s*,\\s*["']${escapeRegExp(siteId)}["']`).test(htmlContent);
             if (siteIdInHtml) {
                 foundSiteId = true;
+                console.log('Found site ID in HTML content');
+            }
+        }
+        
+        // Check for the script patterns in the full HTML if not found yet
+        if (!foundScript) {
+            const scriptPatterns = [
+                new RegExp(`["']${escapeRegExp(targetScriptSrc)}["']`),
+                new RegExp(`src=["']${escapeRegExp(targetScriptSrc)}["']`),
+                /cryptique.*script/i,
+                /CryptiqueSDK/i
+            ];
+            
+            for (const pattern of scriptPatterns) {
+                if (pattern.test(htmlContent)) {
+                    foundScript = true;
+                    console.log('Found script pattern in HTML content');
+                    break;
+                }
             }
         }
         
         // Check for GTM implementation if we haven't confirmed both script and site-id
-        if (!foundScript || !foundSiteId) {
+        if (hasGTM && (!foundScript || !foundSiteId)) {
             checkForGTM();
+        }
+        
+        // SPECIAL CASE: Directly check for analytics data presence
+        // If we have analytics data flowing but can't detect the script, we can still verify
+        try {
+            const website = await Website.findOne({ siteId: siteId });
+            if (website && website.analytics) {
+                // We have analytics data, which means the script is working
+                // Let's query the analytics to see if there's recent data
+                const Analytics = require('../models/analytics');
+                const analytics = await Analytics.findOne({ siteId: siteId });
+                
+                if (analytics && analytics.totalVisitors > 0) {
+                    console.log('Analytics data found, overriding script detection');
+                    foundScript = true;
+                    foundSiteId = true;
+                }
+            }
+        } catch (analyticsError) {
+            console.error('Error checking analytics data:', analyticsError);
+            // Continue with normal verification - don't fail because of this check
         }
 
         if (!foundScript) {
@@ -293,10 +295,16 @@ exports.verify = async (req, res) => {
 
         // Update website as verified
         const updatedWebsite = await Website.findOneAndUpdate(
-            { Domain },
+            { siteId: siteId },  // Use siteId for finding website - more reliable than Domain alone
             { $set: { isVerified: true } },
             { new: true }
         );
+        
+        if (!updatedWebsite) {
+            console.log('Website not found with siteId:', siteId);
+            return res.status(404).json({ message: "Website not found with the provided siteId" });
+        }
+        
         console.log("Verification successful");
         return res.status(200).json({ 
             message: "Verification successful", 

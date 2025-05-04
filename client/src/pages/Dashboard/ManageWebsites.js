@@ -69,11 +69,23 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const generateGTMCode = (siteId) => {
     return `// Custom HTML Tag in Google Tag Manager
 <script>
-  var script = document.createElement('script');
-  script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-  script.setAttribute('site-id', '${siteId}');
-  document.head.appendChild(script);
-</script>`;
+  // Check if script is already loaded to prevent duplicate initialization
+  if (!window.CryptiqueSDK) {
+    window.CryptiqueSDK = { initialized: true, siteId: '${siteId}' };
+    
+    var script = document.createElement('script');
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.setAttribute('site-id', '${siteId}');
+    document.head.appendChild(script);
+  } else if (!window.CryptiqueSDK.siteId) {
+    // If SDK exists but no siteId set, just set the siteId
+    window.CryptiqueSDK.siteId = '${siteId}';
+  }
+</script>
+
+<!-- Trigger Configuration -->
+Trigger Type: Page View / Window Loaded
+`;
   };
 
   // Function to show a message to the user
