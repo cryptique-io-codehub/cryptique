@@ -624,6 +624,29 @@ class AnalyticsProcessor {
     
     return retentionData;
   }
+
+  /**
+   * Process all user journeys for a site and update analytics
+   * @param {string} siteId - The site ID to process
+   * @returns {Promise<Object>} - Result of processing
+   */
+  static async processAllUserJourneys(siteId) {
+    try {
+      console.log(`Starting user journey processing for site: ${siteId}`);
+      
+      // Create processor instance
+      const processor = new AnalyticsProcessor(siteId);
+      
+      // Process journeys
+      const result = await processor.processUserJourneys(siteId);
+      
+      console.log(`Completed user journey processing for site: ${siteId}`, result);
+      return result;
+    } catch (error) {
+      console.error(`Error processing user journeys for site ${siteId}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = AnalyticsProcessor; 
