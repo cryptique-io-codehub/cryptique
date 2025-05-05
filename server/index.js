@@ -8,9 +8,9 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration
+// CORS configuration - Updated to allow requests from any origin during development
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: '*', // Allow all origins for development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true

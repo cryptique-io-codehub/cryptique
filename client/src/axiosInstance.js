@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Use the actual production URL with https
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+// Use the actual production URL with https, fallback to localhost for development
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'http://localhost:5000';
+
+console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
@@ -14,7 +16,7 @@ const axiosInstance = axios.create({
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
   // Ensure credentials are included for CORS requests if needed
-  withCredentials: true, // Changed to true to allow cookies to be sent
+  withCredentials: false, // Changed to false for development with wildcard CORS
   // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
@@ -22,6 +24,9 @@ const axiosInstance = axios.create({
 // Add request interceptor to dynamically get the token before each request
 axiosInstance.interceptors.request.use(
   config => {
+    // Log requests for debugging
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
+    
     // Get token dynamically on each request - not from closure
     const token = localStorage.getItem("accessToken");
     if (token) {
@@ -30,15 +35,28 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   error => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor to handle common errors
 axiosInstance.interceptors.response.use(
-  response => response,
+  response => {
+    console.log(`API Response: ${response.status} from ${response.config.url}`, {
+      data: response.data ? 'Data received' : 'No data'
+    });
+    return response;
+  },
   async error => {
     const originalRequest = error.config;
+    
+    console.error('API Response Error:', {
+      url: originalRequest?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data 
+    });
     
     // Handle 401 errors (token expired)
     if (error.response && error.response.status === 401 && !originalRequest._retry) {

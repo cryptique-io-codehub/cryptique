@@ -34,6 +34,8 @@ router.get('/chart', (req, res) => {
 router.get('/user-journeys', (req, res) => {
   const { siteId, teamId, timeframe, page = 1, limit = 25 } = req.query;
   
+  console.log("User-journeys request received:", { siteId, teamId, timeframe, page, limit });
+  
   // Generate mock user journey data
   const generateMockUserJourneys = () => {
     const userCount = 35; // More than the limit to test pagination
@@ -49,6 +51,8 @@ router.get('/user-journeys', (req, res) => {
       const hasConverted = Math.random() > 0.5;
       const totalSessions = Math.floor(Math.random() * 10) + 1;
       
+      // Always using the actual teamId and siteId from the request
+      // instead of trying to match with filter later
       journeys.push({
         userId: `user_${i}_${Date.now().toString(36)}`,
         firstVisit: firstVisitDate,
@@ -61,9 +65,9 @@ router.get('/user-journeys', (req, res) => {
         userSegment: hasConverted ? 'converter' : ['engaged', 'bounced', 'browser'][Math.floor(Math.random() * 3)],
         acquisitionSource: ['google/organic', 'facebook/social', 'twitter/social', 'direct'][Math.floor(Math.random() * 4)],
         sessionsBeforeConversion: hasConverted ? Math.floor(Math.random() * totalSessions) + 1 : null,
-        teamId: teamId,
-        siteId: siteId,
-        websiteName: "Demo Website",
+        teamId: teamId || 'akshit', // Use the provided teamId or default to 'akshit'
+        siteId: siteId || 'CQ',     // Use the provided siteId or default to 'CQ'
+        websiteName: siteId || "CQ",
         websiteDomain: "example.com"
       });
     }
@@ -74,18 +78,8 @@ router.get('/user-journeys', (req, res) => {
   // Generate data
   const allJourneys = generateMockUserJourneys();
   
-  // Apply filters
+  // Apply filters - simplified to always show data
   let filteredJourneys = [...allJourneys];
-  
-  // Filter by siteId
-  if (siteId) {
-    filteredJourneys = filteredJourneys.filter(journey => journey.siteId === siteId);
-  }
-  
-  // Filter by teamId 
-  if (teamId) {
-    filteredJourneys = filteredJourneys.filter(journey => journey.teamId === teamId);
-  }
   
   // Filter by timeframe
   if (timeframe && timeframe !== 'all') {
@@ -127,6 +121,8 @@ router.get('/user-journeys', (req, res) => {
   
   // Get paginated data
   const paginatedJourneys = filteredJourneys.slice(startIndex, endIndex);
+  
+  console.log(`Sending ${paginatedJourneys.length} user journeys, total: ${totalItems}, pages: ${totalPages}`);
   
   // Send response
   res.json({

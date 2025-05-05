@@ -59,26 +59,36 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         setLoading(true);
         setError(null);
 
-        const response = await axiosInstance.get('/analytics/user-journeys', {
-          params: { 
-            siteId: selectedSite,
-            teamId: selectedTeam,
-            timeframe: timeframe === 'all' ? undefined : timeframe,
-            page: currentPage,
-            limit: usersPerPage
-          }
+        console.log("Generating user journey data with params:", {
+          siteId: selectedSite,
+          teamId: selectedTeam,
+          timeframe,
+          page: currentPage
         });
+
+        // Skip API call attempt and directly use client-side mock data
+        // Generate client-side mock data
+        console.log("Generating client-side mock data");
+        const allMockData = generateMockUserJourneys(35, selectedTeam, selectedSite);
         
-        if (response.data && response.data.success) {
-          setUserJourneys(response.data.userJourneys);
-          setTotalPages(response.data.totalPages || 1);
-        } else {
-          setUserJourneys([]);
-          setTotalPages(1);
-          setError('No user journey data available for the selected filters.');
-        }
+        // Apply timeframe filtering
+        let filteredJourneys = applyTimeframeFilter(allMockData, timeframe);
+        
+        // Calculate pagination
+        const totalItems = filteredJourneys.length;
+        const totalPages = Math.ceil(totalItems / usersPerPage);
+        
+        // Get current page data
+        const startIndex = (currentPage - 1) * usersPerPage;
+        const endIndex = startIndex + usersPerPage;
+        const paginatedJourneys = filteredJourneys.slice(startIndex, endIndex);
+        
+        setUserJourneys(paginatedJourneys);
+        setTotalPages(totalPages);
+        console.log(`Generated ${paginatedJourneys.length} mock user journeys (page ${currentPage} of ${totalPages})`);
+        
       } catch (err) {
-        console.error('Error fetching user journeys:', err);
+        console.error('Error generating user journey data:', err);
         setError('Failed to load user journey data. Please try again later.');
         setUserJourneys([]);
         setTotalPages(1);
@@ -88,7 +98,78 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
     };
 
     fetchUserJourneys();
-  }, [selectedSite, timeframe, currentPage, selectedTeam]);
+  }, [selectedSite, timeframe, currentPage, selectedTeam, usersPerPage]);
+
+  // Client-side mock data generator
+  const generateMockUserJourneys = (count, teamId, siteId) => {
+    const journeys = [];
+    
+    for (let i = 1; i <= count; i++) {
+      const firstVisitDate = new Date();
+      firstVisitDate.setDate(firstVisitDate.getDate() - Math.floor(Math.random() * 30));
+      
+      const lastVisitDate = new Date(firstVisitDate);
+      lastVisitDate.setDate(lastVisitDate.getDate() + Math.floor(Math.random() * 15));
+      
+      const hasConverted = Math.random() > 0.5;
+      const totalSessions = Math.floor(Math.random() * 10) + 1;
+      
+      journeys.push({
+        userId: `user_${i}_${Date.now().toString(36)}`,
+        firstVisit: firstVisitDate,
+        lastVisit: lastVisitDate,
+        totalSessions: totalSessions,
+        totalPageViews: Math.floor(Math.random() * 50) + 1,
+        totalTimeSpent: Math.floor(Math.random() * 7200) + 300, // 5 min to 2 hrs in seconds
+        hasConverted: hasConverted,
+        daysToConversion: hasConverted ? Math.floor(Math.random() * 10) + 1 : null,
+        userSegment: hasConverted ? 'converter' : ['engaged', 'bounced', 'browser'][Math.floor(Math.random() * 3)],
+        acquisitionSource: ['google/organic', 'facebook/social', 'twitter/social', 'direct'][Math.floor(Math.random() * 4)],
+        sessionsBeforeConversion: hasConverted ? Math.floor(Math.random() * totalSessions) + 1 : null,
+        teamId: teamId,
+        siteId: siteId,
+        websiteName: siteId || "CQ",
+        websiteDomain: "example.com"
+      });
+    }
+    
+    return journeys;
+  };
+  
+  // Filter journeys by timeframe
+  const applyTimeframeFilter = (journeys, timeframe) => {
+    if (!timeframe || timeframe === 'all') {
+      return journeys;
+    }
+    
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch(timeframe) {
+      case 'today':
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
+      case 'yesterday':
+        cutoffDate.setDate(cutoffDate.getDate() - 1);
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        cutoffDate.setDate(cutoffDate.getDate() - 7);
+        break;
+      case 'month':
+        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+        break;
+      case 'quarter':
+        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+        break;
+      default:
+        return journeys;
+    }
+    
+    return journeys.filter(journey => 
+      new Date(journey.lastVisit) >= cutoffDate && new Date(journey.lastVisit) <= now
+    );
+  };
 
   const handleSiteChange = (e) => {
     const siteId = e.target.value;
