@@ -110,17 +110,17 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       
       // Track wallet connections and types
       if (isWeb3User(session)) {
-        metrics[countryName].web3Users.add(userId);
-        
-        // Track sources for web3 users
-        if (source) {
-          metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
-            users: new Set(),
-            web3Users: new Set()
-          };
-          metrics[countryName].sourceTraffic[source].web3Users.add(userId);
-        }
-        
+          metrics[countryName].web3Users.add(userId);
+          
+          // Track sources for web3 users
+          if (source) {
+            metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
+              users: new Set(),
+              web3Users: new Set()
+            };
+            metrics[countryName].sourceTraffic[source].web3Users.add(userId);
+          }
+          
         // Track wallet types if wallet info is available
         if (session.wallet && session.wallet.walletType) {
           const walletType = session.wallet.walletType;
@@ -128,10 +128,10 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
           metrics[countryName].wallets[walletType].add(userId);
         }
       }
-      
+        
       // Track wallet connections (has non-empty address) separately
       if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
-        metrics[countryName].walletConnections.add(userId);
+          metrics[countryName].walletConnections.add(userId);
       }
       
       // Track sources for all users

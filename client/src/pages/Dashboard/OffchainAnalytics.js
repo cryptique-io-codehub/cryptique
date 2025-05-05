@@ -29,6 +29,7 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [selectedDataPoint, setSelectedDataPoint] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState();
   const [verifyload,setverifyload]=useState(false);
+  const [web3UsersCount, setWeb3UsersCount] = useState(0);
 
   // State for analytics cards
   // console.log(analytics);
@@ -76,6 +77,14 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
     handleSelectWebsite();
   },[idy]);
 
+  // Add this after the other useEffect hooks
+  useEffect(() => {
+    // Update web3UsersCount whenever analytics data changes
+    if (analytics && analytics.sessions) {
+      const web3Stats = calculateWeb3Stats(analytics.sessions, analytics.uniqueVisitors);
+      setWeb3UsersCount(web3Stats.web3Users);
+    }
+  }, [analytics]);
 
 console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
@@ -264,6 +273,9 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
         // Update Web3 data using the standardized helper
         const web3Stats = calculateWeb3Stats(analytics?.sessions, analytics?.uniqueVisitors);
         
+        // Store the web3Users count in state for use in the card
+        setWeb3UsersCount(web3Stats.web3Users);
+
         // Update web3Data state with the standardized values
         const web3Data = {
           visitorsPercentage: `${web3Stats.web3Percentage}%`,
@@ -302,6 +314,10 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
     const visitorsPercent = ((dataPoint.visitors / totalVisitors) * 100).toFixed(2);
     const visitorsIncreasePercent = ((dataPoint.visitors / totalVisitors) * 100).toFixed(1);
     const walletsIncreasePercent = ((dataPoint.wallets / totalWallets) * 100).toFixed(1);
+    
+    // Calculate an appropriate value for web3 users based on the data point
+    const web3UsersEstimate = Math.round(dataPoint.visitors * (web3UsersCount / (analytics?.uniqueVisitors || 1)));
+    setWeb3UsersCount(web3UsersEstimate);
     
     setWeb3Data({
       visitorsPercentage: `${visitorsPercent}%`,
@@ -510,7 +526,7 @@ return (
                               />
                               <AnalyticsCard 
                                 label="Web3 Users" 
-                                data={analytics?.web3Visitors}
+                                data={web3UsersCount || 0}
                                 bgColor="bg-white" 
                                 textColor="text-black" 
                               />

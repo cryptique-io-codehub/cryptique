@@ -57,7 +57,7 @@ const AttributionJourneySankey = ({analytics}) => {
       
       // Sort sessions by timestamp (oldest first)
       user.sessions.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
-      
+    
       // Set the first session timestamp
       if (user.sessions.length > 0) {
         user.firstSessionTimestamp = user.sessions[0].timestamp;
@@ -65,19 +65,19 @@ const AttributionJourneySankey = ({analytics}) => {
       
       // Determine first source from the earliest session
       const firstSession = user.sessions[0];
-      let source = 'Direct';
-      
+        let source = 'Direct';
+        
       if (firstSession.utmData && firstSession.utmData.source && firstSession.utmData.source.trim() !== '') {
         source = normalizeDomain(firstSession.utmData.source);
       } else if (firstSession.referrer && firstSession.referrer !== 'direct') {
-        try {
+          try {
           const url = new URL(firstSession.referrer);
           source = normalizeDomain(url.hostname || url.host || firstSession.referrer);
-        } catch (e) {
+          } catch (e) {
           source = normalizeDomain(firstSession.referrer);
+          }
         }
-      }
-      
+        
       user.firstSource = source;
       
       // Check if user has ever connected a wallet in any session
@@ -224,36 +224,36 @@ const AttributionJourneySankey = ({analytics}) => {
     // Distribute remaining height proportionally based on values
     const valueSum = Object.values(totalValueBySource).reduce((sum, val) => sum + val, 0);
     let currentY = diagramPadding;
-    
-    // Position source nodes
+  
+  // Position source nodes
     allSources.forEach((source, index) => {
-      const sourceData = finalData.filter(item => item.source === source);
+    const sourceData = finalData.filter(item => item.source === source);
       const totalVisitors = sourceData[0].total;
       
       // Calculate height based on value proportion plus minimum height
       const valueRatio = totalValueBySource[source] / valueSum;
       const additionalHeight = remainingHeight * valueRatio;
       const nodeHeight = minNodeHeight + additionalHeight;
-      
-      nodes[source] = {
+    
+    nodes[source] = {
         x: diagramPadding,
         y: currentY,
         width: nodeWidth,
         height: nodeHeight,
-        color: getColorForIndex(index),
-        totalVisitors: totalVisitors
-      };
+      color: getColorForIndex(index),
+      totalVisitors: totalVisitors
+    };
       
       // Update for next node
       currentY += nodeHeight + nodeMargin;
       maxSourceNodeHeight = Math.max(maxSourceNodeHeight, nodeHeight);
-    });
-    
+  });
+  
     // Now position target nodes with similar logic
     let targetY = diagramPadding;
     const targetValueSum = {};
     allTargets.forEach(target => {
-      const targetData = finalData.filter(item => item.target === target);
+    const targetData = finalData.filter(item => item.target === target);
       targetValueSum[target] = targetData.reduce((sum, item) => sum + item.value, 0);
     });
     
@@ -264,8 +264,8 @@ const AttributionJourneySankey = ({analytics}) => {
       const valueRatio = targetValueSum[target] / totalTargetValueSum;
       const additionalHeight = remainingHeight * valueRatio;
       const nodeHeight = minNodeHeight + additionalHeight;
-      
-      nodes[target] = {
+    
+    nodes[target] = {
         x: svgWidth - diagramPadding - nodeWidth,
         y: targetY,
         width: nodeWidth,
@@ -366,14 +366,14 @@ const AttributionJourneySankey = ({analytics}) => {
     if (!text) return '';
     return text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
   };
-  
+
   // Get flow color - simplified color logic
   const getFlowColor = (target) => {
     return target === 'Wallet Connected' ? '#28a745' : '#dc3545';
   };
 
   return (
-    <div className="w-full">
+      <div className="w-full">
       <div className="font-poppins">
         <div className="text-center text-sm text-gray-600 mb-4">
           User journey from traffic source to conversion or drop-off
@@ -382,10 +382,10 @@ const AttributionJourneySankey = ({analytics}) => {
           <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="xMidYMid meet">
             {/* Flows (render first so they appear behind nodes) */}
             <g className="flows">
-              {finalData.map((flow, index) => (
+            {finalData.map((flow, index) => (
                 <g key={`flow-${index}`}>
-                  <path 
-                    d={createSankeyPath(flow)}
+              <path
+                d={createSankeyPath(flow)}
                     fill={getFlowColor(flow.target)}
                     fillOpacity={0.3}
                     stroke={getFlowColor(flow.target)}
@@ -393,7 +393,7 @@ const AttributionJourneySankey = ({analytics}) => {
                   />
                   {/* Only show flow value if significant enough */}
                   {flow.value > 2 && (
-                    <text 
+                  <text
                       x={(nodes[flow.source].x + nodeWidth + nodes[flow.target].x) / 2}
                       y={(flow.sourceY + flow.sourceHeight / 2 + flow.targetY + flow.targetHeight / 2) / 2}
                       textAnchor="middle"
@@ -423,30 +423,30 @@ const AttributionJourneySankey = ({analytics}) => {
                     rx={4}
                     ry={4}
                   />
-                  <text 
+                <text
                     x={nodes[key].x + nodeWidth/2} 
                     y={nodes[key].y + nodes[key].height/2}
-                    textAnchor="middle"
+                  textAnchor="middle"
                     dominantBaseline="middle"
                     fontFamily="'Montserrat', sans-serif"
                     fontSize="12"
-                    fontWeight="600"
+                  fontWeight="600"
                     fill="#FFFFFF"
-                  >
+                >
                     {truncateText(key, 12)}
-                  </text>
+                </text>
                   {/* Show total count for source nodes slightly more compact */}
-                  <text 
+              <text 
                     x={nodes[key].x + nodeWidth/2} 
                     y={nodes[key].y - 8}
                     textAnchor="middle"
                     fontFamily="'Poppins', sans-serif"
                     fontSize="11"
-                    fontWeight="500"
+                fontWeight="500"
                     fill="#666666"
-                  >
+              >
                     {nodes[key].totalVisitors} users
-                  </text>
+              </text>
                 </g>
               ))}
             </g>
@@ -464,7 +464,7 @@ const AttributionJourneySankey = ({analytics}) => {
                     rx={4}
                     ry={4}
                   />
-                  <text 
+              <text 
                     x={nodes[key].x + nodeWidth/2} 
                     y={nodes[key].y + nodes[key].height/2}
                     textAnchor="middle"
@@ -473,9 +473,9 @@ const AttributionJourneySankey = ({analytics}) => {
                     fontSize="13"
                     fontWeight="600"
                     fill="#FFFFFF"
-                  >
+              >
                     {key}
-                  </text>
+              </text>
                 </g>
               ))}
             </g>
@@ -694,7 +694,7 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       const walletsCount = walletsBySource[source] ? walletsBySource[source].size : 0;
       const conversionRate = conversionRates[source] || 0;
       const bounceRate = bounceRates[source] || 0;
-      
+    
       // Update best source by Web3 users
       if (web3Count > maxWeb3Count) {
         maxWeb3Count = web3Count;
@@ -717,13 +717,13 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       if (conversionRate < minConversionRate && totalVisitors >= 10) {
         minConversionRate = conversionRate;
         leastEffectiveSource = source;
-      }
+    }
       
       // Update source with highest bounce rate
       if (bounceRate > maxBounceRate) {
         maxBounceRate = bounceRate;
         sourceWithHighestBounce = source;
-      }
+    }
     });
     
     // Calculate average conversion and bounce rates across all sources

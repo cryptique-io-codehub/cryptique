@@ -149,42 +149,42 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry, hideT
       <div className="flex flex-col md:flex-row">
         {/* World Map - uses full width when hideTopCountries is true */}
         <div className={`w-full ${!hideTopCountries ? 'md:w-2/3 md:pr-4' : ''}`}>
-          <WorldMap
-            color="blue"
-            title="Unique Users by Country"
-            valueSuffix=" users"
-            size="lg"
-            data={mapData}
-            onClickFunction={({ countryName, countryCode, countryValue }) => {
-              setSelectedCountry(countryCode.toUpperCase());
-            }}
-          />
-        </div>
+        <WorldMap
+          color="blue"
+          title="Unique Users by Country"
+          valueSuffix=" users"
+          size="lg"
+          data={mapData}
+          onClickFunction={({ countryName, countryCode, countryValue }) => {
+            setSelectedCountry(countryCode.toUpperCase());
+          }}
+        />
+      </div>
 
         {/* Top Countries List - Only show if hideTopCountries is false */}
         {!hideTopCountries && (
           <div className="w-full md:w-1/3 mt-4 md:mt-0">
             <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
             <ul className="space-y-3 text-sm text-gray-700 font-poppins">
-              {topCountries.map(({ country, value, web3Users, walletConnections }) => {
-                const countryCode = country.toUpperCase();
-                const countryName = countryCodeToName[countryCode] || countryCode;
-                const flagEmoji = getCountryFlag(countryCode);
-                return (
-                  <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                    <span className="flex items-center">
+          {topCountries.map(({ country, value, web3Users, walletConnections }) => {
+            const countryCode = country.toUpperCase();
+            const countryName = countryCodeToName[countryCode] || countryCode;
+            const flagEmoji = getCountryFlag(countryCode);
+            return (
+              <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                <span className="flex items-center">
                       <span className="text-xl mr-3">{flagEmoji}</span>
                       <span className="font-medium">{countryName}</span>
-                    </span>
+                </span>
                     <div className="flex flex-col space-y-1">
                       <span className="font-semibold">{value} users</span>
                       <span className="text-purple-600">{web3Users} web3</span>
                       <span className="text-green-600">{walletConnections} wallets</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
           </div>
         )}
       </div>
