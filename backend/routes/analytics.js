@@ -126,7 +126,7 @@ router.get('/user-sessions', async (req, res) => {
 // Get user journeys
 router.get('/user-journeys', async (req, res) => {
   try {
-    const { siteId, timeframe } = req.query;
+    const { siteId, teamId, timeframe } = req.query;
     
     if (!siteId) {
       return res.status(400).json({ error: 'Site ID is required' });
@@ -142,6 +142,33 @@ router.get('/user-journeys', async (req, res) => {
     
     // Extract user journeys
     let userJourneys = analytics.userJourneys || [];
+    
+    // If userJourneys is empty, try to process them first
+    if (userJourneys.length === 0) {
+      console.log('No user journeys found, attempting to process them now for site:', siteId);
+      
+      // Process the user journeys
+      const AnalyticsProcessor = require('../utils/analyticsProcessor');
+      const processor = new AnalyticsProcessor(siteId);
+      
+      try {
+        const processingResult = await processor.processUserJourneys(siteId);
+        
+        if (processingResult && processingResult.success) {
+          // Reload the analytics document after processing
+          const updatedAnalytics = await Analytics.findOne({ siteId });
+          if (updatedAnalytics && updatedAnalytics.userJourneys) {
+            userJourneys = updatedAnalytics.userJourneys;
+            console.log(`Successfully processed ${userJourneys.length} user journeys for site ${siteId}`);
+          }
+        } else {
+          console.log('User journey processing returned no results:', processingResult);
+        }
+      } catch (processingError) {
+        console.error('Error during automatic user journey processing:', processingError);
+        // Continue with empty user journeys (don't fail the request)
+      }
+    }
     
     // Apply timeframe filtering if specified
     if (timeframe && timeframe !== 'all') {

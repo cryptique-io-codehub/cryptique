@@ -7,6 +7,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
   const [userJourneys, setUserJourneys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [processingJourneys, setProcessingJourneys] = useState(false);
   
   // Filter states
   const [timeframe, setTimeframe] = useState('all');
@@ -134,6 +135,62 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
     setCurrentPage(page);
   };
 
+  // Function to manually process user journeys
+  const processUserJourneys = async () => {
+    if (!selectedSite) {
+      setError('Please select a website to process user journeys.');
+      return;
+    }
+    
+    try {
+      setProcessingJourneys(true);
+      setError(null);
+      
+      console.log('Manually processing user journeys for site:', selectedSite);
+      
+      const response = await axiosInstance.post('/analytics/process-journeys', {
+        siteId: selectedSite,
+        teamId: selectedTeam
+      });
+      
+      console.log('Process journeys response:', response.data);
+      
+      if (response.data && response.data.success) {
+        // If processing was successful, refresh the user journeys
+        const journeysResponse = await axiosInstance.get('/analytics/user-journeys', {
+          params: { 
+            siteId: selectedSite,
+            teamId: selectedTeam,
+            timeframe: timeframe === 'all' ? undefined : timeframe,
+            page: 1, // Reset to first page
+            limit: usersPerPage
+          }
+        });
+        
+        if (journeysResponse.data && journeysResponse.data.success && 
+            Array.isArray(journeysResponse.data.userJourneys)) {
+          setUserJourneys(journeysResponse.data.userJourneys);
+          setTotalPages(journeysResponse.data.totalPages || 1);
+          setCurrentPage(1); // Reset to first page
+          
+          if (journeysResponse.data.userJourneys.length === 0) {
+            setError('No user journey data available even after processing.');
+          } else {
+            // Show a success message
+            setError(null);
+          }
+        }
+      } else {
+        setError('Failed to process user journeys. Please try again later.');
+      }
+    } catch (err) {
+      console.error('Error processing user journeys:', err);
+      setError('Failed to process user journeys. Please try again later.');
+    } finally {
+      setProcessingJourneys(false);
+    }
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen p-4 md:p-6">
       {/* Add Header component to ensure team selector is visible */}
@@ -160,7 +217,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 value={selectedSite}
                 onChange={handleSiteChange}
                 className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={loading || websites.length === 0}
+                disabled={loading || processingJourneys || websites.length === 0}
               >
                 <option value="">All Websites</option>
                 {websites.map((site) => (
@@ -181,7 +238,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={loading}
+                disabled={loading || processingJourneys}
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -191,6 +248,30 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 <option value="quarter">Last 3 Months</option>
               </select>
             </div>
+            
+            {/* Process journeys button - only visible if no journeys are found */}
+            {userJourneys.length === 0 && !loading && (
+              <div className="w-full md:w-auto mt-2 md:mt-0 md:ml-auto">
+                <button
+                  onClick={processUserJourneys}
+                  disabled={processingJourneys || !selectedSite}
+                  className={`px-4 py-2 rounded-md text-white font-medium ${
+                    processingJourneys || !selectedSite
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {processingJourneys ? (
+                    <>
+                      <span className="inline-block mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    'Process User Journeys'
+                  )}
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Selected filters display */}
@@ -223,7 +304,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
 
         <UserJourneyTable 
           userJourneys={userJourneys} 
-          isLoading={loading} 
+          isLoading={loading || processingJourneys} 
         />
 
         {/* Pagination */}
@@ -232,9 +313,9 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
             <nav className="inline-flex rounded-md shadow-sm -space-x-px">
               <button
                 onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1 || loading}
+                disabled={currentPage === 1 || loading || processingJourneys}
                 className={`relative inline-flex items-center px-2 py-2 rounded-l-md border ${
-                  currentPage === 1 || loading
+                  currentPage === 1 || loading || processingJourneys
                     ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
                     : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                 }`}
@@ -247,7 +328,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage > 2 && (
                 <button
                   onClick={() => handlePageChange(1)}
-                  disabled={loading}
+                  disabled={loading || processingJourneys}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   1
@@ -265,7 +346,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage > 1 && (
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={loading}
+                  disabled={loading || processingJourneys}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {currentPage - 1}
@@ -283,7 +364,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage < totalPages && (
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={loading}
+                  disabled={loading || processingJourneys}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {currentPage + 1}
@@ -301,7 +382,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage < totalPages - 1 && (
                 <button
                   onClick={() => handlePageChange(totalPages)}
-                  disabled={loading}
+                  disabled={loading || processingJourneys}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {totalPages}
@@ -310,9 +391,9 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               
               <button
                 onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages || loading}
+                disabled={currentPage === totalPages || loading || processingJourneys}
                 className={`relative inline-flex items-center px-2 py-2 rounded-r-md border ${
-                  currentPage === totalPages || loading
+                  currentPage === totalPages || loading || processingJourneys
                     ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
                     : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                 }`}
@@ -331,7 +412,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               Showing page {currentPage} of {totalPages}
               <span> • {userJourneys.length} users</span>
             </>
-          ) : !loading && (
+          ) : !loading && !processingJourneys && (
             <span>No user journey data available</span>
           )}
         </div>
