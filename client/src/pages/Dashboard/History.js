@@ -9,17 +9,16 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
   
   // Filter states
   const [timeframe, setTimeframe] = useState('all');
-  const [selectedTeam, setSelectedTeam] = useState('');
-  const [selectedSite, setSelectedSite] = useState(defaultSiteId || '');
+  const [selectedSite, setSelectedSite] = useState(defaultSiteId || localStorage.getItem("idy") || '');
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const usersPerPage = 25;
   
-  // Team and website options (these would come from an API in production)
-  const [teams, setTeams] = useState([]);
+  // Team and website options
   const [websites, setWebsites] = useState([]);
+  const selectedTeam = localStorage.getItem("selectedTeam") || '';
 
   // Mock data for development (remove when API is available)
   const mockUserJourneys = [
@@ -69,51 +68,33 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
     }))
   ];
 
-  // Mock data for teams and websites
-  const mockTeams = [
-    { id: "team1", name: "Marketing Team" },
-    { id: "team2", name: "Product Team" }
-  ];
-
-  const mockWebsites = [
-    { id: "site1", name: "Crypto Exchange", teamId: "team1" },
-    { id: "site2", name: "NFT Marketplace", teamId: "team1" },
-    { id: "site3", name: "DeFi Dashboard", teamId: "team2" }
-  ];
-
-  // Load teams and websites
+  // Load websites for the selected team
   useEffect(() => {
-    const fetchTeamsAndWebsites = async () => {
+    const fetchWebsites = async () => {
       try {
-        // In production, these would be API calls
-        // const teamsResponse = await axiosInstance.get('/teams');
-        // const websitesResponse = await axiosInstance.get('/websites');
-        // setTeams(teamsResponse.data.teams);
-        // setWebsites(websitesResponse.data.websites);
+        if (!selectedTeam) return;
         
-        // Using mock data for now
-        setTeams(mockTeams);
-        setWebsites(mockWebsites);
+        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
-        // If we have a default siteId, select the corresponding team
-        if (defaultSiteId) {
-          const website = mockWebsites.find(site => site.id === defaultSiteId);
-          if (website) {
-            setSelectedTeam(website.teamId);
+        if (response.status === 200 && response.data.websites) {
+          setWebsites(response.data.websites);
+          
+          // If we have a default siteId or a stored one, select it
+          if (selectedSite) {
+            // Confirm the website exists under this team
+            const websiteExists = response.data.websites.some(site => site.siteId === selectedSite);
+            if (!websiteExists) {
+              setSelectedSite(''); // Reset if not found
+            }
           }
         }
       } catch (err) {
-        console.error('Error fetching teams and websites:', err);
+        console.error('Error fetching websites:', err);
       }
     };
 
-    fetchTeamsAndWebsites();
-  }, [defaultSiteId]);
-
-  // Filter websites based on selected team
-  const filteredWebsites = selectedTeam 
-    ? websites.filter(website => website.teamId === selectedTeam)
-    : websites;
+    fetchWebsites();
+  }, [selectedTeam, selectedSite]);
 
   useEffect(() => {
     const fetchUserJourneys = async () => {
@@ -146,17 +127,16 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         // For now, use mock data with a simulated delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Filter mock data based on selected team and site
+        // Filter mock data based on selected site
         let filteredJourneys = [...mockUserJourneys];
         
-        if (selectedTeam) {
-          filteredJourneys = filteredJourneys.filter(journey => journey.teamId === selectedTeam);
-        }
-        
         if (selectedSite) {
-          const siteName = mockWebsites.find(site => site.id === selectedSite)?.name;
-          if (siteName) {
-            filteredJourneys = filteredJourneys.filter(journey => journey.websiteName === siteName);
+          const website = websites.find(site => site.siteId === selectedSite);
+          if (website) {
+            filteredJourneys = filteredJourneys.filter(journey => 
+              journey.websiteName === website.Name || 
+              journey.websiteDomain === website.Domain
+            );
           }
         }
         
@@ -186,17 +166,17 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
     };
 
     fetchUserJourneys();
-  }, [selectedTeam, selectedSite, timeframe, currentPage]);
-
-  const handleTeamChange = (e) => {
-    const newTeamId = e.target.value;
-    setSelectedTeam(newTeamId);
-    setSelectedSite(''); // Reset site selection when team changes
-    setCurrentPage(1); // Reset to first page
-  };
+  }, [selectedSite, timeframe, currentPage, websites]);
 
   const handleSiteChange = (e) => {
-    setSelectedSite(e.target.value);
+    const siteId = e.target.value;
+    setSelectedSite(siteId);
+    
+    // Store selected website ID in localStorage for persistence
+    if (siteId) {
+      localStorage.setItem("idy", siteId);
+    }
+    
     setCurrentPage(1); // Reset to first page
   };
 
@@ -217,24 +197,6 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         {/* Filters and controls */}
         <div className="mb-6 bg-white rounded-lg shadow p-4">
           <div className="flex flex-wrap items-center gap-4">
-            {/* Team filter */}
-            <div className="w-full md:w-auto">
-              <label htmlFor="team" className="block text-sm font-medium text-gray-700 mb-1">
-                Team
-              </label>
-              <select
-                id="team"
-                value={selectedTeam}
-                onChange={handleTeamChange}
-                className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Teams</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
-                ))}
-              </select>
-            </div>
-            
             {/* Website filter */}
             <div className="w-full md:w-auto">
               <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
@@ -245,11 +207,12 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 value={selectedSite}
                 onChange={handleSiteChange}
                 className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={!selectedTeam}
               >
                 <option value="">All Websites</option>
-                {filteredWebsites.map((site) => (
-                  <option key={site.id} value={site.id}>{site.name}</option>
+                {websites.map((site) => (
+                  <option key={site.siteId} value={site.siteId}>
+                    {site.Name || site.Domain}
+                  </option>
                 ))}
               </select>
             </div>
@@ -279,12 +242,14 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
           <div className="mt-4 flex flex-wrap gap-2">
             {selectedTeam && (
               <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                Team: {teams.find(t => t.id === selectedTeam)?.name || selectedTeam}
+                Team: {selectedTeam}
               </div>
             )}
             {selectedSite && (
               <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                Website: {websites.find(s => s.id === selectedSite)?.name || selectedSite}
+                Website: {websites.find(s => s.siteId === selectedSite)?.Name || 
+                          websites.find(s => s.siteId === selectedSite)?.Domain || 
+                          selectedSite}
               </div>
             )}
             {timeframe !== 'all' && (
