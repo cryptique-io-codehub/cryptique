@@ -3,9 +3,6 @@ import axiosInstance from "../../axiosInstance";
 import UserJourneyTable from "../../components/UserJourneyTable";
 import Header from "../../components/Header";
 
-// Set to true for development with mock data fallback, false for production
-const USE_MOCK_DATA_FALLBACK = false;
-
 const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) => {
   const [userJourneys, setUserJourneys] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +67,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
           limit: usersPerPage
         });
 
-        // Make the API call to get real user journey data
+        // Make the API call to get user journey data
         const response = await axiosInstance.get('/analytics/user-journeys', {
           params: { 
             siteId: selectedSite,
@@ -83,54 +80,34 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         
         console.log("User journeys API response:", response.data);
         
-        if (response.data && response.data.success && 
-            Array.isArray(response.data.userJourneys) && 
-            response.data.userJourneys.length > 0) {
-          setUserJourneys(response.data.userJourneys);
-          setTotalPages(response.data.totalPages || 1);
-          console.log(`Loaded ${response.data.userJourneys.length} user journeys from API`);
-        } else {
-          console.log("API returned success but no journeys data");
-          
-          // Only use mock data as fallback in development, not in production
-          if (USE_MOCK_DATA_FALLBACK) {
-            console.log("Falling back to mock data in development mode");
-            const mockData = generateMockUserJourneys(35, selectedTeam, selectedSite);
-            const filteredMockData = applyTimeframeFilter(mockData, timeframe);
-            const startIndex = (currentPage - 1) * usersPerPage;
-            const endIndex = startIndex + usersPerPage;
-            const paginatedMockData = filteredMockData.slice(startIndex, endIndex);
+        if (response.data && response.data.success) {
+          // Check if userJourneys array exists and set it (even if empty)
+          if (Array.isArray(response.data.userJourneys)) {
+            setUserJourneys(response.data.userJourneys);
+            setTotalPages(response.data.totalPages || 1);
+            console.log(`Loaded ${response.data.userJourneys.length} user journeys from API`);
             
-            setUserJourneys(paginatedMockData);
-            setTotalPages(Math.ceil(filteredMockData.length / usersPerPage));
+            // Only set error if userJourneys is empty
+            if (response.data.userJourneys.length === 0) {
+              setError('No user journey data available for the selected filters.');
+            }
           } else {
-            // In production, show empty state
+            console.log("API returned success but invalid journeys data format");
             setUserJourneys([]);
             setTotalPages(1);
-            setError('No user journey data available for the selected filters.');
+            setError('Invalid data format received from the server.');
           }
+        } else {
+          console.log("API returned success but no journeys data");
+          setUserJourneys([]);
+          setTotalPages(1);
+          setError('No user journey data available for the selected filters.');
         }
       } catch (err) {
         console.error('Error fetching user journeys:', err);
         setError('Failed to load user journey data. Please try again later.');
-        
-        // Only use mock data as fallback in development, not in production
-        if (USE_MOCK_DATA_FALLBACK) {
-          console.log("Error occurred, falling back to mock data in development mode");
-          const mockData = generateMockUserJourneys(35, selectedTeam, selectedSite);
-          const filteredMockData = applyTimeframeFilter(mockData, timeframe);
-          const startIndex = (currentPage - 1) * usersPerPage;
-          const endIndex = startIndex + usersPerPage;
-          const paginatedMockData = filteredMockData.slice(startIndex, endIndex);
-          
-          setUserJourneys(paginatedMockData);
-          setTotalPages(Math.ceil(filteredMockData.length / usersPerPage));
-          setError(null); // Clear error when using mock data
-        } else {
-          // In production, show empty state with error
-          setUserJourneys([]);
-          setTotalPages(1);
-        }
+        setUserJourneys([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
@@ -138,77 +115,6 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
 
     fetchUserJourneys();
   }, [selectedSite, timeframe, currentPage, selectedTeam, usersPerPage]);
-
-  // Client-side mock data generator - only used in development
-  const generateMockUserJourneys = (count, teamId, siteId) => {
-    const journeys = [];
-    
-    for (let i = 1; i <= count; i++) {
-      const firstVisitDate = new Date();
-      firstVisitDate.setDate(firstVisitDate.getDate() - Math.floor(Math.random() * 30));
-      
-      const lastVisitDate = new Date(firstVisitDate);
-      lastVisitDate.setDate(lastVisitDate.getDate() + Math.floor(Math.random() * 15));
-      
-      const hasConverted = Math.random() > 0.5;
-      const totalSessions = Math.floor(Math.random() * 10) + 1;
-      
-      journeys.push({
-        userId: `user_${i}_${Date.now().toString(36)}`,
-        firstVisit: firstVisitDate,
-        lastVisit: lastVisitDate,
-        totalSessions: totalSessions,
-        totalPageViews: Math.floor(Math.random() * 50) + 1,
-        totalTimeSpent: Math.floor(Math.random() * 7200) + 300, // 5 min to 2 hrs in seconds
-        hasConverted: hasConverted,
-        daysToConversion: hasConverted ? Math.floor(Math.random() * 10) + 1 : null,
-        userSegment: hasConverted ? 'converter' : ['engaged', 'bounced', 'browser'][Math.floor(Math.random() * 3)],
-        acquisitionSource: ['google/organic', 'facebook/social', 'twitter/social', 'direct'][Math.floor(Math.random() * 4)],
-        sessionsBeforeConversion: hasConverted ? Math.floor(Math.random() * totalSessions) + 1 : null,
-        teamId: teamId,
-        siteId: siteId,
-        websiteName: siteId || "CQ",
-        websiteDomain: "example.com"
-      });
-    }
-    
-    return journeys;
-  };
-  
-  // Filter journeys by timeframe - only used with mock data in development
-  const applyTimeframeFilter = (journeys, timeframe) => {
-    if (!timeframe || timeframe === 'all') {
-      return journeys;
-    }
-    
-    const now = new Date();
-    let cutoffDate = new Date();
-    
-    switch(timeframe) {
-      case 'today':
-        cutoffDate.setHours(0, 0, 0, 0);
-        break;
-      case 'yesterday':
-        cutoffDate.setDate(cutoffDate.getDate() - 1);
-        cutoffDate.setHours(0, 0, 0, 0);
-        break;
-      case 'week':
-        cutoffDate.setDate(cutoffDate.getDate() - 7);
-        break;
-      case 'month':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
-        break;
-      case 'quarter':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
-        break;
-      default:
-        return journeys;
-    }
-    
-    return journeys.filter(journey => 
-      new Date(journey.lastVisit) >= cutoffDate && new Date(journey.lastVisit) <= now
-    );
-  };
 
   const handleSiteChange = (e) => {
     const siteId = e.target.value;

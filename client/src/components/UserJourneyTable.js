@@ -51,7 +51,8 @@ const UserJourneyTable = ({ userJourneys = [], isLoading = false }) => {
   if (userJourneys.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center">
-        <p className="text-gray-500">No user journey data available.</p>
+        <p className="text-gray-500 mb-2">No user journey data available.</p>
+        <p className="text-gray-400 text-sm">Try changing your filters or selecting a different website.</p>
       </div>
     );
   }
