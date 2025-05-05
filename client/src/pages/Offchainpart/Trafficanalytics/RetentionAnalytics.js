@@ -376,7 +376,16 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
               let nextRetentionEnd = getEnd(nextRetentionStart);
               let dayIndex = 1;
 
-              while (dayIndex < periods && nextRetentionStart <= lastSessionDate) {
+              // Update this section to generate the correct number of periods
+              const maxPeriods = {
+                'Last 7 Days': 7,
+                'Last Month': 4,
+                'Last 3 Months': 3,
+                'Last Year': 12
+              }[timeFrame] || 7;
+
+              // Continue generating retention data for each subsequent period up to the maximum for this timeframe
+              while (dayIndex <= maxPeriods && nextRetentionStart <= lastSessionDate) {
                 const retentionSessions = allSessions.filter(session => {
                   const sessionDate = new Date(session.startTime);
                   return sessionDate >= nextRetentionStart && sessionDate <= nextRetentionEnd;
@@ -398,8 +407,8 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                 dayIndex++;
               }
 
-              // Fill remaining periods with null values
-              while (retentionByDay.length < periods) {
+              // Fill remaining periods with null values up to the maximum for this timeframe
+              while (retentionByDay.length <= maxPeriods) {
                 retentionByDay.push({
                   day: retentionByDay.length,
                   value: null,
@@ -429,6 +438,24 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
         const finalChartData = chartData.length > 0 ? chartData : [
           { month: 'No Data', DAU: 0, WAU: 0, MAU: 0 }
         ];
+        
+        // Update the default cohort data to match the timeframe
+        // When there's no real cohort data, we need to provide appropriate default data
+        // Generate default retentionByDay array based on timeframe
+        const getDefaultRetentionData = () => {
+          const periodsCount = {
+            'Last 7 Days': 7, 
+            'Last Month': 4,
+            'Last 3 Months': 3,
+            'Last Year': 12
+          }[timeFrame] || 7;
+          
+          return Array.from({ length: periodsCount + 1 }, (_, i) => ({ 
+            day: i, 
+            value: 0, 
+            percentage: '0.0' 
+          }));
+        };
         
         // Create the data object with real analytics
         const processedData = {
@@ -462,16 +489,7 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             { 
               date: 'No Data', 
               initialUsers: 0,
-              retentionByDay: [
-                { day: 0, value: 0 },
-                { day: 1, value: 0 },
-                { day: 2, value: 0 },
-                { day: 3, value: 0 },
-                { day: 4, value: 0 },
-                { day: 5, value: 0 },
-                { day: 6, value: 0 },
-                { day: 7, value: 0 }
-              ]
+              retentionByDay: getDefaultRetentionData()
             }
           ]
         };
@@ -513,6 +531,36 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
       return `${value} (${percentage}%)`;
     }
     return value.toString();
+  };
+
+  // Calculate the number of time periods based on the selected timeframe
+  const getTimePeriodsCount = () => {
+    switch (timeFrame) {
+      case 'Last 7 Days': return 8; // Initial + 7 days
+      case 'Last Month': return 5; // Initial + 4 weeks
+      case 'Last 3 Months': return 4; // Initial + 3 months
+      case 'Last Year': return 13; // Initial + 12 months
+      default: return 8;
+    }
+  };
+
+  // Get the appropriate label for the time period
+  const getTimePeriodLabel = (periodIndex) => {
+    if (periodIndex === 0) return 'Initial';
+    
+    switch (timeFrame) {
+      case 'Last 7 Days': return `Day ${periodIndex}`;
+      case 'Last Month': return `Week ${periodIndex}`;
+      case 'Last 3 Months': return `Month ${periodIndex}`;
+      case 'Last Year': 
+        // For yearly view, show quarterly labels (Q1, Q2, Q3, Q4) for months 3, 6, 9, 12
+        if (periodIndex === 3) return 'Q1';
+        if (periodIndex === 6) return 'Q2';
+        if (periodIndex === 9) return 'Q3';
+        if (periodIndex === 12) return 'Q4';
+        return `Month ${periodIndex}`;
+      default: return `Period ${periodIndex}`;
+    }
   };
 
   if (isLoading || !retentionData) {
@@ -592,10 +640,14 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
             <table className="min-w-full border-collapse text-sm font-poppins">
               <thead>
                 <tr>
-                  <th className="p-2 md:p-3 bg-gray-50 border text-left font-medium text-gray-600 sticky left-0 z-10">Day</th>
-                  {Array.from({ length: 8 }, (_, i) => (
+                  <th className="p-2 md:p-3 bg-gray-50 border text-left font-medium text-gray-600 sticky left-0 z-10">
+                    {timeFrame === 'Last 7 Days' ? 'Day' : 
+                     timeFrame === 'Last Month' ? 'Week' : 
+                     'Month'}
+                  </th>
+                  {Array.from({ length: getTimePeriodsCount() }, (_, i) => (
                     <th key={i} className="p-2 md:p-3 bg-gray-50 border text-center font-medium text-gray-600">
-                      {i === 0 ? 'Initial' : `Day ${i}`}
+                      {getTimePeriodLabel(i)}
                     </th>
                   ))}
                 </tr>
@@ -607,18 +659,18 @@ const RetentionAnalytics = ({analytics, setanalytics}) => {
                       <div className="font-medium">{cohort.date}</div>
                       <div className="text-xs text-gray-600">Users: {cohort.initialUsers}</div>
                     </td>
-                    {cohort.retentionByDay.slice(0, 8).map((day, dayIndex) => (
-                      <td 
-                        key={dayIndex} 
-                        className={`p-2 md:p-3 border text-center ${getCellColor(day.value, cohort.initialUsers)}`}
-                      >
-                        {formatRetentionValue(day.value, day.percentage)}
-                      </td>
-                    ))}
-                    {/* Fill the remaining cells if less than 8 days of data */}
-                    {Array.from({ length: 8 - cohort.retentionByDay.length }, (_, i) => (
-                      <td key={`empty-${i}`} className="p-2 md:p-3 border text-center bg-gray-100">-</td>
-                    ))}
+                    {/* Display retention data for the appropriate number of periods */}
+                    {Array.from({ length: getTimePeriodsCount() }, (_, dayIndex) => {
+                      const dayData = cohort.retentionByDay[dayIndex];
+                      return (
+                        <td 
+                          key={dayIndex} 
+                          className={`p-2 md:p-3 border text-center ${dayData ? getCellColor(dayData.value, cohort.initialUsers) : 'bg-gray-100'}`}
+                        >
+                          {dayData ? formatRetentionValue(dayData.value, dayData.percentage) : '-'}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
