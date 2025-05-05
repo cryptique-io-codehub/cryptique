@@ -115,15 +115,22 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
           web3Users: new Set(), // Users with wallet data
           walletConnections: new Set(), // Users who connected wallet (has address)
           wallets: {},
-          sourceTraffic: {}
+          sourceTraffic: {},
+          userSessionCounts: {} // Track number of sessions per user for retention calculation
         };
       }
       
       const { userId, duration, isBounce, pagesViewed } = session;
       
-      // Add user to unique users set
+      // Add user to unique users set and track session counts
       if (userId) {
         metrics[countryName].uniqueUsers.add(userId);
+        
+        // Track how many sessions this user has
+        if (!metrics[countryName].userSessionCounts[userId]) {
+          metrics[countryName].userSessionCounts[userId] = 0;
+        }
+        metrics[countryName].userSessionCounts[userId]++;
       }
       
       // Track sources with web3 users
@@ -214,6 +221,19 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         }
       });
       
+      // Calculate retention - the percentage of returning users (users with >1 session)
+      let returningUsers = 0;
+      let totalUsers = data.uniqueUsers.size;
+      
+      Object.values(data.userSessionCounts).forEach(sessionCount => {
+        if (sessionCount > 1) {
+          returningUsers++;
+        }
+      });
+      
+      const retentionRate = totalUsers > 0 ? 
+        ((returningUsers / totalUsers) * 100).toFixed(2) : "0.00";
+      
       countryStats[country] = {
         users: data.uniqueUsers.size,
         web3Users: data.web3Users.size,
@@ -233,8 +253,8 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
           `${((data.walletConnections.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0.00%",
         commonWallet: commonWallet !== "None" ? commonWallet : "No wallets detected",
         webTrafficSource: maxWeb3UserCount > 0 ? bestWeb3Source : "No web3 traffic",
-        retention: data.uniqueUsers.size > 0 ? 
-          `${(100 - ((data.bounces / data.totalSessions) * 100)).toFixed(2)}%` : "0.00%"
+        // Updated retention calculation based on returning users
+        retention: `${retentionRate}%`
       };
     });
     
