@@ -126,8 +126,11 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     document.head.appendChild(script);
   </script>`;
     setscriptcode(scriptHTML);
-    setscriptmodel(true);
-    // localStorage.setItem("showInstallationPopup", "true");
+    
+    // Only show installation popup if website is not verified
+    if (!website.isVerified) {
+      setscriptmodel(true);
+    }
     
     if (website.isVerified) {
       const new_response = await axiosInstance.get(`/sdk/analytics/${website.siteId}`);
