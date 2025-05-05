@@ -108,7 +108,26 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     if (selectteam) {
       fetchWebsites();
     }
-  }, []);
+    
+    // Setup event listener to detect team changes
+    const handleStorageChange = () => {
+      const newTeam = localStorage.getItem("selectedTeam");
+      if (newTeam && newTeam !== selectedTeam) {
+        setSelectedTeam(newTeam);
+        localStorage.removeItem("selectedWebsite");
+        localStorage.removeItem("idy");
+        if (newTeam) {
+          fetchWebsites();
+        }
+      }
+    };
+    
+    // Check for team changes every second
+    const intervalId = setInterval(handleStorageChange, 1000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [selectedTeam]);
   
 
   const handleSelectWebsite = async (website) => {

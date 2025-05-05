@@ -131,6 +131,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Load contracts from API on component mount
   useEffect(() => {
     fetchContractsFromAPI();
+    
+    // Setup event listener to detect team changes
+    const handleStorageChange = () => {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      // If the team changes, fetch contracts for the new team
+      if (currentTeam) {
+        fetchContractsFromAPI();
+        // Clear selected contract when team changes
+        setSelectedContract(null);
+        setSelectedContracts([]);
+        // Clear transactions cache
+        setTransactions({});
+      }
+    };
+    
+    // Check for team changes every second
+    const intervalId = setInterval(handleStorageChange, 1000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   // Remove the polling effect and replace with on-demand fetching
