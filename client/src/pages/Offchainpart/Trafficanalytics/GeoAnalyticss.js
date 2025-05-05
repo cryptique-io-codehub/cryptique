@@ -3,10 +3,20 @@ import GeoAnalyticsMap from '../GeoAnalyticsMap';
 import { isWeb3User } from '../../../utils/analyticsHelpers';
 
 
-// Format seconds into minutes and seconds
+// Enhance the formatDuration function for better handling of seconds
 const formatDuration = (seconds) => {
-  if (!seconds || isNaN(seconds) || seconds < 0) {
+  if (typeof seconds !== 'number' || isNaN(seconds) || seconds < 0) {
     return "00 mins 00 secs";
+  }
+  
+  // Handle extremely large values (edge case protection)
+  if (seconds > 86400) { // More than 24 hours
+    return "24+ hrs";
+  }
+  
+  // For very short durations (less than 1 second)
+  if (seconds < 1) {
+    return "00 mins 01 secs"; // Show at least 1 second
   }
   
   const mins = Math.floor(seconds / 60);
@@ -167,11 +177,15 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         metrics[countryName].bounces++;
       }
       
-      // Add page views
-      metrics[countryName].totalPageViews += pagesViewed || 0;
+      // Add page views with better validation
+      metrics[countryName].totalPageViews += (typeof pagesViewed === 'number' && !isNaN(pagesViewed)) 
+        ? pagesViewed 
+        : 0;
       
-      // Add session duration
-      metrics[countryName].totalDuration += duration || 0;
+      // Add session duration with better validation
+      metrics[countryName].totalDuration += (typeof duration === 'number' && !isNaN(duration) && duration > 0) 
+        ? duration 
+        : 0;
     });
     
     // Calculate aggregate metrics for each country
@@ -207,8 +221,10 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         bounceRate: data.totalSessions > 0 ? 
           `${((data.bounces / data.totalSessions) * 100).toFixed(2)}%` : "0.00%",
         totalPageViews: data.totalPageViews,
+        // Calculate avg page views per UNIQUE USER (not per session)
         avgPageViewPerVisit: data.uniqueUsers.size > 0 && data.totalPageViews > 0 ? 
-          (data.totalPageViews / data.totalSessions).toFixed(2) : "0.00",
+          (data.totalPageViews / data.uniqueUsers.size).toFixed(2) : "0.00",
+        // Calculate avg session duration per SESSION (not per user)
         avgVisitDuration: data.totalSessions > 0 && data.totalDuration > 0 ? 
           formatDuration(data.totalDuration / data.totalSessions) : "00 mins 00 secs",
         conversionRate: data.web3Users.size > 0 ? 
@@ -439,10 +455,13 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
             <DetailRow label="Most Common Wallet:" value={countryData.commonWallet} />
             <DetailRow label="Best Source by web3 traffic:" value={countryData.webTrafficSource} />
             <DetailRow label="Bounce rate:" value={countryData.bounceRate} />
-            <DetailRow label="Total Page views:" value={typeof countryData.totalPageViews === 'number' ? 
-              countryData.totalPageViews.toLocaleString() : countryData.totalPageViews} />
-            <DetailRow label="Avg Page view per visit:" value={countryData.avgPageViewPerVisit} />
-            <DetailRow label="Avg Visit Duration:" value={countryData.avgVisitDuration} />
+            <DetailRow 
+              label="Total Page views:" 
+              value={typeof countryData.totalPageViews === 'number' ? 
+                countryData.totalPageViews.toLocaleString() : countryData.totalPageViews || "0"} 
+            />
+            <DetailRow label="Avg Page Views per User:" value={countryData.avgPageViewPerVisit} />
+            <DetailRow label="Avg Session Duration:" value={countryData.avgVisitDuration} />
             <DetailRow label="Retention:" value={countryData.retention} />
           </div>
         </div>
