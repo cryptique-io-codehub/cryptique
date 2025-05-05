@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { generateAnalyticsData } = require('../services/analyticsService');
+const { 
+  getUserJourneys, 
+  getUserSessions, 
+  trackSession 
+} = require('../services/userJourneyService');
 
 // Get chart data
 router.get('/chart', (req, res) => {
@@ -31,17 +36,101 @@ router.get('/chart', (req, res) => {
 });
 
 // Get user journeys data
-router.get('/user-journeys', (req, res) => {
-  const { siteId, teamId, timeframe, page = 1, limit = 25 } = req.query;
-  
-  console.log("User-journeys request received:", { siteId, teamId, timeframe, page, limit });
-  
-  // Generate mock user journey data
-  const generateMockUserJourneys = () => {
-    const userCount = 35; // More than the limit to test pagination
-    const journeys = [];
+router.get('/user-journeys', async (req, res) => {
+  try {
+    const { siteId, teamId, timeframe, page = 1, limit = 25 } = req.query;
     
-    for (let i = 1; i <= userCount; i++) {
+    console.log("Received request for user journeys:", { siteId, teamId, timeframe, page, limit });
+    
+    // Use the service to get filtered and paginated user journeys
+    const result = await getUserJourneys({ siteId, teamId, timeframe }, page, limit);
+    
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching user journeys:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to fetch user journey data" 
+    });
+  }
+});
+
+// Get user sessions data
+router.get('/user-sessions', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+    
+    console.log("Received request for user sessions:", { userId });
+    
+    // Use the service to get user sessions
+    const result = await getUserSessions(userId);
+    
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching user sessions:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to fetch user session data" 
+    });
+  }
+});
+
+// Track a new session or update an existing one
+router.post('/track-session', async (req, res) => {
+  try {
+    const sessionData = req.body;
+    
+    if (!sessionData) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Session data is required' 
+      });
+    }
+    
+    console.log("Received request to track session:", { 
+      sessionId: sessionData.sessionId,
+      userId: sessionData.userId
+    });
+    
+    // Use the service to track the session
+    const result = await trackSession(sessionData);
+    
+    res.json(result);
+  } catch (error) {
+    console.error("Error tracking session:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to track session" 
+    });
+  }
+});
+
+// Seed user journey data for testing and development
+router.post('/seed-journey-data', async (req, res) => {
+  try {
+    const { UserJourney, Session } = require('../models/UserJourney');
+    const { count = 30, siteId, teamId } = req.body;
+    
+    if (!siteId || !teamId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Site ID and Team ID are required'
+      });
+    }
+    
+    console.log(`Seeding ${count} user journeys for site: ${siteId}, team: ${teamId}`);
+    
+    // Generate and save user journeys
+    const userJourneys = [];
+    
+    for (let i = 1; i <= count; i++) {
       const firstVisitDate = new Date();
       firstVisitDate.setDate(firstVisitDate.getDate() - Math.floor(Math.random() * 30));
       
@@ -51,9 +140,7 @@ router.get('/user-journeys', (req, res) => {
       const hasConverted = Math.random() > 0.5;
       const totalSessions = Math.floor(Math.random() * 10) + 1;
       
-      // Always using the actual teamId and siteId from the request
-      // instead of trying to match with filter later
-      journeys.push({
+      const userJourney = new UserJourney({
         userId: `user_${i}_${Date.now().toString(36)}`,
         firstVisit: firstVisitDate,
         lastVisit: lastVisitDate,
@@ -65,192 +152,72 @@ router.get('/user-journeys', (req, res) => {
         userSegment: hasConverted ? 'converter' : ['engaged', 'bounced', 'browser'][Math.floor(Math.random() * 3)],
         acquisitionSource: ['google/organic', 'facebook/social', 'twitter/social', 'direct'][Math.floor(Math.random() * 4)],
         sessionsBeforeConversion: hasConverted ? Math.floor(Math.random() * totalSessions) + 1 : null,
-        teamId: teamId || 'akshit', // Use the provided teamId or default to 'akshit'
-        siteId: siteId || 'CQ',     // Use the provided siteId or default to 'CQ'
-        websiteName: siteId || "CQ",
+        teamId: teamId,
+        siteId: siteId,
+        websiteName: "Demo Website",
         websiteDomain: "example.com"
       });
+      
+      await userJourney.save();
+      userJourneys.push(userJourney);
+      
+      // Generate sessions for this user
+      const sessionCount = Math.floor(Math.random() * 5) + 1;
+      
+      for (let j = 0; j < sessionCount; j++) {
+        // Create session start time
+        const sessionStartDate = new Date(firstVisitDate);
+        sessionStartDate.setDate(sessionStartDate.getDate() + Math.floor(Math.random() * (lastVisitDate - firstVisitDate) / (1000 * 60 * 60 * 24)));
+        sessionStartDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+        
+        // Session duration between 1 and 60 minutes
+        const sessionDuration = Math.floor(Math.random() * 3600) + 60;
+        
+        // Create random device info
+        const deviceTypes = ['desktop', 'mobile', 'tablet'];
+        const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge'];
+        const oss = ['Windows', 'macOS', 'iOS', 'Android'];
+        
+        // Create session
+        const session = new Session({
+          sessionId: `sess_${Date.now().toString(36)}_${j}`,
+          userId: userJourney.userId,
+          sessionNumber: j + 1,
+          startTime: sessionStartDate,
+          duration: sessionDuration,
+          pagesViewed: Math.floor(Math.random() * 10) + 1,
+          device: {
+            type: deviceTypes[Math.floor(Math.random() * deviceTypes.length)],
+            browser: browsers[Math.floor(Math.random() * browsers.length)],
+            os: oss[Math.floor(Math.random() * oss.length)]
+          },
+          wallet: hasConverted ? {
+            walletAddress: `0x${[...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+            walletType: ['MetaMask', 'Coinbase Wallet', 'Phantom', 'WalletConnect'][Math.floor(Math.random() * 4)]
+          } : {
+            walletAddress: 'No Wallet Detected'
+          },
+          country: ['US', 'UK', 'CA', 'DE', 'FR', 'JP', 'IN'][Math.floor(Math.random() * 7)],
+          siteId: siteId,
+          teamId: teamId
+        });
+        
+        await session.save();
+      }
     }
     
-    return journeys;
-  };
-  
-  // Generate data
-  const allJourneys = generateMockUserJourneys();
-  
-  // Apply filters - simplified to always show data
-  let filteredJourneys = [...allJourneys];
-  
-  // Filter by timeframe
-  if (timeframe && timeframe !== 'all') {
-    const now = new Date();
-    let cutoffDate = new Date();
-    
-    switch(timeframe) {
-      case 'today':
-        cutoffDate.setHours(0, 0, 0, 0);
-        break;
-      case 'yesterday':
-        cutoffDate.setDate(cutoffDate.getDate() - 1);
-        cutoffDate.setHours(0, 0, 0, 0);
-        break;
-      case 'week':
-        cutoffDate.setDate(cutoffDate.getDate() - 7);
-        break;
-      case 'month':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
-        break;
-      case 'quarter':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
-        break;
-      default:
-        cutoffDate = new Date(0); // No filter
-    }
-    
-    filteredJourneys = filteredJourneys.filter(journey => 
-      new Date(journey.lastVisit) >= cutoffDate && new Date(journey.lastVisit) <= now
-    );
-  }
-  
-  // Calculate pagination
-  const totalItems = filteredJourneys.length;
-  const totalPages = Math.ceil(totalItems / limit);
-  const pageNum = parseInt(page);
-  const startIndex = (pageNum - 1) * limit;
-  const endIndex = startIndex + parseInt(limit);
-  
-  // Get paginated data
-  const paginatedJourneys = filteredJourneys.slice(startIndex, endIndex);
-  
-  console.log(`Sending ${paginatedJourneys.length} user journeys, total: ${totalItems}, pages: ${totalPages}`);
-  
-  // Send response
-  res.json({
-    success: true,
-    userJourneys: paginatedJourneys,
-    totalPages: totalPages,
-    page: pageNum,
-    totalItems: totalItems
-  });
-});
-
-// Get user sessions data
-router.get('/user-sessions', (req, res) => {
-  const { userId } = req.query;
-  
-  if (!userId) {
-    return res.status(400).json({ 
+    res.json({
+      success: true,
+      message: `Successfully seeded ${count} user journeys with sessions`,
+      userJourneyCount: userJourneys.length
+    });
+  } catch (error) {
+    console.error("Error seeding journey data:", error);
+    res.status(500).json({ 
       success: false, 
-      error: 'User ID is required' 
+      error: "Failed to seed journey data" 
     });
   }
-  
-  // Generate mock sessions for a user
-  const generateMockSessions = (userId) => {
-    const sessionCount = Math.floor(Math.random() * 5) + 1;
-    const sessions = [];
-    
-    // Generate session start date (30 days ago to today)
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - 30);
-    
-    for (let i = 0; i < sessionCount; i++) {
-      // Create session start time, each more recent than the last
-      const sessionStartDate = new Date(baseDate);
-      sessionStartDate.setDate(sessionStartDate.getDate() + Math.floor(Math.random() * (30 - i * 5)));
-      sessionStartDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
-      
-      // Session duration between 1 and 60 minutes
-      const sessionDuration = Math.floor(Math.random() * 3600) + 60;
-      
-      // Pages viewed, between 1 and 10
-      const pagesViewed = Math.floor(Math.random() * 10) + 1;
-      
-      // Generate visited pages
-      const visitedPages = [];
-      const possiblePaths = [
-        '/', 
-        '/about', 
-        '/features', 
-        '/pricing', 
-        '/contact', 
-        '/blog', 
-        '/products',
-        '/documentation',
-        '/login',
-        '/dashboard'
-      ];
-      
-      for (let j = 0; j < pagesViewed; j++) {
-        const path = possiblePaths[Math.floor(Math.random() * possiblePaths.length)];
-        const pageTimestamp = new Date(sessionStartDate);
-        pageTimestamp.setMinutes(pageTimestamp.getMinutes() + Math.floor(Math.random() * (sessionDuration / 60)));
-        
-        visitedPages.push({
-          path,
-          timestamp: pageTimestamp,
-          duration: Math.floor(Math.random() * 300) + 10, // 10 seconds to 5 minutes
-          isEntry: j === 0,
-          isExit: j === pagesViewed - 1
-        });
-      }
-      
-      // Sort pages by timestamp
-      visitedPages.sort((a, b) => a.timestamp - b.timestamp);
-      
-      // Create random device info
-      const deviceTypes = ['desktop', 'mobile', 'tablet'];
-      const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge'];
-      const oss = ['Windows', 'macOS', 'iOS', 'Android'];
-      
-      const device = {
-        type: deviceTypes[Math.floor(Math.random() * deviceTypes.length)],
-        browser: browsers[Math.floor(Math.random() * browsers.length)],
-        os: oss[Math.floor(Math.random() * oss.length)]
-      };
-      
-      // Determine if wallet is connected
-      const hasWallet = Math.random() > 0.7;
-      const wallet = hasWallet ? {
-        walletAddress: `0x${[...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-        walletType: ['MetaMask', 'Coinbase Wallet', 'Phantom', 'WalletConnect'][Math.floor(Math.random() * 4)],
-        chainName: ['Ethereum', 'Polygon', 'Solana', 'Avalanche'][Math.floor(Math.random() * 4)]
-      } : {
-        walletAddress: 'No Wallet Detected',
-        walletType: null,
-        chainName: null
-      };
-      
-      sessions.push({
-        _id: `sess_${Date.now().toString(36)}_${i}`,
-        userId,
-        sessionNumber: i + 1,
-        startTime: sessionStartDate,
-        duration: sessionDuration,
-        pagesViewed,
-        visitedPages,
-        device,
-        wallet,
-        country: ['US', 'UK', 'CA', 'DE', 'FR', 'JP', 'IN'][Math.floor(Math.random() * 7)],
-        referrer: Math.random() > 0.5 ? ['google.com', 'facebook.com', 'twitter.com', 'linkedin.com'][Math.floor(Math.random() * 4)] : null,
-        utmData: Math.random() > 0.7 ? {
-          source: ['google', 'facebook', 'twitter', 'email'][Math.floor(Math.random() * 4)],
-          medium: ['cpc', 'social', 'email', 'referral'][Math.floor(Math.random() * 4)],
-          campaign: `campaign-${Math.floor(Math.random() * 5) + 1}`
-        } : null
-      });
-    }
-    
-    return sessions;
-  };
-  
-  // Generate and send response
-  const sessions = generateMockSessions(userId);
-  
-  res.json({
-    success: true,
-    sessions
-  });
 });
 
 // Test endpoint
