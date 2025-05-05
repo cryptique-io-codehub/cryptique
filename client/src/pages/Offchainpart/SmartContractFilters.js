@@ -128,10 +128,26 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     initWeb3();
   }, []);
 
-  // Load contracts from API on component mount
+  // Initial loading of contracts - Get from props first, only fetch if needed
   useEffect(() => {
-    fetchContractsFromAPI();
-  }, []);
+    // Check if contracts are already loaded from props
+    if (contractarray && contractarray.length > 0) {
+      console.log(`Using ${contractarray.length} pre-loaded contracts from props`);
+      
+      // If there's a selected contract in localStorage, select it
+      const savedContractId = localStorage.getItem('selectedContract');
+      if (savedContractId) {
+        const foundContract = contractarray.find(c => c.id === savedContractId);
+        if (foundContract) {
+          setSelectedContract(foundContract);
+        }
+      }
+    } else {
+      // Only fetch if we don't have contracts in props
+      console.log('No contracts in props, fetching from API');
+      fetchContractsFromAPI();
+    }
+  }, [contractarray]); // Re-run when contractarray from props changes
 
   // Remove the polling effect and replace with on-demand fetching
   useEffect(() => {

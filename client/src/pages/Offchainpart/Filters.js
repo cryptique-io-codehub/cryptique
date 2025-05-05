@@ -18,99 +18,69 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   const[selectedContract,setSelectedContract]=useState('');
   const[verifyload,setverifyload]=useState(false);
   const[deleteload,setdeleteload]=useState(false);
-  // fetch website
-  // depend-selectedTeam
+  
+  // Setup selected website and script code when props or component mounts
   useEffect(() => {
     const selectteam = localStorage.getItem("selectedTeam");
     setSelectedTeam(selectteam);
     
-    console.log("Fetching websites, current selectedWebsite:", localStorage.getItem("selectedWebsite"));
-  
-    const fetchWebsites = async () => {
-      setIsLoading(true);
-      try {
-        // Use the correct GET endpoint with team name in path parameter
-        const response = await axiosInstance.get(`/website/team/${selectteam}`);
-        
-        if (response.status === 200) {
-          console.log("Fetched websites:", response.data.websites);
-          if (response && response.data.websites.length > 0) {
-            setWebsitearray(response.data.websites);
-            
-            // Auto-verify websites with analytics data
-            try {
-              await axiosInstance.post('/website/auto-verify-all');
-              console.log('Auto-verify process completed');
-              
-              // Get the updated websites with verification status
-              const updatedResponse = await axiosInstance.get(`/website/team/${selectteam}`);
-              if (updatedResponse.status === 200) {
-                setWebsitearray(updatedResponse.data.websites);
-              }
-            } catch (verifyError) {
-              console.error('Error in auto-verify process:', verifyError);
-              // Continue with the websites we already have
-            }
-            
-            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
-             
-            // If no website is selected or selection is empty
-            if(!savedWebsiteDomain || savedWebsiteDomain === '') {
-              const firstWebsite = response.data.websites[0];
-              localStorage.setItem("idy", firstWebsite.siteId);
-              localStorage.setItem("selectedWebsite", firstWebsite.Domain);
-              setSelectedWebsite(firstWebsite);
-              setidy(firstWebsite.siteId);
-              
-              // Generate script code for the first website
-              const iD = firstWebsite.siteId;
-              const scriptHTML = `<script>
-              var script = document.createElement('script');
-              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-              script.setAttribute('site-id', '${iD}');
-              document.head.appendChild(script);
-            </script>`;
-              setscriptcode(scriptHTML);
-            } else {
-              // Find the selected website in the array
-              const currentWebsite = response.data.websites.find(
-                website => website.Domain === savedWebsiteDomain
-              );
-              
-              if (currentWebsite) {
-                console.log("Setting selected website:", currentWebsite);
-                setSelectedWebsite(currentWebsite);
-                setidy(currentWebsite.siteId);
-                
-                // Generate script code for current website
-                const iD = currentWebsite.siteId;
-                const scriptHTML = `<script>
-                var script = document.createElement('script');
-                script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-                script.setAttribute('site-id', '${iD}');
-                document.head.appendChild(script);
-              </script>`;
-                setscriptcode(scriptHTML);
-              }
-            }
-            
-            setIsDropdownOpen(false);
-          }
-        }
-      } catch (error) {
-        console.error("Error refreshing websites:", error);
-        setfalsemessage("Error refreshing websites");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // Skip fetching websites - the Dashboard already does that
+    // Just setup the selected website and script code based on what's in localStorage
     
-    if (selectteam) {
-      fetchWebsites();
+    const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+    const savedWebsiteId = localStorage.getItem("idy");
+    
+    if (websitearray && websitearray.length > 0) {
+      // If we have a saved website, use it
+      if (savedWebsiteDomain || savedWebsiteId) {
+        const currentWebsite = websitearray.find(
+          website => website.Domain === savedWebsiteDomain || website.siteId === savedWebsiteId
+        );
+        
+        if (currentWebsite) {
+          console.log("Setting selected website from props:", currentWebsite);
+          setSelectedWebsite(currentWebsite);
+          setidy(currentWebsite.siteId);
+          
+          // Generate script code for current website
+          const iD = currentWebsite.siteId;
+          const scriptHTML = `<script>
+          var script = document.createElement('script');
+          script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+          script.setAttribute('site-id', '${iD}');
+          document.head.appendChild(script);
+        </script>`;
+          setscriptcode(scriptHTML);
+        } else if (websitearray.length > 0) {
+          // Fallback to first website if the saved one isn't found
+          setupFirstWebsite(websitearray);
+        }
+      } else if (websitearray.length > 0) {
+        // No saved website, use the first one
+        setupFirstWebsite(websitearray);
+      }
     }
-  }, []);
-  
+  }, [websitearray]); // Re-run when websitearray changes
 
+  // Helper function to set up the first website
+  const setupFirstWebsite = (websites) => {
+    const firstWebsite = websites[0];
+    localStorage.setItem("idy", firstWebsite.siteId);
+    localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+    setSelectedWebsite(firstWebsite);
+    setidy(firstWebsite.siteId);
+    
+    // Generate script code for the first website
+    const iD = firstWebsite.siteId;
+    const scriptHTML = `<script>
+    var script = document.createElement('script');
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.setAttribute('site-id', '${iD}');
+    document.head.appendChild(script);
+  </script>`;
+    setscriptcode(scriptHTML);
+  };
+  
   const handleSelectWebsite = async (website) => {
     console.log(website);
     localStorage.setItem("selectedWebsite", website.Domain);
