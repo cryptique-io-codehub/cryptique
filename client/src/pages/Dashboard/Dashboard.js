@@ -16,7 +16,6 @@ import ConversionEvents from './ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
-import axiosInstance from "../../axiosInstance";
 
 const Dashboard = () => {
   // State management
@@ -29,11 +28,6 @@ const Dashboard = () => {
   });
   const location = useLocation();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
-  const [websiteArray, setWebsiteArray] = useState([]);
-  const [contractArray, setContractArray] = useState([]);
-  const [analytics, setAnalytics] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Screen size detection with multiple breakpoints
   useEffect(() => {
@@ -62,99 +56,6 @@ const Dashboard = () => {
     // Cleanup
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
-
-  // Fetch website and contract data on component mount (right after login)
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (dataLoaded) return; // Only load once
-      
-      setIsLoading(true);
-      try {
-        // Fetch websites
-        const teamName = localStorage.getItem("selectedTeam");
-        if (!teamName) {
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log("Fetching initial website data for team:", teamName);
-        const websiteResponse = await axiosInstance.get(`/website/team/${teamName}`);
-        
-        if (websiteResponse.status === 200 && websiteResponse.data.websites) {
-          const websites = websiteResponse.data.websites;
-          setWebsiteArray(websites);
-          
-          // Auto-verify websites with analytics data
-          try {
-            await axiosInstance.post('/website/auto-verify-all');
-            console.log('Auto-verify process completed');
-            
-            // Get the updated websites with verification status
-            const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
-            if (updatedResponse.status === 200) {
-              setWebsiteArray(updatedResponse.data.websites);
-              
-              // If we have websites, set the first one as selected and fetch its analytics
-              if (updatedResponse.data.websites.length > 0) {
-                const firstWebsite = updatedResponse.data.websites[0];
-                
-                // Save to localStorage for persistence
-                localStorage.setItem("selectedWebsite", firstWebsite.domain);
-                localStorage.setItem("idy", firstWebsite.siteId);
-                
-                // Fetch analytics for this website
-                try {
-                  const analyticsResponse = await axiosInstance.get(`/analytics/site/${firstWebsite.siteId}`);
-                  if (analyticsResponse.status === 200) {
-                    setAnalytics(analyticsResponse.data);
-                  }
-                } catch (analyticsError) {
-                  console.error("Error fetching analytics:", analyticsError);
-                }
-              }
-            }
-          } catch (verifyError) {
-            console.error('Error in auto-verify process:', verifyError);
-          }
-        }
-        
-        // Fetch smart contracts
-        try {
-          const contractResponse = await axiosInstance.get(`/contracts/team/${teamName}`);
-          
-          if (contractResponse.data && contractResponse.data.contracts) {
-            const contracts = contractResponse.data.contracts.map(contract => ({
-              id: contract.contractId,
-              address: contract.address,
-              name: contract.name,
-              blockchain: contract.blockchain,
-              tokenSymbol: contract.tokenSymbol,
-              added_at: contract.createdAt,
-              verified: contract.verified
-            }));
-            
-            setContractArray(contracts);
-            
-            // If we have contracts, set the first one as selected
-            if (contracts.length > 0) {
-              const firstContract = contracts[0];
-              localStorage.setItem("selectedContract", firstContract.id);
-            }
-          }
-        } catch (contractError) {
-          console.error("Error fetching contracts:", contractError);
-        }
-        
-        setDataLoaded(true);
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchInitialData();
-  }, [dataLoaded]);
 
   // Sync selectedPage with URL
   useEffect(() => {
@@ -238,14 +139,7 @@ const Dashboard = () => {
       onMenuClick: () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
       screenSize: screenSize,
-      selectedPage: {selectedPage},
-      websitearray: websiteArray,
-      setWebsitearray: setWebsiteArray,
-      contractarray: contractArray,
-      setcontractarray: setContractArray,
-      analytics: analytics,
-      setanalytics: setAnalytics,
-      idy: localStorage.getItem("idy")
+      selectedPage:{selectedPage}
     };
 
     switch (selectedPage) {
@@ -254,14 +148,6 @@ const Dashboard = () => {
           <>
             <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
             <main className={getMainPaddingClasses()}>
-              {isLoading && (
-                <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
-                  <div className="flex flex-col items-center p-8 rounded-lg">
-                    <div className="w-12 h-12 border-t-4 border-[#caa968] rounded-full animate-spin mb-4"></div>
-                    <p className="text-lg font-medium text-gray-800">Loading your data...</p>
-                  </div>
-                </div>
-              )}
               <MarketingSection />
               <Tabs />
               <FeatureCards />

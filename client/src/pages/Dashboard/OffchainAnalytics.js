@@ -171,177 +171,137 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
   );
 
 
-  // Fetch analytics data from server when filters change - Use pre-loaded data when available
+  // Fetch analytics data from server when filters change
   useEffect(() => {
-    // If already loading, skip
-    if (isLoading) return;
-    
-    // Only do a fetch if we need to filter by date or need to refresh
-    if (selectedDate === 'Select Date' && analytics && Object.keys(analytics).length > 0) {
-      console.log('Using pre-loaded analytics data:', analytics);
-      processAnalyticsData(analytics);
-    } else {
-      // We need to fetch data based on filters
-      fetchFilteredData();
-    }
-  }, [idy, selectedDate, selectedFilters]);
-
-  // Helper function to fetch filtered data
-  const fetchFilteredData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      console.log('Fetching filtered data for siteId:', idy);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
       
-      // Get date range from selectedDate
-      let startDate, endDate;
-      if (selectedDate === 'Select Date') {
-        // If no date is selected, use today's date
-        const today = new Date();
-        startDate = today.toISOString().split('T')[0];
-        endDate = startDate;
-      } else if (selectedDate === 'today') {
-        const today = new Date();
-        startDate = today.toISOString().split('T')[0];
-        endDate = startDate;
-      } else if (selectedDate === 'yesterday') {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
-      } else if (selectedDate === 'last7days') {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 7);
-        startDate = start.toISOString().split('T')[0];
-        endDate = end.toISOString().split('T')[0];
-      } else if (selectedDate === 'last30days') {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 30);
-        startDate = start.toISOString().split('T')[0];
-        endDate = end.toISOString().split('T')[0];
-      } else {
-        // Custom date range
-        startDate = selectedDate;
-        endDate = selectedDate;
-      }
-
-      console.log('Fetching chart data with params:', {
-        siteId: idy,
-        timeframe: 'hourly',
-        start: startDate,
-        end: endDate
-      });
-
-      // Get filtered analytics data
-      const analyticsResponse = await sdkApi.getAnalytics(idy, startDate, endDate);
-      if (analyticsResponse && analyticsResponse.analytics) {
-        setanalytics(analyticsResponse.analytics);
-        processAnalyticsData(analyticsResponse.analytics);
-      }
-
-      // Fetch chart data from API - use try-catch for each request
-      let chartResponse;
       try {
-        chartResponse = await sdkApi.getChart(idy, startDate, endDate);
-      } catch (chartError) {
-        console.error('Chart API Error:', chartError);
-        // Continue execution even if this request fails
-      }
-
-      if (chartResponse?.data) {
-        if (chartResponse.data.error) {
-          console.warn("Chart data error:", chartResponse.data.error);
-        } else {
-          // Transform the data to match the expected format
-          const transformedChartData = {
-            labels: chartResponse.data.labels || [],
-            datasets: [
-              {
-                label: 'Visitors',
-                data: chartResponse.data.visitors || []
-              },
-              {
-                label: 'Wallets',
-                data: chartResponse.data.wallets || []
-              }
-            ]
-          };
-          
-          setChartData(transformedChartData);
-        }
-      }
-
-      // Fetch traffic sources data - use try-catch for each request
-      let trafficResponse;
-      try {
-        trafficResponse = await sdkApi.getTrafficSources(idy, startDate, endDate);
+        console.log('Fetching data for siteId:', idy);
         
-        if (trafficResponse?.data) {
-          if (trafficResponse.data.error) {
-            console.warn("Traffic sources data error:", trafficResponse.data.error);
+        // Get date range from selectedDate
+        let startDate, endDate;
+        if (selectedDate === 'Select Date') {
+          // If no date is selected, use today's date
+          const today = new Date();
+          startDate = today.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'today') {
+          const today = new Date();
+          startDate = today.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'yesterday') {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = yesterday.toISOString().split('T')[0];
+          endDate = startDate;
+        } else if (selectedDate === 'last7days') {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        } else if (selectedDate === 'last30days') {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - 30);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        } else {
+          // Custom date range
+          startDate = selectedDate;
+          endDate = selectedDate;
+        }
+
+        console.log('Fetching chart data with params:', {
+          siteId: idy,
+          timeframe: 'hourly',
+          start: startDate,
+          end: endDate
+        });
+
+        // Fetch chart data from API - use try-catch for each request
+        let chartResponse;
+        try {
+          chartResponse = await sdkApi.getChart(idy, startDate, endDate);
+        } catch (chartError) {
+          console.error('Chart API Error:', chartError);
+          // Continue execution even if this request fails
+        }
+
+        if (chartResponse?.data) {
+          if (chartResponse.data.error) {
+            console.warn("Chart data error:", chartResponse.data.error);
           } else {
-            setTrafficSources(trafficResponse.data.sources || []);
+            // Transform the data to match the expected format
+            const transformedChartData = {
+              labels: chartResponse.data.labels || [],
+              datasets: [
+                {
+                  label: 'Visitors',
+                  data: chartResponse.data.visitors || []
+                },
+                {
+                  label: 'Wallets',
+                  data: chartResponse.data.wallets || []
+                }
+              ]
+            };
+            
+            setChartData(transformedChartData);
           }
         }
-      } catch (trafficError) {
-        console.error('Traffic Sources API Error:', trafficError);
-        // Continue execution even if this request fails
+
+        // Fetch traffic sources data - use try-catch for each request
+        let trafficResponse;
+        try {
+          trafficResponse = await sdkApi.getTrafficSources(idy, startDate, endDate);
+          
+          if (trafficResponse?.data) {
+            if (trafficResponse.data.error) {
+              console.warn("Traffic sources data error:", trafficResponse.data.error);
+            } else {
+              setTrafficSources(trafficResponse.data.sources || []);
+            }
+          }
+        } catch (trafficError) {
+          console.error('Traffic Sources API Error:', trafficError);
+          // Continue execution even if this request fails
+        }
+
+        // Update Web3 data using the standardized helper
+        const web3Stats = calculateWeb3Stats(analytics?.sessions, analytics?.uniqueVisitors);
+        
+        // Store the web3Users count in state for use in the card
+        setWeb3UsersCount(web3Stats.web3Users);
+
+        // Update web3Data state with the standardized values
+        const web3Data = {
+          visitorsPercentage: `${web3Stats.web3Percentage}%`,
+          visitorsIncrease: `${web3Stats.web3Percentage}% Increase`,
+          walletsConnected: web3Stats.walletsConnected,
+          walletsIncrease: `${web3Stats.walletsPercentage}% Increase`
+        };
+
+        setWeb3Data(web3Data);
+
+      } catch (err) {
+        console.error('Error in fetchData:', err);
+        setError(err.message || 'Failed to load analytics data. Please try again later.');
+      } finally {
+        setIsLoading(false);
       }
-
-    } catch (err) {
-      console.error('Error in fetchFilteredData:', err);
-      setError(err.message || 'Failed to load analytics data. Please try again later.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to process analytics data
-  const processAnalyticsData = (analyticsData) => {
-    if (!analyticsData) return;
-    
-    // Update Web3 data using the standardized helper
-    const web3Stats = calculateWeb3Stats(analyticsData.sessions, analyticsData.uniqueVisitors);
-    
-    // Store the web3Users count in state for use in the card
-    setWeb3UsersCount(web3Stats.web3Users);
-
-    // Update web3Data state with the standardized values
-    const web3DataUpdate = {
-      visitorsPercentage: `${web3Stats.web3Percentage}%`,
-      visitorsIncrease: `${web3Stats.web3Percentage}% Increase`,
-      walletsConnected: web3Stats.walletsConnected,
-      walletsIncrease: `${web3Stats.walletsPercentage}% Increase`
     };
 
-    setWeb3Data(web3DataUpdate);
-    
-    // If no chart data has been loaded yet, initialize it
-    if (!chartData) {
-      setChartData({
-        labels: [],
-        datasets: [
-          {
-            label: 'Visitors',
-            data: [],
-            backgroundColor: 'rgba(252, 211, 77, 0.5)',
-            borderColor: '#fcd34d',
-            borderWidth: 1
-          },
-          {
-            label: 'Wallets',
-            data: [],
-            backgroundColor: 'rgba(139, 92, 246, 0.7)',
-            borderColor: '#8b5cf6',
-            borderWidth: 1
-          }
-        ]
-      });
+    if (idy) {
+      console.log('Starting data fetch with idy:', idy);
+      fetchData();
+    } else {
+      console.log('No idy available, skipping data fetch');
+      setError('No website selected. Please select a website to view analytics.');
     }
-  };
+  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.sessions]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {
