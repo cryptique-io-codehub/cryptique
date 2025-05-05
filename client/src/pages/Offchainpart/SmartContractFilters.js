@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Web3 from 'web3';
 import { fetchBnbTransactions } from '../../utils/chains/bnbChain';
@@ -93,6 +93,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [loadingStatus, setLoadingStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [processingStep, setProcessingStep] = useState('');
+  const teamRef = useRef(null);
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -130,13 +131,17 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
   // Load contracts from API on component mount
   useEffect(() => {
+    // Store current team to track changes
+    const initialTeam = localStorage.getItem('selectedTeam');
     fetchContractsFromAPI();
     
     // Setup event listener to detect team changes
     const handleStorageChange = () => {
       const currentTeam = localStorage.getItem('selectedTeam');
-      // If the team changes, fetch contracts for the new team
-      if (currentTeam) {
+      // Only fetch contracts if the team has actually changed
+      if (currentTeam && currentTeam !== teamRef.current) {
+        teamRef.current = currentTeam;
+        console.log(`Team changed to: ${currentTeam}, refreshing contracts`);
         fetchContractsFromAPI();
         // Clear selected contract when team changes
         setSelectedContract(null);
@@ -145,6 +150,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         setTransactions({});
       }
     };
+    
+    // Use a ref to track the current team to avoid unnecessary re-renders and fetches
+    teamRef.current = initialTeam;
     
     // Check for team changes every second
     const intervalId = setInterval(handleStorageChange, 1000);
@@ -1110,12 +1118,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Fetch contracts from API
   const fetchContractsFromAPI = async () => {
     try {
-      setIsLoading(true);
       const currentTeam = localStorage.getItem('selectedTeam');
       if (!currentTeam) {
-        setIsLoading(false);
+        console.log("No team selected, skipping contract fetch");
         return;
       }
+
+      // Prevent duplicate fetches for the same team
+      if (isLoading) {
+        console.log("Already loading contracts, skipping duplicate fetch");
+        return;
+      }
+
+      console.log(`Fetching contracts for team: ${currentTeam}`);
+      setIsLoading(true);
 
       const response = await axiosInstance.get(`/contracts/team/${currentTeam}`);
       
@@ -1134,11 +1150,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         setcontractarray(apiContracts);
         console.log(`Loaded ${apiContracts.length} contracts from API for team ${currentTeam}`);
       }
-      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching contracts from API:", error);
       // Fallback to localStorage if API fails
       loadContractsFromLocalStorage();
+    } finally {
       setIsLoading(false);
     }
   };
