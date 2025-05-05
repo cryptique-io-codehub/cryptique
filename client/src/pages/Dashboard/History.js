@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../../axiosInstance";
 import UserJourneyTable from "../../components/UserJourneyTable";
+import Header from "../../components/Header";
 
 const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) => {
   const [userJourneys, setUserJourneys] = useState([]);
@@ -34,8 +35,10 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
       userSegment: "converter",
       acquisitionSource: "google/organic",
       sessionsBeforeConversion: 2,
-      teamId: "team1",
-      websiteName: "Crypto Exchange"
+      teamId: selectedTeam, // Match the current team
+      websiteName: "Crypto Exchange",
+      websiteDomain: "crypto-exchange.com",
+      siteId: "site1" // Add siteId for matching
     },
     {
       userId: "user987654321",
@@ -47,8 +50,10 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
       hasConverted: false,
       userSegment: "bounced",
       acquisitionSource: "direct",
-      teamId: "team1",
-      websiteName: "Crypto Exchange"
+      teamId: selectedTeam, // Match the current team
+      websiteName: "NFT Marketplace",
+      websiteDomain: "nft-market.com",
+      siteId: "site2" // Add siteId for matching
     },
     // Add more mock users to test pagination (over 25)
     ...Array.from({ length: 30 }, (_, i) => ({
@@ -63,9 +68,17 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
       userSegment: ["converter", "engaged", "bounced", "browser"][Math.floor(Math.random() * 4)],
       acquisitionSource: ["google/organic", "facebook/social", "twitter/social", "direct"][Math.floor(Math.random() * 4)],
       sessionsBeforeConversion: Math.floor(Math.random() * 5) + 1,
-      teamId: Math.random() > 0.5 ? "team1" : "team2",
-      websiteName: Math.random() > 0.5 ? "Crypto Exchange" : "NFT Marketplace"
+      teamId: selectedTeam, // Match the current team
+      websiteName: Math.random() > 0.5 ? "Crypto Exchange" : "NFT Marketplace",
+      websiteDomain: Math.random() > 0.5 ? "crypto-exchange.com" : "nft-market.com",
+      siteId: Math.random() > 0.5 ? "site1" : "site2" // Add siteId for matching
     }))
+  ];
+
+  // Add mock website data if needed for development
+  const mockWebsites = [
+    { siteId: "site1", Name: "Crypto Exchange", Domain: "crypto-exchange.com" },
+    { siteId: "site2", Name: "NFT Marketplace", Domain: "nft-market.com" }
   ];
 
   // Load websites for the selected team
@@ -74,22 +87,31 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
       try {
         if (!selectedTeam) return;
         
-        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
-        
-        if (response.status === 200 && response.data.websites) {
-          setWebsites(response.data.websites);
+        // For development, uncomment the API call below when backend is ready
+        try {
+          const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
           
-          // If we have a default siteId or a stored one, select it
-          if (selectedSite) {
-            // Confirm the website exists under this team
-            const websiteExists = response.data.websites.some(site => site.siteId === selectedSite);
-            if (!websiteExists) {
-              setSelectedSite(''); // Reset if not found
+          if (response.status === 200 && response.data.websites) {
+            setWebsites(response.data.websites);
+            
+            // If we have a default siteId or a stored one, select it
+            if (selectedSite) {
+              // Confirm the website exists under this team
+              const websiteExists = response.data.websites.some(site => site.siteId === selectedSite);
+              if (!websiteExists) {
+                setSelectedSite(''); // Reset if not found
+              }
             }
           }
+        } catch (apiErr) {
+          console.error('API error fetching websites, using mock data:', apiErr);
+          // Fall back to mock websites for development
+          setWebsites(mockWebsites);
         }
       } catch (err) {
         console.error('Error fetching websites:', err);
+        // Fall back to mock websites for development
+        setWebsites(mockWebsites);
       }
     };
 
@@ -131,12 +153,26 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         let filteredJourneys = [...mockUserJourneys];
         
         if (selectedSite) {
-          const website = websites.find(site => site.siteId === selectedSite);
-          if (website) {
-            filteredJourneys = filteredJourneys.filter(journey => 
-              journey.websiteName === website.Name || 
-              journey.websiteDomain === website.Domain
-            );
+          // First try to match by siteId
+          filteredJourneys = filteredJourneys.filter(journey => 
+            journey.siteId === selectedSite
+          );
+          
+          // If no results, try to match by Name or Domain
+          if (filteredJourneys.length === 0) {
+            const website = websites.find(site => site.siteId === selectedSite);
+            if (website) {
+              filteredJourneys = mockUserJourneys.filter(journey => 
+                journey.websiteName === website.Name || 
+                journey.websiteDomain === website.Domain
+              );
+            }
+          }
+          
+          // If still no results, just show all journeys for development purposes
+          if (filteredJourneys.length === 0) {
+            console.log("No matching journeys found, showing all mock data for development");
+            filteredJourneys = mockUserJourneys;
           }
         }
         
@@ -175,6 +211,8 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
     // Store selected website ID in localStorage for persistence
     if (siteId) {
       localStorage.setItem("idy", siteId);
+    } else {
+      localStorage.removeItem("idy"); // Clear if "All Websites" selected
     }
     
     setCurrentPage(1); // Reset to first page
@@ -186,6 +224,9 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 md:p-6">
+      {/* Add Header component to ensure team selector is visible */}
+      <Header onMenuClick={onMenuClick} />
+      
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 font-montserrat">User Journey History</h1>
