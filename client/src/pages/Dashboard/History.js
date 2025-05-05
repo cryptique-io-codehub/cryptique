@@ -21,97 +21,32 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
   const [websites, setWebsites] = useState([]);
   const selectedTeam = localStorage.getItem("selectedTeam") || '';
 
-  // Mock data for development (remove when API is available)
-  const mockUserJourneys = [
-    {
-      userId: "user123456789",
-      firstVisit: new Date("2023-04-15T10:30:00"),
-      lastVisit: new Date("2023-05-20T14:45:00"),
-      totalSessions: 8,
-      totalPageViews: 45,
-      totalTimeSpent: 5400, // 90 minutes in seconds
-      hasConverted: true,
-      daysToConversion: 3,
-      userSegment: "converter",
-      acquisitionSource: "google/organic",
-      sessionsBeforeConversion: 2,
-      teamId: selectedTeam, // Match the current team
-      websiteName: "Crypto Exchange",
-      websiteDomain: "crypto-exchange.com",
-      siteId: "site1" // Add siteId for matching
-    },
-    {
-      userId: "user987654321",
-      firstVisit: new Date("2023-05-10T09:15:00"),
-      lastVisit: new Date("2023-05-10T09:45:00"),
-      totalSessions: 1,
-      totalPageViews: 2,
-      totalTimeSpent: 300, // 5 minutes in seconds
-      hasConverted: false,
-      userSegment: "bounced",
-      acquisitionSource: "direct",
-      teamId: selectedTeam, // Match the current team
-      websiteName: "NFT Marketplace",
-      websiteDomain: "nft-market.com",
-      siteId: "site2" // Add siteId for matching
-    },
-    // Add more mock users to test pagination (over 25)
-    ...Array.from({ length: 30 }, (_, i) => ({
-      userId: `user_additional_${i + 1}`,
-      firstVisit: new Date("2023-05-01T12:00:00"),
-      lastVisit: new Date("2023-05-15T14:30:00"),
-      totalSessions: Math.floor(Math.random() * 10) + 1,
-      totalPageViews: Math.floor(Math.random() * 50) + 1,
-      totalTimeSpent: Math.floor(Math.random() * 3600) + 300,
-      hasConverted: Math.random() > 0.5,
-      daysToConversion: Math.floor(Math.random() * 30) + 1,
-      userSegment: ["converter", "engaged", "bounced", "browser"][Math.floor(Math.random() * 4)],
-      acquisitionSource: ["google/organic", "facebook/social", "twitter/social", "direct"][Math.floor(Math.random() * 4)],
-      sessionsBeforeConversion: Math.floor(Math.random() * 5) + 1,
-      teamId: selectedTeam, // Match the current team
-      websiteName: Math.random() > 0.5 ? "Crypto Exchange" : "NFT Marketplace",
-      websiteDomain: Math.random() > 0.5 ? "crypto-exchange.com" : "nft-market.com",
-      siteId: Math.random() > 0.5 ? "site1" : "site2" // Add siteId for matching
-    }))
-  ];
-
-  // Add mock website data if needed for development
-  const mockWebsites = [
-    { siteId: "site1", Name: "Crypto Exchange", Domain: "crypto-exchange.com" },
-    { siteId: "site2", Name: "NFT Marketplace", Domain: "nft-market.com" }
-  ];
-
   // Load websites for the selected team
   useEffect(() => {
     const fetchWebsites = async () => {
       try {
         if (!selectedTeam) return;
         
-        // For development, uncomment the API call below when backend is ready
-        try {
-          const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
+        setLoading(true);
+        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
+        
+        if (response.status === 200 && response.data.websites) {
+          setWebsites(response.data.websites);
           
-          if (response.status === 200 && response.data.websites) {
-            setWebsites(response.data.websites);
-            
-            // If we have a default siteId or a stored one, select it
-            if (selectedSite) {
-              // Confirm the website exists under this team
-              const websiteExists = response.data.websites.some(site => site.siteId === selectedSite);
-              if (!websiteExists) {
-                setSelectedSite(''); // Reset if not found
-              }
+          // If we have a default siteId or a stored one, select it
+          if (selectedSite) {
+            // Confirm the website exists under this team
+            const websiteExists = response.data.websites.some(site => site.siteId === selectedSite);
+            if (!websiteExists) {
+              setSelectedSite(''); // Reset if not found
             }
           }
-        } catch (apiErr) {
-          console.error('API error fetching websites, using mock data:', apiErr);
-          // Fall back to mock websites for development
-          setWebsites(mockWebsites);
         }
       } catch (err) {
         console.error('Error fetching websites:', err);
-        // Fall back to mock websites for development
-        setWebsites(mockWebsites);
+        setError('Failed to load websites. Please try again later.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -124,8 +59,6 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         setLoading(true);
         setError(null);
 
-        // When the API is ready, uncomment this code:
-        /*
         const response = await axiosInstance.get('/analytics/user-journeys', {
           params: { 
             siteId: selectedSite,
@@ -140,69 +73,22 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
           setUserJourneys(response.data.userJourneys);
           setTotalPages(response.data.totalPages || 1);
         } else {
-          // Fallback to mock data if API returns empty data
-          setUserJourneys(mockUserJourneys);
-          setTotalPages(Math.ceil(mockUserJourneys.length / usersPerPage));
+          setUserJourneys([]);
+          setTotalPages(1);
+          setError('No user journey data available for the selected filters.');
         }
-        */
-        
-        // For now, use mock data with a simulated delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Filter mock data based on selected site
-        let filteredJourneys = [...mockUserJourneys];
-        
-        if (selectedSite) {
-          // First try to match by siteId
-          filteredJourneys = filteredJourneys.filter(journey => 
-            journey.siteId === selectedSite
-          );
-          
-          // If no results, try to match by Name or Domain
-          if (filteredJourneys.length === 0) {
-            const website = websites.find(site => site.siteId === selectedSite);
-            if (website) {
-              filteredJourneys = mockUserJourneys.filter(journey => 
-                journey.websiteName === website.Name || 
-                journey.websiteDomain === website.Domain
-              );
-            }
-          }
-          
-          // If still no results, just show all journeys for development purposes
-          if (filteredJourneys.length === 0) {
-            console.log("No matching journeys found, showing all mock data for development");
-            filteredJourneys = mockUserJourneys;
-          }
-        }
-        
-        // Calculate pagination
-        setTotalPages(Math.ceil(filteredJourneys.length / usersPerPage));
-        
-        // Get current page data
-        const startIndex = (currentPage - 1) * usersPerPage;
-        const endIndex = startIndex + usersPerPage;
-        const paginatedJourneys = filteredJourneys.slice(startIndex, endIndex);
-        
-        setUserJourneys(paginatedJourneys);
       } catch (err) {
         console.error('Error fetching user journeys:', err);
         setError('Failed to load user journey data. Please try again later.');
-        
-        // Use mock data as fallback even on error for demo
-        const startIndex = (currentPage - 1) * usersPerPage;
-        const endIndex = startIndex + usersPerPage;
-        const paginatedJourneys = mockUserJourneys.slice(startIndex, endIndex);
-        
-        setUserJourneys(paginatedJourneys);
-        setTotalPages(Math.ceil(mockUserJourneys.length / usersPerPage));
+        setUserJourneys([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserJourneys();
-  }, [selectedSite, timeframe, currentPage, websites]);
+  }, [selectedSite, timeframe, currentPage, selectedTeam]);
 
   const handleSiteChange = (e) => {
     const siteId = e.target.value;
@@ -248,6 +134,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 value={selectedSite}
                 onChange={handleSiteChange}
                 className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={loading || websites.length === 0}
               >
                 <option value="">All Websites</option>
                 {websites.map((site) => (
@@ -268,6 +155,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="w-full md:w-auto border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={loading}
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -318,9 +206,9 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
             <nav className="inline-flex rounded-md shadow-sm -space-x-px">
               <button
                 onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || loading}
                 className={`relative inline-flex items-center px-2 py-2 rounded-l-md border ${
-                  currentPage === 1 
+                  currentPage === 1 || loading
                     ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
                     : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                 }`}
@@ -333,6 +221,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage > 2 && (
                 <button
                   onClick={() => handlePageChange(1)}
+                  disabled={loading}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   1
@@ -350,6 +239,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage > 1 && (
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={loading}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {currentPage - 1}
@@ -367,6 +257,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage < totalPages && (
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={loading}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {currentPage + 1}
@@ -384,6 +275,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               {currentPage < totalPages - 1 && (
                 <button
                   onClick={() => handlePageChange(totalPages)}
+                  disabled={loading}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   {totalPages}
@@ -392,9 +284,9 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
               
               <button
                 onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || loading}
                 className={`relative inline-flex items-center px-2 py-2 rounded-r-md border ${
-                  currentPage === totalPages 
+                  currentPage === totalPages || loading
                     ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
                     : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                 }`}
@@ -408,9 +300,13 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         
         {/* Page information */}
         <div className="mt-2 text-center text-sm text-gray-500">
-          Showing page {currentPage} of {totalPages}
-          {userJourneys.length > 0 && (
-            <span> • {userJourneys.length} users</span>
+          {userJourneys.length > 0 ? (
+            <>
+              Showing page {currentPage} of {totalPages}
+              <span> • {userJourneys.length} users</span>
+            </>
+          ) : !loading && (
+            <span>No user journey data available</span>
           )}
         </div>
       </div>
