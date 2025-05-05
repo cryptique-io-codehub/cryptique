@@ -1028,12 +1028,13 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
         {/* Traffic Sources - 50% width on md screens and up */}
         <div className="w-full md:w-1/2 bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h3>
-          <div className="overflow-auto max-h-[350px]"> {/* Added scroll for vertical overflow */}
+          <div className="overflow-auto max-h-[400px]"> {/* Increased height from 350px to 400px */}
             <TrafficSourcesComponent 
               analytics={analytics}
               setanalytics={setanalytics}
               trafficSources={trafficSources} 
-              setTrafficSources={setTrafficSources} 
+              setTrafficSources={setTrafficSources}
+              hideTitle={true} 
             />
           </div>
         </div>

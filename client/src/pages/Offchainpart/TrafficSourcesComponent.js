@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
+const TrafficSourcesComponent = ({ setanalytics, analytics, hideTitle = false }) => {
   const [selectedMonth, setSelectedMonth] = useState('This Month');
   const [processedData, setProcessedData] = useState({});
   const [allSources, setAllSources] = useState([]);
@@ -276,16 +276,16 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
   return (
     <div className="bg-white shadow-md rounded-lg p-6 h-full">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 font-montserrat text-center">Traffic Sources</h3>
-          <select
-            value={selectedMonth}
+        {!hideTitle && <h3 className="text-lg font-semibold text-gray-800 font-montserrat text-center">Traffic Sources</h3>}
+        <select
+          value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
           className="text-sm rounded-md border-gray-300 font-poppins"
-          >
+        >
           <option value="This Month">This Month</option>
           <option value="Last Month">Last Month</option>
           <option value="Last 3 Months">Last 3 Months</option>
-          </select>
+        </select>
       </div>
       
       {isLoading ? (
@@ -301,9 +301,9 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
           <div className="text-gray-500 text-center font-poppins">
             <p>No traffic source data available.</p>
             <p className="mt-2 text-sm">This may be because there are no sessions recorded or all sessions have unknown sources.</p>
-                    </div>
-                  </div>
-              ) : (
+          </div>
+        </div>
+      ) : (
         <div className="w-full" style={{ maxHeight: '350px', overflowY: 'auto', overflowX: 'hidden' }}>
           <table className="w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50 sticky top-0 z-10">
