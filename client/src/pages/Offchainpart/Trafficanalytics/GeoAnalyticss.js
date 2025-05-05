@@ -5,6 +5,10 @@ import { isWeb3User } from '../../../utils/analyticsHelpers';
 
 // Format seconds into minutes and seconds
 const formatDuration = (seconds) => {
+  if (!seconds || isNaN(seconds) || seconds < 0) {
+    return "00 mins 00 secs";
+  }
+  
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, '0')} mins ${secs.toString().padStart(2, '0')} secs`;
@@ -41,6 +45,18 @@ const normalizeCountry = (countryInput) => {
   // Check if it's a country code we can map
   if (countryCodeToName[countryInput]) {
     return countryCodeToName[countryInput];
+  }
+  
+  // Special case for USA
+  if (countryInput === "USA" || countryInput === "US" || 
+      countryInput.toLowerCase().includes("united states")) {
+    return "United States";
+  }
+  
+  // Special case for UK
+  if (countryInput === "UK" || countryInput === "GB" || 
+      countryInput.toLowerCase().includes("united kingdom")) {
+    return "United Kingdom";
   }
   
   // If we can't map it, return as is
@@ -189,16 +205,20 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         web3Users: data.web3Users.size,
         walletConnects: data.walletConnections.size,
         bounceRate: data.totalSessions > 0 ? 
-          `${((data.bounces / data.totalSessions) * 100).toFixed(2)}%` : "0%",
-        totalPageViews: data.totalPageViews.toLocaleString(),
-        avgPageViewPerVisit: "1.00", // As specified
-        avgVisitDuration: data.totalSessions > 0 ? 
+          `${((data.bounces / data.totalSessions) * 100).toFixed(2)}%` : "0.00%",
+        totalPageViews: data.totalPageViews,
+        avgPageViewPerVisit: data.uniqueUsers.size > 0 && data.totalPageViews > 0 ? 
+          (data.totalPageViews / data.totalSessions).toFixed(2) : "0.00",
+        avgVisitDuration: data.totalSessions > 0 && data.totalDuration > 0 ? 
           formatDuration(data.totalDuration / data.totalSessions) : "00 mins 00 secs",
-        conversionRate: data.uniqueUsers.size > 0 ? 
-          `${((data.walletConnections.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0%",
-        commonWallet: commonWallet,
-        webTrafficSource: bestWeb3Source,
-        retention: "12.34%" // Default as specified
+        conversionRate: data.web3Users.size > 0 ? 
+          `${((data.walletConnections.size / data.web3Users.size) * 100).toFixed(2)}%` : 
+          data.uniqueUsers.size > 0 ?
+          `${((data.walletConnections.size / data.uniqueUsers.size) * 100).toFixed(2)}%` : "0.00%",
+        commonWallet: commonWallet !== "None" ? commonWallet : "No wallets detected",
+        webTrafficSource: maxWeb3UserCount > 0 ? bestWeb3Source : "No web3 traffic",
+        retention: data.uniqueUsers.size > 0 ? 
+          `${(100 - ((data.bounces / data.totalSessions) * 100)).toFixed(2)}%` : "0.00%"
       };
     });
     
@@ -270,14 +290,14 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
     users: 0,
     web3Users: 0,
     walletConnects: 0,
-    conversionRate: '0%',
-    commonWallet: 'None',
-    webTrafficSource: 'Direct',
-    bounceRate: '0%',
-    totalPageViews: '0',
-    avgPageViewPerVisit: '1.00',
+    conversionRate: '0.00%',
+    commonWallet: 'No wallets detected',
+    webTrafficSource: 'No web3 traffic',
+    bounceRate: '0.00%',
+    totalPageViews: 0,
+    avgPageViewPerVisit: '0.00',
     avgVisitDuration: '00 mins 00 secs',
-    retention: '12.34%'
+    retention: '0.00%'
   });
 
   // Handle country data when selection changes
@@ -298,41 +318,45 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
         users: 0,
         web3Users: 0,
         walletConnects: 0,
-        conversionRate: '0%',
-        commonWallet: 'None',
-        webTrafficSource: 'N/A',
-        bounceRate: '0%',
-        totalPageViews: '0',
-        avgPageViewPerVisit: '1.00',
+        conversionRate: '0.00%',
+        commonWallet: 'No wallets detected',
+        webTrafficSource: 'No web3 traffic',
+        bounceRate: '0.00%',
+        totalPageViews: 0,
+        avgPageViewPerVisit: '0.00',
         avgVisitDuration: '00 mins 00 secs',
-        retention: '12.34%'
+        retention: '0.00%'
       });
     }
   }, [selectedCountry, countryMetrics]);
 
-  // Get flag emoji for country
+  // Fix the country flag emoji mapping
+  const countryCodeMap = {
+    "United States": "🇺🇸",
+    "United States of America": "🇺🇸",
+    "India": "🇮🇳",
+    "Germany": "🇩🇪",
+    "Brazil": "🇧🇷",
+    "Canada": "🇨🇦",
+    "France": "🇫🇷",
+    "United Kingdom": "🇬🇧",
+    "Australia": "🇦🇺",
+    "Japan": "🇯🇵",
+    "South Korea": "🇰🇷",
+    "China": "🇨🇳",
+    "Russia": "🇷🇺",
+    "Italy": "🇮🇹",
+    "Spain": "🇪🇸"
+  };
+
+  // Improve the getCountryFlag function to be more resilient
   const getCountryFlag = (countryName) => {
+    if (!countryName) return "🌎";
+    
     // Normalize the country name first
     const normalizedCountry = normalizeCountry(countryName);
     
-    const countryCodeMap = {
-      "United States": "🇺🇸",
-      "United States of America": "🇺��",
-      "India": "🇮🇳",
-      "Germany": "🇩🇪",
-      "Brazil": "🇧🇷",
-      "Canada": "🇨🇦",
-      "France": "🇫🇷",
-      "United Kingdom": "🇬🇧",
-      "Australia": "🇦🇺",
-      "Japan": "🇯🇵",
-      "South Korea": "🇰🇷",
-      "China": "🇨🇳",
-      "Russia": "🇷🇺",
-      "Italy": "🇮🇹",
-      "Spain": "🇪🇸"
-    };
-    
+    // Return the flag emoji if we have it, otherwise return a globe
     return countryCodeMap[normalizedCountry] || "🌎";
   };
 
@@ -415,7 +439,8 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
             <DetailRow label="Most Common Wallet:" value={countryData.commonWallet} />
             <DetailRow label="Best Source by web3 traffic:" value={countryData.webTrafficSource} />
             <DetailRow label="Bounce rate:" value={countryData.bounceRate} />
-            <DetailRow label="Total Page views:" value={countryData.totalPageViews} />
+            <DetailRow label="Total Page views:" value={typeof countryData.totalPageViews === 'number' ? 
+              countryData.totalPageViews.toLocaleString() : countryData.totalPageViews} />
             <DetailRow label="Avg Page view per visit:" value={countryData.avgPageViewPerVisit} />
             <DetailRow label="Avg Visit Duration:" value={countryData.avgVisitDuration} />
             <DetailRow label="Retention:" value={countryData.retention} />
