@@ -11,6 +11,7 @@ import RetentionAnalytics from '../Offchainpart/Trafficanalytics/RetentionAnalyt
 import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
 import sdkApi from '../../utils/sdkApi';
+import { calculateAverageDuration, formatDuration, calculateWeb3Stats } from '../../utils/analyticsHelpers';
 
 const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
@@ -80,21 +81,6 @@ console.log(idy);
   const totalPageViews = Object.values(analytics?.pageViews || {}).reduce((sum, views) => sum + views, 0);
   const totalSessions = analytics?.sessions?.length || 1; // Use 1 as fallback to avoid division by zero
   const pagepervisit = (totalPageViews / totalSessions).toFixed(2);
-  const calculateAverageDuration = (sessions) => {
-    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
-    
-    // Filter out any sessions with invalid or missing duration
-    const validSessions = sessions.filter(session => 
-      typeof session?.duration === 'number' && 
-      !isNaN(session.duration) && 
-      session.duration >= 0
-    );
-    
-    if (validSessions.length === 0) return 0;
-    
-    const totalDuration = validSessions.reduce((sum, session) => sum + session.duration, 0);
-    return totalDuration / validSessions.length;
-  };
 
   const calculateBounceRate = (sessions) => {
     if (!Array.isArray(sessions) || sessions.length === 0) return 0;
@@ -117,35 +103,6 @@ console.log(idy);
 const bounceRate = calculateBounceRate(analytics?.sessions).toFixed(2);
 const rawAvgDuration = calculateAverageDuration(analytics?.sessions);
 const avgVisitDuration = formatDuration(rawAvgDuration);
-
-function formatDuration(seconds) {
-  if (seconds < 60) {
-    return `${seconds.toFixed(0)} sec`;
-  } else if (seconds < 3600) {
-    return `${(seconds / 60).toFixed(1)} min`;
-  } else if (seconds < 86400) {
-    return `${(seconds / 3600).toFixed(1)} hr`;
-  } else if (seconds < 31536000) {
-    return `${(seconds / 86400).toFixed(1)} days`;
-  } else {
-    return `${(seconds / 31536000).toFixed(1)} years`;
-  }
-}
-  
- 
-  
-  console.log(totalSessions);
-  console.log(totalPageViews);
-  // const [analyticsData, setAnalyticsData] = useState({
-  //   uniqueVisitors:analytics.uniqueVisitors,
-  //   totalPageView:totalPageViews,
-  //   pagePerVisit:totalPageViews/pageViews_size,
-  //   bounceRate:0,
-  //   avgVisitDuration:0,
-  //   TotalWalletsConnected:analytics.walletsConnected, 
-  //   Web3Users:analytics.web3Visitors,
-  //   TotalOnChainValue:0
-  // });
 
   // State for Web3 analytics data
   const [web3Data, setWeb3Data] = useState({
@@ -304,12 +261,15 @@ function formatDuration(seconds) {
           // Continue execution even if this request fails
         }
 
-        // Update Web3 data
+        // Update Web3 data using the standardized helper
+        const web3Stats = calculateWeb3Stats(analytics?.sessions, analytics?.uniqueVisitors);
+        
+        // Update web3Data state with the standardized values
         const web3Data = {
-          visitorsPercentage: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(2) : "0.00"}%`,
-          visitorsIncrease: `${analytics?.web3Visitors && analytics?.uniqueVisitors ? ((analytics.web3Visitors / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`,
-          walletsConnected: analytics?.walletsConnected || 0,
-          walletsIncrease: `${analytics?.walletsConnected && analytics?.uniqueVisitors ? ((analytics.walletsConnected / analytics.uniqueVisitors) * 100).toFixed(1) : "0.0"}% Increase`
+          visitorsPercentage: `${web3Stats.web3Percentage}%`,
+          visitorsIncrease: `${web3Stats.web3Percentage}% Increase`,
+          walletsConnected: web3Stats.walletsConnected,
+          walletsIncrease: `${web3Stats.walletsPercentage}% Increase`
         };
 
         setWeb3Data(web3Data);
@@ -329,7 +289,7 @@ function formatDuration(seconds) {
       console.log('No idy available, skipping data fetch');
       setError('No website selected. Please select a website to view analytics.');
     }
-  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.web3Visitors, analytics?.walletsConnected]);
+  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.sessions]);
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {

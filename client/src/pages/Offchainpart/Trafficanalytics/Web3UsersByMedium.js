@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { isWeb3User } from '../../../utils/analyticsHelpers';
 
 const Web3UsersByMedium = ({ analytics }) => {
   const [timeFrame, setTimeFrame] = useState('24h');
@@ -59,14 +60,8 @@ const Web3UsersByMedium = ({ analytics }) => {
           mediumData[medium].totalUsers.add(session.userId);
         }
 
-        // Check if user is a Web3 user (has wallet or chain info)
-        const isWeb3User = session.wallet && (
-          (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') ||
-          (session.wallet.chainName && session.wallet.chainName !== 'No Wallet Detected') ||
-          (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '')
-        );
-
-        if (isWeb3User && session.userId) {
+        // Use the standardized isWeb3User function
+        if (isWeb3User(session) && session.userId) {
           mediumData[medium].web3Users.add(session.userId);
         }
       });

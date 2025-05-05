@@ -6,6 +6,7 @@ import {
   LabelList, 
   Tooltip
 } from 'recharts';
+import { calculateWeb3Stats } from '../../utils/analyticsHelpers';
 
 const HorizontalFunnelVisualization = ({analytics}) => {
   // State to hold the funnel data - can be updated from props or API
@@ -14,6 +15,20 @@ const HorizontalFunnelVisualization = ({analytics}) => {
     { name: 'Web3 Users', value: 130, fill: '#8B5CF6' },
     { name: 'Wallets connected', value: 90, fill: '#FFB95A' }
   ]);
+  
+  // State for Web3 stats
+  const [web3Stats, setWeb3Stats] = useState({
+    web3Percentage: "0.00",
+    walletsPercentage: "0.00"
+  });
+  
+  // Update Web3 stats when analytics data changes
+  useEffect(() => {
+    if (analytics?.sessions) {
+      const stats = calculateWeb3Stats(analytics.sessions, analytics.uniqueVisitors);
+      setWeb3Stats(stats);
+    }
+  }, [analytics]);
   
   // Helper function to get default color if not provided
   const getDefaultColor = (index) => {
@@ -40,11 +55,11 @@ const HorizontalFunnelVisualization = ({analytics}) => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm font-normal font-poppins">Conversion</p>
-            <p className="text-xl font-medium font-montserrat text-center">{(((analytics?.walletsConnected)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-xl font-medium font-montserrat text-center">{web3Stats.walletsPercentage}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm font-normal font-poppins">Web3 users</p>
-            <p className="text-xl font-medium font-montserrat text-center">{(((analytics?.web3Visitors)/(analytics?.uniqueVisitors))*100).toFixed(2)}%</p>
+            <p className="text-xl font-medium font-montserrat text-center">{web3Stats.web3Percentage}%</p>
           </div>
         </div>
       </div>
@@ -52,7 +67,7 @@ const HorizontalFunnelVisualization = ({analytics}) => {
       <div className="flex w-full">
         {/* Custom horizontal funnel using SVG */}
         <div className="w-full h-64 relative">
-          <HorizontalFunnel data={data} analytics={analytics} />
+          <HorizontalFunnel data={data} analytics={analytics} web3Stats={web3Stats} />
         </div>
       </div>
       
@@ -73,7 +88,7 @@ const HorizontalFunnelVisualization = ({analytics}) => {
 };
 
 // Custom horizontal funnel component
-const HorizontalFunnel = ({ data, analytics }) => {
+const HorizontalFunnel = ({ data, analytics, web3Stats }) => {
   if (!data || data.length === 0) return null;
   
   // Calculate dimensions
@@ -146,9 +161,9 @@ const HorizontalFunnel = ({ data, analytics }) => {
         if (item.name === 'Unique Visitors') {
           textValue = analytics?.uniqueVisitors;
         } else if (item.name === 'Web3 Users') {
-          textValue = analytics?.web3Visitors;
+          textValue = web3Stats?.web3Users;
         } else if (item.name === 'Wallets connected') {
-          textValue = analytics?.walletsConnected;
+          textValue = web3Stats?.walletsConnected;
         } else if (item.name === 'Transaction recorded') {
           textValue = 0;
         } 

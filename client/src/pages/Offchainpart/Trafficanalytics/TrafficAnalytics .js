@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Legend, ZAxis } from 'recharts';
 import TrafficSourcesComponent from '../TrafficSourcesComponent';
+import { isWeb3User } from '../../../utils/analyticsHelpers';
+
 const AttributionJourneySankey = ({analytics}) => {
   // Process analytics data to generate Sankey diagram data
   const processAnalyticsData = () => {
@@ -621,8 +623,8 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
       uniqueUserIdsBySource[firstSource].add(session.userId);
       
-      // Track unique web3 users by first source (wallet type not "No Wallet Detected")
-      if (session.wallet && session.wallet.walletType !== 'No Wallet Detected') {
+      // Track unique web3 users by first source
+      if (isWeb3User(session)) {
         if (!web3UsersBySource[firstSource]) {
           web3UsersBySource[firstSource] = new Set();
         }

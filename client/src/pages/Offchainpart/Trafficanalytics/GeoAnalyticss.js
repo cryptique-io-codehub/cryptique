@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import GeoAnalyticsMap from '../GeoAnalyticsMap';
+import { isWeb3User } from '../../../utils/analyticsHelpers';
 
 
 // Format seconds into minutes and seconds
@@ -108,36 +109,29 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       }
       
       // Track wallet connections and types
-      if (session.wallet) {
-        // Check for web3 users - has wallet type and it's not "No Wallet Detected"
-        if (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
-          metrics[countryName].web3Users.add(userId);
-          
-          // Track sources for web3 users
-          if (source) {
-            metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
-              users: new Set(),
-              web3Users: new Set()
-            };
-            metrics[countryName].sourceTraffic[source].web3Users.add(userId);
-          }
-          
-          // Track wallet types
+      if (isWeb3User(session)) {
+        metrics[countryName].web3Users.add(userId);
+        
+        // Track sources for web3 users
+        if (source) {
+          metrics[countryName].sourceTraffic[source] = metrics[countryName].sourceTraffic[source] || {
+            users: new Set(),
+            web3Users: new Set()
+          };
+          metrics[countryName].sourceTraffic[source].web3Users.add(userId);
+        }
+        
+        // Track wallet types if wallet info is available
+        if (session.wallet && session.wallet.walletType) {
           const walletType = session.wallet.walletType;
           metrics[countryName].wallets[walletType] = metrics[countryName].wallets[walletType] || new Set();
           metrics[countryName].wallets[walletType].add(userId);
         }
-        
-        // Track wallet connections (has non-empty address)
-        if (session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
-          // If wallet type is "No Wallet Detected" but has wallet address, count as web3 user too
-          if (session.wallet.walletType === 'No Wallet Detected') {
-            metrics[countryName].web3Users.add(userId);
-          }
-          
-          // Count as wallet connection regardless of wallet type
-          metrics[countryName].walletConnections.add(userId);
-        }
+      }
+      
+      // Track wallet connections (has non-empty address) separately
+      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+        metrics[countryName].walletConnections.add(userId);
       }
       
       // Track sources for all users
@@ -209,7 +203,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
     });
     
     return countryStats;
-  }, [analytics]);
+  }, [analytics, selectedCountry]);
   
   // Calculate global metrics for comparison
   const globalMetrics = useMemo(() => {
@@ -323,7 +317,7 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
     
     const countryCodeMap = {
       "United States": "🇺🇸",
-      "United States of America": "🇺🇸",
+      "United States of America": "🇺��",
       "India": "🇮🇳",
       "Germany": "🇩🇪",
       "Brazil": "🇧🇷",

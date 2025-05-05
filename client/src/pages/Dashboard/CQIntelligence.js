@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Send, Bot, BarChart } from 'lucide-react';
 import Header from "../../components/Header";
 import axiosInstance from "../../axiosInstance";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { isWeb3User, calculateAverageDuration, formatDuration } from '../../utils/analyticsHelpers';
 
 // Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
@@ -597,12 +598,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         const uniqueVisitors = new Set(periodSessions.map(s => s.device)).size;
         if (uniqueVisitors > 0) metrics.visitors[label] = uniqueVisitors;
 
-        // Web3 users
-        const web3Users = periodSessions.filter(s => s.hasWeb3 || s.walletConnected).length;
+        // Web3 users - use standardized function
+        const web3Users = periodSessions.filter(s => isWeb3User(s)).length;
         if (web3Users > 0) metrics.web3Users[label] = web3Users;
 
         // Connected wallets
-        const connectedWallets = periodSessions.filter(s => s.walletConnected).length;
+        const connectedWallets = periodSessions.filter(s => s.wallet && s.wallet.walletAddress && s.wallet.walletAddress !== '' && s.wallet.walletAddress !== 'No Wallet Detected').length;
         if (connectedWallets > 0) metrics.walletsConnected[label] = connectedWallets;
 
         // Average engagement time
@@ -714,7 +715,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         if (session.returningUser !== undefined) {
           metrics.userSegments.newVsReturning[session.returningUser ? 'returning' : 'new']++;
         }
-        if (session.hasWeb3 || session.walletConnected) {
+        
+        // Use standardized isWeb3User function
+        if (isWeb3User(session)) {
           metrics.userSegments.web3VsTraditional.web3++;
         } else {
           metrics.userSegments.web3VsTraditional.traditional++;

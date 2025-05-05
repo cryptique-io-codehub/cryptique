@@ -4,6 +4,7 @@ import Header from '../../components/Header';
 import Filters from '../Offchainpart/Filters';
 import axiosInstance from '../../axiosInstance';
 import { v4 as uuidv4 } from 'uuid';
+import { formatDuration } from '../../utils/analyticsHelpers';
 
 export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [contractarray, setcontractarray] = useState([]);
@@ -282,12 +283,6 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     { code: 'CNY', symbol: '¥' },
     { code: 'INR', symbol: '₹' },
   ];
-
-  // Function to format duration in minutes
-  const formatDuration = (minutes) => {
-    if (!minutes || minutes === 0) return '-';
-    return `${minutes.toFixed(2)} min${minutes !== 1 ? 's' : ''}`;
-  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

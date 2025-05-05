@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { formatDuration } from '../../../utils/analyticsHelpers';
 
 const RetentionAnalytics = ({analytics, setanalytics}) => {
   const [timeFrame, setTimeFrame] = useState('Last 7 Days');
