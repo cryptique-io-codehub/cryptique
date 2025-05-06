@@ -205,7 +205,12 @@ export const fetchBnbTransactions = async (contractAddress, options = {}) => {
           lowestBlock = blockNumber;
         }
         
-        // Format transaction
+        // Check if this might be a BEP-20 token transfer
+        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
+          return processBep20Transaction(tx);
+        }
+        
+        // Format standard transaction
         return {
           tx_hash: tx.hash,
           from_address: tx.from.toLowerCase(),
