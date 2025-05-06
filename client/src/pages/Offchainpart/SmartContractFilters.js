@@ -232,7 +232,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // Remove from selected contracts
       const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
       setSelectedContracts(updatedSelectedContracts);
-
+          
       // If this was the primary selected contract, update it
       if (propSelectedContract?.id === contractToDelete.id) {
         if (updatedSelectedContracts.length > 0) {
@@ -266,7 +266,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     } catch (error) {
       console.error("Error in deletion process:", error);
     }
-
+    
     setShowDeleteModal(false);
     setContractToDelete(null);
   };
@@ -661,7 +661,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         // Save transactions to API in smaller batches to avoid payload size issues
         try {
           // Smaller batch size for better reliability
-          const BATCH_SIZE = 9000; // Reduced from 10000 to 9000 to avoid 413 Content Too Large errors
+          const BATCH_SIZE = 7500; // Reduced from 10000 to 7500 to avoid payload size issues
           let batchErrors = [];
           
           setProcessingStep('saving');
@@ -767,7 +767,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       if (response.data && response.data.transactions) {
         const fetchedTransactions = response.data.transactions;
-          
+      
           // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
           

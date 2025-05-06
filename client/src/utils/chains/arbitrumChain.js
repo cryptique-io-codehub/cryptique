@@ -187,7 +187,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       // Process transactions
       const batchTransactions = response.data.result;
-      
+    
       // If no more transactions found, break out of the loop
       if (!batchTransactions || batchTransactions.length === 0) {
         console.log(`No more transactions found after batch ${batchIndex}`);
