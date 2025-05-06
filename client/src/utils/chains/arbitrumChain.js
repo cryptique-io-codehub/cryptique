@@ -151,9 +151,9 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
             } else if (errorMsg.includes("No transactions found")) {
               // No transactions found is not an error, just end the loop
               console.log("No transactions found for this contract address");
-              return {
+    return {
                 transactions: allTransactions,
-                metadata: {
+      metadata: {
                   total: allTransactions.length,
                   chain: "Arbitrum",
                   contract: contractAddress,

@@ -319,7 +319,7 @@ export const ContractDataProvider = ({ children }) => {
           setLoadingStatus(`Saving ${sanitizedTransactions.length} valid transactions...`);
           
           // Save sanitized transactions in batches
-          const BATCH_SIZE = 10000;
+          const BATCH_SIZE = 9000;
           let batchErrors = [];
           
           for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {

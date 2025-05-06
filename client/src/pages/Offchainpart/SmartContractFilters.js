@@ -300,9 +300,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     if (isDuplicate) {
       setContractError('This contract is already in your list for this blockchain');
-      return;
-    }
-    
+        return;
+      }
+      
     // Verify and add the contract
     const success = await verifySmartContract();
     
@@ -351,25 +351,25 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setLoadingStatus('Could not fetch token symbol, using default...');
           // Use default token symbol based on blockchain
           switch (blockchain) {
-            case 'Ethereum':
+        case 'Ethereum':
               finalTokenSymbol = 'ETH';
-              break;
+          break;
             case 'BNB Chain':
               finalTokenSymbol = 'BNB';
               break;
             case 'Base':
               finalTokenSymbol = 'ETH';
               break;
-            case 'Polygon':
+        case 'Polygon':
               finalTokenSymbol = 'MATIC';
-              break;
-            case 'Arbitrum':
+          break;
+        case 'Arbitrum':
               finalTokenSymbol = 'ETH';
-              break;
-            case 'Optimism':
+          break;
+        case 'Optimism':
               finalTokenSymbol = 'ETH';
-              break;
-            default:
+          break;
+        default:
               finalTokenSymbol = 'ETH';
           }
         }
@@ -400,7 +400,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Update contract array
       setLoadingStatus('Updating contract list...');
-      setLoadingProgress({ current: 70, total: 100 });
+          setLoadingProgress({ current: 70, total: 100 });
       const updatedContracts = [...contractarray, contractToAdd];
       setcontractarray(updatedContracts);
       
@@ -416,14 +416,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setShowAddContractModal(false);
 
       // Short delay to show success before fetching transactions
-      await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Fetch initial transactions for this new contract
       console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
       await fetchInitialTransactions(contractToAdd);
       
       return true;
-    } catch (error) {
+        } catch (error) {
       console.error("Error adding smart contract:", error);
       setContractError(`Error adding contract: ${error.message}`);
       setAddingContract(false);
@@ -661,7 +661,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         // Save transactions to API in smaller batches to avoid payload size issues
         try {
           // Smaller batch size for better reliability
-          const BATCH_SIZE = 10000; // Increased from 2500 to 10000 for better performance
+          const BATCH_SIZE = 9000; // Reduced from 10000 to 9000 to avoid 413 Content Too Large errors
           let batchErrors = [];
           
           setProcessingStep('saving');
