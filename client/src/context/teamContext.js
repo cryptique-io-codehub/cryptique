@@ -9,15 +9,21 @@ export const TeamProvider = ({ children }) => {
   useEffect(() => {
     const storedTeam = localStorage.getItem("selectedTeam");
     if (storedTeam) {
-      const parsedTeam = JSON.parse(storedTeam);
-      setSelectedTeam(parsedTeam.name);
+      try {
+        const parsedTeam = JSON.parse(storedTeam);
+        setSelectedTeam(parsedTeam.name || '');
+      } catch (error) {
+        console.error("Error parsing team data from localStorage:", error);
+        // Clear the invalid data
+        localStorage.removeItem("selectedTeam");
+      }
     }
     setIsLoading(false);
     console.log(selectedTeam); 
   }, []);
 
   return (
-    <TeamContext.Provider value={{ selectedTeam, setSelectedTeam,isLoading }}>
+    <TeamContext.Provider value={{ selectedTeam, setSelectedTeam, isLoading }}>
       {children}
     </TeamContext.Provider>
   );
