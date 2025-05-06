@@ -114,7 +114,7 @@ exports.saveTransactions = async (req, res) => {
     }
     
     // Process transactions in smaller batches to avoid payload size issues
-    const BATCH_SIZE = 2500; // Increased from 100 to 2500 for better performance
+    const BATCH_SIZE = 10000; // Increased from 2500 to 10000 for better performance
     let totalInserted = 0;
     let totalModified = 0;
     let highestBlockNumber = 0;
