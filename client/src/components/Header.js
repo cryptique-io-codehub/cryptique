@@ -55,13 +55,13 @@ const TeamSelector = () => {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white"
           >
-            <span>{selectedTeam}</span>
+            <span className="truncate max-w-[120px]">{selectedTeam}</span>
             <ChevronDown size={16} />
           </button>
 
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
-              <div className="max-h-60 overflow-y-auto">
+              <div className="max-h-60">
                 {curTeams.length > 0 ? (
                   curTeams.map((team) => (
                     <button
@@ -73,9 +73,9 @@ const TeamSelector = () => {
                       onClick={() => handleTeamSelect(team)}
                     >
                       <div className="flex justify-between items-center">
-                        <span>{team.name}</span>
+                        <span className="truncate">{team.name}</span>
                         {team.members && (
-                          <span className="text-xs text-gray-500 ml-2">
+                          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                             {team.members} members
                           </span>
                         )}

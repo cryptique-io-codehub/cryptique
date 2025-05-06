@@ -131,7 +131,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 1000; // Fetch 1000 transactions per request
+      const pageSize = 100000; // Fetch 100000 transactions per request
       
       // Loop to fetch all transactions with pagination
       while (hasMore) {
@@ -166,7 +166,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // Move to next page
           page++;
           
-          // No safety limit - fetch all transactions
+          // Safety check - don't loop more than 10 times (1,000,000 transactions)
+          if (page > 10) {
+            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
+            hasMore = false;
+          }
+          
           if (page % 10 === 0) {
             // Log progress every 10 pages
             console.log(`Fetched ${allTransactions.length} transactions so far...`);

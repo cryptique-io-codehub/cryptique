@@ -97,17 +97,17 @@ const TeamsSection = () => {
                     onClick={toggleTeamDropdown}
                     className="w-full flex justify-between items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm"
                 >
-                    <span>{selectedTeam ? selectedTeam.name : 'Select a Team'}</span>
+                    <span className="truncate">{selectedTeam ? selectedTeam.name : 'Select a Team'}</span>
                     <ChevronDown size={18} />
                 </button>
                 
                 {isTeamDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60">
                         {teams.map((team, index) => (
                             <div 
                                 key={index} 
                                 onClick={() => selectTeam(team)}
-                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-ellipsis whitespace-nowrap"
                             >
                                 {team.name}
                             </div>

@@ -6,7 +6,7 @@ const Team = require("../models/team");
 exports.getContractTransactions = async (req, res) => {
   try {
     const { contractId } = req.params;
-    const { limit = 5000, before, after, page = 1 } = req.query;
+    const { limit = 100000, before, after, page = 1 } = req.query;
     
     console.log(`Fetching transactions for contract ${contractId}, page ${page}, limit ${limit}`);
     
@@ -114,7 +114,7 @@ exports.saveTransactions = async (req, res) => {
     }
     
     // Process transactions in smaller batches to avoid payload size issues
-    const BATCH_SIZE = 100; // Reduced from 500 to 100 for better reliability
+    const BATCH_SIZE = 2500; // Increased from 100 to 2500 for better performance
     let totalInserted = 0;
     let totalModified = 0;
     let highestBlockNumber = 0;
