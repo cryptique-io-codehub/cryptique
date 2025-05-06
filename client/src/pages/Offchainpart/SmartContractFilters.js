@@ -182,7 +182,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 5000; // Fetch 5000 transactions per request
+      const pageSize = 10000; // Increased from 5000 to 10000 transactions per request
       
       // Loop to fetch all transactions with pagination
       while (hasMore) {
@@ -214,9 +214,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           // Move to next page
           page++;
           
-          // Safety check - don't loop more than 10 times (50,000 transactions)
-          if (page > 10) {
-            console.log("Reached maximum page fetch limit (50,000 transactions)");
+          // Safety check - don't loop more than 100 times (1,000,000 transactions)
+          if (page > 100) {
+            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
             hasMore = false;
           }
         } else {
@@ -313,7 +313,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setLoadingStatus(`Fetching new transactions from BscScan...`);
           console.log('Fetching new transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
@@ -333,7 +333,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Base':
           console.log('Using Base Chain module for new transactions');
           const baseResult = await fetchBaseTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
@@ -353,7 +353,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Ethereum':
           console.log('Fetching new transactions from Etherscan');
           const ethResult = await fetchEthereumTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
@@ -373,7 +373,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Polygon':
           console.log('Fetching new transactions from Polygonscan');
           const polygonResult = await fetchPolygonTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
@@ -393,7 +393,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Arbitrum':
           console.log('Fetching new transactions from Arbiscan');
           const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
@@ -413,7 +413,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Optimism':
           console.log('Fetching new transactions from Optimistic Etherscan');
           const optimismResult = await fetchOptimismTransactions(contract.address, {
-            limit: 1000,
+            limit: 10000,
             startBlock: startBlock
           });
           
