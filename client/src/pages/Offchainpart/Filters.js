@@ -29,8 +29,23 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     const fetchWebsites = async () => {
       setIsLoading(true);
       try {
+        // Clean the team name to remove any quotes
+        let teamName = selectteam;
+        
+        // If it starts with a quote and ends with a quote, try to parse it
+        if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
+          try {
+            teamName = JSON.parse(teamName);
+          } catch (e) {
+            console.error("Error parsing teamName with quotes:", e);
+            // If parsing fails, we'll still use the string but remove quotes manually
+            teamName = teamName.replace(/^"|"$/g, '');
+          }
+        }
+        
+        console.log("Using teamName for API call:", teamName);
         // Use the correct GET endpoint with team name in path parameter
-        const response = await axiosInstance.get(`/website/team/${selectteam}`);
+        const response = await axiosInstance.get(`/website/team/${teamName}`);
         
         if (response.status === 200) {
           console.log("Fetched websites:", response.data.websites);
@@ -43,7 +58,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
               console.log('Auto-verify process completed');
               
               // Get the updated websites with verification status
-              const updatedResponse = await axiosInstance.get(`/website/team/${selectteam}`);
+              const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
               if (updatedResponse.status === 200) {
                 setWebsitearray(updatedResponse.data.websites);
               }
@@ -53,7 +68,7 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
             }
             
             const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
-             
+            
             // If no website is selected or selection is empty
             if(!savedWebsiteDomain || savedWebsiteDomain === '') {
               const firstWebsite = response.data.websites[0];
@@ -111,12 +126,38 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     
     // Setup event listener to detect team changes
     const handleStorageChange = () => {
-      const newTeam = localStorage.getItem("selectedTeam");
-      if (newTeam && newTeam !== selectedTeam) {
-        setSelectedTeam(newTeam);
+      const newTeamRaw = localStorage.getItem("selectedTeam");
+      
+      // Clean the new team value
+      let newTeam = newTeamRaw;
+      if (typeof newTeam === 'string' && newTeam.startsWith('"') && newTeam.endsWith('"')) {
+        try {
+          newTeam = JSON.parse(newTeam);
+        } catch (e) {
+          console.error("Error parsing newTeam with quotes:", e);
+          // If parsing fails, we'll still use the string but remove quotes manually
+          newTeam = newTeam.replace(/^"|"$/g, '');
+        }
+      }
+      
+      // Clean the selected team value for comparison
+      let currentTeam = selectedTeam;
+      if (typeof currentTeam === 'string' && currentTeam.startsWith('"') && currentTeam.endsWith('"')) {
+        try {
+          currentTeam = JSON.parse(currentTeam);
+        } catch (e) {
+          console.error("Error parsing currentTeam with quotes:", e);
+          // If parsing fails, we'll still use the string but remove quotes manually
+          currentTeam = currentTeam.replace(/^"|"$/g, '');
+        }
+      }
+      
+      if (newTeam && newTeam !== currentTeam) {
+        console.log("Team changed from:", currentTeam, "to:", newTeam);
+        setSelectedTeam(newTeamRaw); // Keep the raw value in state
         localStorage.removeItem("selectedWebsite");
         localStorage.removeItem("idy");
-        if (newTeam) {
+        if (newTeamRaw) {
           fetchWebsites();
         }
       }
@@ -230,7 +271,22 @@ HTML:
   const refreshWebsites = async () => {
     console.log("Manually refreshing websites");
     try {
-      const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
+      // Clean the team name to remove any quotes
+      let teamName = selectedTeam;
+      
+      // If it starts with a quote and ends with a quote, try to parse it
+      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
+        try {
+          teamName = JSON.parse(teamName);
+        } catch (e) {
+          console.error("Error parsing teamName with quotes:", e);
+          // If parsing fails, we'll still use the string but remove quotes manually
+          teamName = teamName.replace(/^"|"$/g, '');
+        }
+      }
+      
+      console.log("Using teamName for API call:", teamName);
+      const response = await axiosInstance.get(`/website/team/${teamName}`);
       
       if (response.status === 200 && response.data.websites) {
         console.log("Refreshed websites data:", response.data.websites);
@@ -322,8 +378,22 @@ HTML:
       setdeleteload(true);
       // console.log(selectedWebsite);
     
+      // Clean the team name to remove any quotes
+      let teamName = selectedTeam;
+      
+      // If it starts with a quote and ends with a quote, try to parse it
+      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
+        try {
+          teamName = JSON.parse(teamName);
+        } catch (e) {
+          console.error("Error parsing teamName with quotes:", e);
+          // If parsing fails, we'll still use the string but remove quotes manually
+          teamName = teamName.replace(/^"|"$/g, '');
+        }
+      }
+    
       const response = await axiosInstance.post('/website/delete', {
-        teamName: selectedTeam,
+        teamName: teamName,
         webId: selectedWebsite._id
       });
   
