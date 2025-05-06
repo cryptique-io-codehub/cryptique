@@ -90,6 +90,7 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
     const batchSize = 10000; // BaseScan API has a limit of 10,000 per request
+    const maxRetries = 3; // Maximum number of retries for failed requests
     
     console.log(`Fetching up to ${limit} transactions from BaseScan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
@@ -99,6 +100,10 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
     
     let allTransactions = [];
     let highestBlock = 0;
+    
+    // API key from env variable, fallback to hardcoded for demo
+    const apiKey = process.env.REACT_APP_BASESCAN_API_KEY || "GMYP4T9SF7P34QC9DXY4VSKX81RTBUXMMF";
+    const baseUrl = "https://api.basescan.org/api";
     
     // Fetch transactions in batches
     for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
@@ -111,24 +116,73 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
       let currentStartBlock = highestBlock > 0 ? highestBlock + 1 : startBlock;
       console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, starting from block ${currentStartBlock}`);
       
-      // Prepare API URL
-      const apiKey = "GMYP4T9SF7P34QC9DXY4VSKX81RTBUXMMF"; // BaseScan API key
-      const baseUrl = "https://api.basescan.org/api";
-      const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${currentStartBlock}&endblock=99999999&sort=asc&apikey=${apiKey}`;
+      let retryCount = 0;
+      let success = false;
+      let response;
       
-      // Fetch data
-      const response = await axios.get(url);
+      // Add explicit pagination parameters (offset, page)
+      const offset = 0; // Starting from first result
+      const page = 1;   // First page
       
-      // Check for API errors
-      if (response.data.status === "0") {
-        if (batchIndex === 0) {
-          // If this is the first batch and there's an error, return the error
-          throw new Error(`BaseScan API error: ${response.data.message || 'Unknown error'}`);
-        } else {
-          // If we've already got some transactions, just log the error and stop fetching
-          console.log(`BaseScan API error on batch ${batchIndex + 1}: ${response.data.message || 'Unknown error'}`);
-          break;
+      while (!success && retryCount < maxRetries) {
+        try {
+          // Prepare API URL with pagination parameters
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${currentStartBlock}&endblock=99999999&page=${page}&offset=${batchSize}&sort=asc&apikey=${apiKey}`;
+          
+          // Add delay for retries to prevent rate limiting
+          if (retryCount > 0) {
+            console.log(`Retry attempt ${retryCount}/${maxRetries} after delay...`);
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount)); // Exponential backoff
+          }
+          
+          // Fetch data
+          response = await axios.get(url);
+          
+          // Check for API errors
+          if (response.data.status === "0") {
+            const errorMsg = response.data.message || 'Unknown error';
+            console.log(`BaseScan API error: ${errorMsg} (attempt ${retryCount + 1}/${maxRetries})`);
+            
+            // Check for specific error messages
+            if (errorMsg.includes("rate limit") || errorMsg.includes("Max rate limit")) {
+              // Rate limit hit, wait longer before retry
+              console.log("Rate limit reached, waiting before retry...");
+              await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds for rate limit
+            } else if (errorMsg.includes("No transactions found")) {
+              // No transactions found is not an error, just end the loop
+              console.log("No transactions found for this contract address");
+              return {
+                transactions: allTransactions,
+                metadata: {
+                  total: allTransactions.length,
+                  chain: "Base",
+                  contract: contractAddress,
+                  highestBlock: highestBlock,
+                  message: "No transactions found"
+                }
+              };
+            } else {
+              retryCount++;
+              continue;
+            }
+          } else {
+            // Success
+            success = true;
+          }
+        } catch (error) {
+          console.error(`API request error (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
+          retryCount++;
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
         }
+      }
+      
+      // If all retries failed, break the loop
+      if (!success) {
+        console.log(`Batch ${batchIndex + 1} failed after ${maxRetries} retries. Using data collected so far.`);
+        break;
       }
       
       // Process transactions
@@ -183,7 +237,7 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
       // Add a small delay between batches to avoid rate limits
       if (batchIndex < batchCount - 1) {
         console.log('Waiting briefly before next batch...');
-        await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay between batches
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Increased delay between batches
       }
     }
     
