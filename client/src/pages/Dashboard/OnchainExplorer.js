@@ -6,7 +6,6 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
-import SmartContractSelector from "../../components/SmartContractSelector";
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -96,9 +95,6 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                  
                   {/* Main content */}
                   <div className="px-2 md:px-4 pb-4">
-                    {/* Smart Contract Selector - Always visible on onchain pages */}
-                    <SmartContractSelector />
-
                     {/* Main content section */}
                     {activeSection === 'Dashboard' && (
                       <>

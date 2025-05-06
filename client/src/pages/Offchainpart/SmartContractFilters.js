@@ -9,6 +9,7 @@ import { fetchArbitrumTransactions } from '../../utils/chains/arbitrumChain';
 import { fetchOptimismTransactions } from '../../utils/chains/optimismChain';
 import { isValidAddress } from '../../utils/chainUtils';
 import axiosInstance from '../../axiosInstance';
+import { useContractData } from '../../contexts/ContractDataContext';
 
 // ABI for ERC20/BEP20 token interface - minimal version for what we need
 const ERC20_ABI = [
@@ -74,7 +75,17 @@ const ERC20_ABI = [
   }
 ];
 
-const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract, setSelectedContract }) => {
+const SmartContractFilters = ({ contractarray, setcontractarray, selectedContract: propSelectedContract, setSelectedContract: propSetSelectedContract }) => {
+  // Get data and methods from context
+  const { 
+    contractArray: contextContractArray, 
+    selectedContract: contextSelectedContract, 
+    handleContractChange,
+    isLoadingContracts: contextIsLoading,
+    isLoadingTransactions
+  } = useContractData();
+
+  // We'll still use the local component state for UI controls
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddContractModal, setShowAddContractModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -87,13 +98,34 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
   const [web3, setWeb3] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [transactions, setTransactions] = useState({});
-  const [isFetchingTransactions, setIsFetchingTransactions] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [processingStep, setProcessingStep] = useState('');
   const teamRef = useRef(null);
+  
+  // For backwards compatibility with existing code
+  const [transactions, setTransactions] = useState({});
+  const [isFetchingTransactions, setIsFetchingTransactions] = useState(false);
+
+  // Keep the component props in sync with the context
+  useEffect(() => {
+    if (contextContractArray?.length > 0) {
+      setcontractarray(contextContractArray);
+    }
+  }, [contextContractArray, setcontractarray]);
+
+  useEffect(() => {
+    if (contextSelectedContract) {
+      propSetSelectedContract(contextSelectedContract);
+      
+      // Add to the array of selected contracts if not already there
+      if (!selectedContracts.find(c => c.id === contextSelectedContract.id)) {
+        setSelectedContracts([...selectedContracts, contextSelectedContract]);
+      }
+    } else {
+      propSetSelectedContract(null);
+    }
+  }, [contextSelectedContract, propSetSelectedContract]);
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -129,412 +161,278 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     initWeb3();
   }, []);
 
-  // Load contracts from API on component mount
-  useEffect(() => {
-    // Store current team to track changes
-    const initialTeam = localStorage.getItem('selectedTeam');
-    fetchContractsFromAPI();
-    
-    // Setup event listener to detect team changes
-    const handleStorageChange = () => {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      // Only fetch contracts if the team has actually changed
-      if (currentTeam && currentTeam !== teamRef.current) {
-        teamRef.current = currentTeam;
-        console.log(`Team changed to: ${currentTeam}, refreshing contracts`);
-        fetchContractsFromAPI();
-        // Clear selected contract when team changes
-        setSelectedContract(null);
-        setSelectedContracts([]);
-        // Clear transactions cache
-        setTransactions({});
-      }
-    };
-    
-    // Use a ref to track the current team to avoid unnecessary re-renders and fetches
-    teamRef.current = initialTeam;
-    
-    // Check for team changes every second
-    const intervalId = setInterval(handleStorageChange, 1000);
-    
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Remove the polling effect and replace with on-demand fetching
-  useEffect(() => {
-    if (!selectedContract) return;
-    
-    // Fetch transactions from MongoDB if not already loaded
-    if (!transactions[selectedContract.id]) {
-      fetchTransactionsFromAPI(selectedContract.id);
-    }
-  }, [selectedContract]);
-
-  // Fetch transactions from MongoDB API
-  const fetchTransactionsFromAPI = async (contractId) => {
-    if (!contractId) return [];
-    
-    setIsFetchingTransactions(true);
-    console.log(`Fetching transactions from MongoDB for contract ID: ${contractId}`);
-    
-    try {
-      let allTransactions = [];
-      let hasMore = true;
-      let page = 1;
-      const pageSize = 100000; // Fetch 100000 transactions per request
-      
-      // Loop to fetch all transactions with pagination
-      while (hasMore) {
-        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
-        
-      const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-          params: { 
-            limit: pageSize,
-            page: page
-          }
-      });
-      
-      if (response.data && response.data.transactions) {
-        const fetchedTransactions = response.data.transactions;
-          
-          // Add to our accumulated transactions
-          allTransactions = [...allTransactions, ...fetchedTransactions];
-          
-          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
-          
-          // Check if we need to fetch more
-          hasMore = response.data.metadata?.hasMore;
-          
-          // If we got fewer transactions than the page size, we're done
-          if (fetchedTransactions.length < pageSize) {
-            hasMore = false;
-          }
-          
-          // Move to next page
-          page++;
-          
-          // Safety check - don't loop more than 10 times (1,000,000 transactions)
-          if (page > 10) {
-            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
-            hasMore = false;
-          }
-        } else {
-          // No transactions or error
-          hasMore = false;
-        }
-      }
-        
-        // Store in component state
-        setTransactions(prev => ({
-          ...prev,
-        [contractId]: allTransactions
-        }));
-        
-      console.log(`Loaded ${allTransactions.length} total transactions from MongoDB for contract ${contractId}`);
-        setIsFetchingTransactions(false);
-      return allTransactions;
-    } catch (error) {
-      console.error("Error fetching transactions from MongoDB:", error);
-    }
-    
-    setIsFetchingTransactions(false);
-    return [];
-  };
-
+  // Function to handle contract selection that works with both props and context
   const handleSelectContract = async (contract) => {
-    // Set as the primary selected contract
-    setSelectedContract(contract);
+    // Update the context (this will also fetch transactions)
+    handleContractChange(contract.id);
     
-    // Add to the array of selected contracts if not already there
-    if (!selectedContracts.find(c => c.id === contract.id)) {
-      setSelectedContracts([...selectedContracts, contract]);
-    }
-    
-    // Fetch latest transactions when contract is selected
-    await fetchLatestTransactions(contract);
-    
+    // Close the dropdown
     setShowDropdown(false);
   };
 
-  // Function to fetch latest transactions when a contract is selected
-  const fetchLatestTransactions = async (contract) => {
-    if (!contract || !contract.id) return;
-    
-    setIsFetchingTransactions(true);
-    setLoadingStatus(`Checking for new transactions for ${contract.name || contract.address}`);
-    setProcessingStep('initializing');
-    setLoadingProgress({ current: 0, total: 100 });
-    
-    console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
-    
-    try {
-      // Get current transaction count in database - will fetch ALL transactions
-      setProcessingStep('counting_existing');
-      const initialTransactions = await fetchTransactionsFromAPI(contract.id);
-      const initialCount = initialTransactions.length;
-      
-      setLoadingStatus(`Found ${initialCount} existing transactions in database`);
-      setLoadingProgress({ current: 10, total: 100 });
-      
-      console.log(`===== TRANSACTION COUNT BEFORE UPDATE =====`);
-      console.log(`Contract ${contract.address} has ${initialCount} transactions in database`);
-      console.log(`=========================================`);
-      
-      // Get the latest block number from our database
-      setProcessingStep('getting_latest_block');
-      setLoadingStatus('Determining latest processed block...');
-      
-      const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
-      const startBlock = latestBlockResponse.data.latestBlockNumber;
-      
-      setLoadingProgress({ current: 20, total: 100 });
-      
-      // If we don't have any transactions yet, fetch them for the first time
-      if (!startBlock) {
-        setLoadingStatus('No existing transactions found, starting initial fetch...');
-        await fetchInitialTransactions(contract);
-        setIsFetchingTransactions(false);
-        return;
-      }
-      
-      setLoadingStatus(`Checking for new transactions since block ${startBlock}`);
-      console.log(`Checking for new transactions since block ${startBlock} for contract: ${contract.address}`);
-      
-      // Fetch only new transactions from blockchain API
-      let newTransactions = [];
-      
-      // Use the appropriate chain-specific module based on blockchain
-      setProcessingStep('fetching_new');
-      setLoadingProgress({ current: 30, total: 100 });
-      
-      switch (contract.blockchain) {
-        case 'BNB Chain':
-          setLoadingStatus(`Fetching new transactions from BscScan...`);
-          console.log('Fetching new transactions from BscScan');
-          const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (bnbResult.transactions?.length > 0) {
-            console.log(`Retrieved ${bnbResult.transactions.length} new transactions from BscScan`);
-            // Update token symbol in transactions
-            newTransactions = bnbResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
-            }));
-          } else {
-            console.log('No new transactions found');
-          }
-          break;
-          
-        case 'Base':
-          console.log('Using Base Chain module for new transactions');
-          const baseResult = await fetchBaseTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (baseResult.transactions?.length > 0) {
-            // Update token symbol in transactions
-            newTransactions = baseResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
-            }));
-            console.log(`Retrieved ${newTransactions.length} new transactions from Base API`);
-          } else {
-            console.log('No new transactions found or error:', baseResult.metadata?.message);
-          }
-          break;
-          
-        case 'Ethereum':
-          console.log('Fetching new transactions from Etherscan');
-          const ethResult = await fetchEthereumTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (ethResult.transactions?.length > 0) {
-            console.log(`Retrieved ${ethResult.transactions.length} new transactions from Etherscan`);
-            // Update token symbol in transactions
-            newTransactions = ethResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ERC20', contract.tokenSymbol || 'ERC20')
-            }));
-          } else {
-            console.log('No new transactions found or error:', ethResult.metadata?.message);
-          }
-          break;
-          
-        case 'Polygon':
-          console.log('Fetching new transactions from Polygonscan');
-          const polygonResult = await fetchPolygonTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (polygonResult.transactions?.length > 0) {
-            console.log(`Retrieved ${polygonResult.transactions.length} new transactions from Polygonscan`);
-            // Update token symbol in transactions
-            newTransactions = polygonResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('MATIC', contract.tokenSymbol || 'MATIC')
-            }));
-          } else {
-            console.log('No new transactions found or error:', polygonResult.metadata?.message);
-          }
-          break;
-          
-        case 'Arbitrum':
-          console.log('Fetching new transactions from Arbiscan');
-          const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (arbitrumResult.transactions?.length > 0) {
-            console.log(`Retrieved ${arbitrumResult.transactions.length} new transactions from Arbiscan`);
-            // Update token symbol in transactions
-            newTransactions = arbitrumResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ARB', contract.tokenSymbol || 'ARB')
-            }));
-          } else {
-            console.log('No new transactions found or error:', arbitrumResult.metadata?.message);
-          }
-          break;
-          
-        case 'Optimism':
-          console.log('Fetching new transactions from Optimistic Etherscan');
-          const optimismResult = await fetchOptimismTransactions(contract.address, {
-            limit: 10000,
-            startBlock: startBlock
-          });
-          
-          if (optimismResult.transactions?.length > 0) {
-            console.log(`Retrieved ${optimismResult.transactions.length} new transactions from Optimistic Etherscan`);
-            // Update token symbol in transactions
-            newTransactions = optimismResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('OP', contract.tokenSymbol || 'OP')
-            }));
-          } else {
-            console.log('No new transactions found or error:', optimismResult.metadata?.message);
-          }
-          break;
-          
-        default:
-          console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
-      }
-      
-      let totalSaved = 0;
-      
-      // If we found new transactions, sanitize and save them to API
-      if (newTransactions.length > 0) {
-        setProcessingStep('processing');
-        setLoadingStatus(`Processing ${newTransactions.length} new transactions...`);
-        setLoadingProgress({ current: 60, total: 100 });
-        
-        try {
-          // Ensure transactions have proper format and required fields
-          const sanitizedTransactions = newTransactions.map(tx => ({
-            ...tx,
-            tx_hash: tx.tx_hash || '',
-            block_number: parseInt(tx.block_number) || 0,
-            block_time: tx.block_time || new Date().toISOString(),
-            chain: tx.chain || contract.blockchain,
-            contract_address: tx.contract_address || contract.address,
-            contractId: contract.id
-          })).filter(tx => 
-            // Filter out invalid transactions
-            tx.tx_hash && 
-            tx.tx_hash.length > 0 && 
-            tx.block_number && 
-            typeof tx.block_number === 'number'
-          );
-          
-          setLoadingStatus(`Saving ${sanitizedTransactions.length} valid transactions...`);
-          setProcessingStep('saving');
-          setLoadingProgress({ current: 70, total: 100 });
-          
-          // Save sanitized transactions in batches
-          const BATCH_SIZE = 2500;
-          let batchErrors = [];
-          
-          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
-            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
-            const progressPercent = Math.min(70 + Math.floor((i / sanitizedTransactions.length) * 20), 90);
-            setLoadingProgress({ current: progressPercent, total: 100 });
-            setLoadingStatus(`Saving batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(sanitizedTransactions.length/BATCH_SIZE)} (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
-            
-            try {
-              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-                transactions: batch
-              });
-              
-              console.log('Batch save response:', response.data);
-              totalSaved += response.data.total || 0;
-            } catch (batchError) {
-              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
-              batchErrors.push(batchError.message || 'Unknown batch error');
-              // Small delay before next batch to avoid rate limiting
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-          
-          if (batchErrors.length > 0) {
-            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
-          }
-          
-          console.log(`Saved ${totalSaved} new transactions to API in batches`);
-        } catch (error) {
-          console.error("Error saving new transactions to API:", error);
-          setLoadingStatus(`Error saving transactions: ${error.message}`);
-      }
-      } else {
-        setLoadingStatus('No new transactions found');
-        setLoadingProgress({ current: 90, total: 100 });
-      }
-      
-      // Always fetch the latest transactions from MongoDB to display - this will fetch ALL transactions
-      setProcessingStep('finalizing');
-      setLoadingStatus('Finalizing and refreshing transaction list...');
-      setLoadingProgress({ current: 95, total: 100 });
-      
-      const freshTransactions = await fetchTransactionsFromAPI(contract.id);
-      const finalCount = freshTransactions.length;
-      
-      // Print transaction count information
-      console.log('======== TRANSACTION COUNT SUMMARY ========');
-      console.log(`Before update: ${initialCount} transactions`);
-      console.log(`New transactions saved: ${totalSaved}`);
-      console.log(`After update: ${finalCount} transactions`);
-      console.log(`Net increase: ${finalCount - initialCount} transactions`);
-      console.log('==========================================');
-      
-      setLoadingStatus(`Transaction update complete. Added ${totalSaved} new transactions.`);
-      setLoadingProgress({ current: 100, total: 100 });
-      
-      // Final delay to show completion
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-    } catch (error) {
-      console.error(`Error fetching latest transactions:`, error);
-      setLoadingStatus(`Error: ${error.message}`);
-    }
-    
-    setIsFetchingTransactions(false);
-    setProcessingStep('');
+  const handleDropdownToggle = () => {
+    setShowDropdown(!showDropdown);
   };
 
-  // Function to fetch initial transactions when first adding a contract
+  const handleRemoveContract = (contractId, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    // Reset context to show demo data
+    handleContractChange('');
+    
+    // Remove from selected contracts array
+    const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractId);
+    setSelectedContracts(updatedSelectedContracts);
+  };
+
+  const handleOpenAddContractModal = () => {
+    setShowAddContractModal(true);
+    setShowDropdown(false);
+    setContractAddress('');
+    setContractName('');
+    setTokenSymbol('');
+    setBlockchain('Ethereum');
+    setContractError('');
+  };
+
+  const handleCloseAddContractModal = () => {
+    setShowAddContractModal(false);
+    setContractError('');
+  };
+
+  const handleDeleteContract = (contract) => {
+    setContractToDelete(contract);
+    setShowDeleteModal(true);
+    setShowDropdown(false);
+  };
+
+  const confirmDeleteContract = async () => {
+    if (!contractToDelete) return;
+
+    try {
+      // First delete all transactions associated with this contract
+      try {
+        console.log(`Deleting all transactions for contract ${contractToDelete.id}...`);
+        await axiosInstance.delete(`/transactions/contract/${contractToDelete.id}`);
+        console.log(`Successfully deleted all transactions for contract ${contractToDelete.id}`);
+      } catch (txError) {
+        console.error(`Error deleting transactions for contract ${contractToDelete.id}:`, txError);
+        // Continue with deletion even if transaction deletion fails
+      }
+      
+      // Delete contract from API
+      const apiSuccess = await deleteContractFromAPI(contractToDelete.id);
+      
+      // Remove from contract array
+      const updatedContracts = contractarray.filter(c => c.id !== contractToDelete.id);
+      setcontractarray(updatedContracts);
+
+      // Remove from selected contracts
+      const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
+      setSelectedContracts(updatedSelectedContracts);
+
+      // If this was the primary selected contract, update it
+      if (selectedContract?.id === contractToDelete.id) {
+        if (updatedSelectedContracts.length > 0) {
+          propSetSelectedContract(updatedSelectedContracts[0]);
+        } else {
+          propSetSelectedContract(null);
+        }
+      }
+
+      // Also clear the transactions from local state
+      setTransactions(prev => {
+        const updated = {...prev};
+        delete updated[contractToDelete.id];
+        return updated;
+      });
+
+      // If API failed, save to localStorage as fallback
+      if (!apiSuccess) {
+        // Save the updated contracts to localStorage
+        try {
+          const currentTeam = localStorage.getItem('selectedTeam');
+          if (currentTeam) {
+            const storageKey = `contracts_${currentTeam}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedContracts));
+            console.log(`Saved ${updatedContracts.length} contracts to storage after deletion`);
+          }
+        } catch (error) {
+          console.error("Error saving contracts to storage after deletion:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error in deletion process:", error);
+    }
+
+    setShowDeleteModal(false);
+    setContractToDelete(null);
+  };
+
+  const cancelDeleteContract = () => {
+    setShowDeleteModal(false);
+    setContractToDelete(null);
+  };
+
+  const formatContractDisplay = (contract) => {
+    const displayName = contract.name || contract.address;
+    const shortAddress = `${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`;
+    
+    return {
+      name: displayName,
+      shortAddress: shortAddress,
+      fullAddress: contract.address,
+      blockchain: contract.blockchain,
+      tokenSymbol: contract.tokenSymbol
+    };
+  };
+
+  const handleAddContract = async (e) => {
+    e.preventDefault();
+    
+    // Check if this contract is already in the array
+    const isDuplicate = contractarray.some(contract => 
+      contract.address.toLowerCase() === contractAddress.toLowerCase() && 
+      contract.blockchain === blockchain
+    );
+    
+    if (isDuplicate) {
+      setContractError('This contract is already in your list for this blockchain');
+      return;
+    }
+    
+    // Verify and add the contract
+    const success = await verifySmartContract();
+    
+    if (success) {
+      console.log("Contract added successfully");
+      
+      // Close the modal
+      handleCloseAddContractModal();
+    }
+  };
+
+  const verifySmartContract = async () => {
+    if (!contractAddress) {
+      setContractError('Please enter a contract address');
+      return false;
+    }
+
+    // Validate contract address format
+    if (!isValidAddress(contractAddress)) {
+      setContractError('Invalid contract address format');
+      return false;
+    }
+
+    setAddingContract(true);
+    setContractError('');
+    setIsFetchingTransactions(true);
+    setLoadingStatus('Verifying smart contract...');
+    setProcessingStep('verifying');
+    setLoadingProgress({ current: 0, total: 100 });
+    
+    try {
+      // Create contract instance
+      setLoadingStatus('Creating contract instance...');
+      setLoadingProgress({ current: 10, total: 100 });
+      const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+      
+      // Get token symbol if not manually provided
+      let finalTokenSymbol = tokenSymbol;
+      if (!finalTokenSymbol) {
+        try {
+          setLoadingStatus('Fetching token symbol...');
+          setLoadingProgress({ current: 20, total: 100 });
+          finalTokenSymbol = await contract.methods.symbol().call();
+        } catch (error) {
+          console.warn("Could not fetch token symbol, using default:", error);
+          setLoadingStatus('Could not fetch token symbol, using default...');
+          // Use default token symbol based on blockchain
+          switch (blockchain) {
+            case 'Ethereum':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'BNB Chain':
+              finalTokenSymbol = 'BNB';
+              break;
+            case 'Base':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'Polygon':
+              finalTokenSymbol = 'MATIC';
+              break;
+            case 'Arbitrum':
+              finalTokenSymbol = 'ETH';
+              break;
+            case 'Optimism':
+              finalTokenSymbol = 'ETH';
+              break;
+            default:
+              finalTokenSymbol = 'ETH';
+          }
+        }
+      }
+
+      setLoadingStatus('Creating contract object...');
+      setLoadingProgress({ current: 30, total: 100 });
+
+      // Create new contract object
+      const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newContract = {
+        id: contractId,
+        address: contractAddress,
+        name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
+        blockchain: blockchain,
+        tokenSymbol: finalTokenSymbol,
+        added_at: new Date().toISOString(),
+        verified: true
+      };
+      
+      // Save contract to API
+      setLoadingStatus('Saving contract to database...');
+      setLoadingProgress({ current: 50, total: 100 });
+      const savedContract = await saveContractToAPI(newContract);
+      
+      // Use the saved contract if API call was successful
+      const contractToAdd = savedContract || newContract;
+      
+      // Update contract array
+      setLoadingStatus('Updating contract list...');
+      setLoadingProgress({ current: 70, total: 100 });
+      const updatedContracts = [...contractarray, contractToAdd];
+      setcontractarray(updatedContracts);
+      
+      // Update selected contracts
+      setSelectedContracts([...selectedContracts, contractToAdd]);
+      
+      // Set as primary selected contract
+      propSetSelectedContract(contractToAdd);
+      
+      setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
+      setLoadingProgress({ current: 90, total: 100 });
+      setAddingContract(false);
+      setShowAddContractModal(false);
+
+      // Short delay to show success before fetching transactions
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Fetch initial transactions for this new contract
+      console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
+      await fetchInitialTransactions(contractToAdd);
+      
+      return true;
+    } catch (error) {
+      console.error("Error adding smart contract:", error);
+      setContractError(`Error adding contract: ${error.message}`);
+      setAddingContract(false);
+      setIsFetchingTransactions(false);
+      setLoadingStatus(`Error: ${error.message}`);
+      return false;
+    }
+  };
+
   const fetchInitialTransactions = async (contract) => {
     if (!contract || !contract.id) {
       console.error("No valid contract provided for fetching initial transactions");
@@ -844,343 +742,76 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setProcessingStep('');
   };
 
-  const handleDropdownToggle = () => {
-    setShowDropdown(!showDropdown);
-  };
-
-  const handleRemoveContract = (contractId, e) => {
-    if (e) {
-      e.stopPropagation();
-    }
+  const fetchTransactionsFromAPI = async (contractId) => {
+    if (!contractId) return [];
     
-    // Remove from selected contracts
-    const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractId);
-    setSelectedContracts(updatedSelectedContracts);
-    
-    // If this was the primary selected contract, update it
-    if (selectedContract?.id === contractId) {
-      // If there are other selected contracts, set the first one as primary
-      if (updatedSelectedContracts.length > 0) {
-        setSelectedContract(updatedSelectedContracts[0]);
-        // The useEffect hook will handle fetching transactions when selectedContract changes
-      } else {
-        setSelectedContract(null);
-      }
-    }
-  };
-
-  const handleOpenAddContractModal = () => {
-    setShowAddContractModal(true);
-    setShowDropdown(false);
-    setContractAddress('');
-    setContractName('');
-    setTokenSymbol('');
-    setBlockchain('Ethereum');
-    setContractError('');
-  };
-
-  const handleCloseAddContractModal = () => {
-    setShowAddContractModal(false);
-    setContractError('');
-  };
-
-  const verifySmartContract = async () => {
-    if (!contractAddress) {
-      setContractError('Please enter a contract address');
-      return false;
-    }
-
-    // Validate contract address format
-    if (!isValidAddress(contractAddress)) {
-      setContractError('Invalid contract address format');
-      return false;
-    }
-
-    setAddingContract(true);
-    setContractError('');
     setIsFetchingTransactions(true);
-    setLoadingStatus('Verifying smart contract...');
-    setProcessingStep('verifying');
-    setLoadingProgress({ current: 0, total: 100 });
+    console.log(`Fetching transactions from MongoDB for contract ID: ${contractId}`);
     
     try {
-      // Create contract instance
-      setLoadingStatus('Creating contract instance...');
-      setLoadingProgress({ current: 10, total: 100 });
-      const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+      let allTransactions = [];
+      let hasMore = true;
+      let page = 1;
+      const pageSize = 100000; // Fetch 100000 transactions per request
       
-      // Get token symbol if not manually provided
-      let finalTokenSymbol = tokenSymbol;
-      if (!finalTokenSymbol) {
-        try {
-          setLoadingStatus('Fetching token symbol...');
-          setLoadingProgress({ current: 20, total: 100 });
-          finalTokenSymbol = await contract.methods.symbol().call();
-        } catch (error) {
-          console.warn("Could not fetch token symbol, using default:", error);
-          setLoadingStatus('Could not fetch token symbol, using default...');
-          // Use default token symbol based on blockchain
-          switch (blockchain) {
-            case 'Ethereum':
-              finalTokenSymbol = 'ETH';
-              break;
-            case 'BNB Chain':
-              finalTokenSymbol = 'BNB';
-              break;
-            case 'Base':
-              finalTokenSymbol = 'ETH';
-              break;
-            case 'Polygon':
-              finalTokenSymbol = 'MATIC';
-              break;
-            case 'Arbitrum':
-              finalTokenSymbol = 'ETH';
-              break;
-            case 'Optimism':
-              finalTokenSymbol = 'ETH';
-              break;
-            default:
-              finalTokenSymbol = 'ETH';
+      // Loop to fetch all transactions with pagination
+      while (hasMore) {
+        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
+        
+      const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+          params: { 
+            limit: pageSize,
+            page: page
           }
-        }
-      }
-
-      setLoadingStatus('Creating contract object...');
-      setLoadingProgress({ current: 30, total: 100 });
-
-      // Create new contract object
-      const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const newContract = {
-        id: contractId,
-        address: contractAddress,
-        name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
-        blockchain: blockchain,
-        tokenSymbol: finalTokenSymbol,
-        added_at: new Date().toISOString(),
-        verified: true
-      };
-      
-      // Save contract to API
-      setLoadingStatus('Saving contract to database...');
-      setLoadingProgress({ current: 50, total: 100 });
-      const savedContract = await saveContractToAPI(newContract);
-      
-      // Use the saved contract if API call was successful
-      const contractToAdd = savedContract || newContract;
-      
-      // Update contract array
-      setLoadingStatus('Updating contract list...');
-      setLoadingProgress({ current: 70, total: 100 });
-      const updatedContracts = [...contractarray, contractToAdd];
-      setcontractarray(updatedContracts);
-      
-      // Update selected contracts
-      setSelectedContracts([...selectedContracts, contractToAdd]);
-      
-      // Set as primary selected contract
-      setSelectedContract(contractToAdd);
-      
-      setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
-      setLoadingProgress({ current: 90, total: 100 });
-      setAddingContract(false);
-      setShowAddContractModal(false);
-
-      // Short delay to show success before fetching transactions
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Fetch initial transactions for this new contract
-      console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
-      await fetchInitialTransactions(contractToAdd);
-      
-      return true;
-    } catch (error) {
-      console.error("Error adding smart contract:", error);
-      setContractError(`Error adding contract: ${error.message}`);
-      setAddingContract(false);
-      setIsFetchingTransactions(false);
-      setLoadingStatus(`Error: ${error.message}`);
-      return false;
-    }
-  };
-
-  const handleAddContract = async (e) => {
-    e.preventDefault();
-    
-    // Check if this contract is already in the array
-    const isDuplicate = contractarray.some(contract => 
-      contract.address.toLowerCase() === contractAddress.toLowerCase() && 
-      contract.blockchain === blockchain
-    );
-    
-    if (isDuplicate) {
-      setContractError('This contract is already in your list for this blockchain');
-      return;
-    }
-    
-    // Verify and add the contract
-    const success = await verifySmartContract();
-    
-    if (success) {
-      console.log("Contract added successfully");
-      
-      // Close the modal
-      handleCloseAddContractModal();
-    }
-  };
-
-  const formatContractDisplay = (contract) => {
-    const displayName = contract.name || contract.address;
-    const shortAddress = `${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`;
-    
-    return {
-      name: displayName,
-      shortAddress: shortAddress,
-      fullAddress: contract.address,
-      blockchain: contract.blockchain,
-      tokenSymbol: contract.tokenSymbol
-    };
-  };
-
-  const handleDeleteContract = (contract) => {
-    setContractToDelete(contract);
-    setShowDeleteModal(true);
-    setShowDropdown(false);
-  };
-
-  const confirmDeleteContract = async () => {
-    if (!contractToDelete) return;
-
-    try {
-      // First delete all transactions associated with this contract
-      try {
-        console.log(`Deleting all transactions for contract ${contractToDelete.id}...`);
-        await axiosInstance.delete(`/transactions/contract/${contractToDelete.id}`);
-        console.log(`Successfully deleted all transactions for contract ${contractToDelete.id}`);
-      } catch (txError) {
-        console.error(`Error deleting transactions for contract ${contractToDelete.id}:`, txError);
-        // Continue with deletion even if transaction deletion fails
-      }
-      
-      // Delete contract from API
-      const apiSuccess = await deleteContractFromAPI(contractToDelete.id);
-      
-      // Remove from contract array
-      const updatedContracts = contractarray.filter(c => c.id !== contractToDelete.id);
-      setcontractarray(updatedContracts);
-
-      // Remove from selected contracts
-      const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractToDelete.id);
-      setSelectedContracts(updatedSelectedContracts);
-
-      // If this was the primary selected contract, update it
-      if (selectedContract?.id === contractToDelete.id) {
-        if (updatedSelectedContracts.length > 0) {
-          setSelectedContract(updatedSelectedContracts[0]);
-        } else {
-          setSelectedContract(null);
-        }
-      }
-
-      // Also clear the transactions from local state
-      setTransactions(prev => {
-        const updated = {...prev};
-        delete updated[contractToDelete.id];
-        return updated;
       });
-
-      // If API failed, save to localStorage as fallback
-      if (!apiSuccess) {
-        // Save the updated contracts to localStorage
-        try {
-          const currentTeam = localStorage.getItem('selectedTeam');
-          if (currentTeam) {
-            const storageKey = `contracts_${currentTeam}`;
-            localStorage.setItem(storageKey, JSON.stringify(updatedContracts));
-            console.log(`Saved ${updatedContracts.length} contracts to storage after deletion`);
+      
+      if (response.data && response.data.transactions) {
+        const fetchedTransactions = response.data.transactions;
+          
+          // Add to our accumulated transactions
+          allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
+          
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
+            hasMore = false;
           }
-        } catch (error) {
-          console.error("Error saving contracts to storage after deletion:", error);
+          
+          // Move to next page
+          page++;
+          
+          // Safety check - don't loop more than 10 times (1,000,000 transactions)
+          if (page > 10) {
+            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
+            hasMore = false;
+          }
+        } else {
+          // No transactions or error
+          hasMore = false;
         }
       }
-    } catch (error) {
-      console.error("Error in deletion process:", error);
-    }
-
-    setShowDeleteModal(false);
-    setContractToDelete(null);
-  };
-
-  const cancelDeleteContract = () => {
-    setShowDeleteModal(false);
-    setContractToDelete(null);
-  };
-
-  // Fetch contracts from API
-  const fetchContractsFromAPI = async () => {
-    try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) {
-        console.log("No team selected, skipping contract fetch");
-        return;
-      }
-
-      // Prevent duplicate fetches for the same team
-      if (isLoading) {
-        console.log("Already loading contracts, skipping duplicate fetch");
-        return;
-      }
-
-      console.log(`Fetching contracts for team: ${currentTeam}`);
-      setIsLoading(true);
-
-      const response = await axiosInstance.get(`/contracts/team/${currentTeam}`);
-      
-      if (response.data && response.data.contracts) {
-        // Convert API contract format to local format
-        const apiContracts = response.data.contracts.map(contract => ({
-          id: contract.contractId,
-          address: contract.address,
-          name: contract.name,
-          blockchain: contract.blockchain,
-          tokenSymbol: contract.tokenSymbol,
-          added_at: contract.createdAt,
-          verified: contract.verified
+        
+        // Store in component state
+        setTransactions(prev => ({
+          ...prev,
+        [contractId]: allTransactions
         }));
         
-        setcontractarray(apiContracts);
-        console.log(`Loaded ${apiContracts.length} contracts from API for team ${currentTeam}`);
-      }
+      console.log(`Loaded ${allTransactions.length} total transactions from MongoDB for contract ${contractId}`);
+        setIsFetchingTransactions(false);
+      return allTransactions;
     } catch (error) {
-      console.error("Error fetching contracts from API:", error);
-      // Fallback to localStorage if API fails
-      loadContractsFromLocalStorage();
-    } finally {
-      setIsLoading(false);
+      console.error("Error fetching transactions from MongoDB:", error);
     }
+    
+    setIsFetchingTransactions(false);
+    return [];
   };
 
-  // Fallback function to load contracts from localStorage
-  const loadContractsFromLocalStorage = () => {
-    try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return;
-
-      const storageKey = `contracts_${currentTeam}`;
-      const storedContracts = localStorage.getItem(storageKey);
-      
-      if (storedContracts) {
-        const contracts = JSON.parse(storedContracts);
-        setcontractarray(contracts);
-        console.log(`Loaded ${contracts.length} contracts from localStorage for team ${currentTeam}`);
-      } else {
-        console.log(`No contracts found in localStorage for team ${currentTeam}`);
-      }
-    } catch (error) {
-      console.error("Error loading contracts from localStorage:", error);
-    }
-  };
-
-  // Save contracts to API
   const saveContractToAPI = async (contract) => {
     try {
       const currentTeam = localStorage.getItem('selectedTeam');
@@ -1225,7 +856,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     }
   };
 
-  // Delete contract from API
   const deleteContractFromAPI = async (contractId) => {
     try {
       await axiosInstance.delete(`/contracts/${contractId}`);
@@ -1238,7 +868,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
   return (
     <div className="smart-contract-filters relative">
-      {isLoading ? (
+      {contextIsLoading ? (
         <div className="flex items-center justify-center p-4">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
           <span className="ml-2 text-sm text-gray-600">Loading contracts...</span>
@@ -1256,8 +886,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               aria-expanded={showDropdown}
               aria-haspopup="true"
             >
-              {selectedContract 
-                ? formatContractDisplay(selectedContract).name
+              {contextSelectedContract 
+                ? formatContractDisplay(contextSelectedContract).name
                 : "Select Smart Contract"}
               <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
@@ -1268,8 +898,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           {showDropdown && (
             <div className="absolute left-0 z-10 mt-1 w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div className="py-1 max-h-96 overflow-y-auto">
-                {contractarray && contractarray.length > 0 ? (
-                  contractarray.map((contract) => {
+                {contextContractArray && contextContractArray.length > 0 ? (
+                  contextContractArray.map((contract) => {
                     const display = formatContractDisplay(contract);
                     const isSelected = selectedContracts.some(c => c.id === contract.id);
                     
@@ -1345,6 +975,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Transaction loading indicator */}
+      {isLoadingTransactions && (
+        <div className="mt-2 text-xs text-gray-500 flex items-center">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+          <span>Loading transaction data...</span>
         </div>
       )}
 
@@ -1504,6 +1142,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         </div>
       )}
 
+      {/* Loading indicator for transactions */}
       {isFetchingTransactions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
