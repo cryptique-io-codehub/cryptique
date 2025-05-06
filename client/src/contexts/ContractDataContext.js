@@ -419,6 +419,128 @@ export const ContractDataProvider = ({ children }) => {
       return null;
     }
     
+    // Get current date and dates for time-based calculations
+    const now = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(now.getMonth() - 6);
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(now.getFullYear() - 1);
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(now.getFullYear() - 2);
+    
+    // Get unique wallet addresses (from_address represents the wallet)
+    const uniqueWallets = new Set(contractTransactions.map(tx => tx.from_address));
+    
+    // Get unique active wallets in the last 30 days
+    const activeWallets = new Set(
+      contractTransactions
+        .filter(tx => {
+          // Parse transaction date
+          const txDate = new Date(tx.block_time);
+          // Check if transaction is within the last 30 days
+          return txDate >= thirtyDaysAgo && txDate <= now;
+        })
+        .map(tx => tx.from_address)
+    );
+    
+    // Filter transactions for the last 7 and 30 days
+    const transactionsLast7Days = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= sevenDaysAgo && txDate <= now;
+    });
+    
+    const transactionsLast30Days = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= thirtyDaysAgo && txDate <= now;
+    });
+    
+    // Calculate transaction volume for recent periods
+    const volumeLast7Days = transactionsLast7Days.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    const volumeLast30Days = transactionsLast30Days.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    // Process wallet age distribution
+    // First get the first transaction date for each wallet
+    const walletFirstTransactionMap = {};
+    
+    // Sort transactions by date (ascending)
+    const sortedTransactions = [...contractTransactions].sort((a, b) => 
+      new Date(a.block_time) - new Date(b.block_time)
+    );
+    
+    // Find the first transaction for each wallet
+    sortedTransactions.forEach(tx => {
+      const wallet = tx.from_address;
+      if (!walletFirstTransactionMap[wallet]) {
+        walletFirstTransactionMap[wallet] = new Date(tx.block_time);
+      }
+    });
+    
+    // Count wallets in each age range
+    let walletsOlderThan2Years = 0;
+    let wallets1To2Years = 0;
+    let wallets6MonthsTo1Year = 0;
+    let walletsLessThan6Months = 0;
+    
+    // Calculate wallet age distribution
+    Object.values(walletFirstTransactionMap).forEach(firstTxDate => {
+      if (firstTxDate <= twoYearsAgo) {
+        walletsOlderThan2Years++;
+      } else if (firstTxDate <= oneYearAgo) {
+        wallets1To2Years++;
+      } else if (firstTxDate <= sixMonthsAgo) {
+        wallets6MonthsTo1Year++;
+      } else {
+        walletsLessThan6Months++;
+      }
+    });
+    
+    const totalWallets = uniqueWallets.size;
+    
+    // Calculate average wallet age in years
+    let totalAgeInDays = 0;
+    
+    Object.values(walletFirstTransactionMap).forEach(firstTxDate => {
+      const ageInDays = (now - firstTxDate) / (1000 * 60 * 60 * 24);
+      totalAgeInDays += ageInDays;
+    });
+    
+    const avgWalletAgeInYears = (totalAgeInDays / totalWallets) / 365;
+    
+    // Format wallet age distribution data for the pie chart
+    const walletAgeData = [
+      { 
+        name: ">2Y", 
+        value: totalWallets > 0 ? Math.round((walletsOlderThan2Years / totalWallets) * 100) : 0, 
+        color: "#3b82f6" 
+      },
+      { 
+        name: "1Y-2Y", 
+        value: totalWallets > 0 ? Math.round((wallets1To2Years / totalWallets) * 100) : 0, 
+        color: "#f97316" 
+      },
+      { 
+        name: "6M-1Y", 
+        value: totalWallets > 0 ? Math.round((wallets6MonthsTo1Year / totalWallets) * 100) : 0, 
+        color: "#10b981" 
+      },
+      { 
+        name: "<6M", 
+        value: totalWallets > 0 ? Math.round((walletsLessThan6Months / totalWallets) * 100) : 0, 
+        color: "#eab308" 
+      }
+    ];
+    
     // Create processed data object with metrics extracted from transactions
     const processedData = {
       contractInfo: {
@@ -429,12 +551,26 @@ export const ContractDataProvider = ({ children }) => {
         totalTransactions: contractTransactions.length
       },
       summary: {
-        uniqueUsers: new Set(contractTransactions.map(tx => tx.from_address)).size,
+        uniqueUsers: uniqueWallets.size,
+        activeWallets: activeWallets.size, // Active wallets in last 30 days
         uniqueReceivers: new Set(contractTransactions.map(tx => tx.to_address)).size,
         totalVolume: contractTransactions.reduce((sum, tx) => {
           const value = parseFloat(tx.value_eth) || 0;
           return isNaN(value) ? sum : sum + value;
         }, 0)
+      },
+      recentTransactions: {
+        last7Days: transactionsLast7Days.length,
+        last30Days: transactionsLast30Days.length
+      },
+      recentVolume: {
+        last7Days: volumeLast7Days.toFixed(2),
+        last30Days: volumeLast30Days.toFixed(2)
+      },
+      walletAgeData: walletAgeData,
+      medianWalletStats: {
+        age: `${avgWalletAgeInYears.toFixed(1)} Years`,
+        netWorth: "$945" // Placeholder - would need external data source
       },
       // Add more processed data as needed for charts
     };

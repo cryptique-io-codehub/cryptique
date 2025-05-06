@@ -176,13 +176,13 @@ export default function OnchainDashboard() {
           <div className="flex justify-between">
             <div>
               <h3 className="text-xl font-bold font-montserrat">
-                {showDemoData ? "123" : (contractData?.summary?.uniqueUsers || "0")}
+                {showDemoData ? "123" : (contractData?.summary?.uniqueUsers || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
               <h3 className="text-xl font-bold text-purple-600 font-montserrat">
-                {showDemoData ? "89" : (contractData?.summary?.activeWallets || "0")}
+                {showDemoData ? "89" : (contractData?.summary?.activeWallets || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Active Last 30 days</p>
             </div>
@@ -195,19 +195,19 @@ export default function OnchainDashboard() {
           <div className="flex justify-between space-x-1">
             <div>
               <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "224" : (contractData?.contractInfo?.totalTransactions || "0")}
+                {showDemoData ? "224" : (contractData?.contractInfo?.totalTransactions || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
               <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "87" : (contractData?.recentTransactions?.last7Days || "0")}
+                {showDemoData ? "87" : (contractData?.recentTransactions?.last7Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
               <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "29" : (contractData?.recentTransactions?.last30Days || "0")}
+                {showDemoData ? "29" : (contractData?.recentTransactions?.last30Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
             </div>
@@ -247,20 +247,26 @@ export default function OnchainDashboard() {
               <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
                 {showDemoData ? "$9,721" : 
                   (contractData?.summary?.totalVolume 
-                    ? `$${contractData.summary.totalVolume.toLocaleString(undefined, {maximumFractionDigits: 2})}` 
+                    ? `$${parseFloat(contractData.summary.totalVolume).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
                     : "$0")}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
               <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "$1043" : (contractData?.recentVolume?.last7Days || "$0")}
+                {showDemoData ? "$1,043" : 
+                  (contractData?.recentVolume?.last7Days 
+                    ? `$${parseFloat(contractData.recentVolume.last7Days).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
+                    : "$0")}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
               <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "$103" : (contractData?.recentVolume?.last30Days || "$0")}
+                {showDemoData ? "$103" : 
+                  (contractData?.recentVolume?.last30Days 
+                    ? `$${parseFloat(contractData.recentVolume.last30Days).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
+                    : "$0")}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
             </div>
@@ -408,7 +414,7 @@ export default function OnchainDashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={walletAgeData}
+                  data={showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -420,7 +426,7 @@ export default function OnchainDashboard() {
                   labelLine={false}
                   label={renderCustomizedLabel}
                 >
-                  {walletAgeData.map((entry, index) => (
+                  {(showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -430,7 +436,7 @@ export default function OnchainDashboard() {
             
             {/* Legend - Updated to show all 4 segments as in the image */}
             <div className="absolute right-0 top-0 text-sm font-poppins">
-              {walletAgeData.map((item, index) => (
+              {(showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)).map((item, index) => (
                 <div key={index} className="flex items-center mb-1">
                   <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: item.color }}></div>
                   <span>{item.name}</span>
@@ -440,7 +446,9 @@ export default function OnchainDashboard() {
             
             {/* Center text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl font-bold font-montserrat">2.2Y</span>
+              <span className="text-3xl font-bold font-montserrat">
+                {showDemoData ? "2.2Y" : (contractData?.medianWalletStats?.age?.replace(" Years", "Y") || "?")}
+              </span>
               <span className="text-xs text-gray-500 font-poppins">Avg. wallet age</span>
             </div>
           </div>
