@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useContract } from '../../context/ContractContext';
 
 export default function Onchainuserinsights() {
+  const { selectedContract, showDemoData, contractData, isLoading } = useContract();
+  const [userData, setUserData] = useState({
+    protocolExplorerData: [],
+    nftDiggerData: [],
+    powerUserData: [],
+    airdropFarmerData: [],
+    retentionData: [],
+    whalesData: []
+  });
+
   // Platform colors
   const platformColors = {
     'X': '#4285F4',
@@ -12,8 +23,8 @@ export default function Onchainuserinsights() {
     'Facebook': '#E94235'
   };
 
-  // Data for Protocol Explorers - custom values
-  const protocolExplorerData = [
+  // Demo data
+  const demoProtocolExplorerData = [
     { name: 'X', protocol: 75 },
     { name: 'Discord', protocol: 30 },
     { name: 'Telegram', protocol: 60 },
@@ -22,8 +33,8 @@ export default function Onchainuserinsights() {
     { name: 'Facebook', protocol: 65 }
   ];
 
-  // Data for NFT Diggers - different values
-  const nftDiggerData = [
+  // Data for NFT Diggers - DEMO DATA
+  const demoNftDiggerData = [
     { name: 'X', nft: 70 },
     { name: 'Discord', nft: 45 },
     { name: 'Telegram', nft: 55 },
@@ -32,8 +43,8 @@ export default function Onchainuserinsights() {
     { name: 'Facebook', nft: 40 }
   ];
 
-  // Data for Multichain Power Users - updated with different values
-  const powerUserData = [
+  // Data for Multichain Power Users - DEMO DATA
+  const demoPowerUserData = [
     { name: 'X', value: 35, color: '#4285F4' },
     { name: 'Discord', value: 25, color: '#7289DA' },
     { name: 'Facebook', value: 15, color: '#E94235' },
@@ -41,8 +52,8 @@ export default function Onchainuserinsights() {
     { name: 'Other', value: 7, color: '#9CA3AF' }
   ];
 
-  // Data for Airdrop Farmers - different from multichain
-  const airdropFarmerData = [
+  // Data for Airdrop Farmers - DEMO DATA
+  const demoAirdropFarmerData = [
     { name: 'X', value: 22, color: '#4285F4' },
     { name: 'Discord', value: 30, color: '#7289DA' },
     { name: 'Facebook', value: 18, color: '#E94235' },
@@ -50,8 +61,8 @@ export default function Onchainuserinsights() {
     { name: 'Other', value: 5, color: '#9CA3AF' }
   ];
 
-  // Data for One-Time vs Retained Users
-  const retentionData = [
+  // Data for One-Time vs Retained Users - DEMO DATA
+  const demoRetentionData = [
     { name: 'X', newUsers: 240, retained: 140 },
     { name: 'Facebook', newUsers: 120, retained: 180 },
     { name: 'Discord', newUsers: 200, retained: 160 },
@@ -59,14 +70,48 @@ export default function Onchainuserinsights() {
     { name: 'Google', newUsers: 80, retained: 260 }
   ];
 
-  // Data for Whales
-  const whalesData = [
+  // Data for Whales - DEMO DATA
+  const demoWhalesData = [
     { name: 'X', value: 110 },
     { name: 'Discord', value: 230 },
     { name: 'Telegram', value: 170 },
     { name: 'Google', value: 80 },
     { name: 'Facebook', value: 60 }
   ];
+
+  // Effect to update data based on contract selection
+  useEffect(() => {
+    if (!showDemoData && contractData && contractData.userInsights) {
+      // If we have real contract data, use it
+      const { 
+        protocolExplorerData,
+        nftDiggerData,
+        powerUserData,
+        airdropFarmerData,
+        retentionData,
+        whalesData 
+      } = contractData.userInsights;
+      
+      setUserData({
+        protocolExplorerData: protocolExplorerData || demoProtocolExplorerData,
+        nftDiggerData: nftDiggerData || demoNftDiggerData,
+        powerUserData: powerUserData || demoPowerUserData,
+        airdropFarmerData: airdropFarmerData || demoAirdropFarmerData,
+        retentionData: retentionData || demoRetentionData,
+        whalesData: whalesData || demoWhalesData
+      });
+    } else {
+      // Otherwise use demo data
+      setUserData({
+        protocolExplorerData: demoProtocolExplorerData,
+        nftDiggerData: demoNftDiggerData,
+        powerUserData: demoPowerUserData,
+        airdropFarmerData: demoAirdropFarmerData,
+        retentionData: demoRetentionData,
+        whalesData: demoWhalesData
+      });
+    }
+  }, [showDemoData, contractData]);
 
   // Custom bar component for colored bars
   const CustomBar = (props) => {
@@ -91,6 +136,28 @@ export default function Onchainuserinsights() {
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       <style>{fontStyles}</style>
+      
+      {/* Contract Selection Status */}
+      {isLoading ? (
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <p className="text-center">Loading contract data...</p>
+        </div>
+      ) : (
+        selectedContract && (
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <p className="text-sm font-medium">Currently analyzing: <span className="font-bold text-purple-600">{selectedContract.name || selectedContract.id}</span></p>
+          </div>
+        )
+      )}
+
+      {showDemoData && (
+        <div className="bg-blue-50 p-4 rounded-lg shadow mb-6 border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <span className="font-bold">Demo Mode:</span> Select a smart contract to view real analytics data. Currently showing sample data.
+          </p>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Protocol Explorers */}
@@ -100,7 +167,7 @@ export default function Onchainuserinsights() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={protocolExplorerData} 
+                data={userData.protocolExplorerData} 
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 40, bottom: 5 }} // Adjusted left margin
               >
@@ -127,7 +194,7 @@ export default function Onchainuserinsights() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={nftDiggerData} 
+                data={userData.nftDiggerData} 
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 40, bottom: 5 }} // Adjusted left margin
               >
@@ -155,7 +222,7 @@ export default function Onchainuserinsights() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={powerUserData}
+                  data={userData.powerUserData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -165,7 +232,7 @@ export default function Onchainuserinsights() {
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   labelLine={{ stroke: '#555', strokeWidth: 1 }}
                 >
-                  {powerUserData.map((entry, index) => (
+                  {userData.powerUserData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -183,7 +250,7 @@ export default function Onchainuserinsights() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={airdropFarmerData}
+                  data={userData.airdropFarmerData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -193,7 +260,7 @@ export default function Onchainuserinsights() {
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   labelLine={{ stroke: '#555', strokeWidth: 1 }}
                 >
-                  {airdropFarmerData.map((entry, index) => (
+                  {userData.airdropFarmerData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -210,7 +277,7 @@ export default function Onchainuserinsights() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={retentionData}
+                data={userData.retentionData}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -235,7 +302,7 @@ export default function Onchainuserinsights() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={whalesData}
+                data={userData.whalesData}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />

@@ -2,9 +2,12 @@ import React from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart } from 'recharts';
 import { PieChart, Pie, Cell, Label, Sector } from 'recharts';
 import { ArrowUp, ArrowRight } from 'lucide-react';
+import { useContract } from '../../context/ContractContext';
 
 export default function OnchainDashboard() {
-  // Sample transaction data for the chart
+  const { selectedContract, showDemoData, contractData, isLoading } = useContract();
+
+  // Sample transaction data for the chart - DEMO DATA
   const transactionData = [
       { date: '24 Feb', transactions: 50, volume: 1.0 },
       { date: '25 Feb', transactions: 85, volume: 1.6 },
@@ -43,7 +46,7 @@ export default function OnchainDashboard() {
       { date: '30 Mar', transactions: 25, volume: 0.5 }
   ];
 
-  // Updated data for wallet age distribution - matching the image with all 4 segments
+  // Updated data for wallet age distribution - DEMO DATA
   const walletAgeData = [
     { name: ">2Y", value: 30, color: "#3b82f6" },    // Blue segment - 40%
     { name: "1Y-2Y", value: 40, color: "#f97316" },  // Orange segment - 60%
@@ -102,9 +105,6 @@ export default function OnchainDashboard() {
     { range: ">1000", percentage: 21.4 },
   ];
 
-
-  
-
   return (
     <div className="bg-gray-50 p-4 text-gray-900">
       {/* Import fonts in the head */}
@@ -121,6 +121,27 @@ export default function OnchainDashboard() {
           }
         `}
       </style>
+
+      {/* Contract Selection Status */}
+      {isLoading ? (
+        <div className="bg-white p-4 rounded-lg shadow mb-4">
+          <p className="text-center">Loading contract data...</p>
+        </div>
+      ) : (
+        selectedContract && (
+          <div className="bg-white p-4 rounded-lg shadow mb-4">
+            <p className="text-sm font-medium">Currently analyzing: <span className="font-bold text-purple-600">{selectedContract.name || selectedContract.id}</span></p>
+          </div>
+        )
+      )}
+
+      {showDemoData && (
+        <div className="bg-blue-50 p-4 rounded-lg shadow mb-4 border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <span className="font-bold">Demo Mode:</span> Select a smart contract to view real analytics data. Currently showing sample data.
+          </p>
+        </div>
+      )}
 
       {/* Top Stats Row */}
       <div className="grid grid-cols-2 gap-4 mb-4">

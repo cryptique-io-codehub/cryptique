@@ -6,29 +6,54 @@ import {
   LabelList, 
   Tooltip
 } from 'recharts';
+import { useContract } from '../../context/ContractContext';
 
-const HorizontalFunnelVisualization = () => {
-  // console.log(analytics)
-  // const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
-  // useEffect(()=>{
-  // setanalytics(analytics);
-  // },[analytics]);
-  // console.log(analytics);
-  // State to hold the funnel data - can be updated from props or API
+const HorizontalFunnelVisualization = ({ analytics }) => {
+  const { selectedContract, showDemoData } = useContract();
   
-  // Update data when initialData changes (if provided as a prop)
-  // Helper function to get default colors if not provided
+  // State to hold the funnel data
   const [data, setData] = useState([
-    { name: 'Unique Visitors', value:200, fill: '#1D0C46' },
+    { name: 'Unique Visitors', value: 200, fill: '#1D0C46' },
     { name: 'Web3 Users', value: 130, fill: '#8B5CF6' },
     { name: 'Wallets connected', value: 90, fill: '#FFB95A' },
     { name: 'Wallets recorded', value: 60, fill: '#CAA968' }
-    
   ]);
-  const getDefaultColor = (index) => {
-    const defaultColors = ['#1a1053', '#7e57ff', '#ffc168'];
-    return defaultColors[index % defaultColors.length];
-  };
+  
+  // Update data when analytics changes
+  useEffect(() => {
+    // If we have real analytics data and not in demo mode, use it
+    if (analytics && Object.keys(analytics).length > 0 && !showDemoData) {
+      try {
+        // Format the real data according to what we need
+        const realData = [
+          { 
+            name: 'Unique Visitors', 
+            value: analytics.uniqueVisitors || 0, 
+            fill: '#1D0C46' 
+          },
+          { 
+            name: 'Web3 Users', 
+            value: analytics.web3Users || 0, 
+            fill: '#8B5CF6' 
+          },
+          { 
+            name: 'Wallets connected', 
+            value: analytics.walletsConnected || 0, 
+            fill: '#FFB95A' 
+          },
+          { 
+            name: 'Wallets recorded', 
+            value: analytics.walletsRecorded || 0, 
+            fill: '#CAA968' 
+          }
+        ];
+        setData(realData);
+      } catch (error) {
+        console.error("Error processing analytics data:", error);
+        // Keep the demo data in case of error
+      }
+    }
+  }, [analytics, showDemoData]);
   
   // Stats calculated from the current data state
   const conversionRate = data.length >= 3 ? 
@@ -46,11 +71,11 @@ const HorizontalFunnelVisualization = () => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{9.09}%</p>
+            <p className="text-xl font-bold">{conversionRate}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{9.09}%</p>
+            <p className="text-xl font-bold">{web3UsersRate}%</p>
           </div>
         </div>
       </div>
@@ -59,11 +84,6 @@ const HorizontalFunnelVisualization = () => {
         {/* Custom horizontal funnel using SVG */}
         <div className="w-full h-64 relative">
           <HorizontalFunnel data={data} />
-          
-          {/* Value displayed at the end of the funnel */}
-          <div className="absolute right-2 top-24 text-4xl font-bold">
-            
-          </div>
         </div>
       </div>
       
@@ -98,9 +118,9 @@ const HorizontalFunnel = ({ data }) => {
   const segmentWidth = totalWidth / data.length;
   
   // Calculate heights based on values
-  const maxValue = data[0].value;
+  const maxValue = Math.max(data[0].value, 1); // Avoid division by zero
   const heights = data.map(d => {
-    const ratio = d.value / maxValue;
+    const ratio = Math.max(d.value, 0) / maxValue;
     return minHeight + (maxHeight - minHeight) * ratio;
   });
   
@@ -149,47 +169,35 @@ const HorizontalFunnel = ({ data }) => {
       
       {/* Add value labels */}
       {data.map((item, index) => {
-  const x = index * segmentWidth + segmentWidth / 2;
-  const y = height / 2;
+        const x = index * segmentWidth + segmentWidth / 2;
+        const y = height / 2;
 
-  // Determine the text value based on item.name
-  let textValue;
-  if (item.name === 'Unique Visitors') {
-    textValue = 11;
-  } else if (item.name === 'Web3 Users') {
-    textValue = 1;
-  } else if (item.name === 'Wallets connected') {
-    textValue = 1;
-  } else if (item.name === 'Wallets recorded') {
-    textValue = 1;
-  } 
+        // Display the actual value from the data
+        const textValue = item.value;
 
-  return (
-    <text 
-      key={`label-${index}`}
-      x={x}
-      y={y}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fill="white"
-      fontWeight="bold"
-    >
-      {textValue}
-    </text>
-  );
-})}
+        return (
+          <text 
+            key={`label-${index}`}
+            x={x}
+            y={y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontWeight="bold"
+          >
+            {textValue}
+          </text>
+        );
+      })}
     </svg>
   );
 };
 
-// Example usage
-const FunnelDashboard2= ({analytics}) => {
-  // console.log(analytics);
+const FunnelDashboard2 = ({ analytics }) => {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">User Funnel Dashboard</h1>
       <HorizontalFunnelVisualization analytics={analytics}/>
-
     </div>
   );
 };
