@@ -76,103 +76,136 @@ const processERC20Transaction = (tx) => {
 };
 
 /**
- * Fetches transactions for an Ethereum address or contract
- * 
- * @param {string} address - The address to fetch transactions for
- * @param {Object} options - Options for the fetch request
- * @param {number} options.limit - Maximum number of transactions to return
- * @param {number} options.startBlock - Block number to start fetching from
- * @returns {Promise<Object>} - Object containing transactions and metadata
+ * Fetches transaction data from Etherscan API for a given contract address
+ * @param {string} contractAddress - The Ethereum contract address to fetch transactions for
+ * @param {Object} options - Additional options for the API request
+ * @param {number} options.limit - Maximum number of transactions to fetch (default: 10000)
+ * @param {number} options.startBlock - Start fetching from this block number (default: 0)
+ * @returns {Promise<Object>} - Object containing the transactions and metadata
  */
-export const fetchEthereumTransactions = async (address, options = {}) => {
-  // Validate address
-  if (!isValidAddress(address)) {
-    console.error('Invalid Ethereum address format:', address);
-    return {
-      transactions: [],
-      metadata: {
-        status: 'error',
-        message: 'Invalid address format',
-        total: 0
-      }
-    };
-  }
-
-  console.log(`Fetching Ethereum transactions for address: ${address}`);
-  
-  // Define options
-  const limit = options.limit || MAX_RESULTS;
-  const startBlock = options.startBlock || 0;
-  
+export const fetchEthereumTransactions = async (contractAddress, options = {}) => {
   try {
-    // Fetch regular transactions only
-    const response = await axios.get(ETHERSCAN_ACCT_TX_ENDPOINT, {
-      params: {
-        address,
-        apikey: ETHERSCAN_API_KEY,
-        startblock: startBlock,
-        endblock: 999999999,
-        page: 1,
-        offset: limit,
-        sort: 'desc'
+    // Default options
+    const limit = Math.min(options.limit || 10000, 100000);
+    const startBlock = options.startBlock || 0;
+    const batchSize = 10000; // Etherscan API has a limit of 10,000 per request
+    
+    console.log(`Fetching up to ${limit} transactions from Etherscan for contract: ${contractAddress}, starting from block ${startBlock}`);
+    
+    // Calculate number of batches needed
+    const batchCount = Math.ceil(limit / batchSize);
+    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
+    
+    let allTransactions = [];
+    let highestBlock = 0;
+    
+    // Fetch transactions in batches
+    for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+      // If we've reached the limit, stop fetching
+      if (allTransactions.length >= limit) {
+        console.log(`Reached limit of ${limit} transactions`);
+        break;
       }
-    });
-    
-    const result = response.data;
-    
-    // Check for errors in regular transactions
-    if (result.status === '0') {
-      console.error('Etherscan API error:', result.message);
-      return {
-        transactions: [],
-        metadata: {
-          status: 'error',
-          message: `Etherscan API error: ${result.message}`,
-          total: 0
+      
+      let currentStartBlock = highestBlock > 0 ? highestBlock + 1 : startBlock;
+      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, starting from block ${currentStartBlock}`);
+      
+      // Prepare API URL - using a free API key for demo purposes
+      const apiKey = "NSZCD6S4TKVWRS13PMQFMVTNP6H7NAGHUY"; // Etherscan API key
+      const baseUrl = "https://api.etherscan.io/api";
+      const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${currentStartBlock}&endblock=99999999&sort=asc&apikey=${apiKey}`;
+      
+      // Fetch data
+      const response = await axios.get(url);
+      
+      // Check for API errors
+      if (response.data.status === "0") {
+        if (batchIndex === 0) {
+          // If this is the first batch and there's an error, return the error
+          throw new Error(`Etherscan API error: ${response.data.message || 'Unknown error'}`);
+        } else {
+          // If we've already got some transactions, just log the error and stop fetching
+          console.log(`Etherscan API error on batch ${batchIndex + 1}: ${response.data.message || 'Unknown error'}`);
+          break;
         }
-      };
-    }
-    
-    // Process successful response
-    if (result.status === '1' && Array.isArray(result.result)) {
-      // Process transactions and identify ERC-20 token transfers
-      const transactions = result.result.map(tx => {
-        // Check if this might be an ERC-20 transfer
-        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return processERC20Transaction(tx);
+      }
+      
+      // Process transactions
+      const batchTransactions = response.data.result;
+      
+      // If no more transactions found, break out of the loop
+      if (!batchTransactions || batchTransactions.length === 0) {
+        console.log(`No more transactions found after batch ${batchIndex}`);
+        break;
+      }
+      
+      console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
+      
+      // Transform transactions to common format
+      const formattedTransactions = batchTransactions.map(tx => {
+        // Find the highest block number for next batch
+        const blockNumber = parseInt(tx.blockNumber);
+        if (blockNumber > highestBlock) {
+          highestBlock = blockNumber;
         }
-        return formatTransaction(tx, 'Ethereum');
+        
+        // Format transaction
+        return {
+          tx_hash: tx.hash,
+          from_address: tx.from.toLowerCase(),
+          to_address: tx.to?.toLowerCase() || "",
+          value_eth: parseFloat(tx.value) / 1e18 > 0 
+            ? (parseFloat(tx.value) / 1e18).toString() 
+            : "0 ERC20",
+          block_number: blockNumber,
+          block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+          chain: "Ethereum",
+          contract_address: contractAddress.toLowerCase()
+        };
       });
       
-      console.log(`Retrieved ${transactions.length} transactions from Etherscan`);
+      // Add transactions to our collection
+      allTransactions = [...allTransactions, ...formattedTransactions];
       
-      return {
-        transactions,
-        metadata: {
-          status: 'success',
-          message: 'Transactions retrieved successfully',
-          total: transactions.length
-        }
-      };
+      // If we didn't get a full batch, we've reached the end
+      if (batchTransactions.length < batchSize) {
+        console.log(`Received less than ${batchSize} transactions, no more to fetch`);
+        break;
+      }
+      
+      // If we've reached the limit, stop fetching
+      if (allTransactions.length >= limit) {
+        console.log(`Reached limit of ${limit} transactions`);
+        break;
+      }
+      
+      // Add a small delay between batches to avoid rate limits
+      if (batchIndex < batchCount - 1) {
+        console.log('Waiting briefly before next batch...');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between batches for Etherscan
+      }
     }
     
-    // Handle no results
+    // Limit the number of transactions to the requested limit
+    const limitedTransactions = allTransactions.slice(0, limit);
+    
+    // Return the transactions with metadata
     return {
-      transactions: [],
+      transactions: limitedTransactions,
       metadata: {
-        status: 'no_results',
-        message: 'No transactions found for this address',
-        total: 0
+        total: limitedTransactions.length,
+        chain: "Ethereum",
+        contract: contractAddress,
+        highestBlock: highestBlock
       }
     };
   } catch (error) {
-    console.error('Error fetching Ethereum transactions:', error);
+    console.error("Error fetching Ethereum transactions:", error);
     return {
       transactions: [],
       metadata: {
-        status: 'error',
-        message: error.message || 'Unknown error occurred',
-        total: 0
+        error: error.message,
+        message: `Failed to fetch Ethereum transactions: ${error.message}`
       }
     };
   }
