@@ -332,10 +332,7 @@ export const ContractDataProvider = ({ children }) => {
               });
               
               console.log('Batch save response:', response.data);
-              if (response.data && response.data.total) {
-                totalSaved += response.data.total;
-                console.log(`Running total saved so far: ${totalSaved}/${sanitizedTransactions.length}`);
-              }
+              totalSaved += response.data.total || 0;
             } catch (batchError) {
               console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
               batchErrors.push(batchError.message || 'Unknown batch error');

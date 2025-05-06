@@ -88,21 +88,21 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
-    const batchSize = 10000; // Arbiscan API typically limits to 10,000 results per request
+    const offset = 10000; // Arbiscan API typically limits to 10,000 results per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
     console.log(`Fetching up to ${limit} latest transactions from Arbiscan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
     // Calculate number of batches needed
-    const batchCount = Math.ceil(limit / batchSize);
-    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
+    const batchCount = Math.ceil(limit / offset);
+    console.log(`Will fetch in ${batchCount} batch(es) of ${offset}`);
     
     let allTransactions = [];
     let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to a placeholder
     const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY || "D2HXGN6QEQ6J1VRCYNZFYAPB3YEUAC5CFF";
-    const baseUrl = "https://api.arbiscan.io/api";
+    const baseUrl = ARBISCAN_API_URL;
     
     // Fetch transactions in batches
     for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
@@ -121,23 +121,25 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       let success = false;
       let response;
       
-      // Explicit pagination parameters
-      const offset = batchSize; // Number of records to retrieve
-      const page = 1; // Use page 1 for each batch since we're paginating by block
+      // Use page=1 since we're using blockNumber for pagination
+      const page = 1;
       
       while (!success && retryCount < maxRetries) {
         try {
           // Prepare API URL with pagination parameters
-          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${batchSize}&sort=desc&apikey=${apiKey}`;
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${offset}&sort=desc&apikey=${apiKey}`;
+          
+          console.log(`API URL for batch ${batchIndex + 1}: ${url}`);
           
           // Add delay for retries to prevent rate limiting
           if (retryCount > 0) {
-            console.log(`Retry attempt ${retryCount}/${maxRetries} after delay...`);
-            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount)); // Exponential backoff
+            // Exponential backoff with jitter for retries
+            const delay = Math.min(10000, 1000 * Math.pow(2, retryCount)) + Math.random() * 1000;
+            console.log(`Retry attempt ${retryCount}/${maxRetries} after ${delay}ms delay...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
           
           // Fetch data
-          console.log(`Making API request: ${url.replace(/apikey=.+$/, 'apikey=HIDDEN')}`);
           response = await axios.get(url);
           
           // Check for API errors
@@ -146,23 +148,27 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
             console.log(`Arbiscan API error: ${errorMsg} (attempt ${retryCount + 1}/${maxRetries})`);
             
             // Check for specific error messages
-            if (errorMsg.includes("rate limit") || errorMsg.includes("Max rate limit")) {
+            if (errorMsg.includes("rate limit") || errorMsg.includes("Max rate limit") || errorMsg.includes("exceed")) {
               // Rate limit hit, wait longer before retry
               console.log("Rate limit reached, waiting before retry...");
-              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds for rate limit
+              const rateLimitDelay = 10000 + (5000 * retryCount); // Increasing delay for rate limit errors
+              console.log(`Waiting ${rateLimitDelay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
+              retryCount++;
+              continue;
             } else if (errorMsg.includes("No transactions found")) {
-              // No transactions found is not an error, just end the loop
-              console.log("No transactions found for this contract address");
-              return {
-                transactions: allTransactions,
-                metadata: {
-                  total: allTransactions.length,
-                  chain: "Arbitrum",
-                  contract: contractAddress,
-                  lowestBlock: lowestBlock,
-                  message: "No transactions found"
-                }
-              };
+                // No transactions found is not an error, just end the loop
+                console.log("No transactions found for this contract address");
+                return {
+                  transactions: allTransactions,
+                  metadata: {
+                    total: allTransactions.length,
+                    chain: "Arbitrum",
+                    contract: contractAddress,
+                    lowestBlock: lowestBlock,
+                    message: "No transactions found"
+                  }
+                };
             } else {
               retryCount++;
               continue;
@@ -188,7 +194,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       }
       
       // Process transactions
-      const batchTransactions = response.data.result || [];
+      const batchTransactions = response.data.result;
     
       // If no more transactions found, break out of the loop
       if (!batchTransactions || batchTransactions.length === 0) {
@@ -198,19 +204,12 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
-      // Log some transaction details for debugging
+      // Find highest and lowest block numbers in this batch for debugging
       if (batchTransactions.length > 0) {
-        console.log(`First transaction block: ${batchTransactions[0].blockNumber}`);
-        console.log(`Last transaction block: ${batchTransactions[batchTransactions.length - 1].blockNumber}`);
-        
-        // Check if we're getting the same transactions (which would indicate pagination isn't working)
-        if (batchIndex > 0 && allTransactions.length > 0) {
-          const lastBatchFirstTx = batchTransactions[0].hash;
-          const existingHashes = new Set(allTransactions.slice(-10).map(tx => tx.tx_hash));
-          if (existingHashes.has(lastBatchFirstTx)) {
-            console.warn(`Warning: Possible pagination issue - found duplicate transaction ${lastBatchFirstTx}`);
-          }
-        }
+        const blockNumbers = batchTransactions.map(tx => parseInt(tx.blockNumber));
+        const highestBlockInBatch = Math.max(...blockNumbers);
+        const lowestBlockInBatch = Math.min(...blockNumbers);
+        console.log(`Batch ${batchIndex + 1} block range: ${highestBlockInBatch} to ${lowestBlockInBatch}`);
       }
       
       // Transform transactions to common format
@@ -241,16 +240,20 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
         };
       });
       
+      // Log the current lowest block number for debugging
+      console.log(`Current lowest block for pagination: ${lowestBlock}`);
+      
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
+      console.log(`Total transactions collected so far: ${allTransactions.length}`);
       
       // If we didn't get a full batch, we've reached the end
-      if (batchTransactions.length < batchSize) {
-        console.log(`Received ${batchTransactions.length} transactions (less than ${batchSize}), no more to fetch`);
+      if (batchTransactions.length < offset) {
+        console.log(`Received less than ${offset} transactions, no more to fetch`);
         break;
       }
       
-      // Check if we've reached the limit
+      // If we've reached the limit, stop fetching
       if (allTransactions.length >= limit) {
         console.log(`Reached limit of ${limit} transactions`);
         break;
@@ -259,14 +262,22 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       // Add a small delay between batches to avoid rate limits
       if (batchIndex < batchCount - 1) {
         console.log('Waiting briefly before next batch...');
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Increased delay between batches
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Increased delay between batches to avoid rate limits
       }
     }
     
+    // Log final transaction count and block range
+    if (allTransactions.length > 0) {
+      const firstTx = allTransactions[0];
+      const lastTx = allTransactions[allTransactions.length - 1];
+      console.log(`First transaction block: ${firstTx.block_number}`);
+      console.log(`Last transaction block: ${lastTx.block_number}`);
+    }
+    
+    console.log(`Successfully fetched ${allTransactions.length} Arbitrum transactions for ${contractAddress}`);
+    
     // Limit the number of transactions to the requested limit
     const limitedTransactions = allTransactions.slice(0, limit);
-    
-    console.log(`Successfully fetched ${limitedTransactions.length} Arbitrum transactions for ${contractAddress}`);
     
     // Return the transactions with metadata
     return {
