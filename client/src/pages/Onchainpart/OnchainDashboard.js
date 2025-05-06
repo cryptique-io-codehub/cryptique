@@ -2,10 +2,23 @@ import React from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart } from 'recharts';
 import { PieChart, Pie, Cell, Label, Sector } from 'recharts';
 import { ArrowUp, ArrowRight } from 'lucide-react';
+import { useContractData } from '../../contexts/ContractDataContext';
 
 export default function OnchainDashboard() {
-  // Sample transaction data for the chart
-  const transactionData = [
+  // Get contract data from context
+  const { 
+    selectedContract, 
+    contractTransactions, 
+    showDemoData, 
+    isLoadingTransactions,
+    processContractTransactions
+  } = useContractData();
+
+  // Process real contract data if available
+  const contractData = !showDemoData ? processContractTransactions() : null;
+
+  // Sample transaction data for the chart (used when no contract is selected)
+  const demoTransactionData = [
       { date: '24 Feb', transactions: 50, volume: 1.0 },
       { date: '25 Feb', transactions: 85, volume: 1.6 },
       { date: '26 Feb', transactions: 72, volume: 1.4 },
@@ -44,12 +57,41 @@ export default function OnchainDashboard() {
   ];
 
   // Updated data for wallet age distribution - matching the image with all 4 segments
-  const walletAgeData = [
+  const demoWalletAgeData = [
     { name: ">2Y", value: 30, color: "#3b82f6" },    // Blue segment - 40%
     { name: "1Y-2Y", value: 40, color: "#f97316" },  // Orange segment - 60%
     { name: "6M-1Y", value: 20, color: "#10b981" },   // Green segment - 0%
     { name: "<6M", value: 10, color: "#eab308" }      // Yellow segment - 0%
   ];
+
+  // Sample data for wallet balance distribution
+  const demoWalletBalanceData = [
+    { range: "<$100", percentage: 21.9 },
+    { range: "$100-$1K", percentage: 20.3 },
+    { range: "$1K-$10K", percentage: 6.1 },
+    { range: "$10K-$100K", percentage: 21.6 },
+    { range: "$100K-$1M", percentage: 14.8 },
+    { range: "$1M-$10M", percentage: 5.4 },
+    { range: "$10M-$100M", percentage: 7.4 },
+    { range: ">$100M", percentage: 2.5 },
+  ];
+
+  // Sample data for wallet transactions count distribution
+  const demoTransactionCountData = [
+    { range: "0-10", percentage: 19.1 },
+    { range: "11-50", percentage: 16.9 },
+    { range: ">50", percentage: 12.3 },
+    { range: "101-250", percentage: 11.7 },
+    { range: "251-500", percentage: 8.0 },
+    { range: "501-1000", percentage: 10.6 },
+    { range: ">1000", percentage: 21.4 },
+  ];
+
+  // Choose which data to use based on whether we should show demo data
+  const transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
+  const walletAgeData = showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
+  const walletBalanceData = showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
+  const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.transactionCountData || demoTransactionCountData);
 
   // Customize the label to display percentages properly
   const renderCustomizedLabel = (props) => {
@@ -79,32 +121,6 @@ export default function OnchainDashboard() {
     );
   };
 
-  // Sample data for wallet balance distribution
-  const walletBalanceData = [
-    { range: "<$100", percentage: 21.9 },
-    { range: "$100-$1K", percentage: 20.3 },
-    { range: "$1K-$10K", percentage: 6.1 },
-    { range: "$10K-$100K", percentage: 21.6 },
-    { range: "$100K-$1M", percentage: 14.8 },
-    { range: "$1M-$10M", percentage: 5.4 },
-    { range: "$10M-$100M", percentage: 7.4 },
-    { range: ">$100M", percentage: 2.5 },
-  ];
-
-  // Sample data for wallet transactions count distribution
-  const transactionCountData = [
-    { range: "0-10", percentage: 19.1 },
-    { range: "11-50", percentage: 16.9 },
-    { range: ">50", percentage: 12.3 },
-    { range: "101-250", percentage: 11.7 },
-    { range: "251-500", percentage: 8.0 },
-    { range: "501-1000", percentage: 10.6 },
-    { range: ">1000", percentage: 21.4 },
-  ];
-
-
-  
-
   return (
     <div className="bg-gray-50 p-4 text-gray-900">
       {/* Import fonts in the head */}
@@ -122,6 +138,28 @@ export default function OnchainDashboard() {
         `}
       </style>
 
+      {/* Data Source Banner */}
+      {showDemoData ? (
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Using demo data.</span> Select a smart contract from the dropdown to view real data.
+          </p>
+        </div>
+      ) : isLoadingTransactions ? (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Loading transaction data...</span> Please wait while we process the data.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Using real data for:</span> {selectedContract.name} ({selectedContract.tokenSymbol || 'Unknown'}) 
+            on {selectedContract.blockchain}. {contractTransactions.length} transactions loaded.
+          </p>
+        </div>
+      )}
+
       {/* Top Stats Row */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {/* Total Wallets */}
@@ -129,11 +167,15 @@ export default function OnchainDashboard() {
           <h2 className="font-semibold text-lg mb-2 font-montserrat">Total Wallets</h2>
           <div className="flex justify-between">
             <div>
-              <h3 className="text-xl font-bold font-montserrat">123</h3>
+              <h3 className="text-xl font-bold font-montserrat">
+                {showDemoData ? "123" : (contractData?.summary?.uniqueUsers || "0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-purple-600 font-montserrat">89</h3>
+              <h3 className="text-xl font-bold text-purple-600 font-montserrat">
+                {showDemoData ? "89" : (contractData?.summary?.activeWallets || "0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Active Last 30 days</p>
             </div>
           </div>
@@ -144,15 +186,21 @@ export default function OnchainDashboard() {
           <h2 className="font-semibold text-lg mb-2 font-montserrat">Transaction Count</h2>
           <div className="flex justify-between space-x-1">
             <div>
-              <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">224</h3>
+              <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "224" : (contractData?.contractInfo?.totalTransactions || "0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">87</h3>
+              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "87" : (contractData?.recentTransactions?.last7Days || "0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">29</h3>
+              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "29" : (contractData?.recentTransactions?.last30Days || "0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
             </div>
             <div>
@@ -169,11 +217,15 @@ export default function OnchainDashboard() {
           <h2 className="font-semibold text-lg mb-2 font-montserrat">Median Wallet</h2>
           <div className="flex justify-between">
             <div>
-              <h3 className="text-xl font-bold font-montserrat">2.5 Years</h3>
+              <h3 className="text-xl font-bold font-montserrat">
+                {showDemoData ? "2.5 Years" : (contractData?.medianWalletStats?.age || "Unknown")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Age</p>
             </div>
             <div>
-              <h3 className="text-xl font-bold font-montserrat">$945</h3>
+              <h3 className="text-xl font-bold font-montserrat">
+                {showDemoData ? "$945" : (contractData?.medianWalletStats?.netWorth || "$0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Net Worth</p>
             </div>
           </div>
@@ -184,15 +236,24 @@ export default function OnchainDashboard() {
           <h2 className="font-semibold text-lg mb-2 font-montserrat">Transaction Value (USD)</h2>
           <div className="flex justify-between space-x-1">
             <div>
-              <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">$9,721</h3>
+              <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "$9,721" : 
+                  (contractData?.summary?.totalVolume 
+                    ? `$${contractData.summary.totalVolume.toLocaleString(undefined, {maximumFractionDigits: 2})}` 
+                    : "$0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">$1043</h3>
+              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "$1043" : (contractData?.recentVolume?.last7Days || "$0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">$103</h3>
+              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "$103" : (contractData?.recentVolume?.last30Days || "$0")}
+              </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
             </div>
             <div>

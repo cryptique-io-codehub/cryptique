@@ -2,19 +2,34 @@ import { useState } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
 import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
+import { useContractData } from '../../contexts/ContractDataContext';
 
 export default function OnchainTraffic() {
-  // Conversion funnel data
+  // Get contract data from context
+  const { 
+    selectedContract, 
+    contractTransactions, 
+    showDemoData, 
+    isLoadingTransactions,
+    processContractTransactions
+  } = useContractData();
+
+  // Process real contract data if available
+  const contractData = !showDemoData ? processContractTransactions() : null;
+
+  // State for analytics (keeping this for compatibility)
   const [analytics, setanalytics] = useState({});
-  const funnelData = [
+  
+  // Conversion funnel demo data
+  const demoFunnelData = [
     { stage: "Unique Visitors", value: 5000 },
     { stage: "Wallet Users", value: 3000 },
     { stage: "Wallets Connected", value: 1500 },
     { stage: "Wallets Recorded", value: 300 }
   ];
   
-  // Traffic sources data
-  const trafficSourcesData = [
+  // Traffic sources demo data
+  const demoTrafficSourcesData = [
     { source: "Direct", value: 235, color: "#4BC0C0" },
     { source: "Google", value: 410, color: "#FF6384" },
     { source: "Facebook", value: 320, color: "#FFCE56" },
@@ -23,8 +38,8 @@ export default function OnchainTraffic() {
     { source: "Discord", value: 278, color: "#9966FF" },
   ];
   
-  // Traffic quality data
-  const trafficQualityData = [
+  // Traffic quality demo data
+  const demoTrafficQualityData = [
     { source: "Instagram", engagement: 15, ltv: 35, color: "#FF6384" },
     { source: "LinkedIn", engagement: 25, ltv: 25, color: "#36A2EB" },
     { source: "Facebook", engagement: 20, ltv: 37, color: "#FFCE56" },
@@ -35,8 +50,8 @@ export default function OnchainTraffic() {
     { source: "X", engagement: 50, ltv: 38, color: "#C9CBCF" }
   ];
   
-  // Traffic sources table data
-  const trafficSourcesTableData = [
+  // Traffic sources table demo data
+  const demoTrafficSourcesTableData = [
     { source: "Instagram", visitors: 387, impressions: 452, websConnected: 219, webRegistered: 173, tvl: 298 },
     { source: "LinkedIn", visitors: 276, impressions: 415, websConnected: 304, webRegistered: 182, tvl: 429 },
     { source: "Behance", visitors: 124, impressions: 217, websConnected: 193, webRegistered: 145, tvl: 312 },
@@ -44,8 +59,8 @@ export default function OnchainTraffic() {
     { source: "Pinterest", visitors: 475, impressions: 321, websConnected: 278, webRegistered: 219, tvl: 354 }
   ];
   
-  // Time to chain conversion data
-  const timeToConversionData = [
+  // Time to chain conversion demo data
+  const demoTimeToConversionData = [
     { day: "0-1hr", users: 120 },
     { day: "1-6hr", users: 220 },
     { day: "6-24hr", users: 180 },
@@ -54,6 +69,13 @@ export default function OnchainTraffic() {
     { day: "Day 4", users: 150 },
     { day: "Day 5", users: 170 }
   ];
+
+  // Choose which data to use based on whether we should show demo data
+  const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
+  const trafficSourcesData = showDemoData ? demoTrafficSourcesData : (contractData?.trafficSourcesData || demoTrafficSourcesData);
+  const trafficQualityData = showDemoData ? demoTrafficQualityData : (contractData?.trafficQualityData || demoTrafficQualityData);
+  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : (contractData?.trafficSourcesTableData || demoTrafficSourcesTableData);
+  const timeToConversionData = showDemoData ? demoTimeToConversionData : (contractData?.timeToConversionData || demoTimeToConversionData);
 
   // Creating the legend items for traffic quality analysis
   const CustomLegend = () => {
@@ -84,6 +106,28 @@ export default function OnchainTraffic() {
       `}</style>
       
       <h1 className="text-2xl font-bold mb-8 font-montserrat">Unified Intensity Analytics</h1>
+      
+      {/* Data Source Banner */}
+      {showDemoData ? (
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Using demo data.</span> Select a smart contract from the dropdown to view real data.
+          </p>
+        </div>
+      ) : isLoadingTransactions ? (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Loading transaction data...</span> Please wait while we process the data.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Using real data for:</span> {selectedContract.name} ({selectedContract.tokenSymbol || 'Unknown'}) 
+            on {selectedContract.blockchain}. {contractTransactions.length} transactions loaded.
+          </p>
+        </div>
+      )}
       
       {/* Main layout with reorganized sections */}
       <div className="space-y-8">
@@ -251,5 +295,5 @@ export default function OnchainTraffic() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -20,6 +20,8 @@ import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
+import { ContractDataProvider } from './contexts/ContractDataContext.js';
+
 const RouteListener = () => {
   const location = useLocation();
 
@@ -55,45 +57,41 @@ const RouteListener = () => {
 };
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
-  // const Navigate = useNavigate();
   
-
-
-
   return (
-    
-    <BrowserRouter>
-    <RouteListener />
-
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Interface />} />
-        <Route path="/signup" element={<Interface />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/:team/offchain" element={<Dashboard />} />
-        <Route path="/:team/onchain" element={<Dashboard />} />
-        <Route path="/:team/campaigns" element={<Dashboard />} />
-        <Route path="/:team/conversion-events" element={<Dashboard />} />
-        <Route path="/:team/advertise" element={<Dashboard />} />
-        <Route path="/:team/history" element={<Dashboard />} />
-        <Route path="/:team/importusers" element={<Dashboard />} />
-        <Route path="/:team/managewebsites" element={<Dashboard />} />
-        <Route path="/:team/cq-intelligence" element={<Dashboard />} />
-        
-        {/* Parent Route for Settings */}
-        <Route path="/:team/settings" element={<Settings />}>
-          {/* Child Route for Billing */}
-          <Route path="/:team/settings/billing"  element={<Billing />} />
-          <Route path="/:team/settings/members" element={<MembersSection />} />
-          <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
-          <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
+    <ContractDataProvider>
+      <BrowserRouter>
+        <RouteListener />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Interface />} />
+          <Route path="/signup" element={<Interface />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/:team/offchain" element={<Dashboard />} />
+          <Route path="/:team/onchain" element={<Dashboard />} />
+          <Route path="/:team/campaigns" element={<Dashboard />} />
+          <Route path="/:team/conversion-events" element={<Dashboard />} />
+          <Route path="/:team/advertise" element={<Dashboard />} />
+          <Route path="/:team/history" element={<Dashboard />} />
+          <Route path="/:team/importusers" element={<Dashboard />} />
+          <Route path="/:team/managewebsites" element={<Dashboard />} />
+          <Route path="/:team/cq-intelligence" element={<Dashboard />} />
           
-        </Route>
-
-        <Route path="/test-analytics" element={<TestAnalytics />} />
-
-      </Routes>
-    </BrowserRouter>
+          {/* Parent Route for Settings */}
+          <Route path="/:team/settings" element={<Settings />}>
+            {/* Child Route for Billing */}
+            <Route path="/:team/settings/billing"  element={<Billing />} />
+            <Route path="/:team/settings/members" element={<MembersSection />} />
+            <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
+            <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
+            
+          </Route>
+  
+          <Route path="/test-analytics" element={<TestAnalytics />} />
+  
+        </Routes>
+      </BrowserRouter>
+    </ContractDataProvider>
   )
 }
 
