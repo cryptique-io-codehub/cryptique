@@ -466,9 +466,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       switch (contract.blockchain) {
         case 'BNB Chain':
-          setLoadingStatus('Fetching up to 10,000 transactions from BscScan...');
+          setLoadingStatus('Fetching up to 100,000 transactions from BscScan...');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (bnbResult.transactions?.length > 0) {
@@ -495,7 +495,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Base':
           console.log('Using Base Chain module');
           const baseResult = await fetchBaseTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (baseResult.transactions?.length > 0) {
@@ -520,9 +520,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Ethereum':
-          console.log('Fetching up to 10,000 transactions from Etherscan');
+          console.log('Fetching up to 100,000 transactions from Etherscan');
           const ethResult = await fetchEthereumTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (ethResult.transactions?.length > 0) {
@@ -547,9 +547,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Polygon':
-          console.log('Fetching up to 10,000 transactions from Polygonscan');
+          console.log('Fetching up to 100,000 transactions from Polygonscan');
           const polygonResult = await fetchPolygonTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (polygonResult.transactions?.length > 0) {
@@ -574,9 +574,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Arbitrum':
-          console.log('Fetching up to 10,000 transactions from Arbiscan');
+          console.log('Fetching up to 100,000 transactions from Arbiscan');
           const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (arbitrumResult.transactions?.length > 0) {
@@ -601,9 +601,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           break;
           
         case 'Optimism':
-          console.log('Fetching up to 10,000 transactions from Optimistic Etherscan');
+          console.log('Fetching up to 100,000 transactions from Optimistic Etherscan');
           const optimismResult = await fetchOptimismTransactions(contract.address, {
-            limit: 10000
+            limit: 100000
           });
           
           if (optimismResult.transactions?.length > 0) {

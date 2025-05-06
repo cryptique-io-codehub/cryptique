@@ -171,7 +171,7 @@ export const ContractDataProvider = ({ children }) => {
           setLoadingStatus(`Fetching new transactions from BscScan...`);
           console.log('Fetching new transactions from BscScan');
           const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
@@ -191,7 +191,7 @@ export const ContractDataProvider = ({ children }) => {
         case 'Base':
           console.log('Using Base Chain module for new transactions');
           const baseResult = await fetchBaseTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
@@ -211,7 +211,7 @@ export const ContractDataProvider = ({ children }) => {
         case 'Ethereum':
           console.log('Fetching new transactions from Etherscan');
           const ethResult = await fetchEthereumTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
@@ -231,7 +231,7 @@ export const ContractDataProvider = ({ children }) => {
         case 'Polygon':
           console.log('Fetching new transactions from Polygonscan');
           const polygonResult = await fetchPolygonTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
@@ -251,7 +251,7 @@ export const ContractDataProvider = ({ children }) => {
         case 'Arbitrum':
           console.log('Fetching new transactions from Arbiscan');
           const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
@@ -271,7 +271,7 @@ export const ContractDataProvider = ({ children }) => {
         case 'Optimism':
           console.log('Fetching new transactions from Optimistic Etherscan');
           const optimismResult = await fetchOptimismTransactions(contract.address, {
-            limit: 10000,
+            limit: 100000,
             startBlock: startBlock
           });
           
