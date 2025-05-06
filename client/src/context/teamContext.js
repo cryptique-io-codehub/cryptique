@@ -1,11 +1,38 @@
 // src/context/TeamContext.js
 import { createContext, useContext, useState, useEffect } from "react";
+import axiosInstance from "../axiosInstance";
 
 const TeamContext = createContext();
 
 export const TeamProvider = ({ children }) => {
   const [selectedTeam, setSelectedTeam] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [teams, setTeams] = useState([]);
+  
+  // Fetch teams from API
+  const fetchTeams = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axiosInstance.get("/teams");
+      if (response.data && response.data.teams) {
+        setTeams(response.data.teams);
+        console.log("Teams fetched from API:", response.data.teams);
+        
+        // If no team is currently selected but teams are available, select the first one
+        const storedTeam = localStorage.getItem("selectedTeam");
+        if ((!storedTeam || storedTeam === "") && response.data.teams.length > 0) {
+          const defaultTeam = response.data.teams[0].name;
+          setSelectedTeam(defaultTeam);
+          localStorage.setItem("selectedTeam", defaultTeam);
+          console.log("No team was selected, defaulting to:", defaultTeam);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching teams from API:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   useEffect(() => {
     const loadTeam = () => {
@@ -50,6 +77,8 @@ export const TeamProvider = ({ children }) => {
           }
         } else {
           console.log("No team found in localStorage");
+          // Will fetch from API instead
+          fetchTeams();
         }
       } catch (error) {
         console.error("Error loading team:", error);
@@ -59,6 +88,10 @@ export const TeamProvider = ({ children }) => {
     };
     
     loadTeam();
+    
+    // Fetch teams from API in the background, even if we loaded from localStorage
+    // This ensures we have the most current team list
+    fetchTeams();
   }, []);
   
   // Save team to localStorage whenever it changes
@@ -70,7 +103,13 @@ export const TeamProvider = ({ children }) => {
   }, [selectedTeam]);
 
   return (
-    <TeamContext.Provider value={{ selectedTeam, setSelectedTeam, isLoading }}>
+    <TeamContext.Provider value={{ 
+      selectedTeam, 
+      setSelectedTeam, 
+      isLoading, 
+      teams, 
+      fetchTeams 
+    }}>
       {children}
     </TeamContext.Provider>
   );

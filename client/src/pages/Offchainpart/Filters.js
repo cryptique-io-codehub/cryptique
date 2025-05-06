@@ -18,6 +18,28 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   const[selectedContract,setSelectedContract]=useState('');
   const[verifyload,setverifyload]=useState(false);
   const[deleteload,setdeleteload]=useState(false);
+  
+  // Cache management for websites to reduce redundant API calls
+  const [websiteCache, setWebsiteCache] = useState({});
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_TTL = 60000; // 1 minute cache TTL
+  
+  // Helper function to clean team name
+  const cleanTeamName = (rawTeamName) => {
+    if (!rawTeamName) return null;
+    
+    let teamName = rawTeamName;
+    if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
+      try {
+        teamName = JSON.parse(teamName);
+      } catch (e) {
+        console.error("Error parsing teamName with quotes:", e);
+        teamName = teamName.replace(/^"|"$/g, '');
+      }
+    }
+    return teamName;
+  };
+  
   // fetch website
   // depend-selectedTeam
   useEffect(() => {
@@ -26,139 +48,25 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     
     console.log("Fetching websites, current selectedWebsite:", localStorage.getItem("selectedWebsite"));
   
-    const fetchWebsites = async () => {
-      setIsLoading(true);
-      try {
-        // Clean the team name to remove any quotes
-        let teamName = selectteam;
-        
-        // If it starts with a quote and ends with a quote, try to parse it
-        if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-          try {
-            teamName = JSON.parse(teamName);
-          } catch (e) {
-            console.error("Error parsing teamName with quotes:", e);
-            // If parsing fails, we'll still use the string but remove quotes manually
-            teamName = teamName.replace(/^"|"$/g, '');
-          }
-        }
-        
-        console.log("Using teamName for API call:", teamName);
-        // Use the correct GET endpoint with team name in path parameter
-        const response = await axiosInstance.get(`/website/team/${teamName}`);
-        
-        if (response.status === 200) {
-          console.log("Fetched websites:", response.data.websites);
-          if (response && response.data.websites.length > 0) {
-            setWebsitearray(response.data.websites);
-            
-            // Auto-verify websites with analytics data
-            try {
-              await axiosInstance.post('/website/auto-verify-all');
-              console.log('Auto-verify process completed');
-              
-              // Get the updated websites with verification status
-              const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
-              if (updatedResponse.status === 200) {
-                setWebsitearray(updatedResponse.data.websites);
-              }
-            } catch (verifyError) {
-              console.error('Error in auto-verify process:', verifyError);
-              // Continue with the websites we already have
-            }
-            
-            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
-            
-            // If no website is selected or selection is empty
-            if(!savedWebsiteDomain || savedWebsiteDomain === '') {
-              const firstWebsite = response.data.websites[0];
-              localStorage.setItem("idy", firstWebsite.siteId);
-              localStorage.setItem("selectedWebsite", firstWebsite.Domain);
-              setSelectedWebsite(firstWebsite);
-              setidy(firstWebsite.siteId);
-              
-              // Generate script code for the first website
-              const iD = firstWebsite.siteId;
-              const scriptHTML = `<script>
-              var script = document.createElement('script');
-              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-              script.setAttribute('site-id', '${iD}');
-              document.head.appendChild(script);
-            </script>`;
-              setscriptcode(scriptHTML);
-            } else {
-              // Find the selected website in the array
-              const currentWebsite = response.data.websites.find(
-                website => website.Domain === savedWebsiteDomain
-              );
-              
-              if (currentWebsite) {
-                console.log("Setting selected website:", currentWebsite);
-                setSelectedWebsite(currentWebsite);
-                setidy(currentWebsite.siteId);
-                
-                // Generate script code for current website
-                const iD = currentWebsite.siteId;
-                const scriptHTML = `<script>
-                var script = document.createElement('script');
-                script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-                script.setAttribute('site-id', '${iD}');
-                document.head.appendChild(script);
-              </script>`;
-                setscriptcode(scriptHTML);
-              }
-            }
-            
-            setIsDropdownOpen(false);
-          }
-        }
-      } catch (error) {
-        console.error("Error refreshing websites:", error);
-        setfalsemessage("Error refreshing websites");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
+    // Call the optimized fetchWebsites function when component mounts
     if (selectteam) {
       fetchWebsites();
     }
     
     // Setup event listener to detect team changes
     const handleStorageChange = () => {
-      const newTeamRaw = localStorage.getItem("selectedTeam");
-      
-      // Clean the new team value
-      let newTeam = newTeamRaw;
-      if (typeof newTeam === 'string' && newTeam.startsWith('"') && newTeam.endsWith('"')) {
-        try {
-          newTeam = JSON.parse(newTeam);
-        } catch (e) {
-          console.error("Error parsing newTeam with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          newTeam = newTeam.replace(/^"|"$/g, '');
-        }
-      }
-      
-      // Clean the selected team value for comparison
-      let currentTeam = selectedTeam;
-      if (typeof currentTeam === 'string' && currentTeam.startsWith('"') && currentTeam.endsWith('"')) {
-        try {
-          currentTeam = JSON.parse(currentTeam);
-        } catch (e) {
-          console.error("Error parsing currentTeam with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          currentTeam = currentTeam.replace(/^"|"$/g, '');
-        }
-      }
+      const rawTeamName = localStorage.getItem('selectedTeam');
+      const newTeam = cleanTeamName(rawTeamName);
+      const currentTeam = cleanTeamName(selectedTeam);
       
       if (newTeam && newTeam !== currentTeam) {
         console.log("Team changed from:", currentTeam, "to:", newTeam);
-        setSelectedTeam(newTeamRaw); // Keep the raw value in state
+        setSelectedTeam(rawTeamName); // Keep the raw value in state
         localStorage.removeItem("selectedWebsite");
         localStorage.removeItem("idy");
-        if (newTeamRaw) {
-          fetchWebsites();
+        if (rawTeamName) {
+          // Force refresh from API when team changes
+          fetchWebsites(true);
         }
       }
     };
@@ -268,45 +176,10 @@ HTML:
   }
 
   // Function to refresh website data
-  const refreshWebsites = async () => {
+  const refreshWebsites = async (forceRefresh = false) => {
     console.log("Manually refreshing websites");
-    try {
-      // Clean the team name to remove any quotes
-      let teamName = selectedTeam;
-      
-      // If it starts with a quote and ends with a quote, try to parse it
-      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-        try {
-          teamName = JSON.parse(teamName);
-        } catch (e) {
-          console.error("Error parsing teamName with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          teamName = teamName.replace(/^"|"$/g, '');
-        }
-      }
-      
-      console.log("Using teamName for API call:", teamName);
-      const response = await axiosInstance.get(`/website/team/${teamName}`);
-      
-      if (response.status === 200 && response.data.websites) {
-        console.log("Refreshed websites data:", response.data.websites);
-        setWebsitearray(response.data.websites);
-        
-        // Update the currently selected website if it exists in the new data
-        if (selectedWebsite) {
-          const refreshedWebsite = response.data.websites.find(
-            website => website.siteId === selectedWebsite.siteId
-          );
-          
-          if (refreshedWebsite) {
-            console.log("Updated selected website:", refreshedWebsite);
-            setSelectedWebsite(refreshedWebsite);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error refreshing websites:", error);
-    }
+    // Call the main fetchWebsites function with forceRefresh parameter
+    fetchWebsites(forceRefresh);
   };
 
   const handleVerify = async () => {
@@ -378,19 +251,8 @@ HTML:
       setdeleteload(true);
       // console.log(selectedWebsite);
     
-      // Clean the team name to remove any quotes
-      let teamName = selectedTeam;
-      
-      // If it starts with a quote and ends with a quote, try to parse it
-      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-        try {
-          teamName = JSON.parse(teamName);
-        } catch (e) {
-          console.error("Error parsing teamName with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          teamName = teamName.replace(/^"|"$/g, '');
-        }
-      }
+      // Clean the team name using the helper function
+      const teamName = cleanTeamName(selectedTeam);
     
       const response = await axiosInstance.post('/website/delete', {
         teamName: teamName,
@@ -405,7 +267,7 @@ HTML:
         setscriptmodel(false);
 
         // Use the updated refreshWebsites function to load websites after deletion
-        refreshWebsites();
+        refreshWebsites(true); // Force refresh from API
       } 
     } catch (error) {
       // Handle specific status codes
@@ -784,6 +646,135 @@ useEffect(() => {
       </div>
     </div>
   );
+};
+
+// Separate function to process website selection based on website array
+const processWebsiteSelection = (websites) => {
+  if (!websites || websites.length === 0) return;
+  
+  const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+  
+  // If no website is selected or selection is empty
+  if(!savedWebsiteDomain || savedWebsiteDomain === '') {
+    const firstWebsite = websites[0];
+    localStorage.setItem("idy", firstWebsite.siteId);
+    localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+    setSelectedWebsite(firstWebsite);
+    setidy(firstWebsite.siteId);
+    
+    // Generate script code for the first website
+    const iD = firstWebsite.siteId;
+    const scriptHTML = `<script>
+    var script = document.createElement('script');
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.setAttribute('site-id', '${iD}');
+    document.head.appendChild(script);
+  </script>`;
+    setscriptcode(scriptHTML);
+  } else {
+    // Find the selected website in the array
+    const currentWebsite = websites.find(
+      website => website.Domain === savedWebsiteDomain
+    );
+    
+    if (currentWebsite) {
+      console.log("Setting selected website:", currentWebsite);
+      setSelectedWebsite(currentWebsite);
+      setidy(currentWebsite.siteId);
+      
+      // Generate script code for current website
+      const iD = currentWebsite.siteId;
+      const scriptHTML = `<script>
+      var script = document.createElement('script');
+      script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+      script.setAttribute('site-id', '${iD}');
+      document.head.appendChild(script);
+    </script>`;
+      setscriptcode(scriptHTML);
+    }
+  }
+  
+  setIsDropdownOpen(false);
+};
+
+// Main function to fetch websites with caching
+const fetchWebsites = async (forceRefresh = false) => {
+  setIsLoading(true);
+  try {
+    const rawTeamName = localStorage.getItem("selectedTeam");
+    const teamName = cleanTeamName(rawTeamName);
+    
+    if (!teamName) {
+      console.log("No team selected, skipping website fetch");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Check if we have a cached version and it's still valid
+    const now = Date.now();
+    if (!forceRefresh && websiteCache[teamName] && (now - lastFetchTime) < CACHE_TTL) {
+      console.log(`Using cached websites for team ${teamName}, age: ${(now - lastFetchTime)/1000}s`);
+      setWebsitearray(websiteCache[teamName]);
+      setIsLoading(false);
+      
+      // Process website selection using cached data
+      processWebsiteSelection(websiteCache[teamName]);
+      return;
+    }
+    
+    console.log(`Fetching websites from API for team: ${teamName}`);
+    
+    // Use the correct GET endpoint with team name in path parameter
+    const response = await axiosInstance.get(`/website/team/${teamName}`);
+    
+    if (response.status === 200) {
+      console.log("Fetched websites:", response.data.websites);
+      if (response && response.data.websites.length > 0) {
+        const websites = response.data.websites;
+        
+        // Update cache
+        setWebsiteCache(prev => ({
+          ...prev,
+          [teamName]: websites
+        }));
+        setLastFetchTime(now);
+        
+        setWebsitearray(websites);
+        
+        // Auto-verify websites with analytics data
+        try {
+          await axiosInstance.post('/website/auto-verify-all');
+          console.log('Auto-verify process completed');
+          
+          // Get the updated websites with verification status
+          const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
+          if (updatedResponse.status === 200) {
+            const updatedWebsites = updatedResponse.data.websites;
+            
+            // Update cache again with verified websites
+            setWebsiteCache(prev => ({
+              ...prev,
+              [teamName]: updatedWebsites
+            }));
+            
+            setWebsitearray(updatedWebsites);
+            
+            // Process website selection
+            processWebsiteSelection(updatedWebsites);
+          }
+        } catch (verifyError) {
+          console.error('Error in auto-verify process:', verifyError);
+          // Continue with the websites we already have
+          processWebsiteSelection(websites);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error refreshing websites:", error);
+    setfalsemessage("Error refreshing websites");
+  } finally {
+    setIsLoading(false);
+  }
 };
 
 export default Filters;
