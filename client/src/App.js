@@ -9,8 +9,6 @@ import MembersSection from './pages/Setting/MembersSection.js'
 import PersonalInfoSection from './pages/Setting/PersonalInfoSection.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
 import { useTeam } from "./context/teamContext.js";
-import { TeamProvider } from "./context/teamContext.js";
-import { ContractProvider } from "./context/ContractContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
 import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
@@ -56,62 +54,46 @@ const RouteListener = () => {
   return null; // this component doesn't render anything
 };
 function App() {
-  const [selectedTeam, setSelectedTeam] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
+  // const Navigate = useNavigate();
   
-  useEffect(() => {
-    // Get the selected team from localStorage
-    const storedTeam = localStorage.getItem('selectedTeam');
-    if (storedTeam) {
-      try {
-        const parsedTeam = JSON.parse(storedTeam);
-        setSelectedTeam(parsedTeam.name);
-      } catch (error) {
-        console.error("Error parsing team data:", error);
-        setSelectedTeam('team1'); // Fallback to default team
-      }
-    } else {
-      // Default to team1 if no team in localStorage
-      setSelectedTeam('team1');
-    }
-  }, []);
-  
+
+
+
   return (
-    <TeamProvider>
-      <ContractProvider>
-        <BrowserRouter>
-          <RouteListener />
+    
+    <BrowserRouter>
+    <RouteListener />
 
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Interface />} />
-            <Route path="/signup" element={<Interface />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/:team/offchain" element={<Dashboard />} />
-            <Route path="/:team/onchain" element={<Dashboard />} />
-            <Route path="/:team/campaigns" element={<Dashboard />} />
-            <Route path="/:team/conversion-events" element={<Dashboard />} />
-            <Route path="/:team/advertise" element={<Dashboard />} />
-            <Route path="/:team/history" element={<Dashboard />} />
-            <Route path="/:team/importusers" element={<Dashboard />} />
-            <Route path="/:team/managewebsites" element={<Dashboard />} />
-            <Route path="/:team/cq-intelligence" element={<Dashboard />} />
-            
-            {/* Parent Route for Settings */}
-            <Route path="/:team/settings" element={<Settings />}>
-              {/* Child Route for Billing */}
-              <Route path="/:team/settings/billing"  element={<Billing />} />
-              <Route path="/:team/settings/members" element={<MembersSection />} />
-              <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
-              <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
-              
-            </Route>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Interface />} />
+        <Route path="/signup" element={<Interface />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/:team/offchain" element={<Dashboard />} />
+        <Route path="/:team/onchain" element={<Dashboard />} />
+        <Route path="/:team/campaigns" element={<Dashboard />} />
+        <Route path="/:team/conversion-events" element={<Dashboard />} />
+        <Route path="/:team/advertise" element={<Dashboard />} />
+        <Route path="/:team/history" element={<Dashboard />} />
+        <Route path="/:team/importusers" element={<Dashboard />} />
+        <Route path="/:team/managewebsites" element={<Dashboard />} />
+        <Route path="/:team/cq-intelligence" element={<Dashboard />} />
+        
+        {/* Parent Route for Settings */}
+        <Route path="/:team/settings" element={<Settings />}>
+          {/* Child Route for Billing */}
+          <Route path="/:team/settings/billing"  element={<Billing />} />
+          <Route path="/:team/settings/members" element={<MembersSection />} />
+          <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
+          <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
+          
+        </Route>
 
-            <Route path="/test-analytics" element={<TestAnalytics />} />
+        <Route path="/test-analytics" element={<TestAnalytics />} />
 
-          </Routes>
-        </BrowserRouter>
-      </ContractProvider>
-    </TeamProvider>
+      </Routes>
+    </BrowserRouter>
   )
 }
 

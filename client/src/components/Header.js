@@ -5,23 +5,11 @@ import axios from "axios";
 import axiosInstance from "../axiosInstance";
 const TeamSelector = () => {
   const navigate = useNavigate();
-  const [selectedTeam, setSelectedTeam] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    // Get the selected team from localStorage
-    const storedTeam = localStorage.getItem('selectedTeam');
-    if (storedTeam) {
-      try {
-        const parsedTeam = JSON.parse(storedTeam);
-        setSelectedTeam(parsedTeam.name || '');
-      } catch (error) {
-        console.error("Error parsing team data:", error);
-        setSelectedTeam('');
-      }
-    }
-
     const fetchTeams = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -31,37 +19,27 @@ const TeamSelector = () => {
           'Content-Type':'application/json'
           }
         });
-        
+        // console.log('a');
+        // console.log(response);
+        // console.log('b');
         const teams = response.data.team;
         setCurTeams(teams);
-        
-        // If no team is selected and we have teams, select the first one
-        if (!storedTeam && teams.length > 0) {
-          handleTeamSelect(teams[0]);
-        }
       } catch (error) {
         console.error("Error fetching teams:", error);
       }
     };
 
     fetchTeams();
-  }, []);
+  }, [selectedTeam]);
 
   const handleTeamSelect = (teamss) => {
-    // Store the entire team object in localStorage
-    localStorage.setItem('selectedTeam', JSON.stringify(teamss));
+    localStorage.setItem('selectedTeam', teamss.name);
     setSelectedTeam(teamss.name);
+    // console.log(teamss);
     
-    // Update URL with selected team
     const currentPath = window.location.pathname;
-    const pathSegments = currentPath.split('/').filter(Boolean);
-    
-    if (pathSegments.length > 0) {
-      // Replace the first segment with the team name
-      const newPath = currentPath.replace(`/${pathSegments[0]}/`, `/${teamss.name}/`);
-      navigate(newPath, { replace: true });
-    } else if (currentPath === '/' || currentPath === '/dashboard') {
-      navigate(`/${teamss.name}/offchain`, { replace: true });
+    if (currentPath.includes('/settings')) {
+        navigate(`/${teamss.name}/settings`, { replace: true });
     }
     
     setDropdownOpen(false);

@@ -27,25 +27,10 @@ const Dashboard = () => {
     isDesktop: false
   });
   const location = useLocation();
-  const [selectedTeam, setSelectedTeam] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
 
   // Screen size detection with multiple breakpoints
   useEffect(() => {
-    // Get the selected team from localStorage
-    const storedTeam = localStorage.getItem('selectedTeam');
-    if (storedTeam) {
-      try {
-        const parsedTeam = JSON.parse(storedTeam);
-        setSelectedTeam(parsedTeam.name);
-      } catch (error) {
-        console.error("Error parsing team data:", error);
-        setSelectedTeam('team1'); // Fallback to default team
-      }
-    } else {
-      // Default to team1 if no team in localStorage
-      setSelectedTeam('team1');
-    }
-
     const updateScreenSize = () => {
       const width = window.innerWidth;
       setScreenSize({

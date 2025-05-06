@@ -1,16 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useContract } from '../../context/ContractContext';
+import { useState } from 'react';
 
 export default function OnchainmarketInsights() {
-  const { selectedContract, showDemoData, contractData, isLoading } = useContract();
-  const [marketData, setMarketData] = useState({
-    userCategories: [],
-    transactionData: [],
-    usersData: []
-  });
-  
-  // Demo data
-  const demoUserCategories = [
+  const userCategories = [
     { title: "Protocol Explorers", count: 75125, color: "bg-indigo-100" },
     { title: "NFT Degens", count: 45124, color: "bg-indigo-100" },
     { title: "Airdrop Farmers", count: 131008, color: "bg-indigo-100" },
@@ -19,7 +10,7 @@ export default function OnchainmarketInsights() {
     { title: "Returning Users", count: 17000, color: "bg-indigo-100" }
   ];
 
-  const demoTransactionData = [
+  const transactionData = [
     { chain: "Ethereum", volume: "$19.93B", icon: "🔵", color: "bg-blue-500" },
     { chain: "BNB Chain", volume: "$1.28B", icon: "🟡", color: "bg-yellow-500" },
     { chain: "Base", volume: "$871.91M", icon: "⚪", color: "bg-blue-600" },
@@ -32,7 +23,7 @@ export default function OnchainmarketInsights() {
     { chain: "Lukso", volume: "$348,298.99", icon: "🔴", color: "bg-pink-500" }
   ];
 
-  const demoUsersData = [
+  const usersData = [
     { chain: "Polygon", users: 4175, icon: "🟣", color: "bg-purple-500" },
     { chain: "Base", users: 2712, icon: "⚪", color: "bg-blue-600" },
     { chain: "Ethereum", users: 2188, icon: "🔵", color: "bg-blue-500" },
@@ -44,26 +35,6 @@ export default function OnchainmarketInsights() {
     { chain: "Ronin", users: 23, icon: "🔵", color: "bg-blue-400" },
     { chain: "Blast", users: 18, icon: "🟡", color: "bg-yellow-400" }
   ];
-
-  // Effect to update data based on contract selection
-  useEffect(() => {
-    if (!showDemoData && contractData && contractData.marketInsights) {
-      // If we have real contract data, use it
-      const { userCategories, transactionData, usersData } = contractData.marketInsights;
-      setMarketData({
-        userCategories: userCategories || demoUserCategories,
-        transactionData: transactionData || demoTransactionData,
-        usersData: usersData || demoUsersData
-      });
-    } else {
-      // Otherwise use demo data
-      setMarketData({
-        userCategories: demoUserCategories,
-        transactionData: demoTransactionData,
-        usersData: demoUsersData
-      });
-    }
-  }, [showDemoData, contractData]);
 
   const formatNumber = (num) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -80,30 +51,9 @@ export default function OnchainmarketInsights() {
         <h1 className="text-xl font-semibold text-gray-800 font-montserrat">Market Insight</h1>
       </div>
 
-      {/* Contract Selection Status */}
-      {isLoading ? (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <p className="text-center">Loading contract data...</p>
-        </div>
-      ) : (
-        selectedContract && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <p className="text-sm font-medium">Currently analyzing: <span className="font-bold text-purple-600">{selectedContract.name || selectedContract.id}</span></p>
-          </div>
-        )
-      )}
-
-      {showDemoData && (
-        <div className="bg-blue-50 p-4 rounded-lg shadow-sm mb-6 border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <span className="font-bold">Demo Mode:</span> Select a smart contract to view real analytics data. Currently showing sample data.
-          </p>
-        </div>
-      )}
-
       {/* User Categories Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {marketData.userCategories.map((category, index) => (
+        {userCategories.map((category, index) => (
           <div key={index} className="bg-white rounded-lg shadow-sm p-6 text-center">
             <h2 className="text-lg font-bold text-indigo-900 font-montserrat">{category.title}</h2>
             <p className="text-3xl font-bold mt-2 font-poppins">{formatNumber(category.count)}</p>
@@ -126,7 +76,7 @@ export default function OnchainmarketInsights() {
                 </tr>
               </thead>
               <tbody className="font-poppins">
-                {marketData.transactionData.map((item, index) => (
+                {transactionData.map((item, index) => (
                   <tr key={index} className="border-t border-gray-100">
                     <td className="py-3 flex items-center">
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>
@@ -154,7 +104,7 @@ export default function OnchainmarketInsights() {
                 </tr>
               </thead>
               <tbody className="font-poppins">
-                {marketData.usersData.map((item, index) => (
+                {usersData.map((item, index) => (
                   <tr key={index} className="border-t border-gray-100">
                     <td className="py-3 flex items-center">
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>

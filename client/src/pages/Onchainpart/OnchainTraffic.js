@@ -1,28 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
 import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
-import { useContract } from "../../context/ContractContext";
 
 export default function OnchainTraffic() {
-  const { selectedContract, showDemoData, contractData, isLoading } = useContract();
-  const [analyticsData, setAnalyticsData] = useState({});
-  
-  // Use effect to set the correct data based on contract selection
-  useEffect(() => {
-    if (!showDemoData && contractData) {
-      // If a contract is selected and we have data, use the contract data
-      setAnalyticsData(contractData);
-    } else {
-      // Otherwise use demo data
-      setAnalyticsData(demoAnalyticsData);
-    }
-  }, [showDemoData, contractData]);
-  
-  // Demo data - this will be shown when no contract is selected
-  const demoAnalyticsData = {};
-  
-  // Conversion funnel data - DEMO DATA
+  // Conversion funnel data
+  const [analytics, setanalytics] = useState({});
   const funnelData = [
     { stage: "Unique Visitors", value: 5000 },
     { stage: "Wallet Users", value: 3000 },
@@ -30,7 +13,7 @@ export default function OnchainTraffic() {
     { stage: "Wallets Recorded", value: 300 }
   ];
   
-  // Traffic sources data - DEMO DATA
+  // Traffic sources data
   const trafficSourcesData = [
     { source: "Direct", value: 235, color: "#4BC0C0" },
     { source: "Google", value: 410, color: "#FF6384" },
@@ -40,7 +23,7 @@ export default function OnchainTraffic() {
     { source: "Discord", value: 278, color: "#9966FF" },
   ];
   
-  // Traffic quality data - DEMO DATA
+  // Traffic quality data
   const trafficQualityData = [
     { source: "Instagram", engagement: 15, ltv: 35, color: "#FF6384" },
     { source: "LinkedIn", engagement: 25, ltv: 25, color: "#36A2EB" },
@@ -52,7 +35,7 @@ export default function OnchainTraffic() {
     { source: "X", engagement: 50, ltv: 38, color: "#C9CBCF" }
   ];
   
-  // Traffic sources table data - DEMO DATA
+  // Traffic sources table data
   const trafficSourcesTableData = [
     { source: "Instagram", visitors: 387, impressions: 452, websConnected: 219, webRegistered: 173, tvl: 298 },
     { source: "LinkedIn", visitors: 276, impressions: 415, websConnected: 304, webRegistered: 182, tvl: 429 },
@@ -61,7 +44,7 @@ export default function OnchainTraffic() {
     { source: "Pinterest", visitors: 475, impressions: 321, websConnected: 278, webRegistered: 219, tvl: 354 }
   ];
   
-  // Time to chain conversion data - DEMO DATA
+  // Time to chain conversion data
   const timeToConversionData = [
     { day: "0-1hr", users: 120 },
     { day: "1-6hr", users: 220 },
@@ -102,33 +85,12 @@ export default function OnchainTraffic() {
       
       <h1 className="text-2xl font-bold mb-8 font-montserrat">Unified Intensity Analytics</h1>
       
-      {/* Contract Selection Status */}
-      {isLoading ? (
-        <div className="bg-white p-4 rounded-lg shadow mb-4">
-          <p className="text-center">Loading contract data...</p>
-        </div>
-      ) : (
-        selectedContract && (
-          <div className="bg-white p-4 rounded-lg shadow mb-4">
-            <p className="text-sm font-medium">Currently analyzing: <span className="font-bold text-purple-600">{selectedContract.name || selectedContract.id}</span></p>
-          </div>
-        )
-      )}
-
-      {showDemoData && (
-        <div className="bg-blue-50 p-4 rounded-lg shadow mb-4 border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <span className="font-bold">Demo Mode:</span> Select a smart contract to view real analytics data. Currently showing sample data.
-          </p>
-        </div>
-      )}
-      
       {/* Main layout with reorganized sections */}
       <div className="space-y-8">
         {/* Funnel Dashboard - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Conversion Funnel</h2>
-          <FunnelDashboard2 analytics={analyticsData}/>
+          <FunnelDashboard2/>
         </div>
         
         {/* Traffic Sources by On-Chain USD Volume - Full Width */}
@@ -284,7 +246,7 @@ export default function OnchainTraffic() {
           {/* On-chain Transaction by Country */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4 font-montserrat">On-chain Transaction by Country</h2>
-            <GeoAnalyticsMap analytics={analyticsData}/>
+            <GeoAnalyticsMap analytics={analytics}/>
           </div>
         </div>
       </div>
