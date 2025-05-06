@@ -465,7 +465,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setLoadingProgress({ current: 70, total: 100 });
           
           // Save sanitized transactions in batches
-          const BATCH_SIZE = 100;
+          const BATCH_SIZE = 2000;
           let batchErrors = [];
           
           for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
@@ -762,8 +762,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         
         // Save transactions to API in smaller batches to avoid payload size issues
         try {
-          // Smaller batch size for better reliability
-          const BATCH_SIZE = 100;
+          // Larger batch size for better performance
+          const BATCH_SIZE = 2000;
           let batchErrors = [];
           
           setProcessingStep('saving');
