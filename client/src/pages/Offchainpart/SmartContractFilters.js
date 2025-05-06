@@ -676,17 +676,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             
             try {
               const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
-              transactions: batch
-            });
-            
+                transactions: batch
+              });
+              
               console.log('Batch save response:', response.data);
-              totalSaved += response.data.total || 0;
+              if (response.data && response.data.total) {
+                totalSaved += response.data.total;
+                console.log(`Running total saved so far: ${totalSaved}/${sanitizedTransactions.length}`);
+              }
             } catch (batchError) {
               console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
               batchErrors.push(batchError.message || 'Unknown batch error');
               // Small delay before next batch to avoid rate limiting
               await new Promise(resolve => setTimeout(resolve, 1000));
-          }
+            }
           }
           
           if (batchErrors.length > 0) {

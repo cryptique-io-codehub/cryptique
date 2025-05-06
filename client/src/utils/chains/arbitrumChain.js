@@ -202,6 +202,15 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       if (batchTransactions.length > 0) {
         console.log(`First transaction block: ${batchTransactions[0].blockNumber}`);
         console.log(`Last transaction block: ${batchTransactions[batchTransactions.length - 1].blockNumber}`);
+        
+        // Check if we're getting the same transactions (which would indicate pagination isn't working)
+        if (batchIndex > 0 && allTransactions.length > 0) {
+          const lastBatchFirstTx = batchTransactions[0].hash;
+          const existingHashes = new Set(allTransactions.slice(-10).map(tx => tx.tx_hash));
+          if (existingHashes.has(lastBatchFirstTx)) {
+            console.warn(`Warning: Possible pagination issue - found duplicate transaction ${lastBatchFirstTx}`);
+          }
+        }
       }
       
       // Transform transactions to common format
