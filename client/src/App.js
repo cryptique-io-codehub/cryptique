@@ -56,12 +56,25 @@ const RouteListener = () => {
   return null; // this component doesn't render anything
 };
 function App() {
-  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
-  // const Navigate = useNavigate();
+  const [selectedTeam, setSelectedTeam] = useState('');
   
-
-
-
+  useEffect(() => {
+    // Get the selected team from localStorage
+    const storedTeam = localStorage.getItem('selectedTeam');
+    if (storedTeam) {
+      try {
+        const parsedTeam = JSON.parse(storedTeam);
+        setSelectedTeam(parsedTeam.name);
+      } catch (error) {
+        console.error("Error parsing team data:", error);
+        setSelectedTeam('team1'); // Fallback to default team
+      }
+    } else {
+      // Default to team1 if no team in localStorage
+      setSelectedTeam('team1');
+    }
+  }, []);
+  
   return (
     <TeamProvider>
       <ContractProvider>

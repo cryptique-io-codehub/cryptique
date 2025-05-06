@@ -7,7 +7,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   const [isHovering, setIsHovering] = useState(false);
   const params = useParams();
   const location = useLocation();
-  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
+  const [selectedTeam, setSelectedTeam] = useState('');
   const showExpanded = !isCompact || (isCompact && isHovering);
   
   // Extract the current page from the URL path
@@ -16,16 +16,27 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   const currentPage = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || 'dashboard';
   
   useEffect(() => {
-    // Always use the team from localStorage as the source of truth
-    const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
-    
-    // If URL params don't match stored team, update the URL
-    if (params.team && params.team !== storedTeam) {
-      // This will trigger a re-render with correct params
-      window.history.replaceState(null, '', `/${storedTeam}/settings`);
+    // Get the selected team from localStorage
+    const storedTeam = localStorage.getItem('selectedTeam');
+    if (storedTeam) {
+      try {
+        const parsedTeam = JSON.parse(storedTeam);
+        setSelectedTeam(parsedTeam.name);
+        
+        // If URL doesn't match the stored team, update the URL
+        if (params.team && params.team !== parsedTeam.name) {
+          const currentPath = window.location.pathname;
+          const newPath = currentPath.replace(`/${params.team}/`, `/${parsedTeam.name}/`);
+          window.history.replaceState(null, '', newPath);
+        }
+      } catch (error) {
+        console.error("Error parsing team data:", error);
+        setSelectedTeam('team1'); // Fallback to default team
+      }
+    } else {
+      // Default to team1 if no team in localStorage
+      setSelectedTeam('team1');
     }
-    
-    setSelectedTeam(storedTeam);
   }, [params.team]);
 
   useEffect(() => {
