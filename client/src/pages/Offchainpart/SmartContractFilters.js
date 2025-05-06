@@ -234,7 +234,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setSelectedContracts(updatedSelectedContracts);
 
       // If this was the primary selected contract, update it
-      if (selectedContract?.id === contractToDelete.id) {
+      if (propSelectedContract?.id === contractToDelete.id) {
         if (updatedSelectedContracts.length > 0) {
           propSetSelectedContract(updatedSelectedContracts[0]);
         } else {
