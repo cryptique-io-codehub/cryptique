@@ -197,15 +197,34 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
       // Transform transactions to common format
-      const formattedTransactions = batchTransactions.map(tx => processPolygonTransaction(tx, contractAddress));
-      
-      // Find the lowest block number for the next batch pagination
-      formattedTransactions.forEach(tx => {
-        const blockNumber = tx.block_number;
+      const formattedTransactions = batchTransactions.map(tx => {
+        // Find the lowest block number for next batch when using desc order
+        const blockNumber = parseInt(tx.blockNumber);
         if (lowestBlock === 0 || blockNumber < lowestBlock) {
           lowestBlock = blockNumber;
         }
+        
+        // Check if this might be an ERC-20 transfer
+        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
+          return processERC20Transaction(tx);
+        }
+        
+        // Format transaction
+        return {
+          tx_hash: tx.hash,
+          from_address: tx.from.toLowerCase(),
+          to_address: tx.to?.toLowerCase() || "",
+          value_eth: parseFloat(tx.value) / 1e18 > 0 
+            ? (parseFloat(tx.value) / 1e18).toString() 
+            : "0 MATIC",
+          block_number: blockNumber,
+          block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+          chain: "Polygon",
+          contract_address: contractAddress.toLowerCase()
+        };
       });
+      
+      // No need to find lowest block again since we already did it during mapping
       
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
