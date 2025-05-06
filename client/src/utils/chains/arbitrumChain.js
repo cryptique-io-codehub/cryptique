@@ -88,18 +88,17 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
-    const offset = 10000; // Arbiscan API typically limits to 10,000 results per request
+    const batchSize = 10000; // Arbiscan API typically limits to 10,000 results per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
     console.log(`Fetching up to ${limit} latest transactions from Arbiscan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
     // Calculate number of batches needed
-    const batchCount = Math.ceil(limit / offset);
-    console.log(`Will fetch in ${batchCount} batch(es) of ${offset}`);
+    const batchCount = Math.ceil(limit / batchSize);
+    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
     
     let allTransactions = [];
-    let lowestBlock = null; // Track lowest block number for pagination when using desc order
-    let currentPage = 1; // Start with page 1 and increment for each batch
+    let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to a placeholder
     const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY || "D2HXGN6QEQ6J1VRCYNZFYAPB3YEUAC5CFF";
@@ -107,10 +106,6 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     
     // Set of transaction hashes to detect duplicates
     const seenTxHashes = new Set();
-    
-    // Flag to track which pagination strategy to use
-    let usePageBasedPagination = false;
-    let consecutiveDuplicateBatches = 0;
     
     // Fetch transactions in batches
     for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
@@ -120,28 +115,25 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
         break;
       }
       
-      let endBlock, url;
-      
-      if (usePageBasedPagination) {
-        // Use page-based pagination: increment the page number but use max block number
-        endBlock = 999999999;
-        url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${endBlock}&page=${currentPage}&offset=${offset}&sort=desc&apikey=${apiKey}`;
-        console.log(`Fetching batch ${batchIndex + 1}/${batchCount} using PAGE-BASED pagination. Page: ${currentPage}`);
-      } else {
-        // Use block-based pagination: use the same page number but decrement the end block
-        endBlock = batchIndex === 0 ? 999999999 : (lowestBlock !== null ? lowestBlock - 1 : 999999999);
-        url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=${offset}&sort=desc&apikey=${apiKey}`;
-        console.log(`Fetching batch ${batchIndex + 1}/${batchCount} using BLOCK-BASED pagination. End block: ${endBlock}`);
-      }
-      
-      console.log(`API URL for batch ${batchIndex + 1}: ${url}`);
+      // When using desc sort, we need to use endblock for pagination to get older transactions
+      // For the first batch, use a very high block number to start from the latest
+      let currentEndBlock = batchIndex === 0 ? 999999999 : lowestBlock - 1;
+      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, ending at block ${currentEndBlock}`);
       
       let retryCount = 0;
       let success = false;
       let response;
       
+      // Add explicit pagination parameters - always use page 1 with block-based pagination
+      const page = 1;
+      
       while (!success && retryCount < maxRetries) {
         try {
+          // Prepare API URL with pagination parameters
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${batchSize}&sort=desc&apikey=${apiKey}`;
+          
+          console.log(`API URL for batch ${batchIndex + 1}: ${url}`);
+          
           // Add delay for retries to prevent rate limiting
           if (retryCount > 0) {
             // Exponential backoff with jitter for retries
@@ -215,24 +207,35 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
-      // Count transactions before removing duplicates
+      // Count transactions before filtering duplicates
       const initialCount = batchTransactions.length;
-      
-      // Count transactions that are actually new (not seen before)
       let newTransactionsCount = 0;
       
-      // Transform transactions to common format, filtering out duplicates
+      // Find highest and lowest block numbers in this batch for debugging
+      if (batchTransactions.length > 0) {
+        const blockNumbers = batchTransactions.map(tx => parseInt(tx.blockNumber));
+        const highestBlockInBatch = Math.max(...blockNumbers);
+        const lowestBlockInBatch = Math.min(...blockNumbers);
+        console.log(`Batch ${batchIndex + 1} block range: ${highestBlockInBatch} to ${lowestBlockInBatch}`);
+      }
+      
+      // Transform transactions to common format
       const formattedTransactions = batchTransactions.filter(tx => {
         // Skip duplicates - only add transactions we haven't seen before
         if (seenTxHashes.has(tx.hash)) {
           return false;
         }
-        
-        // Add to seen set and include in filtered results
+        // Add to seen set
         seenTxHashes.add(tx.hash);
         newTransactionsCount++;
         return true;
       }).map(tx => {
+        // Find the lowest block number for next batch when using desc order
+        const blockNumber = parseInt(tx.blockNumber);
+        if (lowestBlock === 0 || blockNumber < lowestBlock) {
+          lowestBlock = blockNumber;
+        }
+        
         // Check if this might be an ERC-20 transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
           return processERC20Transaction(tx);
@@ -246,78 +249,23 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
           value_eth: parseFloat(tx.value) / 1e18 > 0 
             ? (parseFloat(tx.value) / 1e18).toString() 
             : "0 ARB",
-          block_number: parseInt(tx.blockNumber),
+          block_number: blockNumber,
           block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
           chain: "Arbitrum",
           contract_address: contractAddress.toLowerCase()
         };
       });
       
-      // Find block range in this batch for the next pagination
-      if (batchTransactions.length > 0) {
-        const blockNumbers = batchTransactions.map(tx => parseInt(tx.blockNumber));
-        const highestBlockInBatch = Math.max(...blockNumbers);
-        const lowestBlockInBatch = Math.min(...blockNumbers);
-        console.log(`Batch ${batchIndex + 1} block range: ${highestBlockInBatch} to ${lowestBlockInBatch}`);
-        
-        // Update the lowest block number for the next batch ONLY if we're using block-based pagination
-        if (!usePageBasedPagination) {
-          lowestBlock = lowestBlockInBatch;
-        }
-      }
+      console.log(`Current lowest block for pagination: ${lowestBlock}`);
+      console.log(`New unique transactions in this batch: ${newTransactionsCount}/${initialCount}`);
       
-      // Check if we got any new transactions
-      console.log(`Batch ${batchIndex + 1}: ${initialCount} total transactions, ${newTransactionsCount} new unique transactions`);
-      
-      // Add formatted transactions to our collection
+      // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
       console.log(`Total transactions collected so far: ${allTransactions.length}`);
       
-      // Pagination strategy adjustment:
-      // If we got duplicate results (same block range) or very few new transactions, switch pagination strategy
-      if (newTransactionsCount < initialCount * 0.1 && initialCount > 0) {
-        consecutiveDuplicateBatches++;
-        
-        // If we get consecutive batches with duplicates, switch pagination strategy
-        if (consecutiveDuplicateBatches >= 2) {
-          if (usePageBasedPagination) {
-            console.log("Page-based pagination is not working well. Switching back to block-based pagination.");
-            usePageBasedPagination = false;
-            // Ensure we have a reasonable lowestBlock value
-            if (lowestBlock === null) {
-              // If we don't have a valid lowest block yet, try to extract it from the data
-              const allBlockNumbers = allTransactions.map(tx => tx.block_number);
-              if (allBlockNumbers.length > 0) {
-                lowestBlock = Math.min(...allBlockNumbers);
-                console.log(`Setting lowest block to ${lowestBlock} based on collected transactions`);
-              } else {
-                // Fallback to a reasonable value
-                lowestBlock = 999999999 - 1000000; // Go back 1M blocks
-                console.log(`No valid block numbers found. Using ${lowestBlock} as fallback.`);
-              }
-            }
-          } else {
-            console.log("Block-based pagination is not working well. Switching to page-based pagination.");
-            usePageBasedPagination = true;
-            currentPage = 1; // Reset page count for fresh start
-          }
-          
-          // Reset the counter
-          consecutiveDuplicateBatches = 0;
-        }
-      } else {
-        // We got good results, reset the counter
-        consecutiveDuplicateBatches = 0;
-      }
-      
-      // Advance to next page if using page-based pagination
-      if (usePageBasedPagination) {
-        currentPage++;
-      }
-      
       // If we didn't get a full batch, we've reached the end
-      if (batchTransactions.length < offset) {
-        console.log(`Received less than ${offset} transactions, no more to fetch`);
+      if (batchTransactions.length < batchSize) {
+        console.log(`Received less than ${batchSize} transactions, no more to fetch`);
         break;
       }
       
@@ -325,6 +273,17 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       if (allTransactions.length >= limit) {
         console.log(`Reached limit of ${limit} transactions`);
         break;
+      }
+      
+      // If we didn't get any new transactions, something is wrong with pagination
+      if (newTransactionsCount === 0 && initialCount > 0) {
+        console.log(`Warning: Received ${initialCount} transactions but all were duplicates. This likely indicates a pagination issue with the API.`);
+        // If we keep getting duplicates, break to avoid an infinite loop
+        // This could happen if the API ignores our pagination parameters
+        if (batchIndex > 1) {
+          console.log(`Multiple batches with duplicates detected. Stopping to avoid infinite loop.`);
+          break;
+        }
       }
       
       // Add a small delay between batches to avoid rate limits
