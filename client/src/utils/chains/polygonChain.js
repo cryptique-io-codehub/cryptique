@@ -76,7 +76,7 @@ const processERC20Transaction = (tx) => {
 };
 
 /**
- * Fetches transaction data from PolygonScan API for a given contract address
+ * Fetches transaction data from Polygonscan API for a given contract address
  * @param {string} contractAddress - The Polygon contract address to fetch transactions for
  * @param {Object} options - Additional options for the API request
  * @param {number} options.limit - Maximum number of transactions to fetch (default: 10000)
@@ -85,37 +85,24 @@ const processERC20Transaction = (tx) => {
  */
 export const fetchPolygonTransactions = async (contractAddress, options = {}) => {
   try {
-    // Validate address
-    if (!isValidAddress(contractAddress)) {
-      console.error('Invalid Polygon address format:', contractAddress);
-      return {
-        transactions: [],
-        metadata: {
-          status: 'error',
-          message: 'Invalid address format',
-          total: 0
-        }
-      };
-    }
-    
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
-    const batchSize = 10000; // PolygonScan API has a limit of 10,000 per request
+    const offset = 10000; // Polygonscan API typically limits to 10,000 results per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
-    console.log(`Fetching up to ${limit} transactions from PolygonScan for contract: ${contractAddress}, starting from block ${startBlock}`);
+    console.log(`Fetching up to ${limit} latest transactions from Polygonscan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
     // Calculate number of batches needed
-    const batchCount = Math.ceil(limit / batchSize);
-    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
+    const batchCount = Math.ceil(limit / offset);
+    console.log(`Will fetch in ${batchCount} batch(es) of ${offset}`);
     
     let allTransactions = [];
-    let highestBlock = 0;
+    let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
-    // API key from env variable, fallback to a demo key
-    const apiKey = process.env.REACT_APP_POLYGONSCAN_API_KEY || "YourPolygonscanAPIKeyHere";
-    const baseUrl = "https://api.polygonscan.com/api";
+    // API key from env variable, fallback to a placeholder
+    const apiKey = process.env.REACT_APP_POLYGONSCAN_API_KEY || "AKDTCUGSJTCW5WV4MMBE2NF3EAACUPW6YZ";
+    const baseUrl = POLYGONSCAN_API_URL;
     
     // Fetch transactions in batches
     for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
@@ -125,21 +112,22 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
         break;
       }
       
-      let currentStartBlock = highestBlock > 0 ? highestBlock + 1 : startBlock;
-      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, starting from block ${currentStartBlock}`);
+      // When using desc sort, we need to use endblock for pagination to get older transactions
+      // For the first batch, use a very high block number to start from the latest
+      let currentEndBlock = batchIndex === 0 ? 999999999 : lowestBlock - 1;
+      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, ending at block ${currentEndBlock}`);
       
       let retryCount = 0;
       let success = false;
       let response;
       
-      // Add explicit pagination parameters (offset, page)
-      const offset = batchSize; // Number of records to retrieve
-      const page = 1;   // First page
+      // Use page=1 since we're using blockNumber for pagination
+      const page = 1;
       
       while (!success && retryCount < maxRetries) {
         try {
           // Prepare API URL with pagination parameters
-          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${currentStartBlock}&endblock=99999999&page=${page}&offset=${offset}&sort=asc&apikey=${apiKey}`;
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${offset}&sort=desc&apikey=${apiKey}`;
           
           // Add delay for retries to prevent rate limiting
           if (retryCount > 0) {
@@ -153,13 +141,13 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
           // Check for API errors
           if (response.data.status === "0") {
             const errorMsg = response.data.message || 'Unknown error';
-            console.log(`PolygonScan API error: ${errorMsg} (attempt ${retryCount + 1}/${maxRetries})`);
+            console.log(`Polygonscan API error: ${errorMsg} (attempt ${retryCount + 1}/${maxRetries})`);
             
             // Check for specific error messages
             if (errorMsg.includes("rate limit") || errorMsg.includes("Max rate limit")) {
               // Rate limit hit, wait longer before retry
               console.log("Rate limit reached, waiting before retry...");
-              await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds for rate limit
+              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds for rate limit
             } else if (errorMsg.includes("No transactions found")) {
               // No transactions found is not an error, just end the loop
               console.log("No transactions found for this contract address");
@@ -169,7 +157,7 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
                   total: allTransactions.length,
                   chain: "Polygon",
                   contract: contractAddress,
-                  highestBlock: highestBlock,
+                  lowestBlock: lowestBlock,
                   message: "No transactions found"
                 }
               };
@@ -209,39 +197,22 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
       // Transform transactions to common format
-      const formattedTransactions = batchTransactions.map(tx => {
-        // Find the highest block number for next batch
-        const blockNumber = parseInt(tx.blockNumber);
-        if (blockNumber > highestBlock) {
-          highestBlock = blockNumber;
+      const formattedTransactions = batchTransactions.map(tx => processPolygonTransaction(tx, contractAddress));
+      
+      // Find the lowest block number for the next batch pagination
+      formattedTransactions.forEach(tx => {
+        const blockNumber = tx.block_number;
+        if (lowestBlock === 0 || blockNumber < lowestBlock) {
+          lowestBlock = blockNumber;
         }
-        
-        // Check if this might be an ERC-20 transfer
-        if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return processERC20Transaction(tx);
-        }
-        
-        // Format transaction
-        return {
-          tx_hash: tx.hash,
-          from_address: tx.from.toLowerCase(),
-          to_address: tx.to?.toLowerCase() || "",
-          value_eth: parseFloat(tx.value) / 1e18 > 0 
-            ? (parseFloat(tx.value) / 1e18).toString() 
-            : "0 MATIC",
-          block_number: blockNumber,
-          block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-          chain: "Polygon",
-          contract_address: contractAddress.toLowerCase()
-        };
       });
       
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
       
       // If we didn't get a full batch, we've reached the end
-      if (batchTransactions.length < batchSize) {
-        console.log(`Received less than ${batchSize} transactions, no more to fetch`);
+      if (batchTransactions.length < offset) {
+        console.log(`Received less than ${offset} transactions, no more to fetch`);
         break;
       }
       
@@ -254,7 +225,7 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
       // Add a small delay between batches to avoid rate limits
       if (batchIndex < batchCount - 1) {
         console.log('Waiting briefly before next batch...');
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Increased delay between batches
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Delay between batches
       }
     }
     
@@ -268,7 +239,7 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
         total: limitedTransactions.length,
         chain: "Polygon",
         contract: contractAddress,
-        highestBlock: highestBlock
+        lowestBlock: lowestBlock
       }
     };
   } catch (error) {

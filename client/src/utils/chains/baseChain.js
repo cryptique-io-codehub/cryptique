@@ -92,14 +92,14 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
     const batchSize = 10000; // BaseScan API has a limit of 10,000 per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
-    console.log(`Fetching up to ${limit} transactions from BaseScan for contract: ${contractAddress}, starting from block ${startBlock}`);
+    console.log(`Fetching up to ${limit} latest transactions from BaseScan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
     // Calculate number of batches needed
     const batchCount = Math.ceil(limit / batchSize);
     console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
     
     let allTransactions = [];
-    let highestBlock = 0;
+    let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to hardcoded for demo
     const apiKey = process.env.REACT_APP_BASESCAN_API_KEY || "GMYP4T9SF7P34QC9DXY4VSKX81RTBUXMMF";
@@ -113,21 +113,23 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
         break;
       }
       
-      let currentStartBlock = highestBlock > 0 ? highestBlock + 1 : startBlock;
-      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, starting from block ${currentStartBlock}`);
+      // When using desc sort, we need to use endblock for pagination to get older transactions
+      // For the first batch, use a very high block number to start from the latest
+      let currentEndBlock = batchIndex === 0 ? 999999999 : lowestBlock - 1;
+      console.log(`Fetching batch ${batchIndex + 1}/${batchCount}, ending at block ${currentEndBlock}`);
       
       let retryCount = 0;
       let success = false;
       let response;
       
       // Add explicit pagination parameters (offset, page)
-      const offset = 0; // Starting from first result
+      const offset = batchSize; // Number of records to retrieve
       const page = 1;   // First page
       
       while (!success && retryCount < maxRetries) {
         try {
           // Prepare API URL with pagination parameters
-          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${currentStartBlock}&endblock=99999999&page=${page}&offset=${batchSize}&sort=asc&apikey=${apiKey}`;
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${batchSize}&sort=desc&apikey=${apiKey}`;
           
           // Add delay for retries to prevent rate limiting
           if (retryCount > 0) {
@@ -157,7 +159,7 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
                   total: allTransactions.length,
                   chain: "Base",
                   contract: contractAddress,
-                  highestBlock: highestBlock,
+                  lowestBlock: lowestBlock,
                   message: "No transactions found"
                 }
               };
@@ -198,10 +200,10 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
       
       // Transform transactions to common format
       const formattedTransactions = batchTransactions.map(tx => {
-        // Find the highest block number for next batch
+        // Find the lowest block number for next batch when using desc order
         const blockNumber = parseInt(tx.blockNumber);
-        if (blockNumber > highestBlock) {
-          highestBlock = blockNumber;
+        if (lowestBlock === 0 || blockNumber < lowestBlock) {
+          lowestBlock = blockNumber;
         }
         
         // Format transaction
@@ -251,7 +253,7 @@ export const fetchBaseTransactions = async (contractAddress, options = {}) => {
         total: limitedTransactions.length,
         chain: "Base",
         contract: contractAddress,
-        highestBlock: highestBlock
+        lowestBlock: lowestBlock
       }
     };
   } catch (error) {
