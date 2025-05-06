@@ -40,6 +40,142 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     return teamName;
   };
   
+  // Separate function to process website selection based on website array
+  const processWebsiteSelection = (websites) => {
+    if (!websites || websites.length === 0) return;
+    
+    const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+    
+    // If no website is selected or selection is empty
+    if(!savedWebsiteDomain || savedWebsiteDomain === '') {
+      const firstWebsite = websites[0];
+      localStorage.setItem("idy", firstWebsite.siteId);
+      localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+      setSelectedWebsite(firstWebsite);
+      setidy(firstWebsite.siteId);
+      
+      // Generate script code for the first website
+      const iD = firstWebsite.siteId;
+      const scriptHTML = `<script>
+      var script = document.createElement('script');
+      script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+      script.setAttribute('site-id', '${iD}');
+      document.head.appendChild(script);
+    </script>`;
+      setscriptcode(scriptHTML);
+    } else {
+      // Find the selected website in the array
+      const currentWebsite = websites.find(
+        website => website.Domain === savedWebsiteDomain
+      );
+      
+      if (currentWebsite) {
+        console.log("Setting selected website:", currentWebsite);
+        setSelectedWebsite(currentWebsite);
+        setidy(currentWebsite.siteId);
+        
+        // Generate script code for current website
+        const iD = currentWebsite.siteId;
+        const scriptHTML = `<script>
+        var script = document.createElement('script');
+        script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+        script.setAttribute('site-id', '${iD}');
+        document.head.appendChild(script);
+      </script>`;
+        setscriptcode(scriptHTML);
+      }
+    }
+    
+    setIsDropdownOpen(false);
+  };
+  
+  // Main function to fetch websites with caching
+  const fetchWebsites = async (forceRefresh = false) => {
+    setIsLoading(true);
+    try {
+      const rawTeamName = localStorage.getItem("selectedTeam");
+      const teamName = cleanTeamName(rawTeamName);
+      
+      if (!teamName) {
+        console.log("No team selected, skipping website fetch");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if we have a cached version and it's still valid
+      const now = Date.now();
+      if (!forceRefresh && websiteCache[teamName] && (now - lastFetchTime) < CACHE_TTL) {
+        console.log(`Using cached websites for team ${teamName}, age: ${(now - lastFetchTime)/1000}s`);
+        setWebsitearray(websiteCache[teamName]);
+        setIsLoading(false);
+        
+        // Process website selection using cached data
+        processWebsiteSelection(websiteCache[teamName]);
+        return;
+      }
+      
+      console.log(`Fetching websites from API for team: ${teamName}`);
+      
+      // Use the correct GET endpoint with team name in path parameter
+      const response = await axiosInstance.get(`/website/team/${teamName}`);
+      
+      if (response.status === 200) {
+        console.log("Fetched websites:", response.data.websites);
+        if (response && response.data.websites.length > 0) {
+          const websites = response.data.websites;
+          
+          // Update cache
+          setWebsiteCache(prev => ({
+            ...prev,
+            [teamName]: websites
+          }));
+          setLastFetchTime(now);
+          
+          setWebsitearray(websites);
+          
+          // Auto-verify websites with analytics data
+          try {
+            await axiosInstance.post('/website/auto-verify-all');
+            console.log('Auto-verify process completed');
+            
+            // Get the updated websites with verification status
+            const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
+            if (updatedResponse.status === 200) {
+              const updatedWebsites = updatedResponse.data.websites;
+              
+              // Update cache again with verified websites
+              setWebsiteCache(prev => ({
+                ...prev,
+                [teamName]: updatedWebsites
+              }));
+              
+              setWebsitearray(updatedWebsites);
+              
+              // Process website selection
+              processWebsiteSelection(updatedWebsites);
+            }
+          } catch (verifyError) {
+            console.error('Error in auto-verify process:', verifyError);
+            // Continue with the websites we already have
+            processWebsiteSelection(websites);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing websites:", error);
+      setfalsemessage("Error refreshing websites");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Function to refresh website data
+  const refreshWebsites = async (forceRefresh = false) => {
+    console.log("Manually refreshing websites");
+    // Call the main fetchWebsites function with forceRefresh parameter
+    fetchWebsites(forceRefresh);
+  };
+  
   // fetch website
   // depend-selectedTeam
   useEffect(() => {
@@ -77,7 +213,6 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
   }, [selectedTeam]);
-  
 
   const handleSelectWebsite = async (website) => {
     console.log(website);
@@ -174,13 +309,6 @@ HTML:
     setscriptmodel(false);
     // localStorage.removeItem("showInstallationPopup");
   }
-
-  // Function to refresh website data
-  const refreshWebsites = async (forceRefresh = false) => {
-    console.log("Manually refreshing websites");
-    // Call the main fetchWebsites function with forceRefresh parameter
-    fetchWebsites(forceRefresh);
-  };
 
   const handleVerify = async () => {
     try {
@@ -646,135 +774,6 @@ useEffect(() => {
       </div>
     </div>
   );
-};
-
-// Separate function to process website selection based on website array
-const processWebsiteSelection = (websites) => {
-  if (!websites || websites.length === 0) return;
-  
-  const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
-  
-  // If no website is selected or selection is empty
-  if(!savedWebsiteDomain || savedWebsiteDomain === '') {
-    const firstWebsite = websites[0];
-    localStorage.setItem("idy", firstWebsite.siteId);
-    localStorage.setItem("selectedWebsite", firstWebsite.Domain);
-    setSelectedWebsite(firstWebsite);
-    setidy(firstWebsite.siteId);
-    
-    // Generate script code for the first website
-    const iD = firstWebsite.siteId;
-    const scriptHTML = `<script>
-    var script = document.createElement('script');
-    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-    script.setAttribute('site-id', '${iD}');
-    document.head.appendChild(script);
-  </script>`;
-    setscriptcode(scriptHTML);
-  } else {
-    // Find the selected website in the array
-    const currentWebsite = websites.find(
-      website => website.Domain === savedWebsiteDomain
-    );
-    
-    if (currentWebsite) {
-      console.log("Setting selected website:", currentWebsite);
-      setSelectedWebsite(currentWebsite);
-      setidy(currentWebsite.siteId);
-      
-      // Generate script code for current website
-      const iD = currentWebsite.siteId;
-      const scriptHTML = `<script>
-      var script = document.createElement('script');
-      script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
-      script.setAttribute('site-id', '${iD}');
-      document.head.appendChild(script);
-    </script>`;
-      setscriptcode(scriptHTML);
-    }
-  }
-  
-  setIsDropdownOpen(false);
-};
-
-// Main function to fetch websites with caching
-const fetchWebsites = async (forceRefresh = false) => {
-  setIsLoading(true);
-  try {
-    const rawTeamName = localStorage.getItem("selectedTeam");
-    const teamName = cleanTeamName(rawTeamName);
-    
-    if (!teamName) {
-      console.log("No team selected, skipping website fetch");
-      setIsLoading(false);
-      return;
-    }
-    
-    // Check if we have a cached version and it's still valid
-    const now = Date.now();
-    if (!forceRefresh && websiteCache[teamName] && (now - lastFetchTime) < CACHE_TTL) {
-      console.log(`Using cached websites for team ${teamName}, age: ${(now - lastFetchTime)/1000}s`);
-      setWebsitearray(websiteCache[teamName]);
-      setIsLoading(false);
-      
-      // Process website selection using cached data
-      processWebsiteSelection(websiteCache[teamName]);
-      return;
-    }
-    
-    console.log(`Fetching websites from API for team: ${teamName}`);
-    
-    // Use the correct GET endpoint with team name in path parameter
-    const response = await axiosInstance.get(`/website/team/${teamName}`);
-    
-    if (response.status === 200) {
-      console.log("Fetched websites:", response.data.websites);
-      if (response && response.data.websites.length > 0) {
-        const websites = response.data.websites;
-        
-        // Update cache
-        setWebsiteCache(prev => ({
-          ...prev,
-          [teamName]: websites
-        }));
-        setLastFetchTime(now);
-        
-        setWebsitearray(websites);
-        
-        // Auto-verify websites with analytics data
-        try {
-          await axiosInstance.post('/website/auto-verify-all');
-          console.log('Auto-verify process completed');
-          
-          // Get the updated websites with verification status
-          const updatedResponse = await axiosInstance.get(`/website/team/${teamName}`);
-          if (updatedResponse.status === 200) {
-            const updatedWebsites = updatedResponse.data.websites;
-            
-            // Update cache again with verified websites
-            setWebsiteCache(prev => ({
-              ...prev,
-              [teamName]: updatedWebsites
-            }));
-            
-            setWebsitearray(updatedWebsites);
-            
-            // Process website selection
-            processWebsiteSelection(updatedWebsites);
-          }
-        } catch (verifyError) {
-          console.error('Error in auto-verify process:', verifyError);
-          // Continue with the websites we already have
-          processWebsiteSelection(websites);
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error refreshing websites:", error);
-    setfalsemessage("Error refreshing websites");
-  } finally {
-    setIsLoading(false);
-  }
 };
 
 export default Filters;
