@@ -1,5 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../axiosInstance';
+import { fetchBnbTransactions } from '../utils/chains/bnbChain';
+import { fetchBaseTransactions } from '../utils/chains/baseChain';
+import { fetchEthereumTransactions } from '../utils/chains/ethereumChain';
+import { fetchPolygonTransactions } from '../utils/chains/polygonChain';
+import { fetchArbitrumTransactions } from '../utils/chains/arbitrumChain';
+import { fetchOptimismTransactions } from '../utils/chains/optimismChain';
 
 // Create the context
 const ContractDataContext = createContext();
@@ -12,6 +18,8 @@ export const ContractDataProvider = ({ children }) => {
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [showDemoData, setShowDemoData] = useState(true); // By default, show demo data
+  const [loadingStatus, setLoadingStatus] = useState('');
+  const [updatingTransactions, setUpdatingTransactions] = useState(false);
 
   // Fetch smart contracts for the current team
   useEffect(() => {
@@ -111,6 +119,13 @@ export const ContractDataProvider = ({ children }) => {
       
       setContractTransactions(allTransactions);
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
+      
+      // After loading existing transactions, check for new ones
+      const contract = contractArray.find(c => c.id === contractId);
+      if (contract) {
+        fetchLatestTransactions(contract, allTransactions);
+      }
+      
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
@@ -119,6 +134,261 @@ export const ContractDataProvider = ({ children }) => {
     } finally {
       setIsLoadingTransactions(false);
     }
+  };
+  
+  // Function to fetch latest transactions from blockchain explorer
+  const fetchLatestTransactions = async (contract, existingTransactions) => {
+    if (!contract || !contract.id) return;
+    
+    setUpdatingTransactions(true);
+    setLoadingStatus(`Checking for new transactions for ${contract.name || contract.address}`);
+    
+    console.log(`Fetching latest transactions for contract: ${contract.address} on ${contract.blockchain}`);
+    
+    try {
+      // Get the latest block number from our database
+      setLoadingStatus('Determining latest processed block...');
+      
+      const latestBlockResponse = await axiosInstance.get(`/transactions/contract/${contract.id}/latest-block`);
+      const startBlock = latestBlockResponse.data.latestBlockNumber;
+      
+      if (!startBlock) {
+        setLoadingStatus('No existing transactions found, fetching initial transactions...');
+        // This is handled separately
+        setUpdatingTransactions(false);
+        return;
+      }
+      
+      setLoadingStatus(`Checking for new transactions since block ${startBlock}`);
+      console.log(`Checking for new transactions since block ${startBlock} for contract: ${contract.address}`);
+      
+      // Fetch only new transactions from blockchain API
+      let newTransactions = [];
+      
+      // Use the appropriate chain-specific module based on blockchain
+      switch (contract.blockchain) {
+        case 'BNB Chain':
+          setLoadingStatus(`Fetching new transactions from BscScan...`);
+          console.log('Fetching new transactions from BscScan');
+          const bnbResult = await fetchBnbTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (bnbResult.transactions?.length > 0) {
+            console.log(`Retrieved ${bnbResult.transactions.length} new transactions from BscScan`);
+            // Update token symbol in transactions
+            newTransactions = bnbResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
+            }));
+          } else {
+            console.log('No new transactions found');
+          }
+          break;
+          
+        case 'Base':
+          console.log('Using Base Chain module for new transactions');
+          const baseResult = await fetchBaseTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (baseResult.transactions?.length > 0) {
+            // Update token symbol in transactions
+            newTransactions = baseResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
+            }));
+            console.log(`Retrieved ${newTransactions.length} new transactions from Base API`);
+          } else {
+            console.log('No new transactions found or error:', baseResult.metadata?.message);
+          }
+          break;
+          
+        case 'Ethereum':
+          console.log('Fetching new transactions from Etherscan');
+          const ethResult = await fetchEthereumTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (ethResult.transactions?.length > 0) {
+            console.log(`Retrieved ${ethResult.transactions.length} new transactions from Etherscan`);
+            // Update token symbol in transactions
+            newTransactions = ethResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ERC20', contract.tokenSymbol || 'ERC20')
+            }));
+          } else {
+            console.log('No new transactions found or error:', ethResult.metadata?.message);
+          }
+          break;
+          
+        case 'Polygon':
+          console.log('Fetching new transactions from Polygonscan');
+          const polygonResult = await fetchPolygonTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (polygonResult.transactions?.length > 0) {
+            console.log(`Retrieved ${polygonResult.transactions.length} new transactions from Polygonscan`);
+            // Update token symbol in transactions
+            newTransactions = polygonResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('MATIC', contract.tokenSymbol || 'MATIC')
+            }));
+          } else {
+            console.log('No new transactions found or error:', polygonResult.metadata?.message);
+          }
+          break;
+          
+        case 'Arbitrum':
+          console.log('Fetching new transactions from Arbiscan');
+          const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (arbitrumResult.transactions?.length > 0) {
+            console.log(`Retrieved ${arbitrumResult.transactions.length} new transactions from Arbiscan`);
+            // Update token symbol in transactions
+            newTransactions = arbitrumResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('ARB', contract.tokenSymbol || 'ARB')
+            }));
+          } else {
+            console.log('No new transactions found or error:', arbitrumResult.metadata?.message);
+          }
+          break;
+          
+        case 'Optimism':
+          console.log('Fetching new transactions from Optimistic Etherscan');
+          const optimismResult = await fetchOptimismTransactions(contract.address, {
+            limit: 10000,
+            startBlock: startBlock
+          });
+          
+          if (optimismResult.transactions?.length > 0) {
+            console.log(`Retrieved ${optimismResult.transactions.length} new transactions from Optimistic Etherscan`);
+            // Update token symbol in transactions
+            newTransactions = optimismResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('OP', contract.tokenSymbol || 'OP')
+            }));
+          } else {
+            console.log('No new transactions found or error:', optimismResult.metadata?.message);
+          }
+          break;
+          
+        default:
+          console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
+      }
+      
+      let totalSaved = 0;
+      
+      // If we found new transactions, sanitize and save them to API
+      if (newTransactions.length > 0) {
+        setLoadingStatus(`Processing ${newTransactions.length} new transactions...`);
+        
+        try {
+          // Ensure transactions have proper format and required fields
+          const sanitizedTransactions = newTransactions.map(tx => ({
+            ...tx,
+            tx_hash: tx.tx_hash || '',
+            block_number: parseInt(tx.block_number) || 0,
+            block_time: tx.block_time || new Date().toISOString(),
+            chain: tx.chain || contract.blockchain,
+            contract_address: tx.contract_address || contract.address,
+            contractId: contract.id
+          })).filter(tx => 
+            // Filter out invalid transactions
+            tx.tx_hash && 
+            tx.tx_hash.length > 0 && 
+            tx.block_number && 
+            typeof tx.block_number === 'number'
+          );
+          
+          setLoadingStatus(`Saving ${sanitizedTransactions.length} valid transactions...`);
+          
+          // Save sanitized transactions in batches
+          const BATCH_SIZE = 2500;
+          let batchErrors = [];
+          
+          for (let i = 0; i < sanitizedTransactions.length; i += BATCH_SIZE) {
+            const batch = sanitizedTransactions.slice(i, i + BATCH_SIZE);
+            setLoadingStatus(`Saving batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(sanitizedTransactions.length/BATCH_SIZE)} (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
+            
+            try {
+              const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
+                transactions: batch
+              });
+              
+              console.log('Batch save response:', response.data);
+              totalSaved += response.data.total || 0;
+            } catch (batchError) {
+              console.error(`Error saving batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+              batchErrors.push(batchError.message || 'Unknown batch error');
+              // Small delay before next batch to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+          
+          if (batchErrors.length > 0) {
+            console.warn(`Had ${batchErrors.length} errors while saving batches:`, batchErrors);
+          }
+          
+          console.log(`Saved ${totalSaved} new transactions to API in batches`);
+          
+          // If we saved any new transactions, fetch all transactions again
+          if (totalSaved > 0) {
+            setLoadingStatus(`Added ${totalSaved} new transactions. Refreshing data...`);
+            
+            // Fetch all transactions again to include the new ones
+            const updatedTransactionsResponse = await axiosInstance.get(`/transactions/contract/${contract.id}`, {
+              params: { 
+                limit: 100000,
+                page: 1
+              }
+            });
+            
+            if (updatedTransactionsResponse.data && updatedTransactionsResponse.data.transactions) {
+              const updatedTransactions = updatedTransactionsResponse.data.transactions;
+              
+              setContractTransactions(updatedTransactions);
+              console.log(`Refreshed transaction list, now showing ${updatedTransactions.length} transactions`);
+              
+              // Print transaction count information
+              console.log('======== TRANSACTION COUNT SUMMARY ========');
+              console.log(`Before update: ${existingTransactions.length} transactions`);
+              console.log(`New transactions saved: ${totalSaved}`);
+              console.log(`After update: ${updatedTransactions.length} transactions`);
+              console.log(`Net increase: ${updatedTransactions.length - existingTransactions.length} transactions`);
+              console.log('==========================================');
+            }
+          } else {
+            setLoadingStatus('No new transactions found');
+          }
+        } catch (error) {
+          console.error("Error saving new transactions to API:", error);
+          setLoadingStatus(`Error saving transactions: ${error.message}`);
+        }
+      } else {
+        setLoadingStatus('No new transactions found');
+      }
+    } catch (error) {
+      console.error(`Error fetching latest transactions:`, error);
+      setLoadingStatus(`Error: ${error.message}`);
+    }
+    
+    setUpdatingTransactions(false);
   };
 
   // Handle contract selection change
@@ -181,6 +451,8 @@ export const ContractDataProvider = ({ children }) => {
         isLoadingContracts,
         isLoadingTransactions,
         showDemoData,
+        updatingTransactions,
+        loadingStatus,
         handleContractChange,
         processContractTransactions
       }}

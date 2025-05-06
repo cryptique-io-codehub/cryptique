@@ -11,6 +11,8 @@ export default function OnchainDashboard() {
     contractTransactions, 
     showDemoData, 
     isLoadingTransactions,
+    updatingTransactions,
+    loadingStatus,
     processContractTransactions
   } = useContractData();
 
@@ -149,6 +151,12 @@ export default function OnchainDashboard() {
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded">
           <p className="text-sm">
             <span className="font-bold">Loading transaction data...</span> Please wait while we process the data.
+          </p>
+        </div>
+      ) : updatingTransactions ? (
+        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-2 mb-4 rounded">
+          <p className="text-sm">
+            <span className="font-bold">Updating transactions:</span> {loadingStatus}
           </p>
         </div>
       ) : (
