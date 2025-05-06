@@ -137,36 +137,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     
     // Setup event listener to detect team changes
     const handleStorageChange = () => {
-      const rawTeamName = localStorage.getItem('selectedTeam');
-      
-      // Clean the new team value
-      let newTeam = rawTeamName;
-      if (typeof newTeam === 'string' && newTeam.startsWith('"') && newTeam.endsWith('"')) {
-        try {
-          newTeam = JSON.parse(newTeam);
-        } catch (e) {
-          console.error("Error parsing newTeam with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          newTeam = newTeam.replace(/^"|"$/g, '');
-        }
-      }
-      
-      // Clean the previous team value for comparison
-      let currentTeam = teamRef.current;
-      if (typeof currentTeam === 'string' && currentTeam.startsWith('"') && currentTeam.endsWith('"')) {
-        try {
-          currentTeam = JSON.parse(currentTeam);
-        } catch (e) {
-          console.error("Error parsing currentTeam with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          currentTeam = currentTeam.replace(/^"|"$/g, '');
-        }
-      }
-      
+      const currentTeam = localStorage.getItem('selectedTeam');
       // Only fetch contracts if the team has actually changed
-      if (newTeam && newTeam !== currentTeam) {
-        teamRef.current = rawTeamName; // Store the raw value in the ref
-        console.log(`Team changed to: ${newTeam}, refreshing contracts`);
+      if (currentTeam && currentTeam !== teamRef.current) {
+        teamRef.current = currentTeam;
+        console.log(`Team changed to: ${currentTeam}, refreshing contracts`);
         fetchContractsFromAPI();
         // Clear selected contract when team changes
         setSelectedContract(null);
@@ -1143,8 +1118,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Fetch contracts from API
   const fetchContractsFromAPI = async () => {
     try {
-      const rawTeamName = localStorage.getItem('selectedTeam');
-      if (!rawTeamName) {
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) {
         console.log("No team selected, skipping contract fetch");
         return;
       }
@@ -1154,25 +1129,11 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         console.log("Already loading contracts, skipping duplicate fetch");
         return;
       }
-      
-      // Clean the team name to remove any quotes
-      let teamName = rawTeamName;
-      
-      // If it starts with a quote and ends with a quote, try to parse it
-      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-        try {
-          teamName = JSON.parse(teamName);
-        } catch (e) {
-          console.error("Error parsing teamName with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          teamName = teamName.replace(/^"|"$/g, '');
-        }
-      }
 
-      console.log(`Fetching contracts for team: ${teamName}`);
+      console.log(`Fetching contracts for team: ${currentTeam}`);
       setIsLoading(true);
 
-      const response = await axiosInstance.get(`/contracts/team/${teamName}`);
+      const response = await axiosInstance.get(`/contracts/team/${currentTeam}`);
       
       if (response.data && response.data.contracts) {
         // Convert API contract format to local format
@@ -1187,7 +1148,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         }));
         
         setcontractarray(apiContracts);
-        console.log(`Loaded ${apiContracts.length} contracts from API for team ${teamName}`);
+        console.log(`Loaded ${apiContracts.length} contracts from API for team ${currentTeam}`);
       }
     } catch (error) {
       console.error("Error fetching contracts from API:", error);
@@ -1201,32 +1162,18 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Fallback function to load contracts from localStorage
   const loadContractsFromLocalStorage = () => {
     try {
-      const rawTeamName = localStorage.getItem('selectedTeam');
-      if (!rawTeamName) return;
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return;
 
-      // Clean the team name to remove any quotes
-      let teamName = rawTeamName;
-      
-      // If it starts with a quote and ends with a quote, try to parse it
-      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-        try {
-          teamName = JSON.parse(teamName);
-        } catch (e) {
-          console.error("Error parsing teamName with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          teamName = teamName.replace(/^"|"$/g, '');
-        }
-      }
-
-      const storageKey = `contracts_${teamName}`;
+      const storageKey = `contracts_${currentTeam}`;
       const storedContracts = localStorage.getItem(storageKey);
       
       if (storedContracts) {
         const contracts = JSON.parse(storedContracts);
         setcontractarray(contracts);
-        console.log(`Loaded ${contracts.length} contracts from localStorage for team ${teamName}`);
+        console.log(`Loaded ${contracts.length} contracts from localStorage for team ${currentTeam}`);
       } else {
-        console.log(`No contracts found in localStorage for team ${teamName}`);
+        console.log(`No contracts found in localStorage for team ${currentTeam}`);
       }
     } catch (error) {
       console.error("Error loading contracts from localStorage:", error);
@@ -1236,27 +1183,13 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Save contracts to API
   const saveContractToAPI = async (contract) => {
     try {
-      const rawTeamName = localStorage.getItem('selectedTeam');
-      if (!rawTeamName) return null;
-
-      // Clean the team name to remove any quotes
-      let teamName = rawTeamName;
-      
-      // If it starts with a quote and ends with a quote, try to parse it
-      if (typeof teamName === 'string' && teamName.startsWith('"') && teamName.endsWith('"')) {
-        try {
-          teamName = JSON.parse(teamName);
-        } catch (e) {
-          console.error("Error parsing teamName with quotes:", e);
-          // If parsing fails, we'll still use the string but remove quotes manually
-          teamName = teamName.replace(/^"|"$/g, '');
-        }
-      }
+      const currentTeam = localStorage.getItem('selectedTeam');
+      if (!currentTeam) return null;
 
       console.log(`Saving contract to API: ${contract.address} on ${contract.blockchain}`);
 
       const response = await axiosInstance.post('/contracts', {
-        teamName: teamName,
+        teamName: currentTeam,
         address: contract.address,
         name: contract.name,
         blockchain: contract.blockchain,
