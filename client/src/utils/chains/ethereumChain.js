@@ -7,7 +7,8 @@ import axios from 'axios';
 import { 
   formatTransaction, 
   isValidAddress,
-  decodeERC20TransferInput
+  decodeERC20TransferInput,
+  formatTokenAmount
 } from '../chainUtils';
 
 // API key from environment variables only
@@ -32,46 +33,56 @@ const processERC20Transaction = (tx) => {
     const decodedData = decodeERC20TransferInput(tx.input);
     
     if (!decodedData) {
-      return formatTransaction(tx, 'Ethereum');
+      // Fall back to standard transaction if decoding failed
+      console.log("Failed to decode ERC20 transfer data");
+      return {
+        tx_hash: tx.hash,
+        from_address: tx.from.toLowerCase(),
+        to_address: tx.to?.toLowerCase() || "",
+        value_eth: "0 ERC20",
+        block_number: parseInt(tx.blockNumber),
+        block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+        chain: "Ethereum",
+        contract_address: tx.to?.toLowerCase() || ""
+      };
     }
     
     // Default 18 decimals (most common)
     const decimals = 18;
     
-    // Format token amount with proper decimal placement
-    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
-    let displayAmount;
+    // Format token amount properly using the utility function
+    const tokenAmount = formatTokenAmount(decodedData.rawAmount, decimals, 'ERC20');
     
-    // Handle the display format based on the size
-    if (tokenAmountFloat >= 1) {
-      displayAmount = tokenAmountFloat.toFixed(6).replace(/\.?0+$/, '');
-    } else if (tokenAmountFloat >= 0.000001) {
-      displayAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
-    } else {
-      displayAmount = tokenAmountFloat.toExponential(6);
-    }
+    console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${tokenAmount}`);
     
-    // Remove trailing decimal point if present
-    if (displayAmount.endsWith('.')) {
-      displayAmount = displayAmount.slice(0, -1);
-    }
-    
-    // Create tokenData object for formatTransaction
-    const tokenData = {
-      isToken: true,
-      symbol: 'ERC20', // Generic symbol since we don't have actual token info
-      value: `${displayAmount} ERC20`,
-      contractAddress: tx.to // Contract address is the 'to' field in tx
+    // Create standardized transaction object
+    return {
+      tx_hash: tx.hash,
+      from_address: tx.from.toLowerCase(),
+      to_address: decodedData.recipient.toLowerCase(),  // Use the actual recipient from decoded data
+      value_eth: tokenAmount,
+      block_number: parseInt(tx.blockNumber),
+      block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+      chain: "Ethereum",
+      contract_address: tx.to?.toLowerCase() || "",
+      token_type: "ERC20",
+      token_address: tx.to?.toLowerCase() || "",
+      token_amount: decodedData.rawAmount
     };
-    
-    // Format transaction with token data
-    return formatTransaction({
-      ...tx,
-      to: decodedData.recipient // Update recipient to actual token receiver
-    }, 'Ethereum', tokenData);
   } catch (error) {
     console.error("Error processing ERC-20 transaction:", error);
-    return formatTransaction(tx, 'Ethereum');
+    
+    // Return a fallback transaction with minimal info
+    return {
+      tx_hash: tx.hash,
+      from_address: tx.from.toLowerCase(),
+      to_address: tx.to?.toLowerCase() || "",
+      value_eth: "0 ERC20",
+      block_number: parseInt(tx.blockNumber),
+      block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+      chain: "Ethereum",
+      contract_address: tx.to?.toLowerCase() || ""
+    };
   }
 };
 

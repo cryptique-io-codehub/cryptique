@@ -7,7 +7,8 @@ import axios from 'axios';
 import { 
   formatTransaction, 
   isValidAddress,
-  decodeERC20TransferInput
+  decodeERC20TransferInput,
+  formatTokenAmount
 } from '../chainUtils';
 
 // API key should be in .env file
@@ -28,50 +29,60 @@ const MAX_RESULTS = 10000;
  */
 const processBep20Transaction = (tx) => {
   try {
-    // Decode the BEP20 transfer data
+    // Decode the BEP20 transfer data (same format as ERC20)
     const decodedData = decodeERC20TransferInput(tx.input);
     
     if (!decodedData) {
-      return formatTransaction(tx, 'BNB');
+      // Fall back to standard transaction if decoding failed
+      console.log("Failed to decode BEP20 transfer data");
+      return {
+        tx_hash: tx.hash,
+        from_address: tx.from.toLowerCase(),
+        to_address: tx.to?.toLowerCase() || "",
+        value_eth: "0 BEP20",
+        block_number: parseInt(tx.blockNumber),
+        block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+        chain: "BNB Chain",
+        contract_address: tx.to?.toLowerCase() || ""
+      };
     }
     
     // Default 18 decimals (most common)
     const decimals = 18;
     
-    // Format token amount with proper decimal placement
-    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
-    let displayAmount;
+    // Format token amount properly using the utility function
+    const tokenAmount = formatTokenAmount(decodedData.rawAmount, decimals, 'BEP20');
     
-    // Handle the display format based on the size
-    if (tokenAmountFloat >= 1) {
-      displayAmount = tokenAmountFloat.toFixed(6).replace(/\.?0+$/, '');
-    } else if (tokenAmountFloat >= 0.000001) {
-      displayAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
-    } else {
-      displayAmount = tokenAmountFloat.toExponential(6);
-    }
+    console.log(`Decoded BEP20 transfer: ${decodedData.rawAmount} -> ${tokenAmount}`);
     
-    // Remove trailing decimal point if present
-    if (displayAmount.endsWith('.')) {
-      displayAmount = displayAmount.slice(0, -1);
-    }
-    
-    // Create tokenData object for formatTransaction
-    const tokenData = {
-      isToken: true,
-      symbol: 'BEP20', // Generic symbol since we don't have actual token info
-      value: `${displayAmount} BEP20`,
-      contractAddress: tx.to // Contract address is the 'to' field in tx
+    // Create standardized transaction object
+    return {
+      tx_hash: tx.hash,
+      from_address: tx.from.toLowerCase(),
+      to_address: decodedData.recipient.toLowerCase(),  // Use the actual recipient from decoded data
+      value_eth: tokenAmount,
+      block_number: parseInt(tx.blockNumber),
+      block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+      chain: "BNB Chain",
+      contract_address: tx.to?.toLowerCase() || "",
+      token_type: "BEP20",
+      token_address: tx.to?.toLowerCase() || "",
+      token_amount: decodedData.rawAmount
     };
-    
-    // Format transaction with token data
-    return formatTransaction({
-      ...tx,
-      to: decodedData.recipient // Update recipient to actual token receiver
-    }, 'BNB', tokenData);
   } catch (error) {
     console.error("Error processing BEP20 transaction:", error);
-    return formatTransaction(tx, 'BNB');
+    
+    // Return a fallback transaction with minimal info
+    return {
+      tx_hash: tx.hash,
+      from_address: tx.from.toLowerCase(),
+      to_address: tx.to?.toLowerCase() || "",
+      value_eth: "0 BEP20",
+      block_number: parseInt(tx.blockNumber),
+      block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+      chain: "BNB Chain",
+      contract_address: tx.to?.toLowerCase() || ""
+    };
   }
 };
 
