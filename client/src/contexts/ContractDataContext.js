@@ -352,6 +352,8 @@ export const ContractDataProvider = ({ children }) => {
       return null;
     }
     
+    console.log(`Processing ${contractTransactions.length} transactions for contract: ${selectedContract.name}`);
+    
     // Get current date and dates for time-based calculations
     const now = new Date();
     const thirtyDaysAgo = new Date();
@@ -547,7 +549,12 @@ export const ContractDataProvider = ({ children }) => {
     const chainConfig = getChainConfig(selectedContract.blockchain);
     const chainColor = chainConfig?.color || '#627EEA'; // Default to Ethereum blue if not found
     
-    // Create processed data object with metrics extracted from transactions
+    // Generate daily transaction data for charts (transactions and volume over time)
+    const transactionTimeSeriesData = generateDailyTransactionData(contractTransactions, 30); // Last 30 days of data
+    
+    console.log(`Generated ${transactionTimeSeriesData.length} daily data points for transaction chart`);
+    console.log('Sample of transaction time series data:', transactionTimeSeriesData.slice(0, 3));
+    
     const processedData = {
       contractInfo: {
         address: selectedContract.address,
@@ -587,10 +594,90 @@ export const ContractDataProvider = ({ children }) => {
         age: `${avgWalletAgeInYears.toFixed(1)} Years`,
         netWorth: "$945" // Placeholder - would need external data source
       },
-      // Add more processed data as needed for charts
+      // Use the generated transaction data for charts
+      transactionData: transactionTimeSeriesData
     };
     
     return processedData;
+  };
+
+  // Helper function to generate daily transaction data for charts
+  const generateDailyTransactionData = (transactions, daysToInclude = 30) => {
+    if (!transactions || transactions.length === 0) {
+      return [];
+    }
+    
+    // Get date range
+    const now = new Date();
+    const startDate = new Date();
+    startDate.setDate(now.getDate() - daysToInclude);
+    
+    // Initialize map to store data by day
+    const dailyData = {};
+    
+    // Create entries for all days in the range (to ensure no gaps in chart)
+    for (let i = 0; i <= daysToInclude; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
+      const dateStr = formatDate(date);
+      dailyData[dateStr] = {
+        date: dateStr,
+        transactions: 0,
+        volume: 0
+      };
+    }
+    
+    // Aggregate transaction data by day
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.block_time);
+      
+      // Only include transactions in our date range
+      if (txDate >= startDate && txDate <= now) {
+        const dateStr = formatDate(txDate);
+        
+        // Create entry if it doesn't exist (shouldn't be needed with the loop above)
+        if (!dailyData[dateStr]) {
+          dailyData[dateStr] = {
+            date: dateStr,
+            transactions: 0,
+            volume: 0
+          };
+        }
+        
+        // Add transaction and volume
+        dailyData[dateStr].transactions += 1;
+        const value = parseFloat(tx.value_eth) || 0;
+        if (!isNaN(value)) {
+          dailyData[dateStr].volume += value;
+        }
+      }
+    });
+    
+    // Convert to array, round volume values, and sort by date
+    return Object.values(dailyData).map(item => ({
+      ...item,
+      volume: parseFloat(item.volume.toFixed(2)) // Round to 2 decimal places
+    })).sort((a, b) => {
+      const dateA = parseDate(a.date);
+      const dateB = parseDate(b.date);
+      return dateA - dateB;
+    });
+  };
+  
+  // Helper for date formatting
+  const formatDate = (date) => {
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    return `${day} ${month}`;
+  };
+  
+  // Helper to parse formatted date back to Date object
+  const parseDate = (dateStr) => {
+    const [day, month] = dateStr.split(' ');
+    const monthIdx = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month);
+    const year = new Date().getFullYear(); // Assume current year
+    return new Date(year, monthIdx, parseInt(day));
   };
 
   return (
