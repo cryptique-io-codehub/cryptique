@@ -293,6 +293,14 @@ export const ContractDataProvider = ({ children }) => {
                 console.log(`After update: ${updatedTransactions.length} transactions`);
                 console.log(`Net increase: ${updatedTransactions.length - existingTransactions.length} transactions`);
                 console.log('==========================================');
+                
+                // Print the latest 10 transactions for verification
+                console.log('======== LATEST 10 TRANSACTIONS ========');
+                const latest10Txns = updatedTransactions.slice(0, 10);
+                latest10Txns.forEach((tx, index) => {
+                  console.log(`${index + 1}. TX Hash: ${tx.tx_hash.substring(0, 12)}... | Block: ${tx.block_number} | Value: ${tx.value_eth}`);
+                });
+                console.log('==========================================');
               }
             } catch (error) {
               console.error("Error fetching newly saved transactions:", error);
