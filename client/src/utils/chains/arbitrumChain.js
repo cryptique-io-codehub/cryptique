@@ -7,7 +7,8 @@ import axios from 'axios';
 import { 
   formatTransaction, 
   isValidAddress,
-  decodeERC20TransferInput
+  decodeERC20TransferInput,
+  formatTokenAmount
 } from '../chainUtils';
 
 // API key should be in .env file
@@ -88,19 +89,19 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
-    const offset = 10000; // Arbiscan API typically limits to 10,000 results per request
+    const batchSize = 10000; // Arbiscan API has a limit of 10,000 per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
     console.log(`Fetching up to ${limit} latest transactions from Arbiscan for contract: ${contractAddress}, starting from block ${startBlock}`);
     
     // Calculate number of batches needed
-    const batchCount = Math.ceil(limit / offset);
-    console.log(`Will fetch in ${batchCount} batch(es) of ${offset}`);
+    const batchCount = Math.ceil(limit / batchSize);
+    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
     
     let allTransactions = [];
-    let lowestBlock = 999999999; // Initialize with a high value for finding the minimum
+    let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
-    // API key from env variable, fallback to a placeholder
+    // API key from env variable, fallback to hardcoded for demo
     const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY || "D2HXGN6QEQ6J1VRCYNZFYAPB3YEUAC5CFF";
     const baseUrl = ARBISCAN_API_URL;
     
@@ -121,13 +122,14 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       let success = false;
       let response;
       
-      // Use page=1 since we're using blockNumber for pagination
-      const page = 1;
+      // Add explicit pagination parameters (offset, page)
+      const offset = batchSize; // Number of records to retrieve
+      const page = 1;   // First page
       
       while (!success && retryCount < maxRetries) {
         try {
           // Prepare API URL with pagination parameters
-          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${offset}&sort=desc&apikey=${apiKey}`;
+          const url = `${baseUrl}?module=account&action=txlist&address=${contractAddress}&startblock=${startBlock}&endblock=${currentEndBlock}&page=${page}&offset=${batchSize}&sort=desc&apikey=${apiKey}`;
           
           // Add delay for retries to prevent rate limiting
           if (retryCount > 0) {
@@ -147,28 +149,20 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
             if (errorMsg.includes("rate limit") || errorMsg.includes("Max rate limit")) {
               // Rate limit hit, wait longer before retry
               console.log("Rate limit reached, waiting before retry...");
-              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds for rate limit
+              await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds for rate limit
             } else if (errorMsg.includes("No transactions found")) {
               // No transactions found is not an error, just end the loop
               console.log("No transactions found for this contract address");
-              // Fixed indentation - only return if this is the first batch 
-              if (batchIndex === 0) {
-                return {
-                  transactions: allTransactions,
-                  metadata: {
-                    total: allTransactions.length,
-                    chain: "Arbitrum",
-                    contract: contractAddress,
-                    lowestBlock: lowestBlock,
-                    message: "No transactions found"
-                  }
-                };
-              } else {
-                // If this isn't the first batch, it means we've exhausted all transactions
-                // Break from the retry loop and then the batch loop
-                success = true;
-                break;
-              }
+              return {
+                transactions: allTransactions,
+                metadata: {
+                  total: allTransactions.length,
+                  chain: "Arbitrum",
+                  contract: contractAddress,
+                  lowestBlock: lowestBlock,
+                  message: "No transactions found"
+                }
+              };
             } else {
               retryCount++;
               continue;
@@ -204,15 +198,12 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
-      // Reset the lowestBlock for each batch to ensure we find the true minimum
-      let batchLowestBlock = 999999999;
-      
       // Transform transactions to common format
       const formattedTransactions = batchTransactions.map(tx => {
         // Find the lowest block number for next batch when using desc order
         const blockNumber = parseInt(tx.blockNumber);
-        if (blockNumber < batchLowestBlock) {
-          batchLowestBlock = blockNumber;
+        if (lowestBlock === 0 || blockNumber < lowestBlock) {
+          lowestBlock = blockNumber;
         }
         
         // Check if this might be an ERC-20 transfer
@@ -220,7 +211,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
           return processERC20Transaction(tx);
         }
         
-        // Format transaction
+        // Format standard transaction
         return {
           tx_hash: tx.hash,
           from_address: tx.from.toLowerCase(),
@@ -235,20 +226,12 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
         };
       });
       
-      // Update the overall lowest block
-      if (batchLowestBlock < lowestBlock) {
-        lowestBlock = batchLowestBlock;
-      }
-      
-      // Debug - Log minimum block found in this batch
-      console.log(`Lowest block number in batch ${batchIndex + 1}: ${batchLowestBlock}, Overall lowest: ${lowestBlock}`);
-      
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
       
       // If we didn't get a full batch, we've reached the end
-      if (batchTransactions.length < offset) {
-        console.log(`Received less than ${offset} transactions, no more to fetch`);
+      if (batchTransactions.length < batchSize) {
+        console.log(`Received less than ${batchSize} transactions, no more to fetch`);
         break;
       }
       
@@ -260,7 +243,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       // Add a small delay between batches to avoid rate limits
       if (batchIndex < batchCount - 1) {
-        console.log(`Waiting briefly before next batch... Will query blocks older than ${lowestBlock}`);
+        console.log('Waiting briefly before next batch...');
         await new Promise(resolve => setTimeout(resolve, 2000)); // Delay between batches
       }
     }
