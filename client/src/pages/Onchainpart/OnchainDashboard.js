@@ -136,6 +136,18 @@ export default function OnchainDashboard() {
     );
   };
 
+  const formatVolumeDisplay = (value) => {
+    if (value >= 1e9) {
+      return `$${(value / 1e9).toFixed(2)}B`;
+    } else if (value >= 1e6) {
+      return `$${(value / 1e6).toFixed(2)}M`;
+    } else if (value >= 1e3) {
+      return `$${(value / 1e3).toFixed(2)}K`;
+    } else {
+      return `$${value.toFixed(2)}`;
+    }
+  };
+
   return (
     <div className="bg-gray-50 p-4 text-gray-900">
       {/* Import fonts in the head */}
@@ -283,10 +295,7 @@ export default function OnchainDashboard() {
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
                     ? "15,500.00" 
-                    : parseFloat(contractData?.recentVolume?.last7Days || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })
+                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last7Days || 0))
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChange7Days && (
@@ -309,10 +318,7 @@ export default function OnchainDashboard() {
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
                     ? "75,800.00" 
-                    : parseFloat(contractData?.recentVolume?.last30Days || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })
+                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last30Days || 0))
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChange30Days && (
@@ -335,10 +341,7 @@ export default function OnchainDashboard() {
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
                     ? "420,500.00" 
-                    : parseFloat(contractData?.recentVolume?.lastYear || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })
+                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lastYear || 0))
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChangeYear && (
@@ -360,11 +363,8 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "1,250,200.00" 
-                    : parseFloat(contractData?.recentVolume?.lifetime || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })
+                    ? "1.25M" 
+                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lifetime || 0))
                   }
                 </h3>
               </div>
@@ -395,9 +395,18 @@ export default function OnchainDashboard() {
               <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip />
-              <Bar yAxisId="left" dataKey="transactions" fill={chainColor} radius={[4, 4, 0, 0]} />
-              <Area yAxisId="right" type="monotone" dataKey="volume" stroke="#8884d8" fill="#8884d830" />
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name === 'volume') {
+                    // Find the corresponding data point to get unit
+                    const dataPoint = transactionData.find(d => d.volume === value);
+                    return [`${dataPoint?.displayVolume || value}${dataPoint?.volumeUnit || ''} ${selectedContract?.tokenSymbol || 'TOKEN'}`, 'Volume'];
+                  }
+                  return [value, name === 'transactions' ? 'Transactions' : name];
+                }}
+              />
+              <Bar yAxisId="left" dataKey="transactions" fill={chainColor} radius={[4, 4, 0, 0]} name="Transactions" />
+              <Area yAxisId="right" type="monotone" dataKey="volume" stroke="#8884d8" fill="#8884d830" name="Volume" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -479,10 +488,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "15,500.00" 
-                        : parseFloat(contractData?.recentVolume?.last7Days || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last7Days || 0))
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChange7Days) || showDemoData ? (
@@ -499,10 +505,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "75,800.00" 
-                        : parseFloat(contractData?.recentVolume?.last30Days || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last30Days || 0))
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChange30Days) || showDemoData ? (
@@ -519,10 +522,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "420,500.00" 
-                        : parseFloat(contractData?.recentVolume?.lastYear || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lastYear || 0))
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChangeYear) || showDemoData ? (
@@ -538,11 +538,8 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Lifetime</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "1,250,200.00" 
-                        : parseFloat(contractData?.recentVolume?.lifetime || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        ? "1.25M" 
+                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lifetime || 0))
                       }
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -561,13 +558,23 @@ export default function OnchainDashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                       <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <Tooltip />
+                      <Tooltip 
+                        formatter={(value, name) => {
+                          if (name === 'volume') {
+                            // Find the corresponding data point to get unit
+                            const dataPoint = transactionData.find(d => d.volume === value);
+                            return [`${dataPoint?.displayVolume || value}${dataPoint?.volumeUnit || ''} ${selectedContract?.tokenSymbol || 'TOKEN'}`, 'Volume'];
+                          }
+                          return [value, name];
+                        }}
+                      />
                       <Area 
                         type="monotone" 
                         dataKey="volume" 
                         stroke={chainColor} 
                         fill={`${chainColor}30`} 
                         activeDot={{ r: 6 }}
+                        name="Volume"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -583,10 +590,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "2,214.29" 
-                        : (parseFloat(contractData?.recentVolume?.last7Days || 0) / 7).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.last7Days || 0) / 7))
                       }
                     </p>
                   </div>
@@ -596,10 +600,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "2,526.67" 
-                        : (parseFloat(contractData?.recentVolume?.last30Days || 0) / 30).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.last30Days || 0) / 30))
                       }
                     </p>
                   </div>
@@ -609,10 +610,7 @@ export default function OnchainDashboard() {
                     <p className="text-xl font-bold">
                       {showDemoData 
                         ? "1,152.05" 
-                        : (parseFloat(contractData?.recentVolume?.lastYear || 0) / 365).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })
+                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.lastYear || 0) / 365))
                       }
                     </p>
                   </div>

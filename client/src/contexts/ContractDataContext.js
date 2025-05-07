@@ -624,7 +624,9 @@ export const ContractDataProvider = ({ children }) => {
       dailyData[dateStr] = {
         date: dateStr,
         transactions: 0,
-        volume: 0
+        volume: 0,
+        displayVolume: 0,
+        volumeUnit: ''
       };
     }
     
@@ -641,7 +643,9 @@ export const ContractDataProvider = ({ children }) => {
           dailyData[dateStr] = {
             date: dateStr,
             transactions: 0,
-            volume: 0
+            volume: 0,
+            displayVolume: 0,
+            volumeUnit: ''
           };
         }
         
@@ -654,15 +658,35 @@ export const ContractDataProvider = ({ children }) => {
       }
     });
     
-    // Convert to array, round volume values, and sort by date
-    return Object.values(dailyData).map(item => ({
-      ...item,
-      volume: parseFloat(item.volume.toFixed(2)) // Round to 2 decimal places
-    })).sort((a, b) => {
+    // Convert to array, format volume values, and sort by date
+    const formattedData = Object.values(dailyData).map(item => {
+      const roundedVolume = parseFloat(item.volume.toFixed(2));
+      
+      // Format volume for display (use millions for large values)
+      let displayVolume = roundedVolume;
+      let volumeUnit = '';
+      
+      if (roundedVolume >= 1000000) {
+        displayVolume = parseFloat((roundedVolume / 1000000).toFixed(2));
+        volumeUnit = 'M';
+      } else if (roundedVolume >= 1000) {
+        displayVolume = parseFloat((roundedVolume / 1000).toFixed(2));
+        volumeUnit = 'K';
+      }
+      
+      return {
+        ...item,
+        volume: roundedVolume,
+        displayVolume,
+        volumeUnit
+      };
+    }).sort((a, b) => {
       const dateA = parseDate(a.date);
       const dateB = parseDate(b.date);
       return dateA - dateB;
     });
+    
+    return formattedData;
   };
   
   // Helper for date formatting
