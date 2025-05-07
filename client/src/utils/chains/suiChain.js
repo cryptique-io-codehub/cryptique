@@ -54,8 +54,26 @@ export const getAddressExplorerURL = (address) => {
  * @returns {boolean} - True if valid, false otherwise
  */
 export const validateAddress = (address) => {
-  // SUI addresses are 0x followed by 64 hex characters (32 bytes)
-  return isValidAddress(address) && address.length === 66;
+  // SUI addresses start with 0x and are 64 or 66 characters long (32 bytes)
+  // Using a custom validation for SUI rather than the shared isValidAddress function
+  if (!address || typeof address !== 'string') {
+    return false;
+  }
+
+  // Check if address starts with 0x
+  if (!address.startsWith('0x')) {
+    return false;
+  }
+
+  // Remove 0x prefix for length check
+  const addressWithoutPrefix = address.slice(2);
+
+  // Check if the rest is a valid hex string of correct length
+  // SUI addresses can be 64 hex chars (32 bytes) or sometimes 66 chars
+  const validLength = addressWithoutPrefix.length === 64 || addressWithoutPrefix.length === 66;
+  const validHex = /^[0-9a-fA-F]+$/.test(addressWithoutPrefix);
+
+  return validLength && validHex;
 };
 
 /**

@@ -321,10 +321,24 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       return false;
     }
 
-    // Validate contract address format
-    if (!isValidAddress(contractAddress)) {
-      setContractError('Invalid contract address format');
-      return false;
+    // Validate contract address format based on blockchain
+    if (blockchain === 'SUI') {
+      // SUI addresses start with 0x and are 64 or 66 characters long
+      const isSuiAddress = 
+        contractAddress.startsWith('0x') && 
+        /^[0-9a-fA-F]+$/.test(contractAddress.slice(2)) &&
+        (contractAddress.length === 66 || contractAddress.length === 68);
+      
+      if (!isSuiAddress) {
+        setContractError('Invalid SUI address format');
+        return false;
+      }
+    } else {
+      // For EVM chains, use the standard validator
+      if (!isValidAddress(contractAddress)) {
+        setContractError('Invalid contract address format');
+        return false;
+      }
     }
 
     setAddingContract(true);
@@ -335,7 +349,61 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setLoadingProgress({ current: 0, total: 100 });
     
     try {
-      // Create contract instance
+      // For SUI contracts, skip token symbol check via Web3
+      if (blockchain === 'SUI') {
+        const finalTokenSymbol = tokenSymbol || 'SUI';
+        
+        setLoadingStatus('Creating contract object...');
+        setLoadingProgress({ current: 30, total: 100 });
+
+        // Create new contract object
+        const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newContract = {
+          id: contractId,
+          address: contractAddress,
+          name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
+          blockchain: blockchain,
+          tokenSymbol: finalTokenSymbol,
+          added_at: new Date().toISOString(),
+          verified: true
+        };
+        
+        // Save contract to API
+        setLoadingStatus('Saving contract to database...');
+        setLoadingProgress({ current: 50, total: 100 });
+        const savedContract = await saveContractToAPI(newContract);
+        
+        // Use the saved contract if API call was successful
+        const contractToAdd = savedContract || newContract;
+        
+        // Update contract array
+        setLoadingStatus('Updating contract list...');
+        setLoadingProgress({ current: 70, total: 100 });
+        const updatedContracts = [...contractarray, contractToAdd];
+        setcontractarray(updatedContracts);
+        
+        // Update selected contracts
+        setSelectedContracts([...selectedContracts, contractToAdd]);
+        
+        // Set as primary selected contract
+        propSetSelectedContract(contractToAdd);
+        
+        setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
+        setLoadingProgress({ current: 90, total: 100 });
+        setAddingContract(false);
+        setShowAddContractModal(false);
+
+        // Short delay to show success before fetching transactions
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Fetch initial transactions for this new contract
+        console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
+        await fetchInitialTransactions(contractToAdd);
+        
+        return true;
+      }
+
+      // Create contract instance (EVM chains only)
       setLoadingStatus('Creating contract instance...');
       setLoadingProgress({ current: 10, total: 100 });
       const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
@@ -352,28 +420,28 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setLoadingStatus('Could not fetch token symbol, using default...');
           // Use default token symbol based on blockchain
           switch (blockchain) {
-        case 'Ethereum':
+            case 'Ethereum':
               finalTokenSymbol = 'ETH';
-          break;
+              break;
             case 'BNB Chain':
               finalTokenSymbol = 'BNB';
               break;
             case 'Base':
               finalTokenSymbol = 'ETH';
               break;
-        case 'Polygon':
+            case 'Polygon':
               finalTokenSymbol = 'MATIC';
-          break;
-        case 'Arbitrum':
+              break;
+            case 'Arbitrum':
               finalTokenSymbol = 'ETH';
-          break;
-        case 'Optimism':
+              break;
+            case 'Optimism':
               finalTokenSymbol = 'ETH';
-          break;
-        case 'SUI':
+              break;
+            case 'SUI':
               finalTokenSymbol = 'SUI';
-          break;
-        default:
+              break;
+            default:
               finalTokenSymbol = 'ETH';
           }
         }
@@ -404,7 +472,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Update contract array
       setLoadingStatus('Updating contract list...');
-          setLoadingProgress({ current: 70, total: 100 });
+      setLoadingProgress({ current: 70, total: 100 });
       const updatedContracts = [...contractarray, contractToAdd];
       setcontractarray(updatedContracts);
       
@@ -420,14 +488,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setShowAddContractModal(false);
 
       // Short delay to show success before fetching transactions
-              await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Fetch initial transactions for this new contract
       console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
       await fetchInitialTransactions(contractToAdd);
       
       return true;
-        } catch (error) {
+    } catch (error) {
       console.error("Error adding smart contract:", error);
       setContractError(`Error adding contract: ${error.message}`);
       setAddingContract(false);
