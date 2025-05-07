@@ -8,7 +8,8 @@ import {
   formatTransaction, 
   isValidAddress,
   decodeERC20TransferInput,
-  formatTokenAmount
+  formatTokenAmount,
+  hexToDecimalString
 } from '../chainUtils';
 
 // API key from environment variables only
@@ -50,10 +51,13 @@ const processERC20Transaction = (tx) => {
     // Default 18 decimals (most common)
     const decimals = 18;
     
-    // Format token amount properly using the utility function
-    const tokenAmount = formatTokenAmount(decodedData.rawAmount, decimals, 'ERC20');
+    // Convert hex amount to decimal string first
+    const decimalAmount = hexToDecimalString(decodedData.rawAmount);
     
-    console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${tokenAmount}`);
+    // Format token amount properly using the utility function
+    const tokenAmount = formatTokenAmount(decimalAmount, decimals, 'ERC20');
+    
+    console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${decimalAmount} -> ${tokenAmount}`);
     
     // Create standardized transaction object
     return {
@@ -67,7 +71,7 @@ const processERC20Transaction = (tx) => {
       contract_address: tx.to?.toLowerCase() || "",
       token_type: "ERC20",
       token_address: tx.to?.toLowerCase() || "",
-      token_amount: decodedData.rawAmount
+      token_amount: decimalAmount
     };
   } catch (error) {
     console.error("Error processing ERC-20 transaction:", error);
