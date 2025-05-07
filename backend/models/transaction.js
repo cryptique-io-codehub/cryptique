@@ -14,8 +14,7 @@ const transactionSchema = new mongoose.Schema({
   },
   tx_hash: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   block_number: {
     type: Number,
@@ -48,11 +47,15 @@ const transactionSchema = new mongoose.Schema({
   }
 });
 
-// Compound indexes for efficient queries
+// Drop all existing indexes
+transactionSchema.indexes().forEach(index => {
+  transactionSchema.index(index[0], { unique: false });
+});
+
+// Add new compound indexes
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
-// Add compound index for contract-specific transaction uniqueness
-transactionSchema.index({ contractId: 1, tx_hash: 1 }, { unique: true });
+transactionSchema.index({ contractId: 1, tx_hash: 1 });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 

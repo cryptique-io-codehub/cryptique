@@ -146,20 +146,13 @@ exports.saveTransactions = async (req, res) => {
       
         // Create operations for this batch
         const operations = validTransactions.map(tx => ({
-          updateOne: {
-            filter: { 
-              contractId: contractId,  // Add contractId to filter
-              tx_hash: tx.tx_hash 
-            },
-            update: { 
-              $setOnInsert: {
-                ...tx,
-                contract: contract._id,
-                contractId: contractId,
-                createdAt: new Date()
-              }
-            },
-            upsert: true
+          insertOne: {
+            document: {
+              ...tx,
+              contract: contract._id,
+              contractId: contractId,
+              createdAt: new Date()
+            }
           }
         }));
         
@@ -169,10 +162,9 @@ exports.saveTransactions = async (req, res) => {
         }
         
         const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
-        console.log(`Batch result: upserted=${batchResult.upsertedCount}, modified=${batchResult.modifiedCount}`);
+        console.log(`Batch result: inserted=${batchResult.insertedCount}`);
         
-        totalInserted += batchResult.upsertedCount;
-        totalModified += batchResult.modifiedCount;
+        totalInserted += batchResult.insertedCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);
