@@ -51,44 +51,25 @@ const processERC20Transaction = (tx) => {
     // Default 18 decimals (most common)
     const decimals = 18;
     
-    // Get the token amount directly from the raw amount
-    const tokenAmount = decodedData.rawAmount;
+    // Format token amount properly using the utility function
+    const tokenAmount = formatTokenAmount(decodedData.rawAmount, decimals, tx.token_symbol || 'ERC20');
     
-    // Format token amount with proper decimal placement
-    let tokenAmountFloat = parseFloat(tokenAmount) / Math.pow(10, decimals);
-    let displayAmount;
-    
-    // Handle the display format based on the size
-    if (tokenAmountFloat >= 1) {
-      displayAmount = tokenAmountFloat.toFixed(4).replace(/\.?0+$/, '');
-    } else if (tokenAmountFloat >= 0.000001) {
-      displayAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
-    } else {
-      displayAmount = tokenAmountFloat.toExponential(6);
-    }
-    
-    // Remove trailing decimal point if present
-    if (displayAmount.endsWith('.')) {
-      displayAmount = displayAmount.slice(0, -1);
-    }
-    
-    // Get token symbol from the transaction data if available
-    const tokenSymbol = tx.token_symbol || 'ERC20';
+    console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${tokenAmount}`);
     
     // Create standardized transaction object
     return {
       tx_hash: tx.hash,
       from_address: tx.from.toLowerCase(),
       to_address: decodedData.recipient.toLowerCase(),  // Use the actual recipient from decoded data
-      value_eth: `${displayAmount} ${tokenSymbol}`,
+      value_eth: tokenAmount,
       block_number: parseInt(tx.blockNumber),
       block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
       chain: "Ethereum",
       contract_address: tx.to?.toLowerCase() || "",
       token_type: "ERC20",
       token_address: tx.to?.toLowerCase() || "",
-      token_amount: tokenAmount,
-      token_symbol: tokenSymbol
+      token_amount: decodedData.rawAmount,
+      token_symbol: tx.token_symbol || 'ERC20'
     };
   } catch (error) {
     console.error("Error processing ERC-20 transaction:", error);
