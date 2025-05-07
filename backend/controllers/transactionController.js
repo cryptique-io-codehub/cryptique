@@ -116,7 +116,7 @@ exports.saveTransactions = async (req, res) => {
     // Process transactions in smaller batches to avoid payload size issues
     const BATCH_SIZE = 7500; // Reduced from 10000 to 7500 to avoid payload size issues
     let totalInserted = 0;
-    let totalModified = 0;
+    let totalDuplicates = 0;
     let highestBlockNumber = 0;
     let errors = [];
     
@@ -143,28 +143,43 @@ exports.saveTransactions = async (req, res) => {
           console.log("No valid transactions in this batch, skipping");
           continue;
         }
-      
-        // Create operations for this batch
-        const operations = validTransactions.map(tx => ({
-          insertOne: {
-            document: {
-              ...tx,
-              contract: contract._id,
-              contractId: contractId,
-              createdAt: new Date()
-            }
-          }
-        }));
         
-        // Log a sample operation for debugging
-        if (operations.length > 0) {
-          console.log("Sample operation:", JSON.stringify(operations[0]).slice(0, 200) + "...");
+        // Keep a count of operations
+        let insertedCount = 0;
+        let duplicateCount = 0;
+        
+        // Process each transaction individually to handle duplicates gracefully
+        for (const tx of validTransactions) {
+          try {
+            // Check if transaction already exists for this contract
+            const existingTx = await Transaction.findOne({
+              contractId: contractId,
+              tx_hash: tx.tx_hash
+            });
+            
+            if (existingTx) {
+              // Transaction exists for this contract, count as duplicate
+              duplicateCount++;
+            } else {
+              // New transaction, insert it
+              await Transaction.create({
+                ...tx,
+                contract: contract._id,
+                contractId: contractId,
+                createdAt: new Date()
+              });
+              insertedCount++;
+            }
+          } catch (txError) {
+            console.error(`Error processing transaction ${tx.tx_hash}:`, txError);
+            // Continue with next transaction despite error
+          }
         }
         
-        const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
-        console.log(`Batch result: inserted=${batchResult.insertedCount}`);
+        console.log(`Batch result: inserted=${insertedCount}, duplicates=${duplicateCount}`);
         
-        totalInserted += batchResult.insertedCount;
+        totalInserted += insertedCount;
+        totalDuplicates += duplicateCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);
@@ -175,10 +190,10 @@ exports.saveTransactions = async (req, res) => {
     // Update the contract with the latest block number
     if (highestBlockNumber > 0) {
       try {
-      await SmartContract.updateOne(
-        { contractId, lastBlock: { $lt: highestBlockNumber } },
+        await SmartContract.updateOne(
+          { contractId, lastBlock: { $lt: highestBlockNumber } },
           { $set: { lastBlock: highestBlockNumber, lastUpdated: new Date() } }
-      );
+        );
         console.log(`Updated contract ${contractId} with latest block number: ${highestBlockNumber}`);
       } catch (updateError) {
         console.error("Error updating contract with latest block:", updateError);
@@ -187,12 +202,12 @@ exports.saveTransactions = async (req, res) => {
     }
     
     // Return appropriate response
-    if (totalInserted > 0 || totalModified > 0) {
+    if (totalInserted > 0 || totalDuplicates > 0) {
       return res.status(200).json({ 
-      message: "Transactions saved successfully",
-      inserted: totalInserted,
-      modified: totalModified,
-        total: totalInserted + totalModified,
+        message: "Transactions processed successfully",
+        inserted: totalInserted,
+        duplicates: totalDuplicates,
+        total: totalInserted + totalDuplicates,
         errors: errors.length > 0 ? errors : undefined
       });
     } else if (errors.length > 0) {
@@ -204,9 +219,9 @@ exports.saveTransactions = async (req, res) => {
       return res.status(200).json({
         message: "No new transactions were added",
         inserted: 0,
-        modified: 0,
+        duplicates: 0,
         total: 0
-    });
+      });
     }
   } catch (error) {
     console.error("Error saving transactions:", error);

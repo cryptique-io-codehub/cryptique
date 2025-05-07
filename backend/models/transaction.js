@@ -47,15 +47,10 @@ const transactionSchema = new mongoose.Schema({
   }
 });
 
-// Drop all existing indexes
-transactionSchema.indexes().forEach(index => {
-  transactionSchema.index(index[0], { unique: false });
-});
-
-// Add new compound indexes
+// Compound indexes for efficient queries - no unique constraints
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
-transactionSchema.index({ contractId: 1, tx_hash: 1 });
+transactionSchema.index({ contractId: 1, tx_hash: 1 }); // Removed unique constraint
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
