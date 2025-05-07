@@ -7,6 +7,7 @@ import { fetchEthereumTransactions } from '../../utils/chains/ethereumChain';
 import { fetchPolygonTransactions } from '../../utils/chains/polygonChain';
 import { fetchArbitrumTransactions } from '../../utils/chains/arbitrumChain';
 import { fetchOptimismTransactions } from '../../utils/chains/optimismChain';
+import { fetchSuiTransactions } from '../../utils/chains/suiChain';
 import { isValidAddress } from '../../utils/chainUtils';
 import axiosInstance from '../../axiosInstance';
 import { useContractData } from '../../contexts/ContractDataContext';
@@ -369,6 +370,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         case 'Optimism':
               finalTokenSymbol = 'ETH';
           break;
+        case 'SUI':
+              finalTokenSymbol = 'SUI';
+          break;
         default:
               finalTokenSymbol = 'ETH';
           }
@@ -624,6 +628,33 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             console.log('==================================================');
           } else {
             console.log('No transactions found or there was an error:', optimismResult.metadata?.message);
+          }
+          break;
+          
+        case 'SUI':
+          console.log('Using SUI Chain module');
+          const suiResult = await fetchSuiTransactions(contract.address, {
+            limit: 100000
+          });
+          
+          if (suiResult.transactions?.length > 0) {
+            console.log(`Retrieved ${suiResult.transactions.length} transactions from SUI API`);
+            // Update token symbol in transactions
+            newTransactions = suiResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('SUI', contract.tokenSymbol || 'SUI')
+            }));
+            
+            // Log transactions from explorer API
+            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
+            console.log(`Total transactions: ${newTransactions.length}`);
+            console.log('First 5 transactions:', newTransactions.slice(0, 5));
+            console.log('Last 5 transactions:', newTransactions.slice(-5));
+            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
+            console.log('==================================================');
+          } else {
+            console.log('No transactions found or there was an error:', suiResult.metadata?.message);
           }
           break;
           
