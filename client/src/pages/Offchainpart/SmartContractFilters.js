@@ -7,7 +7,6 @@ import { fetchEthereumTransactions } from '../../utils/chains/ethereumChain';
 import { fetchPolygonTransactions } from '../../utils/chains/polygonChain';
 import { fetchArbitrumTransactions } from '../../utils/chains/arbitrumChain';
 import { fetchOptimismTransactions } from '../../utils/chains/optimismChain';
-import { fetchSuiTransactions } from '../../utils/chains/suiChain';
 import { isValidAddress } from '../../utils/chainUtils';
 import axiosInstance from '../../axiosInstance';
 import { useContractData } from '../../contexts/ContractDataContext';
@@ -321,57 +320,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       return false;
     }
 
-    // Validate contract address format based on blockchain
-    if (blockchain === 'SUI') {
-      // SUI addresses can be in two formats:
-      // 1. Simple: 0x followed by 64-66 hex characters
-      // 2. Full: Package::Module::Struct
-      
-      // Ensure address starts with 0x
-      if (!contractAddress.startsWith('0x')) {
-        setContractError('Invalid SUI address format - must start with 0x');
-        return false;
-      }
-      
-      // Handle full format with module and struct
-      if (contractAddress.includes('::')) {
-        const parts = contractAddress.split('::');
-        
-        // Should have 2 or 3 parts
-        if (parts.length < 2 || parts.length > 3) {
-          setContractError('Invalid SUI address format - incorrect number of parts');
-          return false;
-        }
-        
-        // Validate the package ID part
-        const packageId = parts[0];
-        const packageIdWithoutPrefix = packageId.slice(2);
-        const validLength = packageIdWithoutPrefix.length === 64 || packageIdWithoutPrefix.length === 66;
-        const validHex = /^[0-9a-fA-F]+$/.test(packageIdWithoutPrefix);
-        
-        if (!validLength || !validHex) {
-          setContractError('Invalid SUI package ID format');
-          return false;
-        }
-      } 
-      // Handle simple format (just the address)
-      else {
-        // Check package ID only
-        const packageIdWithoutPrefix = contractAddress.slice(2);
-        const validLength = packageIdWithoutPrefix.length === 64 || packageIdWithoutPrefix.length === 66;
-        const validHex = /^[0-9a-fA-F]+$/.test(packageIdWithoutPrefix);
-        
-        if (!validLength || !validHex) {
-          setContractError('Invalid SUI address format');
-          return false;
-        }
-      }
-    } else {
-      // For EVM chains, use the standard validator
-      if (!isValidAddress(contractAddress)) {
-        setContractError('Invalid contract address format');
-        return false;
-      }
+    // Validate contract address format
+    if (!isValidAddress(contractAddress)) {
+      setContractError('Invalid contract address format');
+      return false;
     }
 
     setAddingContract(true);
@@ -382,61 +334,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setLoadingProgress({ current: 0, total: 100 });
     
     try {
-      // For SUI contracts, skip token symbol check via Web3
-      if (blockchain === 'SUI') {
-        const finalTokenSymbol = tokenSymbol || 'SUI';
-        
-        setLoadingStatus('Creating contract object...');
-        setLoadingProgress({ current: 30, total: 100 });
-
-        // Create new contract object
-        const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const newContract = {
-          id: contractId,
-          address: contractAddress,
-          name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
-          blockchain: blockchain,
-          tokenSymbol: finalTokenSymbol,
-          added_at: new Date().toISOString(),
-          verified: true
-        };
-        
-        // Save contract to API
-        setLoadingStatus('Saving contract to database...');
-        setLoadingProgress({ current: 50, total: 100 });
-        const savedContract = await saveContractToAPI(newContract);
-        
-        // Use the saved contract if API call was successful
-        const contractToAdd = savedContract || newContract;
-        
-        // Update contract array
-        setLoadingStatus('Updating contract list...');
-        setLoadingProgress({ current: 70, total: 100 });
-        const updatedContracts = [...contractarray, contractToAdd];
-        setcontractarray(updatedContracts);
-        
-        // Update selected contracts
-        setSelectedContracts([...selectedContracts, contractToAdd]);
-        
-        // Set as primary selected contract
-        propSetSelectedContract(contractToAdd);
-        
-        setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
-        setLoadingProgress({ current: 90, total: 100 });
-        setAddingContract(false);
-        setShowAddContractModal(false);
-
-        // Short delay to show success before fetching transactions
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Fetch initial transactions for this new contract
-        console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
-        await fetchInitialTransactions(contractToAdd);
-        
-        return true;
-      }
-
-      // Create contract instance (EVM chains only)
+      // Create contract instance
       setLoadingStatus('Creating contract instance...');
       setLoadingProgress({ current: 10, total: 100 });
       const contract = new web3.eth.Contract(ERC20_ABI, contractAddress);
@@ -453,28 +351,25 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           setLoadingStatus('Could not fetch token symbol, using default...');
           // Use default token symbol based on blockchain
           switch (blockchain) {
-            case 'Ethereum':
+        case 'Ethereum':
               finalTokenSymbol = 'ETH';
-              break;
+          break;
             case 'BNB Chain':
               finalTokenSymbol = 'BNB';
               break;
             case 'Base':
               finalTokenSymbol = 'ETH';
               break;
-            case 'Polygon':
+        case 'Polygon':
               finalTokenSymbol = 'MATIC';
-              break;
-            case 'Arbitrum':
+          break;
+        case 'Arbitrum':
               finalTokenSymbol = 'ETH';
-              break;
-            case 'Optimism':
+          break;
+        case 'Optimism':
               finalTokenSymbol = 'ETH';
-              break;
-            case 'SUI':
-              finalTokenSymbol = 'SUI';
-              break;
-            default:
+          break;
+        default:
               finalTokenSymbol = 'ETH';
           }
         }
@@ -505,7 +400,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       
       // Update contract array
       setLoadingStatus('Updating contract list...');
-      setLoadingProgress({ current: 70, total: 100 });
+          setLoadingProgress({ current: 70, total: 100 });
       const updatedContracts = [...contractarray, contractToAdd];
       setcontractarray(updatedContracts);
       
@@ -521,14 +416,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setShowAddContractModal(false);
 
       // Short delay to show success before fetching transactions
-      await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Fetch initial transactions for this new contract
       console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
       await fetchInitialTransactions(contractToAdd);
       
       return true;
-    } catch (error) {
+        } catch (error) {
       console.error("Error adding smart contract:", error);
       setContractError(`Error adding contract: ${error.message}`);
       setAddingContract(false);
@@ -729,33 +624,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             console.log('==================================================');
           } else {
             console.log('No transactions found or there was an error:', optimismResult.metadata?.message);
-          }
-          break;
-          
-        case 'SUI':
-          console.log('Using SUI Chain module');
-          const suiResult = await fetchSuiTransactions(contract.address, {
-            limit: 100000
-          });
-          
-          if (suiResult.transactions?.length > 0) {
-            console.log(`Retrieved ${suiResult.transactions.length} transactions from SUI API`);
-            // Update token symbol in transactions
-            newTransactions = suiResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('SUI', contract.tokenSymbol || 'SUI')
-            }));
-            
-            // Log transactions from explorer API
-            console.log('========== TRANSACTIONS FROM EXPLORER API ==========');
-            console.log(`Total transactions: ${newTransactions.length}`);
-            console.log('First 5 transactions:', newTransactions.slice(0, 5));
-            console.log('Last 5 transactions:', newTransactions.slice(-5));
-            console.log('Transaction hashes sample:', newTransactions.slice(0, 10).map(tx => tx.tx_hash));
-            console.log('==================================================');
-          } else {
-            console.log('No transactions found or there was an error:', suiResult.metadata?.message);
           }
           break;
           
@@ -1192,7 +1060,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                             <option value="Polygon">Polygon</option>
                             <option value="Arbitrum">Arbitrum</option>
                             <option value="Optimism">Optimism</option>
-                            <option value="SUI">SUI</option>
                           </select>
                         </div>
                         {contractError && (
