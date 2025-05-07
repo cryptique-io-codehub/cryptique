@@ -15,6 +15,19 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   const pathSegments = path.split('/').filter(segment => segment);
   const currentPage = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || 'dashboard';
   
+  // Handle hover state with a small delay for better UX
+  const handleMouseEnter = () => {
+    if (isCompact) {
+      setIsHovering(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (isCompact) {
+      setIsHovering(false);
+    }
+  };
+  
   useEffect(() => {
     // Always use the team from localStorage as the source of truth
     const storedTeam = localStorage.getItem('selectedTeam') || 'team1';
@@ -52,10 +65,10 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
       } ${
         isCompact && !isHovering ? "md:w-16" : "md:w-56 lg:w-64"
       }`}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <div className="flex justify-between items-center mb-4 py-2">
+      <div className={`flex justify-between items-center mb-4 py-2 ${!showExpanded ? "justify-center" : ""}`}>
         {showExpanded ? (
         <h2 className="text-sm font-bold flex items-center gap-3 ml-1">
           <img 
@@ -70,7 +83,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
         </h2>
 )
  : (
-        <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-8 h-8 shadow-lg mx-auto">
+        <span className="bg-gradient-to-r from-yellow-700 to-yellow-500 p-2 rounded-full text-white font-bold text-xs flex items-center justify-center w-10 h-10 shadow-lg mx-auto transition-all duration-200">
           Q
         </span>
       )}
@@ -80,93 +93,93 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
         <ul className="space-y-1 text-xs font-medium">
           <Link
             to={`/dashboard`}
-            className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("dashboard")}
           >
-            <Home size={14} /> {showExpanded && "Dashboard"}
+            <Home size={14} /> {showExpanded && <span className="transition-opacity duration-200">Dashboard</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/offchain`}
-            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("offchain")}
           >
-            <BarChart size={14} /> {showExpanded && "Off-chain analytics"}
+            <BarChart size={14} /> {showExpanded && <span className="transition-opacity duration-200">Off-chain analytics</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/onchain`}
-            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("onchain")}
           >
-            <LineChart size={14} /> {showExpanded && "On-chain explorer"}
+            <LineChart size={14} /> {showExpanded && <span className="transition-opacity duration-200">On-chain explorer</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/cq-intelligence`}
-            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("cq-intelligence")}
           >
-            <BrainCircuit size={14} /> {showExpanded && "CQ Intelligence"}
+            <BrainCircuit size={14} /> {showExpanded && <span className="transition-opacity duration-200">CQ Intelligence</span>}
           </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
           <Link 
             to={`/${selectedTeam}/campaigns`}
-            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("campaigns")}
           >
-            <Activity size={14} /> {showExpanded && "Campaigns"}
+            <Activity size={14} /> {showExpanded && <span className="transition-opacity duration-200">Campaigns</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/conversion-events`}
-            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("conversion-events")}
           >
-            <List size={14} /> {showExpanded && "Conversion events"}
+            <List size={14} /> {showExpanded && <span className="transition-opacity duration-200">Conversion events</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/advertise`}
-            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("advertise")}
           >
-            <Globe size={14} /> {showExpanded && "Advertise"}
+            <Globe size={14} /> {showExpanded && <span className="transition-opacity duration-200">Advertise</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/history`}
-            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("history")}
           >
-            <Database size={14} /> {showExpanded && "History"}
+            <Database size={14} /> {showExpanded && <span className="transition-opacity duration-200">History</span>}
           </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
           <Link 
             to={`/${selectedTeam}/importusers`}
-            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("importusers")}
           >
-            <Upload size={14} /> {showExpanded && "Import users"}
+            <Upload size={14} /> {showExpanded && <span className="transition-opacity duration-200">Import users</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/managewebsites`}
-            className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("managewebsites")}
           >
-            <Globe size={14} /> {showExpanded && "Manage websites"}
+            <Globe size={14} /> {showExpanded && <span className="transition-opacity duration-200">Manage websites</span>}
           </Link>
           <Link
             to={`/${selectedTeam}/settings`}
-            className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""}`}
+            className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 p-2 rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("settings")}
           >
-            <Settings size={14} /> {showExpanded && "Settings"}
+            <Settings size={14} /> {showExpanded && <span className="transition-opacity duration-200">Settings</span>}
           </Link>
         </ul>
       </nav>
       {showExpanded && (
         <div className="border-t pt-2 mt-2">
-          <button className="text-gray-500 flex items-center gap-2 justify-center hover:bg-gray-200 p-2 rounded-lg cursor-pointer w-full text-xs">
-            <Sun size={14} /> Light Mode
+          <button className="text-gray-500 flex items-center gap-2 justify-center hover:bg-gray-200 p-2 rounded-lg cursor-pointer w-full text-xs transition-all duration-200">
+            <Sun size={14} /> <span className="transition-opacity duration-200">Light Mode</span>
           </button>
         </div>
       )}

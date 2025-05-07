@@ -21,6 +21,7 @@ const Dashboard = () => {
   // State management
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState("dashboard");
+  const [isCompactMode, setIsCompactMode] = useState(false);
   const [screenSize, setScreenSize] = useState({
     isMobile: false,
     isTablet: false,
@@ -88,6 +89,12 @@ const Dashboard = () => {
     }
     
   }, [location, selectedTeam]);
+
+  // Update isCompactMode based on the selected page
+  useEffect(() => {
+    // If any page other than the dashboard is selected, enable compact mode
+    setIsCompactMode(selectedPage !== "dashboard");
+  }, [selectedPage]);
 
   const handleNavigation = (page) => {
     setSelectedPage(page);
@@ -197,7 +204,7 @@ const Dashboard = () => {
           onClose={() => setIsSidebarOpen(false)} 
           onNavigate={handleNavigation}
           currentPage={selectedPage}
-          isCompact={screenSize.isTablet && !isSidebarOpen}
+          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen)}
           screenSize={screenSize}
         />
       </div>
