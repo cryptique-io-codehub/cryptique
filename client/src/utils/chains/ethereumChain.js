@@ -51,27 +51,37 @@ const processERC20Transaction = (tx) => {
     // Default 18 decimals (most common)
     const decimals = 18;
     
-    // Convert hex amount to decimal string first
-    const decimalAmount = hexToDecimalString(decodedData.rawAmount);
+    // Format token amount with proper decimal placement
+    let tokenAmountFloat = parseFloat(decodedData.rawAmount) / Math.pow(10, decimals);
+    let displayAmount;
     
-    // Format token amount properly using the utility function
-    const tokenAmount = formatTokenAmount(decimalAmount, decimals, 'ERC20');
+    // Handle the display format based on the size
+    if (tokenAmountFloat >= 1) {
+      displayAmount = tokenAmountFloat.toFixed(6).replace(/\.?0+$/, '');
+    } else if (tokenAmountFloat >= 0.000001) {
+      displayAmount = tokenAmountFloat.toFixed(8).replace(/\.?0+$/, '');
+    } else {
+      displayAmount = tokenAmountFloat.toExponential(6);
+    }
     
-    console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${decimalAmount} -> ${tokenAmount}`);
+    // Remove trailing decimal point if present
+    if (displayAmount.endsWith('.')) {
+      displayAmount = displayAmount.slice(0, -1);
+    }
     
     // Create standardized transaction object
     return {
       tx_hash: tx.hash,
       from_address: tx.from.toLowerCase(),
       to_address: decodedData.recipient.toLowerCase(),  // Use the actual recipient from decoded data
-      value_eth: tokenAmount,
+      value_eth: `${displayAmount} ERC20`,
       block_number: parseInt(tx.blockNumber),
       block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
       chain: "Ethereum",
       contract_address: tx.to?.toLowerCase() || "",
       token_type: "ERC20",
       token_address: tx.to?.toLowerCase() || "",
-      token_amount: decimalAmount
+      token_amount: decodedData.rawAmount
     };
   } catch (error) {
     console.error("Error processing ERC-20 transaction:", error);
