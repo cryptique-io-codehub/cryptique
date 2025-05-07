@@ -151,16 +151,24 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
             } else if (errorMsg.includes("No transactions found")) {
               // No transactions found is not an error, just end the loop
               console.log("No transactions found for this contract address");
-    return {
-                transactions: allTransactions,
-      metadata: {
-                  total: allTransactions.length,
-                  chain: "Arbitrum",
-                  contract: contractAddress,
-                  lowestBlock: lowestBlock,
-                  message: "No transactions found"
-                }
-              };
+              // Fixed indentation - only return if this is the first batch 
+              if (batchIndex === 0) {
+                return {
+                  transactions: allTransactions,
+                  metadata: {
+                    total: allTransactions.length,
+                    chain: "Arbitrum",
+                    contract: contractAddress,
+                    lowestBlock: lowestBlock,
+                    message: "No transactions found"
+                  }
+                };
+              } else {
+                // If this isn't the first batch, it means we've exhausted all transactions
+                // Break from the retry loop and then the batch loop
+                success = true;
+                break;
+              }
             } else {
               retryCount++;
               continue;
@@ -223,8 +231,6 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
           contract_address: contractAddress.toLowerCase()
         };
       });
-      
-      // No need to find lowest block again since we already did it during mapping
       
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
