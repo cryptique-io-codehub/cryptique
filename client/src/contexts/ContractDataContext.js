@@ -595,14 +595,32 @@ export const ContractDataProvider = ({ children }) => {
         netWorth: "$945" // Placeholder - would need external data source
       },
       // Use the generated transaction data for charts
-      transactionData: transactionTimeSeriesData
+      transactionData: transactionTimeSeriesData,
+      
+      // Add transaction data for different time ranges
+      getTransactionDataForRange: (timeRange) => {
+        switch(timeRange) {
+          case '24h':
+            return generateDailyTransactionData(contractTransactions, 1, 'hourly');
+          case '7d':
+            return generateDailyTransactionData(contractTransactions, 7);
+          case '30d':
+            return transactionTimeSeriesData; // Already generated
+          case 'quarter':
+            return generateDailyTransactionData(contractTransactions, 90);
+          case 'year':
+            return generateDailyTransactionData(contractTransactions, 365);
+          default:
+            return transactionTimeSeriesData;
+        }
+      }
     };
     
     return processedData;
   };
 
   // Helper function to generate daily transaction data for charts
-  const generateDailyTransactionData = (transactions, daysToInclude = 30) => {
+  const generateDailyTransactionData = (transactions, daysToInclude = 30, granularity = 'daily') => {
     if (!transactions || transactions.length === 0) {
       return [];
     }
@@ -612,39 +630,62 @@ export const ContractDataProvider = ({ children }) => {
     const startDate = new Date();
     startDate.setDate(now.getDate() - daysToInclude);
     
-    // Initialize map to store data by day
-    const dailyData = {};
-    
-    // Create entries for all days in the range (to ensure no gaps in chart)
-    for (let i = 0; i <= daysToInclude; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      
-      const dateStr = formatDate(date);
-      dailyData[dateStr] = {
-        date: dateStr,
-        transactions: 0,
-        volume: 0,
-        volumeFormatted: '0'
-      };
-    }
+    // Initialize map to store data by day/hour
+    const timeSeriesData = {};
     
     // Get token symbol from contract or default to blockchain's native currency
     const chainConfig = getChainConfig(selectedContract.blockchain);
     const tokenSymbol = selectedContract.tokenSymbol || (chainConfig?.nativeCurrency?.symbol || 'TOKEN');
     
-    // Aggregate transaction data by day
+    // Create entries for all time points in the range (to ensure no gaps in chart)
+    if (granularity === 'hourly') {
+      // For hourly granularity
+      for (let i = 0; i <= daysToInclude * 24; i++) {
+        const date = new Date(startDate);
+        date.setHours(startDate.getHours() + i);
+        
+        const hourStr = formatHour(date);
+        timeSeriesData[hourStr] = {
+          date: hourStr,
+          transactions: 0,
+          volume: 0,
+          volumeFormatted: '0'
+        };
+      }
+    } else {
+      // For daily granularity
+      for (let i = 0; i <= daysToInclude; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        
+        const dateStr = formatDate(date);
+        timeSeriesData[dateStr] = {
+          date: dateStr,
+          transactions: 0,
+          volume: 0,
+          volumeFormatted: '0'
+        };
+      }
+    }
+    
+    // Aggregate transaction data by time period
     transactions.forEach(tx => {
       const txDate = new Date(tx.block_time);
       
       // Only include transactions in our date range
       if (txDate >= startDate && txDate <= now) {
-        const dateStr = formatDate(txDate);
+        let timeKey;
+        
+        if (granularity === 'hourly') {
+          timeKey = formatHour(txDate);
+        } else {
+          timeKey = formatDate(txDate);
+        }
         
         // Create entry if it doesn't exist (shouldn't be needed with the loop above)
-        if (!dailyData[dateStr]) {
-          dailyData[dateStr] = {
-            date: dateStr,
+        if (!timeSeriesData[timeKey]) {
+          timeSeriesData[timeKey] = {
+            date: timeKey,
             transactions: 0,
             volume: 0,
             volumeFormatted: '0'
@@ -652,31 +693,35 @@ export const ContractDataProvider = ({ children }) => {
         }
         
         // Add transaction and volume
-        dailyData[dateStr].transactions += 1;
+        timeSeriesData[timeKey].transactions += 1;
         const value = parseFloat(tx.value_eth) || 0;
         if (!isNaN(value)) {
-          dailyData[dateStr].volume += value;
+          timeSeriesData[timeKey].volume += value;
         }
       }
     });
     
     // Format volume values properly
-    Object.values(dailyData).forEach(day => {
+    Object.values(timeSeriesData).forEach(item => {
       // Round to 2 decimal places
-      day.volume = parseFloat(day.volume.toFixed(2));
+      item.volume = parseFloat(item.volume.toFixed(2));
       
-      // Format large volumes in millions
-      if (day.volume >= 1000000) {
-        day.volumeFormatted = `${(day.volume / 1000000).toFixed(2)}M ${tokenSymbol}`;
+      // Format volumes with appropriate suffix
+      if (item.volume >= 1000000000) {
+        item.volumeFormatted = `${(item.volume / 1000000000).toFixed(2)}B ${tokenSymbol}`;
+      } else if (item.volume >= 1000000) {
+        item.volumeFormatted = `${(item.volume / 1000000).toFixed(2)}M ${tokenSymbol}`;
+      } else if (item.volume >= 1000) {
+        item.volumeFormatted = `${(item.volume / 1000).toFixed(1)}K ${tokenSymbol}`;
       } else {
-        day.volumeFormatted = `${day.volume.toLocaleString()} ${tokenSymbol}`;
+        item.volumeFormatted = `${item.volume.toLocaleString()} ${tokenSymbol}`;
       }
     });
     
     // Convert to array and sort by date
-    return Object.values(dailyData).sort((a, b) => {
-      const dateA = parseDate(a.date);
-      const dateB = parseDate(b.date);
+    return Object.values(timeSeriesData).sort((a, b) => {
+      const dateA = granularity === 'hourly' ? parseHour(a.date) : parseDate(a.date);
+      const dateB = granularity === 'hourly' ? parseHour(b.date) : parseDate(b.date);
       return dateA - dateB;
     });
   };
@@ -694,6 +739,23 @@ export const ContractDataProvider = ({ children }) => {
     const monthIdx = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month);
     const year = new Date().getFullYear(); // Assume current year
     return new Date(year, monthIdx, parseInt(day));
+  };
+  
+  // Helper for hour formatting
+  const formatHour = (date) => {
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const hour = date.getHours().toString().padStart(2, '0');
+    return `${day} ${month} ${hour}:00`;
+  };
+  
+  // Helper to parse formatted hour back to Date object
+  const parseHour = (hourStr) => {
+    const [day, month, hourMinute] = hourStr.split(' ');
+    const monthIdx = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month);
+    const hour = parseInt(hourMinute.split(':')[0]);
+    const year = new Date().getFullYear(); // Assume current year
+    return new Date(year, monthIdx, parseInt(day), hour);
   };
 
   return (

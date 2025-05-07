@@ -18,8 +18,9 @@ export default function OnchainDashboard() {
     processContractTransactions
   } = useContractData();
 
-  // Add state for modal
+  // Add state for modal and chart time range
   const [showVolumeModal, setShowVolumeModal] = useState(false);
+  const [chartTimeRange, setChartTimeRange] = useState('30d'); // Default to 30 days
 
   // Process real contract data if available
   const contractData = !showDemoData ? processContractTransactions() : null;
@@ -96,10 +97,89 @@ export default function OnchainDashboard() {
   ];
 
   // Choose which data to use based on whether we should show demo data
-  const transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
+  let transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
   const walletAgeData = showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
   const walletBalanceData = showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
   const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.transactionCountData || demoTransactionCountData);
+  
+  // Filter transaction data based on selected time range
+  if (!showDemoData && contractData?.transactionData) {
+    if (contractData.getTransactionDataForRange) {
+      // Use the function if available
+      transactionData = contractData.getTransactionDataForRange(chartTimeRange);
+    } else {
+      // Fallback to filtering the existing data
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch(chartTimeRange) {
+        case '24h':
+          startDate.setDate(now.getDate() - 1);
+          transactionData = contractData.transactionData.filter(item => {
+            const itemDate = parseDate(item.date);
+            return itemDate >= startDate;
+          });
+          break;
+        case '7d':
+          startDate.setDate(now.getDate() - 7);
+          transactionData = contractData.transactionData.filter(item => {
+            const itemDate = parseDate(item.date);
+            return itemDate >= startDate;
+          });
+          break;
+        case '30d':
+          // No filtering needed as this is the default range
+          transactionData = contractData.transactionData;
+          break;
+        case 'quarter':
+          startDate.setMonth(now.getMonth() - 3);
+          transactionData = contractData.transactionData;
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 1);
+          transactionData = contractData.transactionData;
+          break;
+        default:
+          transactionData = contractData.transactionData;
+      }
+    }
+  } else if (showDemoData) {
+    // For demo data, apply filtering to simulate the different time ranges
+    const demoDataLength = demoTransactionData.length;
+    
+    switch(chartTimeRange) {
+      case '24h':
+        // Just the last day of data (last ~5 items)
+        transactionData = demoTransactionData.slice(Math.max(0, demoDataLength - 5));
+        break;
+      case '7d':
+        // Last ~7 days of data
+        transactionData = demoTransactionData.slice(Math.max(0, demoDataLength - 10));
+        break;
+      case '30d':
+        // All demo data
+        transactionData = demoTransactionData;
+        break;
+      case 'quarter':
+        // All demo data (we don't have 3 months of demo data)
+        transactionData = demoTransactionData;
+        break;
+      case 'year':
+        // All demo data (we don't have a year of demo data)
+        transactionData = demoTransactionData;
+        break;
+      default:
+        transactionData = demoTransactionData;
+    }
+  }
+  
+  // Helper to parse formatted date back to Date object
+  const parseDate = (dateStr) => {
+    const [day, month] = dateStr.split(' ');
+    const monthIdx = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month);
+    const year = new Date().getFullYear(); // Assume current year
+    return new Date(year, monthIdx, parseInt(day));
+  };
 
   // Get chain-specific information
   const chainName = selectedContract?.blockchain || 'Ethereum';
@@ -137,8 +217,12 @@ export default function OnchainDashboard() {
   };
 
   const formatVolume = (value, tokenSymbol) => {
-    if (value >= 1000000) {
+    if (value >= 1000000000) {
+      return `${(value / 1000000000).toFixed(1)}B ${tokenSymbol}`;
+    } else if (value >= 1000000) {
       return `${(value / 1000000).toFixed(1)}M ${tokenSymbol}`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K ${tokenSymbol}`;
     }
     return `${value.toLocaleString()} ${tokenSymbol}`;
   };
@@ -289,7 +373,7 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "15,500 ETH" 
+                    ? "15.5K ETH" 
                     : formatVolume(parseFloat(contractData?.recentVolume?.last7Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
@@ -396,16 +480,22 @@ export default function OnchainDashboard() {
                 axisLine={false} 
                 tickLine={false}
                 name={showDemoData ? "Volume (ETH)" : `Volume (${selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN'})`}
-                tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(1)}M` : value}
+                tickFormatter={(value) => {
+                  if (value >= 1000000000) return `${(value/1000000000).toFixed(1)}B`;
+                  if (value >= 1000000) return `${(value/1000000).toFixed(1)}M`;
+                  if (value >= 1000) return `${(value/1000).toFixed(1)}K`;
+                  return value;
+                }}
               />
               <Tooltip 
                 formatter={(value, name) => {
                   if (name === "volume") {
                     // Format volume with token symbol
                     const tokenSymbol = showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
-                    return value >= 1000000 
-                      ? [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"]
-                      : [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
+                    if (value >= 1000000000) return [`${(value/1000000000).toFixed(2)}B ${tokenSymbol}`, "Volume"];
+                    if (value >= 1000000) return [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"];
+                    if (value >= 1000) return [`${(value/1000).toFixed(1)}K ${tokenSymbol}`, "Volume"];
+                    return [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
                   }
                   return [value, name === "transactions" ? "Transactions" : name];
                 }}
@@ -492,7 +582,7 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "15,500 ETH" 
+                        ? "15.5K ETH" 
                         : formatVolume(parseFloat(contractData?.recentVolume?.last7Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                       }
                     </p>
@@ -557,6 +647,41 @@ export default function OnchainDashboard() {
               {/* Volume Over Time Chart */}
               <div className="mb-8">
                 <h3 className="text-lg font-medium mb-4 font-montserrat">Volume Over Time</h3>
+                <div className="flex justify-between items-center mb-3">
+                  <div></div> {/* Empty div for flex alignment */}
+                  <div className="flex rounded-md overflow-hidden border border-gray-200">
+                    <button 
+                      className={`px-2 py-1 text-xs ${chartTimeRange === '24h' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setChartTimeRange('24h')}
+                    >
+                      24H
+                    </button>
+                    <button 
+                      className={`px-2 py-1 text-xs ${chartTimeRange === '7d' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setChartTimeRange('7d')}
+                    >
+                      7D
+                    </button>
+                    <button 
+                      className={`px-2 py-1 text-xs ${chartTimeRange === '30d' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setChartTimeRange('30d')}
+                    >
+                      30D
+                    </button>
+                    <button 
+                      className={`px-2 py-1 text-xs ${chartTimeRange === 'quarter' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setChartTimeRange('quarter')}
+                    >
+                      3M
+                    </button>
+                    <button 
+                      className={`px-2 py-1 text-xs ${chartTimeRange === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setChartTimeRange('year')}
+                    >
+                      1Y
+                    </button>
+                  </div>
+                </div>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={transactionData}>
@@ -566,14 +691,20 @@ export default function OnchainDashboard() {
                         tick={{ fontSize: 12 }} 
                         axisLine={false} 
                         tickLine={false}
-                        tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(1)}M` : value}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000000) return `${(value/1000000000).toFixed(1)}B`;
+                          if (value >= 1000000) return `${(value/1000000).toFixed(1)}M`;
+                          if (value >= 1000) return `${(value/1000).toFixed(1)}K`;
+                          return value;
+                        }}
                       />
                       <Tooltip 
                         formatter={(value) => {
                           const tokenSymbol = showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
-                          return value >= 1000000 
-                            ? [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"]
-                            : [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
+                          if (value >= 1000000000) return [`${(value/1000000000).toFixed(2)}B ${tokenSymbol}`, "Volume"];
+                          if (value >= 1000000) return [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"];
+                          if (value >= 1000) return [`${(value/1000).toFixed(1)}K ${tokenSymbol}`, "Volume"];
+                          return [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
                         }}
                       />
                       <Area 
@@ -597,7 +728,7 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "2,214.29 ETH" 
+                        ? "2.2K ETH" 
                         : formatVolume(
                             parseFloat(contractData?.recentVolume?.last7Days || 0) / 7,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
@@ -610,7 +741,7 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 30 Days Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "2,526.67 ETH" 
+                        ? "2.5K ETH" 
                         : formatVolume(
                             parseFloat(contractData?.recentVolume?.last30Days || 0) / 30,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
@@ -623,7 +754,7 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last Year Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "1,152.05 ETH" 
+                        ? "1.2K ETH" 
                         : formatVolume(
                             parseFloat(contractData?.recentVolume?.lastYear || 0) / 365,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
