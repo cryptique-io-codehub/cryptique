@@ -464,9 +464,44 @@ export default function OnchainDashboard() {
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex justify-between items-center mb-2">
             <h2 className="font-semibold text-lg font-montserrat">Transactions & Volume Over Time</h2>
-            <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
-              View Analysis <ArrowRight size={14} className="ml-1" />
-            </a>
+            <div className="flex items-center">
+              {/* Time range selector */}
+              <div className="flex rounded-md overflow-hidden border border-gray-200 mr-4">
+                <button 
+                  className={`px-2 py-1 text-xs ${chartTimeRange === '24h' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  onClick={() => setChartTimeRange('24h')}
+                >
+                  24H
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs ${chartTimeRange === '7d' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  onClick={() => setChartTimeRange('7d')}
+                >
+                  7D
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs ${chartTimeRange === '30d' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  onClick={() => setChartTimeRange('30d')}
+                >
+                  30D
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs ${chartTimeRange === 'quarter' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  onClick={() => setChartTimeRange('quarter')}
+                >
+                  3M
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs ${chartTimeRange === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  onClick={() => setChartTimeRange('year')}
+                >
+                  1Y
+                </button>
+              </div>
+              <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+                View Analysis <ArrowRight size={14} className="ml-1" />
+              </a>
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={250}>
             <ComposedChart data={transactionData}>
