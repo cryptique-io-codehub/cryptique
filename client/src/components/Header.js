@@ -1,13 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Bell, ChevronDown, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosInstance";
+
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -46,22 +62,22 @@ const TeamSelector = () => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <div className="flex items-center flex-wrap">
-        <span className="text-sm font-medium text-gray-700 mr-2">Team:</span>
+        <span className="text-sm font-medium text-gray-700 mr-2 whitespace-nowrap">Team:</span>
         
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white"
+            className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white whitespace-nowrap"
           >
-            <span className="truncate max-w-[120px]">{selectedTeam}</span>
+            <span className="truncate max-w-[100px] sm:max-w-[120px]">{selectedTeam}</span>
             <ChevronDown size={16} />
           </button>
 
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
-              <div className="max-h-60">
+              <div className="max-h-60 overflow-y-auto">
                 {curTeams.length > 0 ? (
                   curTeams.map((team) => (
                     <button
@@ -96,10 +112,11 @@ const TeamSelector = () => {
   );
 };
 
-const Header = () => {
+const Header = ({ screenSize }) => {
   const navigate = useNavigate();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [userName, setUserName] = useState('');
+  const isMobile = screenSize && screenSize.isMobile;
 
   useEffect(() => {
     // Fetch user details or get username from localStorage
@@ -113,6 +130,20 @@ const Header = () => {
       }
     }
   }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownOpen && !event.target.closest('.profile-dropdown')) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [profileDropdownOpen]);
 
   const handleLogout = async () => {
     try {
@@ -138,18 +169,22 @@ const Header = () => {
   };
 
   return (
-    <header className="flex justify-between px-5 items-center py-1">
+    <header className={`flex justify-between items-center ${isMobile ? 'px-2 py-2' : 'px-5 py-1'}`}>
       {/* Team Selector */}
-      <TeamSelector />
+      <div className={isMobile ? 'ml-10' : ''}>
+        <TeamSelector />
+      </div>
       
       <div className="flex justify-center items-center relative">
-        <div className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0">
-          <Bell size={20} className="text-gray-600" />
-        </div>
+        {!isMobile && (
+          <div className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0">
+            <Bell size={20} className="text-gray-600" />
+          </div>
+        )}
 
         {/* Profile Icon with Dropdown */}
         <div 
-          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0 relative"
+          className="cursor-pointer p-2 hover:bg-gray-200 rounded-full mb-0 relative profile-dropdown"
           onClick={toggleProfileDropdown}
         >
           <User size={20} className="text-gray-600" />
@@ -157,9 +192,9 @@ const Header = () => {
 
         {/* Profile Dropdown */}
         {profileDropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-50">
+          <div className={`absolute right-0 top-full mt-2 bg-white border border-gray-300 shadow-lg rounded-md z-50 ${isMobile ? 'w-56' : 'w-64'}`}>
             <div className="px-4 py-3 border-b border-gray-200">
-              <p className="text-sm font-medium text-gray-900">{userName}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
             </div>
             <div className="py-1">
               <button 

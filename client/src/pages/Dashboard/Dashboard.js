@@ -5,7 +5,7 @@ import Tabs from "./components/Tabs";
 import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
-import { Menu } from "lucide-react";
+import { Menu, Home, BarChart, Activity } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
@@ -134,7 +134,7 @@ const Dashboard = () => {
     let paddingClasses = "p-4 md:p-6 lg:p-8 flex flex-col gap-4 md:gap-6 lg:gap-8 ";
     
     if (screenSize.isMobile) {
-      paddingClasses += "pt-16"; // Extra padding for mobile menu button
+      paddingClasses += "pt-16 pb-20"; // Extra padding for mobile menu button and bottom spacing
     }
     
     return paddingClasses;
@@ -233,6 +233,44 @@ const Dashboard = () => {
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
         />
+      )}
+      
+      {/* Quick access bottom navigation for mobile */}
+      {screenSize.isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-30">
+          <button 
+            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "dashboard" ? "text-blue-600" : "text-gray-600"}`}
+            onClick={() => handleNavigation("dashboard")}
+            aria-label="Dashboard"
+          >
+            <Home size={20} />
+            <span className="text-xs mt-1">Home</span>
+          </button>
+          <button 
+            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "offchain-analytics" ? "text-blue-600" : "text-gray-600"}`}
+            onClick={() => handleNavigation("offchain-analytics")}
+            aria-label="Analytics"
+          >
+            <BarChart size={20} />
+            <span className="text-xs mt-1">Analytics</span>
+          </button>
+          <button 
+            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "campaigns" ? "text-blue-600" : "text-gray-600"}`}
+            onClick={() => handleNavigation("campaigns")}
+            aria-label="Campaigns"
+          >
+            <Activity size={20} />
+            <span className="text-xs mt-1">Campaigns</span>
+          </button>
+          <button 
+            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "settings" ? "text-blue-600" : "text-gray-600"}`}
+            onClick={() => handleNavigation("settings")}
+            aria-label="Settings"
+          >
+            <Settings size={20} />
+            <span className="text-xs mt-1">Settings</span>
+          </button>
+        </div>
       )}
     </div>
   );

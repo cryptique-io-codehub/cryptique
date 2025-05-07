@@ -1,16 +1,34 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import marketingImage from "./image 1.png"; // Ensure correct path
 import rightCardImage from "./button.png"; // Ensure correct path
 
 const MarketingSection = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile view
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Listen for window resize
+    window.addEventListener('resize', checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     <section className="p-2 sm:p-4 flex flex-col md:flex-row gap-3 -mt-4 mb-0">
       {/* Main Card */}
-      <div className="w-full md:w-2/3 h-auto bg-[#d6b680] text-white shadow-lg rounded-xl p-4 flex flex-col md:flex-row relative overflow-hidden mb-3 md:mb-0">
+      <div className="w-full md:w-2/3 h-auto bg-[#d6b680] text-white shadow-lg rounded-xl p-3 sm:p-4 flex flex-col md:flex-row relative overflow-hidden mb-3 md:mb-0">
         
         {/* Left Half - Text */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center z-10 p-2 sm:p-4 md:p-6 lg:p-10">
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">One Stop for your Web 3 Marketing</h2>
+        <div className={`w-full md:w-1/2 flex flex-col justify-center z-10 ${isMobile ? 'p-2' : 'p-2 sm:p-4 md:p-6 lg:p-10'}`}>
+          <h2 className={`${isMobile ? 'text-lg' : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'} font-bold`}>One Stop for your Web 3 Marketing</h2>
           <p className="mt-1 text-xs sm:text-sm md:text-base opacity-90">
             Easy onboarding<br />One-min integration<br />No-code insights
           </p>
@@ -20,7 +38,7 @@ const MarketingSection = () => {
         </div>
         
         {/* Right Half - Image - Positioned to touch right boundary perfectly */}
-        <div className="w-full md:w-1/2 h-40 sm:h-48 md:h-auto md:absolute md:inset-y-0 md:right-0 flex items-center justify-end">
+        <div className={`${isMobile ? 'w-full h-32 mt-2' : 'w-full md:w-1/2 h-40 sm:h-48 md:h-auto md:absolute md:inset-y-0 md:right-0'} flex items-center justify-end`}>
           <img 
             src={marketingImage}  
             alt="Marketing Graphic"
@@ -30,9 +48,9 @@ const MarketingSection = () => {
       </div>
       
       {/* Secondary Card */}
-      <div className="w-full md:w-1/3 h-auto bg-[#3A1C5A] text-white shadow-lg rounded-xl p-4 flex flex-col relative">
+      <div className="w-full md:w-1/3 h-auto bg-[#3A1C5A] text-white shadow-lg rounded-xl p-3 sm:p-4 flex flex-col relative">
         <div>
-          <h3 className="text-md sm:text-lg font-bold mb-1 sm:mb-2 mt-1 sm:mt-2">Get more of Cryptique</h3>
+          <h3 className={`${isMobile ? 'text-sm' : 'text-md sm:text-lg'} font-bold mb-1 sm:mb-2 mt-1 sm:mt-2`}>Get more of Cryptique</h3>
           <p className="text-xs sm:text-sm opacity-90 mb-2">
             Get started with our app docs invite your team, and import your lists.
           </p>
@@ -51,11 +69,11 @@ const MarketingSection = () => {
         </div>
         
         {/* Image Positioned in the Bottom */}
-        <div className="absolute bottom-2 right-4 sm:right-6 md:right-4 lg:right-6">
+        <div className={`absolute bottom-2 ${isMobile ? 'right-2' : 'right-4 sm:right-6 md:right-4 lg:right-6'}`}>
           <img 
             src={rightCardImage}  
             alt="Button Graphic"
-            className="w-[60px] sm:w-[80px] md:w-[100px] lg:w-[120px] h-auto"
+            className={`${isMobile ? 'w-[50px]' : 'w-[60px] sm:w-[80px] md:w-[100px] lg:w-[120px]'} h-auto`}
           />
         </div>
       </div>
