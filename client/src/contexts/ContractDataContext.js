@@ -599,20 +599,31 @@ export const ContractDataProvider = ({ children }) => {
       
       // Add transaction data for different time ranges
       getTransactionDataForRange: (timeRange) => {
+        let daysToInclude;
+        let granularity = 'daily';
+        
         switch(timeRange) {
           case '24h':
-            return generateDailyTransactionData(contractTransactions, 1, 'hourly');
+            daysToInclude = 1;
+            granularity = 'hourly';
+            break;
           case '7d':
-            return generateDailyTransactionData(contractTransactions, 7);
+            daysToInclude = 7;
+            break;
           case '30d':
-            return transactionTimeSeriesData; // Already generated
+            daysToInclude = 30;
+            break;
           case 'quarter':
-            return generateDailyTransactionData(contractTransactions, 90);
+            daysToInclude = 90;
+            break;
           case 'year':
-            return generateDailyTransactionData(contractTransactions, 365);
+            daysToInclude = 365;
+            break;
           default:
-            return transactionTimeSeriesData;
+            daysToInclude = 30;
         }
+        
+        return generateDailyTransactionData(contractTransactions, daysToInclude, granularity);
       }
     };
     
@@ -627,8 +638,21 @@ export const ContractDataProvider = ({ children }) => {
     
     // Get date range
     const now = new Date();
-    const startDate = new Date();
+    let startDate = new Date();
+    
+    // Calculate start date based on daysToInclude
     startDate.setDate(now.getDate() - daysToInclude);
+    
+    // Find the transaction dates within our range
+    const txsInRange = transactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= startDate && txDate <= now;
+    });
+    
+    // If no transactions in the date range, return empty array
+    if (txsInRange.length === 0) {
+      return [];
+    }
     
     // Initialize map to store data by day/hour
     const timeSeriesData = {};
@@ -644,12 +668,15 @@ export const ContractDataProvider = ({ children }) => {
         const date = new Date(startDate);
         date.setHours(startDate.getHours() + i);
         
+        // Don't go beyond current time
+        if (date > now) break;
+        
         const hourStr = formatHour(date);
         timeSeriesData[hourStr] = {
           date: hourStr,
           transactions: 0,
           volume: 0,
-          volumeFormatted: '0'
+          volumeFormatted: `0 ${tokenSymbol}`
         };
       }
     } else {
@@ -658,46 +685,45 @@ export const ContractDataProvider = ({ children }) => {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         
+        // Don't go beyond current time
+        if (date > now) break;
+        
         const dateStr = formatDate(date);
         timeSeriesData[dateStr] = {
           date: dateStr,
           transactions: 0,
           volume: 0,
-          volumeFormatted: '0'
+          volumeFormatted: `0 ${tokenSymbol}`
         };
       }
     }
     
     // Aggregate transaction data by time period
-    transactions.forEach(tx => {
+    txsInRange.forEach(tx => {
       const txDate = new Date(tx.block_time);
+      let timeKey;
       
-      // Only include transactions in our date range
-      if (txDate >= startDate && txDate <= now) {
-        let timeKey;
-        
-        if (granularity === 'hourly') {
-          timeKey = formatHour(txDate);
-        } else {
-          timeKey = formatDate(txDate);
-        }
-        
-        // Create entry if it doesn't exist (shouldn't be needed with the loop above)
-        if (!timeSeriesData[timeKey]) {
-          timeSeriesData[timeKey] = {
-            date: timeKey,
-            transactions: 0,
-            volume: 0,
-            volumeFormatted: '0'
-          };
-        }
-        
-        // Add transaction and volume
-        timeSeriesData[timeKey].transactions += 1;
-        const value = parseFloat(tx.value_eth) || 0;
-        if (!isNaN(value)) {
-          timeSeriesData[timeKey].volume += value;
-        }
+      if (granularity === 'hourly') {
+        timeKey = formatHour(txDate);
+      } else {
+        timeKey = formatDate(txDate);
+      }
+      
+      // Create entry if it doesn't exist (shouldn't be needed with the loop above)
+      if (!timeSeriesData[timeKey]) {
+        timeSeriesData[timeKey] = {
+          date: timeKey,
+          transactions: 0,
+          volume: 0,
+          volumeFormatted: `0 ${tokenSymbol}`
+        };
+      }
+      
+      // Add transaction and volume
+      timeSeriesData[timeKey].transactions += 1;
+      const value = parseFloat(tx.value_eth) || 0;
+      if (!isNaN(value)) {
+        timeSeriesData[timeKey].volume += value;
       }
     });
     
