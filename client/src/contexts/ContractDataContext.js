@@ -625,10 +625,13 @@ export const ContractDataProvider = ({ children }) => {
         date: dateStr,
         transactions: 0,
         volume: 0,
-        displayVolume: 0,
-        volumeUnit: ''
+        volumeFormatted: '0'
       };
     }
+    
+    // Get token symbol from contract or default to blockchain's native currency
+    const chainConfig = getChainConfig(selectedContract.blockchain);
+    const tokenSymbol = selectedContract.tokenSymbol || (chainConfig?.nativeCurrency?.symbol || 'TOKEN');
     
     // Aggregate transaction data by day
     transactions.forEach(tx => {
@@ -644,8 +647,7 @@ export const ContractDataProvider = ({ children }) => {
             date: dateStr,
             transactions: 0,
             volume: 0,
-            displayVolume: 0,
-            volumeUnit: ''
+            volumeFormatted: '0'
           };
         }
         
@@ -658,35 +660,25 @@ export const ContractDataProvider = ({ children }) => {
       }
     });
     
-    // Convert to array, format volume values, and sort by date
-    const formattedData = Object.values(dailyData).map(item => {
-      const roundedVolume = parseFloat(item.volume.toFixed(2));
+    // Format volume values properly
+    Object.values(dailyData).forEach(day => {
+      // Round to 2 decimal places
+      day.volume = parseFloat(day.volume.toFixed(2));
       
-      // Format volume for display (use millions for large values)
-      let displayVolume = roundedVolume;
-      let volumeUnit = '';
-      
-      if (roundedVolume >= 1000000) {
-        displayVolume = parseFloat((roundedVolume / 1000000).toFixed(2));
-        volumeUnit = 'M';
-      } else if (roundedVolume >= 1000) {
-        displayVolume = parseFloat((roundedVolume / 1000).toFixed(2));
-        volumeUnit = 'K';
+      // Format large volumes in millions
+      if (day.volume >= 1000000) {
+        day.volumeFormatted = `${(day.volume / 1000000).toFixed(2)}M ${tokenSymbol}`;
+      } else {
+        day.volumeFormatted = `${day.volume.toLocaleString()} ${tokenSymbol}`;
       }
-      
-      return {
-        ...item,
-        volume: roundedVolume,
-        displayVolume,
-        volumeUnit
-      };
-    }).sort((a, b) => {
+    });
+    
+    // Convert to array and sort by date
+    return Object.values(dailyData).sort((a, b) => {
       const dateA = parseDate(a.date);
       const dateB = parseDate(b.date);
       return dateA - dateB;
     });
-    
-    return formattedData;
   };
   
   // Helper for date formatting

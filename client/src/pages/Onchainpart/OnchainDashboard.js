@@ -136,16 +136,11 @@ export default function OnchainDashboard() {
     );
   };
 
-  const formatVolumeDisplay = (value) => {
-    if (value >= 1e9) {
-      return `$${(value / 1e9).toFixed(2)}B`;
-    } else if (value >= 1e6) {
-      return `$${(value / 1e6).toFixed(2)}M`;
-    } else if (value >= 1e3) {
-      return `$${(value / 1e3).toFixed(2)}K`;
-    } else {
-      return `$${value.toFixed(2)}`;
+  const formatVolume = (value, tokenSymbol) => {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M ${tokenSymbol}`;
     }
+    return `${value.toLocaleString()} ${tokenSymbol}`;
   };
 
   return (
@@ -294,8 +289,8 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "15,500.00" 
-                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last7Days || 0))
+                    ? "15,500 ETH" 
+                    : formatVolume(parseFloat(contractData?.recentVolume?.last7Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChange7Days && (
@@ -317,8 +312,8 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "75,800.00" 
-                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last30Days || 0))
+                    ? "75.8K ETH" 
+                    : formatVolume(parseFloat(contractData?.recentVolume?.last30Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChange30Days && (
@@ -340,8 +335,8 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "420,500.00" 
-                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lastYear || 0))
+                    ? "420.5K ETH" 
+                    : formatVolume(parseFloat(contractData?.recentVolume?.lastYear || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
                 {!showDemoData && contractData?.recentVolume?.percentChangeYear && (
@@ -363,8 +358,8 @@ export default function OnchainDashboard() {
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
                   {showDemoData 
-                    ? "1.25M" 
-                    : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lifetime || 0))
+                    ? "1.25M ETH" 
+                    : formatVolume(parseFloat(contractData?.recentVolume?.lifetime || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
               </div>
@@ -393,16 +388,26 @@ export default function OnchainDashboard() {
             <ComposedChart data={transactionData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
               <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} name="Transactions" />
+              <YAxis 
+                yAxisId="right" 
+                orientation="right" 
+                tick={{ fontSize: 12 }} 
+                axisLine={false} 
+                tickLine={false}
+                name={showDemoData ? "Volume (ETH)" : `Volume (${selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN'})`}
+                tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(1)}M` : value}
+              />
               <Tooltip 
                 formatter={(value, name) => {
-                  if (name === 'volume') {
-                    // Find the corresponding data point to get unit
-                    const dataPoint = transactionData.find(d => d.volume === value);
-                    return [`${dataPoint?.displayVolume || value}${dataPoint?.volumeUnit || ''} ${selectedContract?.tokenSymbol || 'TOKEN'}`, 'Volume'];
+                  if (name === "volume") {
+                    // Format volume with token symbol
+                    const tokenSymbol = showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
+                    return value >= 1000000 
+                      ? [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"]
+                      : [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
                   }
-                  return [value, name === 'transactions' ? 'Transactions' : name];
+                  return [value, name === "transactions" ? "Transactions" : name];
                 }}
               />
               <Bar yAxisId="left" dataKey="transactions" fill={chainColor} radius={[4, 4, 0, 0]} name="Transactions" />
@@ -487,8 +492,8 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "15,500.00" 
-                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last7Days || 0))
+                        ? "15,500 ETH" 
+                        : formatVolume(parseFloat(contractData?.recentVolume?.last7Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChange7Days) || showDemoData ? (
@@ -504,8 +509,8 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 30 Days</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "75,800.00" 
-                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.last30Days || 0))
+                        ? "75.8K ETH" 
+                        : formatVolume(parseFloat(contractData?.recentVolume?.last30Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChange30Days) || showDemoData ? (
@@ -521,8 +526,8 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last Year</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "420,500.00" 
-                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lastYear || 0))
+                        ? "420.5K ETH" 
+                        : formatVolume(parseFloat(contractData?.recentVolume?.lastYear || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                       }
                     </p>
                     {(!showDemoData && contractData?.recentVolume?.percentChangeYear) || showDemoData ? (
@@ -538,8 +543,8 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Lifetime</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "1.25M" 
-                        : formatVolumeDisplay(parseFloat(contractData?.recentVolume?.lifetime || 0))
+                        ? "1.25M ETH" 
+                        : formatVolume(parseFloat(contractData?.recentVolume?.lifetime || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                       }
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -557,15 +562,18 @@ export default function OnchainDashboard() {
                     <AreaChart data={transactionData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                       <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <YAxis 
+                        tick={{ fontSize: 12 }} 
+                        axisLine={false} 
+                        tickLine={false}
+                        tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(1)}M` : value}
+                      />
                       <Tooltip 
-                        formatter={(value, name) => {
-                          if (name === 'volume') {
-                            // Find the corresponding data point to get unit
-                            const dataPoint = transactionData.find(d => d.volume === value);
-                            return [`${dataPoint?.displayVolume || value}${dataPoint?.volumeUnit || ''} ${selectedContract?.tokenSymbol || 'TOKEN'}`, 'Volume'];
-                          }
-                          return [value, name];
+                        formatter={(value) => {
+                          const tokenSymbol = showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
+                          return value >= 1000000 
+                            ? [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"]
+                            : [`${value.toLocaleString()} ${tokenSymbol}`, "Volume"];
                         }}
                       />
                       <Area 
@@ -574,7 +582,7 @@ export default function OnchainDashboard() {
                         stroke={chainColor} 
                         fill={`${chainColor}30`} 
                         activeDot={{ r: 6 }}
-                        name="Volume"
+                        name={`Volume (${showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN')})`}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -589,8 +597,11 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "2,214.29" 
-                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.last7Days || 0) / 7))
+                        ? "2,214.29 ETH" 
+                        : formatVolume(
+                            parseFloat(contractData?.recentVolume?.last7Days || 0) / 7,
+                            selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
+                          )
                       }
                     </p>
                   </div>
@@ -599,8 +610,11 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last 30 Days Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "2,526.67" 
-                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.last30Days || 0) / 30))
+                        ? "2,526.67 ETH" 
+                        : formatVolume(
+                            parseFloat(contractData?.recentVolume?.last30Days || 0) / 30,
+                            selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
+                          )
                       }
                     </p>
                   </div>
@@ -609,8 +623,11 @@ export default function OnchainDashboard() {
                     <p className="text-sm text-gray-500 mb-1">Last Year Avg.</p>
                     <p className="text-xl font-bold">
                       {showDemoData 
-                        ? "1,152.05" 
-                        : formatVolumeDisplay((parseFloat(contractData?.recentVolume?.lastYear || 0) / 365))
+                        ? "1,152.05 ETH" 
+                        : formatVolume(
+                            parseFloat(contractData?.recentVolume?.lastYear || 0) / 365,
+                            selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
+                          )
                       }
                     </p>
                   </div>
