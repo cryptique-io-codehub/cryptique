@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart } from 'recharts';
 import { PieChart, Pie, Cell, Label, Sector } from 'recharts';
-import { ArrowUp, ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowUp, ArrowRight, ExternalLink, X } from 'lucide-react';
 import { useContractData } from '../../contexts/ContractDataContext';
 import { getChainConfig } from '../../utils/chainRegistry';
 import ChainBanner from '../../components/ChainBanner';
@@ -17,6 +17,9 @@ export default function OnchainDashboard() {
     loadingStatus,
     processContractTransactions
   } = useContractData();
+
+  // Add state for modal
+  const [showVolumeModal, setShowVolumeModal] = useState(false);
 
   // Process real contract data if available
   const contractData = !showDemoData ? processContractTransactions() : null;
@@ -266,9 +269,12 @@ export default function OnchainDashboard() {
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex justify-between items-center mb-2">
             <h2 className="font-semibold text-lg font-montserrat">Transaction Volume</h2>
-            <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+            <button 
+              onClick={() => setShowVolumeModal(true)}
+              className="text-blue-600 hover:text-blue-800 flex items-center text-sm bg-transparent border-none cursor-pointer"
+            >
               More Details <ArrowRight size={14} className="ml-1" />
-            </a>
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
@@ -446,6 +452,185 @@ export default function OnchainDashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Transaction Volume Modal */}
+      {showVolumeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold font-montserrat">
+                Transaction Volume Details - {showDemoData ? "Demo Contract" : (selectedContract?.name || "Unknown Contract")}
+              </h2>
+              <button 
+                onClick={() => setShowVolumeModal(false)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Volume Overview */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium mb-4 font-montserrat">Volume Overview</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last 7 Days</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "15,500.00" 
+                        : parseFloat(contractData?.recentVolume?.last7Days || 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                    {(!showDemoData && contractData?.recentVolume?.percentChange7Days) || showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${showDemoData || parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {showDemoData || parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                        <span>{showDemoData ? "24.3" : Math.abs(parseFloat(contractData?.recentVolume?.percentChange7Days || 0)).toFixed(1)}%</span>
+                        <span className="ml-1 text-gray-500">vs previous</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last 30 Days</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "75,800.00" 
+                        : parseFloat(contractData?.recentVolume?.last30Days || 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                    {(!showDemoData && contractData?.recentVolume?.percentChange30Days) || showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${showDemoData || parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {showDemoData || parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                        <span>{showDemoData ? "18.7" : Math.abs(parseFloat(contractData?.recentVolume?.percentChange30Days || 0)).toFixed(1)}%</span>
+                        <span className="ml-1 text-gray-500">vs previous</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last Year</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "420,500.00" 
+                        : parseFloat(contractData?.recentVolume?.lastYear || 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                    {(!showDemoData && contractData?.recentVolume?.percentChangeYear) || showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${showDemoData || parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {showDemoData || parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                        <span>{showDemoData ? "32.1" : Math.abs(parseFloat(contractData?.recentVolume?.percentChangeYear || 0)).toFixed(1)}%</span>
+                        <span className="ml-1 text-gray-500">vs previous</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Lifetime</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "1,250,200.00" 
+                        : parseFloat(contractData?.recentVolume?.lifetime || 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Volume Over Time Chart */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium mb-4 font-montserrat">Volume Over Time</h3>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={transactionData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <Tooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey="volume" 
+                        stroke={chainColor} 
+                        fill={`${chainColor}30`} 
+                        activeDot={{ r: 6 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {/* Average Daily Volume */}
+              <div>
+                <h3 className="text-lg font-medium mb-4 font-montserrat">Average Daily Volume</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last 7 Days Avg.</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "2,214.29" 
+                        : (parseFloat(contractData?.recentVolume?.last7Days || 0) / 7).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last 30 Days Avg.</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "2,526.67" 
+                        : (parseFloat(contractData?.recentVolume?.last30Days || 0) / 30).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-1">Last Year Avg.</p>
+                    <p className="text-xl font-bold">
+                      {showDemoData 
+                        ? "1,152.05" 
+                        : (parseFloat(contractData?.recentVolume?.lastYear || 0) / 365).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-4 border-t border-gray-200">
+              <button 
+                onClick={() => setShowVolumeModal(false)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
