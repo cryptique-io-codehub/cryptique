@@ -14,7 +14,8 @@ const transactionSchema = new mongoose.Schema({
   },
   tx_hash: {
     type: String,
-    required: true
+    required: true,
+    index: true
   },
   block_number: {
     type: Number,
@@ -47,10 +48,13 @@ const transactionSchema = new mongoose.Schema({
   }
 });
 
-// Compound indexes for efficient queries - no unique constraints
+// Compound index for efficient queries
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
-transactionSchema.index({ contractId: 1, tx_hash: 1 }); // Removed unique constraint
+
+// Compound unique index for contractId and tx_hash
+// This ensures tx_hash uniqueness within the same contract
+transactionSchema.index({ contractId: 1, tx_hash: 1 }, { unique: true });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
