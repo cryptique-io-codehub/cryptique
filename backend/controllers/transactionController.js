@@ -148,7 +148,7 @@ exports.saveTransactions = async (req, res) => {
         const operations = validTransactions.map(tx => ({
           updateOne: {
             filter: { 
-              contractId: contractId,
+              contractId: contractId,  // Add contractId to filter
               tx_hash: tx.tx_hash 
             },
             update: { 
@@ -162,7 +162,7 @@ exports.saveTransactions = async (req, res) => {
             upsert: true
           }
         }));
-      
+        
         // Log a sample operation for debugging
         if (operations.length > 0) {
           console.log("Sample operation:", JSON.stringify(operations[0]).slice(0, 200) + "...");
