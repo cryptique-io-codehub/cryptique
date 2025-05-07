@@ -23,6 +23,7 @@ export default function OnchainDashboard() {
 
   // Sample transaction data for the chart (used when no contract is selected)
   const demoTransactionData = [
+      // Last 30 days
       { date: '24 Feb', transactions: 50, volume: 1.0 },
       { date: '25 Feb', transactions: 85, volume: 1.6 },
       { date: '26 Feb', transactions: 72, volume: 1.4 },
@@ -269,11 +270,11 @@ export default function OnchainDashboard() {
               More Details <ArrowRight size={14} className="ml-1" />
             </a>
           </div>
-          <div className="flex space-x-4">
-            <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-100">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Last 7 Days</p>
               <div className="flex items-end">
-                <h3 className="text-xl font-bold mr-2">
+                <h3 className="text-lg font-bold mr-2">
                   {showDemoData ? "15.5" : contractData?.recentVolume?.last7Days || "0"}
                 </h3>
                 <div className="flex items-center text-green-500 text-xs">
@@ -282,16 +283,36 @@ export default function OnchainDashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-100">
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
               <div className="flex items-end">
-                <h3 className="text-xl font-bold mr-2">
+                <h3 className="text-lg font-bold mr-2">
                   {showDemoData ? "75.8" : contractData?.recentVolume?.last30Days || "0"}
                 </h3>
                 <div className="flex items-center text-green-500 text-xs">
                   <ArrowUp size={12} />
                   <span>18.7%</span>
                 </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+              <p className="text-xs text-gray-500 mb-1">Last Year</p>
+              <div className="flex items-end">
+                <h3 className="text-lg font-bold mr-2">
+                  {showDemoData ? "420.5" : contractData?.recentVolume?.lastYear || "0"}
+                </h3>
+                <div className="flex items-center text-green-500 text-xs">
+                  <ArrowUp size={12} />
+                  <span>32.1%</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+              <p className="text-xs text-gray-500 mb-1">Lifetime</p>
+              <div className="flex items-end">
+                <h3 className="text-lg font-bold mr-2">
+                  {showDemoData ? "1,250.2" : contractData?.recentVolume?.lifetime || "0"}
+                </h3>
               </div>
             </div>
           </div>

@@ -358,10 +358,10 @@ export const ContractDataProvider = ({ children }) => {
     thirtyDaysAgo.setDate(now.getDate() - 30);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(now.getDate() - 7);
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(now.getMonth() - 6);
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(now.getFullYear() - 1);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(now.getMonth() - 6);
     const twoYearsAgo = new Date();
     twoYearsAgo.setFullYear(now.getFullYear() - 2);
     
@@ -391,6 +391,12 @@ export const ContractDataProvider = ({ children }) => {
       return txDate >= thirtyDaysAgo && txDate <= now;
     });
     
+    // Filter transactions for the last year
+    const transactionsLastYear = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= oneYearAgo && txDate <= now;
+    });
+    
     // Calculate transaction volume for recent periods
     const volumeLast7Days = transactionsLast7Days.reduce((sum, tx) => {
       const value = parseFloat(tx.value_eth) || 0;
@@ -398,6 +404,17 @@ export const ContractDataProvider = ({ children }) => {
     }, 0);
     
     const volumeLast30Days = transactionsLast30Days.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    const volumeLastYear = transactionsLastYear.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    // Calculate lifetime volume (all transactions)
+    const volumeLifetime = contractTransactions.reduce((sum, tx) => {
       const value = parseFloat(tx.value_eth) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
@@ -500,11 +517,15 @@ export const ContractDataProvider = ({ children }) => {
       },
       recentTransactions: {
         last7Days: transactionsLast7Days.length,
-        last30Days: transactionsLast30Days.length
+        last30Days: transactionsLast30Days.length,
+        lastYear: transactionsLastYear.length,
+        lifetime: contractTransactions.length
       },
       recentVolume: {
         last7Days: volumeLast7Days.toFixed(2),
-        last30Days: volumeLast30Days.toFixed(2)
+        last30Days: volumeLast30Days.toFixed(2),
+        lastYear: volumeLastYear.toFixed(2),
+        lifetime: volumeLifetime.toFixed(2)
       },
       walletAgeData: walletAgeData,
       medianWalletStats: {
