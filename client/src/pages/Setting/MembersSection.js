@@ -59,7 +59,7 @@ const MembersSection = () => {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
 
       if (!token) {
         throw new Error("No authentication token found. Please log in.");
