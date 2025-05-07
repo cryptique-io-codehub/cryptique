@@ -98,7 +98,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     console.log(`Will fetch in ${batchCount} batch(es) of ${offset}`);
     
     let allTransactions = [];
-    let lowestBlock = 0; // Track lowest block number for pagination when using desc order
+    let lowestBlock = 999999999; // Initialize with a high value for finding the minimum
     
     // API key from env variable, fallback to a placeholder
     const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY || "D2HXGN6QEQ6J1VRCYNZFYAPB3YEUAC5CFF";
@@ -204,12 +204,15 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
       
+      // Reset the lowestBlock for each batch to ensure we find the true minimum
+      let batchLowestBlock = 999999999;
+      
       // Transform transactions to common format
       const formattedTransactions = batchTransactions.map(tx => {
         // Find the lowest block number for next batch when using desc order
         const blockNumber = parseInt(tx.blockNumber);
-        if (lowestBlock === 0 || blockNumber < lowestBlock) {
-          lowestBlock = blockNumber;
+        if (blockNumber < batchLowestBlock) {
+          batchLowestBlock = blockNumber;
         }
         
         // Check if this might be an ERC-20 transfer
@@ -232,6 +235,14 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
         };
       });
       
+      // Update the overall lowest block
+      if (batchLowestBlock < lowestBlock) {
+        lowestBlock = batchLowestBlock;
+      }
+      
+      // Debug - Log minimum block found in this batch
+      console.log(`Lowest block number in batch ${batchIndex + 1}: ${batchLowestBlock}, Overall lowest: ${lowestBlock}`);
+      
       // Add transactions to our collection
       allTransactions = [...allTransactions, ...formattedTransactions];
       
@@ -249,7 +260,7 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
       
       // Add a small delay between batches to avoid rate limits
       if (batchIndex < batchCount - 1) {
-        console.log('Waiting briefly before next batch...');
+        console.log(`Waiting briefly before next batch... Will query blocks older than ${lowestBlock}`);
         await new Promise(resolve => setTimeout(resolve, 2000)); // Delay between batches
       }
     }
