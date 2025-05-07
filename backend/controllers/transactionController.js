@@ -114,10 +114,8 @@ exports.saveTransactions = async (req, res) => {
     }
     
     // Process transactions in smaller batches to avoid payload size issues
-    const BATCH_SIZE = 7500; // Reduced from 10000 to 7500 to avoid payload size issues
+    const BATCH_SIZE = 7500; // Using 7500 as requested
     let totalInserted = 0;
-    let totalDuplicates = 0;
-    let totalErrors = 0;
     let highestBlockNumber = 0;
     let errors = [];
     
@@ -145,64 +143,30 @@ exports.saveTransactions = async (req, res) => {
           continue;
         }
         
-        // Create operations for this batch
-        const operations = validTransactions.map(tx => ({
-          updateOne: {
-            filter: { contractId: contractId, tx_hash: tx.tx_hash },
-            update: { 
-              $setOnInsert: {
-                ...tx,
-                contract: contract._id,
-                contractId: contractId, // Ensure contractId is set correctly
-                createdAt: new Date()
-              }
-            },
-            upsert: true
-          }
+        // Prepare transactions for direct insertion - add required fields
+        const preparedTransactions = validTransactions.map(tx => ({
+          ...tx,
+          contract: contract._id,
+          contractId: contractId, // Ensure contractId is set correctly
+          createdAt: new Date()
         }));
         
-        // Log a sample operation for debugging
-        if (operations.length > 0) {
-          console.log("Sample operation:", JSON.stringify(operations[0]).slice(0, 200) + "...");
+        // Log a sample transaction for debugging
+        if (preparedTransactions.length > 0) {
+          console.log("Sample transaction:", JSON.stringify(preparedTransactions[0]).slice(0, 200) + "...");
         }
         
-        try {
-          const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
-          console.log(`Batch result: inserted=${batchResult.upsertedCount}, existing=${batch.length - batchResult.upsertedCount}`);
-          
-          totalInserted += batchResult.upsertedCount;
-          totalDuplicates += (batch.length - batchResult.upsertedCount);
-        } catch (bulkError) {
-          // Handle bulk write errors (some may succeed, some may fail)
-          if (bulkError.writeErrors) {
-            console.log(`Batch had ${bulkError.writeErrors.length} write errors`);
-            
-            // Count successfully inserted documents even when some failed
-            if (bulkError.insertedCount) {
-              totalInserted += bulkError.insertedCount;
-            }
-            
-            // Add specific errors to our error array for reporting
-            bulkError.writeErrors.forEach(writeError => {
-              if (writeError.code === 11000) {
-                // Duplicate key error - this is ok and expected
-                totalDuplicates++;
-              } else {
-                // Other error - log this
-                totalErrors++;
-                errors.push(`Write error: ${writeError.errmsg || writeError.toString()}`);
-              }
-            });
-          } else {
-            // Some other error occurred
-            totalErrors++;
-            errors.push(bulkError.message);
-          }
-        }
+        // Use insertMany instead of bulkWrite to insert all transactions directly
+        const result = await Transaction.insertMany(preparedTransactions, { 
+          ordered: false, // Continue even if some fail
+          rawResult: true // Get detailed result info
+        });
+        
+        console.log(`Batch result: inserted=${result.insertedCount} out of ${preparedTransactions.length}`);
+        totalInserted += result.insertedCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);
-        totalErrors++;
         // Continue with next batch despite error
       }
     }
@@ -225,8 +189,6 @@ exports.saveTransactions = async (req, res) => {
     return res.status(200).json({ 
       message: "Transaction processing complete",
       inserted: totalInserted,
-      duplicates: totalDuplicates,
-      errors: totalErrors,
       total: transactions.length,
       errorDetails: errors.length > 0 ? errors : undefined
     });

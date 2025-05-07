@@ -52,9 +52,7 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
 
-// Compound unique index for contractId and tx_hash
-// This ensures tx_hash uniqueness within the same contract
-transactionSchema.index({ contractId: 1, tx_hash: 1 }, { unique: true });
+// Note: We've removed the unique constraint entirely to allow duplicates
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
