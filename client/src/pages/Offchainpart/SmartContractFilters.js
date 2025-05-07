@@ -323,15 +323,48 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
     // Validate contract address format based on blockchain
     if (blockchain === 'SUI') {
-      // SUI addresses start with 0x and are 64 or 66 characters long
-      const isSuiAddress = 
-        contractAddress.startsWith('0x') && 
-        /^[0-9a-fA-F]+$/.test(contractAddress.slice(2)) &&
-        (contractAddress.length === 66 || contractAddress.length === 68);
+      // SUI addresses can be in two formats:
+      // 1. Simple: 0x followed by 64-66 hex characters
+      // 2. Full: Package::Module::Struct
       
-      if (!isSuiAddress) {
-        setContractError('Invalid SUI address format');
+      // Ensure address starts with 0x
+      if (!contractAddress.startsWith('0x')) {
+        setContractError('Invalid SUI address format - must start with 0x');
         return false;
+      }
+      
+      // Handle full format with module and struct
+      if (contractAddress.includes('::')) {
+        const parts = contractAddress.split('::');
+        
+        // Should have 2 or 3 parts
+        if (parts.length < 2 || parts.length > 3) {
+          setContractError('Invalid SUI address format - incorrect number of parts');
+          return false;
+        }
+        
+        // Validate the package ID part
+        const packageId = parts[0];
+        const packageIdWithoutPrefix = packageId.slice(2);
+        const validLength = packageIdWithoutPrefix.length === 64 || packageIdWithoutPrefix.length === 66;
+        const validHex = /^[0-9a-fA-F]+$/.test(packageIdWithoutPrefix);
+        
+        if (!validLength || !validHex) {
+          setContractError('Invalid SUI package ID format');
+          return false;
+        }
+      } 
+      // Handle simple format (just the address)
+      else {
+        // Check package ID only
+        const packageIdWithoutPrefix = contractAddress.slice(2);
+        const validLength = packageIdWithoutPrefix.length === 64 || packageIdWithoutPrefix.length === 66;
+        const validHex = /^[0-9a-fA-F]+$/.test(packageIdWithoutPrefix);
+        
+        if (!validLength || !validHex) {
+          setContractError('Invalid SUI address format');
+          return false;
+        }
       }
     } else {
       // For EVM chains, use the standard validator

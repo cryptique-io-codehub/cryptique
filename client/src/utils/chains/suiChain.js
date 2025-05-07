@@ -44,7 +44,23 @@ export const getExplorerURL = (txHash) => {
  * @returns {string} - Explorer URL
  */
 export const getAddressExplorerURL = (address) => {
-  return `https://explorer.sui.io/address/${address}?network=mainnet`;
+  // Extract package ID for full format addresses
+  let packageId = address;
+  if (address.includes('::')) {
+    // For addresses like 0x1234::module::struct, we generate appropriate links
+    const parts = address.split('::');
+    if (parts.length === 2) {
+      // Format: 0xpackageId::moduleName
+      return `https://explorer.sui.io/object/${parts[0]}?module=${parts[1]}&network=mainnet`;
+    } else if (parts.length === 3) {
+      // Format: 0xpackageId::moduleName::structName
+      return `https://explorer.sui.io/object/${parts[0]}?module=${parts[1]}&network=mainnet`;
+    }
+    // If we couldn't parse properly, just use the package ID
+    packageId = parts[0];
+  }
+  
+  return `https://explorer.sui.io/address/${packageId}?network=mainnet`;
 };
 
 /**
@@ -53,8 +69,10 @@ export const getAddressExplorerURL = (address) => {
  * @returns {boolean} - True if valid, false otherwise
  */
 export const validateAddress = (address) => {
-  // SUI addresses start with 0x and are 64 or 66 characters long (32 bytes)
-  // Using a custom validation for SUI rather than the shared isValidAddress function
+  // SUI addresses can be in two formats:
+  // 1. Simple: 0x followed by 64-66 hex characters (e.g., 0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7)
+  // 2. Full: Package::Module::Struct (e.g., 0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC)
+  
   if (!address || typeof address !== 'string') {
     return false;
   }
@@ -63,16 +81,38 @@ export const validateAddress = (address) => {
   if (!address.startsWith('0x')) {
     return false;
   }
-
-  // Remove 0x prefix for length check
-  const addressWithoutPrefix = address.slice(2);
-
-  // Check if the rest is a valid hex string of correct length
-  // SUI addresses can be 64 hex chars (32 bytes) or sometimes 66 chars
-  const validLength = addressWithoutPrefix.length === 64 || addressWithoutPrefix.length === 66;
-  const validHex = /^[0-9a-fA-F]+$/.test(addressWithoutPrefix);
-
-  return validLength && validHex;
+  
+  // Handle full format with module and struct
+  if (address.includes('::')) {
+    const parts = address.split('::');
+    
+    // Should have 2 or 3 parts: [packageId, moduleName, structName?]
+    if (parts.length < 2 || parts.length > 3) {
+      return false;
+    }
+    
+    const packageId = parts[0];
+    
+    // Remove 0x prefix for length check
+    const packageIdWithoutPrefix = packageId.slice(2);
+    
+    // Check if package ID is a valid hex string of correct length
+    const validLength = packageIdWithoutPrefix.length === 64 || packageIdWithoutPrefix.length === 66;
+    const validHex = /^[0-9a-fA-F]+$/.test(packageIdWithoutPrefix);
+    
+    return validLength && validHex;
+  } 
+  // Handle simple format (just the address)
+  else {
+    // Remove 0x prefix for length check
+    const addressWithoutPrefix = address.slice(2);
+    
+    // Check if the rest is a valid hex string of correct length
+    const validLength = addressWithoutPrefix.length === 64 || addressWithoutPrefix.length === 66;
+    const validHex = /^[0-9a-fA-F]+$/.test(addressWithoutPrefix);
+    
+    return validLength && validHex;
+  }
 };
 
 /**
@@ -236,12 +276,21 @@ export const fetchSuiTransactions = async (address, options = {}) => {
       };
     }
 
+    // Extract package ID from full format addresses
+    // For addresses like 0x1234::module::struct, we only need the 0x1234 part
+    let packageId = address;
+    if (address.includes('::')) {
+      packageId = address.split('::')[0];
+    }
+    
+    console.log(`Using package ID: ${packageId} from address: ${address}`);
+
     // Default options
     const limit = Math.min(options.limit || 100, 1000);
     const batchSize = 50; // Smaller batch size for reliability
     const maxRetries = 3;
     
-    console.log(`Fetching transactions for SUI address: ${address} (limit: ${limit})`);
+    console.log(`Fetching transactions for SUI address: ${packageId} (limit: ${limit})`);
     
     let allTransactions = [];
     let cursor = null;
@@ -269,7 +318,7 @@ export const fetchSuiTransactions = async (address, options = {}) => {
             id: 1,
             method: 'sui_getTransactionBlocks',
             params: [
-              { FromAddress: address },
+              { FromAddress: packageId },
               {
                 limit: batchSize,
                 descendingOrder: true,
@@ -337,7 +386,8 @@ export const fetchSuiTransactions = async (address, options = {}) => {
         message: `Successfully retrieved ${allTransactions.length} transactions`,
         total: allTransactions.length,
         chain: "SUI",
-        address: address
+        address: address,
+        packageId: packageId
       }
     };
   } catch (error) {
