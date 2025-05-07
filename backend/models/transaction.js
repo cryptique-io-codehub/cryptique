@@ -14,8 +14,7 @@ const transactionSchema = new mongoose.Schema({
   },
   tx_hash: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   block_number: {
     type: Number,
@@ -51,6 +50,19 @@ const transactionSchema = new mongoose.Schema({
 // Compound index for efficient queries
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
+
+// Add a statement to drop any existing tx_hash index from the collection
+// This will run when the model is initialized
+transactionSchema.pre('init', function() {
+  try {
+    this.collection.dropIndex('tx_hash_1', (err) => {
+      if (!err) console.log('Successfully dropped tx_hash index');
+      // If error, it might not exist, which is fine
+    });
+  } catch (err) {
+    // Ignore errors as the index might not exist
+  }
+});
 
 // Note: We've removed the unique constraint entirely to allow duplicates
 
