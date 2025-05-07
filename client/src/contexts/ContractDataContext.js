@@ -6,6 +6,7 @@ import { fetchEthereumTransactions } from '../utils/chains/ethereumChain';
 import { fetchPolygonTransactions } from '../utils/chains/polygonChain';
 import { fetchArbitrumTransactions } from '../utils/chains/arbitrumChain';
 import { fetchOptimismTransactions } from '../utils/chains/optimismChain';
+import { fetchSuiTransactions } from '../utils/chains/suiChain';
 
 // Create the context
 const ContractDataContext = createContext();
@@ -285,6 +286,26 @@ export const ContractDataProvider = ({ children }) => {
             }));
           } else {
             console.log('No new transactions found or error:', optimismResult.metadata?.message);
+          }
+          break;
+          
+        case 'SUI':
+          console.log('Fetching new transactions from SUI Chain');
+          const suiResult = await fetchSuiTransactions(contract.address, {
+            limit: 100000,
+            startBlock: startBlock
+          });
+          
+          if (suiResult.transactions?.length > 0) {
+            console.log(`Retrieved ${suiResult.transactions.length} new transactions from SUI Chain`);
+            // Update token symbol in transactions
+            newTransactions = suiResult.transactions.map(tx => ({
+              ...tx,
+              token_symbol: contract.tokenSymbol || tx.token_symbol,
+              value_eth: tx.value_eth.replace('SUI', contract.tokenSymbol || 'SUI')
+            }));
+          } else {
+            console.log('No new transactions found or error:', suiResult.metadata?.message);
           }
           break;
           

@@ -1060,6 +1060,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                             <option value="Polygon">Polygon</option>
                             <option value="Arbitrum">Arbitrum</option>
                             <option value="Optimism">Optimism</option>
+                            <option value="SUI">SUI</option>
                           </select>
                         </div>
                         {contractError && (
