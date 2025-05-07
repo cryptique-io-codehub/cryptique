@@ -3,6 +3,8 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
 import { useContractData } from '../../contexts/ContractDataContext';
+import ChainBanner from '../../components/ChainBanner';
+import { getChainConfig } from '../../utils/chainRegistry';
 
 export default function OnchainTraffic() {
   // Get contract data from context
@@ -21,6 +23,13 @@ export default function OnchainTraffic() {
 
   // State for analytics (keeping this for compatibility)
   const [analytics, setanalytics] = useState({});
+  
+  // Get chain-specific information
+  const chainName = selectedContract?.blockchain || 'Ethereum';
+  const chainConfig = getChainConfig(chainName);
+  const chainColor = !showDemoData && contractData?.contractInfo?.chainColor 
+    ? contractData.contractInfo.chainColor 
+    : (chainConfig?.color || '#627EEA'); // Default to Ethereum blue
   
   // Conversion funnel demo data
   const demoFunnelData = [
@@ -110,32 +119,15 @@ export default function OnchainTraffic() {
       <h1 className="text-2xl font-bold mb-8 font-montserrat">Unified Intensity Analytics</h1>
       
       {/* Data Source Banner */}
-      {showDemoData ? (
-        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Using demo data.</span> Select a smart contract from the dropdown to view real data.
-          </p>
-        </div>
-      ) : isLoadingTransactions ? (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Loading transaction data...</span> Please wait while we process the data.
-          </p>
-        </div>
-      ) : updatingTransactions ? (
-        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Updating transactions:</span> {loadingStatus}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Using real data for:</span> {selectedContract.name} ({selectedContract.tokenSymbol || 'Unknown'}) 
-            on {selectedContract.blockchain}. {contractTransactions.length} transactions loaded.
-          </p>
-        </div>
-      )}
+      <ChainBanner 
+        showDemoData={showDemoData}
+        isLoading={isLoadingTransactions}
+        isUpdating={updatingTransactions}
+        loadingStatus={loadingStatus}
+        contract={selectedContract}
+        contractData={contractData}
+        transactions={contractTransactions}
+      />
       
       {/* Main layout with reorganized sections */}
       <div className="space-y-8">
@@ -198,110 +190,140 @@ export default function OnchainTraffic() {
                     type="number" 
                     dataKey="engagement" 
                     name="Engagement" 
-                    unit="mins" 
-                    label={{ value: "Engagement (mins)", position: "bottom", offset: 5, fontFamily: 'Poppins' }}
-                    domain={[0, 55]}
-                    ticks={[0, 10, 20, 30, 40, 50]}
-                    tick={{ fontFamily: 'Poppins' }}
+                    unit="%" 
+                    domain={[0, 60]}
+                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
+                    label={{ 
+                      value: 'Engagement %', 
+                      position: 'insideBottom', 
+                      offset: -10,
+                      fontFamily: 'Poppins',
+                      fontSize: 12
+                    }}
                   />
                   <YAxis 
                     type="number" 
                     dataKey="ltv" 
-                    name="LTV" 
-                    domain={[0, 55]} 
-                    ticks={[0, 10, 20, 30, 40, 50]} 
-                    label={{ value: "LTV  ($ per million)", angle: -90, position: "insideLeft", offset: 0, fontFamily: 'Poppins' }}
-                    tick={{ fontFamily: 'Poppins' }}
+                    name="Lifetime Value" 
+                    unit="K" 
+                    domain={[0, 60]}
+                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
+                    label={{ 
+                      value: 'Lifetime Value ($K)', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      fontFamily: 'Poppins',
+                      fontSize: 12
+                    }}
                   />
-                  <ZAxis range={[70, 70]} />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontFamily: 'Poppins' }} />
-                  {trafficQualityData.map((entry, index) => (
-                    <Scatter key={index} name={entry.source} data={[entry]} fill={entry.color} />
-                  ))}
+                  <ZAxis range={[60, 400]} />
+                  <Tooltip 
+                    cursor={{ strokeDasharray: '3 3' }}
+                    contentStyle={{ fontFamily: 'Poppins' }}
+                    formatter={(value, name) => [
+                      `${value}${name === 'Engagement' ? '%' : 'K'}`, 
+                      name
+                    ]}
+                  />
+                  <Scatter 
+                    name="Traffic Sources" 
+                    data={trafficQualityData} 
+                    fill="#8884d8"
+                  >
+                    {trafficQualityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
             <CustomLegend />
           </div>
           
-          {/* Time to Chain Conversion */}
+          {/* Time to Conversion */}
           <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 className="text-lg font-semibold mb-4 font-montserrat">Time to Chain Conversion (Users)</h2>
+            <h2 className="text-lg font-semibold mb-3 font-montserrat">Time to Conversion</h2>
+            <p className="text-xs text-gray-500 mb-3">From Link Click to Chain Transaction</p>
             <div className="flex-grow w-full h-full min-h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={timeToConversionData}
-                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis 
                     dataKey="day" 
-                    tick={{ fontSize: 14, fontFamily: 'Poppins' }} 
+                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
+                    label={{ 
+                      value: 'Time to Conversion', 
+                      position: 'insideBottom', 
+                      offset: -10, 
+                      fontFamily: 'Poppins',
+                      fontSize: 12
+                    }}
                   />
                   <YAxis 
-                    domain={[0, 250]} 
-                    ticks={[0, 50, 100, 150, 200, 250]} 
-                    tick={{ fontFamily: 'Poppins' }}
-                    label={{ value: "Users", angle: -90, position: "insideLeft", offset: -5, fontFamily: 'Poppins' }}
+                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
+                    label={{ 
+                      value: 'Number of Users', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      fontFamily: 'Poppins',
+                      fontSize: 12
+                    }}
                   />
                   <Tooltip contentStyle={{ fontFamily: 'Poppins' }} />
-                  <Bar dataKey="users" fill="#2563EB" barSize={24} radius={[4, 4, 0, 0]} />
+                  <Bar 
+                    dataKey="users" 
+                    fill={chainColor}
+                    name="Users"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
         
-        {/* Third row - Table and Map */}
-        <div className="grid grid-cols-1 lg:grid-cols-1 xl:grid-cols-2 gap-8">
-          {/* Traffic Sources Table */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources Breakdown</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-100 font-montserrat">
-                    <th className="p-3 text-left font-medium">Source</th>
-                    <th className="p-3 text-center font-medium">Unique Visitors</th>
-                    <th className="p-3 text-center font-medium">Web Users</th>
-                    <th className="p-3 text-center font-medium">Wallets Connected</th>
-                    <th className="p-3 text-center font-medium">Wallets Registered</th>
-                    <th className="p-3 text-center font-medium">TVL</th>
-                  </tr>
-                </thead>
-                <tbody className="font-poppins">
-                  {trafficSourcesTableData.map((row, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="p-3 flex items-center">
-                        <div className="w-3 h-3 rounded-full mr-2" style={{
-                          backgroundColor: 
-                            row.source === "Instagram" ? "#FF6384" :
-                            row.source === "LinkedIn" ? "#36A2EB" :
-                            row.source === "Behance" ? "#4BC0C0" :
-                            row.source === "Dribbble" ? "#FF9F40" :
-                            "#9966FF"
-                        }}></div>
-                        {row.source}
-                      </td>
-                      <td className="p-3 text-center">{row.visitors}</td>
-                      <td className="p-3 text-center">{row.impressions}</td>
-                      <td className="p-3 text-center">{row.websConnected}</td>
-                      <td className="p-3 text-center">{row.webRegistered}</td>
-                      <td className="p-3 text-center">{row.tvl}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {/* Geographic Map (Optional) */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Geographic User Distribution</h2>
+          <div className="h-96">
+            <GeoAnalyticsMap />
           </div>
-          
-          {/* On-chain Transaction by Country */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 font-montserrat">On-chain Transaction by Country</h2>
-            <GeoAnalyticsMap analytics={analytics}/>
+        </div>
+        
+        {/* Traffic Sources Table - Full Width */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources Detailed Analysis</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Web Registered</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL (USD)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {trafficSourcesTableData.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">${item.tvl}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

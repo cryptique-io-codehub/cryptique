@@ -1,8 +1,10 @@
 import React from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart } from 'recharts';
 import { PieChart, Pie, Cell, Label, Sector } from 'recharts';
-import { ArrowUp, ArrowRight } from 'lucide-react';
+import { ArrowUp, ArrowRight, ExternalLink } from 'lucide-react';
 import { useContractData } from '../../contexts/ContractDataContext';
+import { getChainConfig } from '../../utils/chainRegistry';
+import ChainBanner from '../../components/ChainBanner';
 
 export default function OnchainDashboard() {
   // Get contract data from context
@@ -95,6 +97,13 @@ export default function OnchainDashboard() {
   const walletBalanceData = showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
   const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.transactionCountData || demoTransactionCountData);
 
+  // Get chain-specific information
+  const chainName = selectedContract?.blockchain || 'Ethereum';
+  const chainConfig = getChainConfig(chainName);
+  const chainColor = !showDemoData && contractData?.contractInfo?.chainColor 
+    ? contractData.contractInfo.chainColor 
+    : (chainConfig?.color || '#627EEA'); // Default to Ethereum blue
+  
   // Customize the label to display percentages properly
   const renderCustomizedLabel = (props) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value } = props;
@@ -141,32 +150,15 @@ export default function OnchainDashboard() {
       </style>
 
       {/* Data Source Banner */}
-      {showDemoData ? (
-        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Using demo data.</span> Select a smart contract from the dropdown to view real data.
-          </p>
-        </div>
-      ) : isLoadingTransactions ? (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Loading transaction data...</span> Please wait while we process the data.
-          </p>
-        </div>
-      ) : updatingTransactions ? (
-        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Updating transactions:</span> {loadingStatus}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 mb-4 rounded">
-          <p className="text-sm">
-            <span className="font-bold">Using real data for:</span> {selectedContract.name} ({selectedContract.tokenSymbol || 'Unknown'}) 
-            on {selectedContract.blockchain}. {contractTransactions.length} transactions loaded.
-          </p>
-        </div>
-      )}
+      <ChainBanner 
+        showDemoData={showDemoData}
+        isLoading={isLoadingTransactions}
+        isUpdating={updatingTransactions}
+        loadingStatus={loadingStatus}
+        contract={selectedContract}
+        contractData={contractData}
+        transactions={contractTransactions}
+      />
 
       {/* Top Stats Row */}
       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -200,338 +192,189 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "87" : (contractData?.recentTransactions?.last7Days || "0").toLocaleString()}
+              <h3 className="text-sm font-bold" style={{ backgroundColor: chainColor, color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
+                {showDemoData ? "95" : (contractData?.recentTransactions?.last7Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "29" : (contractData?.recentTransactions?.last30Days || "0").toLocaleString()}
+              <h3 className="text-sm font-bold bg-[#2061E4] text-white px-2 py-1 rounded font-montserrat">
+                {showDemoData ? "198" : (contractData?.recentTransactions?.last30Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
-            </div>
-            <div>
-              
             </div>
           </div>
         </div>
       </div>
 
-      {/* Middle Stats Row */}
+      {/* Second Stats Row */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        {/* Median Wallet */}
+        {/* Wallet Age Distribution */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-2 font-montserrat">Median Wallet</h2>
-          <div className="flex justify-between">
-            <div>
-              <h3 className="text-xl font-bold font-montserrat">
-                {showDemoData ? "2.5 Years" : (contractData?.medianWalletStats?.age || "Unknown")}
-              </h3>
-              <p className="text-xs text-gray-500 font-poppins">Age</p>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-semibold text-lg font-montserrat">Wallet Age Distribution</h2>
+            <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+              More Details <ArrowRight size={14} className="ml-1" />
+            </a>
+          </div>
+          <div className="flex items-center">
+            <div className="w-1/2">
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie
+                    data={walletAgeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderCustomizedLabel}
+                    outerRadius={80}
+                    innerRadius={40}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {walletAgeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <Label
+                      value="Wallet Age"
+                      position="center"
+                      fill="#333"
+                      style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Poppins, sans-serif' }}
+                    />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-            <div>
-              <h3 className="text-xl font-bold font-montserrat">
-                {showDemoData ? "$945" : (contractData?.medianWalletStats?.netWorth || "$0")}
-              </h3>
-              <p className="text-xs text-gray-500 font-poppins">Net Worth</p>
+            <div className="w-1/2">
+              <div className="flex flex-col space-y-2 ml-4">
+                {walletAgeData.map((entry, index) => (
+                  <div key={index} className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2" 
+                      style={{ backgroundColor: entry.color }}
+                    ></div>
+                    <p className="text-sm">{entry.name}: <span className="font-semibold">{entry.value}%</span></p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Transaction Value */}
+        {/* Transaction Volume */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-2 font-montserrat">Transaction Value (USD)</h2>
-          <div className="flex justify-between space-x-1">
-            <div>
-              <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "$9,721" : 
-                  (contractData?.summary?.totalVolume 
-                    ? `$${parseFloat(contractData.summary.totalVolume).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
-                    : "$0")}
-              </h3>
-              <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-semibold text-lg font-montserrat">Transaction Volume</h2>
+            <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+              More Details <ArrowRight size={14} className="ml-1" />
+            </a>
+          </div>
+          <div className="flex space-x-4">
+            <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-100">
+              <p className="text-xs text-gray-500 mb-1">Last 7 Days</p>
+              <div className="flex items-end">
+                <h3 className="text-xl font-bold mr-2">
+                  {showDemoData ? "15.5" : contractData?.recentVolume?.last7Days || "0"}
+                </h3>
+                <div className="flex items-center text-green-500 text-xs">
+                  <ArrowUp size={12} />
+                  <span>24.3%</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "$1,043" : 
-                  (contractData?.recentVolume?.last7Days 
-                    ? `$${parseFloat(contractData.recentVolume.last7Days).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
-                    : "$0")}
-              </h3>
-              <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
+            <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-100">
+              <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
+              <div className="flex items-end">
+                <h3 className="text-xl font-bold mr-2">
+                  {showDemoData ? "75.8" : contractData?.recentVolume?.last30Days || "0"}
+                </h3>
+                <div className="flex items-center text-green-500 text-xs">
+                  <ArrowUp size={12} />
+                  <span>18.7%</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold bg-green-500 text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "$103" : 
-                  (contractData?.recentVolume?.last30Days 
-                    ? `$${parseFloat(contractData.recentVolume.last30Days).toLocaleString(undefined, {maximumFractionDigits: 2})}` 
-                    : "$0")}
-              </h3>
-              <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
-            </div>
-            <div>
-             
+          </div>
+          <div className="mt-2 p-1">
+            <div className="text-xs text-gray-500 mb-1">Token Symbol</div>
+            <div className="font-semibold">
+              {showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Lower Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        {/* On-Chain Conversion */}
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 gap-4 mb-4">
+        {/* Transactions Over Time */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-2 font-montserrat">On-Chain Conversion</h2>
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold font-montserrat">40%</h3>
-            <div className="bg-green-100 text-green-600 px-2 py-1 rounded flex items-center text-sm font-poppins">
-              <ArrowUp className="w-4 h-4 mr-1" />
-              <span>+247%</span>
-            </div>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-semibold text-lg font-montserrat">Transactions & Volume Over Time</h2>
+            <a href="#" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+              View Analysis <ArrowRight size={14} className="ml-1" />
+            </a>
           </div>
-          <div className="flex items-center text-gray-500 text-sm mt-2 font-poppins">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-            <span>LinkedIn</span>
-          </div>
-        </div>
-
-        {/* Most Popular DEX */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-2 font-montserrat">Most Popular DEX by Value (USD)</h2>
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold font-montserrat">UniSwap</h3>
-            <div className="text-purple-600">
-              <ArrowRight className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-
-        {/* Most Popular CEX */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-2 font-montserrat">Most Popular CEX by Value (USD)</h2>
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold font-montserrat">Binance</h3>
-            <div className="text-green-500">
-              <ArrowRight className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Transactions Chart */}
-      <div className="bg-white p-4 rounded-lg shadow mb-4">
-        <div className="flex justify-between mb-2">
-          <h2 className="font-semibold text-lg font-montserrat">Transactions</h2>
-          <div className="flex space-x-4 font-poppins">
-            <div className="text-sm font-bold">
-              <span>1D</span>
-            </div>
-            <div className="text-sm font-bold">
-              <span>1W</span>
-            </div>
-            <div className="text-sm font-bold">
-              <span>1M</span>
-            </div>
-            <div className="text-sm font-bold">
-              <span>1Y</span>
-            </div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-500 mb-4 font-poppins">Total transactions and volume over time</p>
-        
-        <div className="flex justify-between mb-4">
-          <div>
-            <h3 className="text-2xl font-bold font-montserrat">1.27M</h3>
-            <p className="text-xs text-gray-500 font-poppins">Total Transactions</p>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold font-montserrat">$29.21B</h3>
-            <p className="text-xs text-gray-500 font-poppins">Total Volume (USD)</p>
-          </div>
-        </div>
-        
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={transactionData}
-              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }} 
-              />
-              <YAxis 
-                yAxisId="left" 
-                orientation="left" 
-                tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }} 
-              />
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
-                tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }} 
-              />
-              <Tooltip 
-                contentStyle={{ fontFamily: "'Poppins', sans-serif" }} 
-                labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }} 
-              />
-              <Area 
-                yAxisId="left" 
-                type="monotone" 
-                dataKey="transactions" 
-                stroke="#3b82f6" 
-                fill="#e0f2fe" 
-                dot={false} 
-              />
-              <Bar 
-                yAxisId="right" 
-                dataKey="volume" 
-                fill="#f97316" 
-                radius={[4, 4, 0, 0]} 
-              />
+          <ResponsiveContainer width="100%" height={250}>
+            <ComposedChart data={transactionData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip />
+              <Bar yAxisId="left" dataKey="transactions" fill={chainColor} radius={[4, 4, 0, 0]} />
+              <Area yAxisId="right" type="monotone" dataKey="volume" stroke="#8884d8" fill="#8884d830" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        
-        <div className="flex justify-center mt-2 text-sm font-poppins">
-          <div className="flex items-center mr-4">
-            <div className="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
-            <span>Transaction quantity</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-orange-500 rounded-full mr-1"></div>
-            <span>Transaction volume</span>
-          </div>
-        </div>
       </div>
 
-      {/* Bottom Distribution Charts */}
+      {/* Bottom Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Wallet Age Distribution - Updated to match the image exactly */}
+        {/* Median Wallet Stats */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-4 font-montserrat">Wallet age distribution</h2>
-          <div className="flex items-center justify-center relative h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={0}
-                  dataKey="value"
-                  startAngle={90}
-                  endAngle={-270}
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                >
-                  {(showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-               
-              </PieChart>
-            </ResponsiveContainer>
-            
-            {/* Legend - Updated to show all 4 segments as in the image */}
-            <div className="absolute right-0 top-0 text-sm font-poppins">
-              {(showDemoData ? walletAgeData : (contractData?.walletAgeData || walletAgeData)).map((item, index) => (
-                <div key={index} className="flex items-center mb-1">
-                  <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: item.color }}></div>
-                  <span>{item.name}</span>
-                </div>
-              ))}
+          <h2 className="font-semibold text-lg mb-3 font-montserrat">Median Wallet Stats</h2>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Age</p>
+              <h3 className="text-lg font-bold">
+                {showDemoData ? "1.7 Years" : contractData?.medianWalletStats?.age || "0 Years"}
+              </h3>
             </div>
-            
-            {/* Center text */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl font-bold font-montserrat">
-                {showDemoData ? "2.2Y" : (contractData?.medianWalletStats?.age?.replace(" Years", "Y") || "?")}
-              </span>
-              <span className="text-xs text-gray-500 font-poppins">Avg. wallet age</span>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Net Worth</p>
+              <h3 className="text-lg font-bold">
+                {showDemoData ? "$945" : contractData?.medianWalletStats?.netWorth || "$0"}
+              </h3>
             </div>
           </div>
         </div>
 
-        {/* Wallet Balance Distribution - Updated with "percentage of distribution" x-axis */}
+        {/* Wallet Balance Distribution */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-4 font-montserrat">Wallet balance distribution (USD)</h2>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={walletBalanceData}
-                layout="vertical"
-                margin={{ top: 5, right: 5, left: 5, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis 
-                  type="number" 
-                  domain={[0, 25]} 
-                  tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }} 
-                  label={{ 
-                    value: "Percentage of distribution", 
-                    position: "insideBottom", 
-                    offset: -5, 
-                    fontSize: 10,
-                    fontFamily: "'Poppins', sans-serif"
-                  }}
-                />
-                <YAxis 
-                  dataKey="range" 
-                  type="category" 
-                  tick={{ fontSize: 8, fontFamily: "'Poppins', sans-serif" }} 
-                  width={45} 
-                />
-                <Tooltip 
-                  formatter={(value) => [`${value}%`, 'Percentage']} 
-                  contentStyle={{ fontFamily: "'Poppins', sans-serif" }} 
-                  labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }}
-                />
-                <Bar dataKey="percentage" fill="#10b981" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <h2 className="font-semibold text-lg mb-3 font-montserrat">Wallet Balance Distribution</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart layout="vertical" data={walletBalanceData}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="range" type="category" tick={{ fontSize: 10 }} width={60} axisLine={false} tickLine={false} />
+              <Tooltip />
+              <Bar dataKey="percentage" fill={chainColor} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Wallet Transactions Count Distribution - Updated with "percentage of distribution" x-axis */}
+        {/* Transaction Count Distribution */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold text-lg mb-4 font-montserrat">Wallet transactions count distribution</h2>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={transactionCountData}
-                layout="vertical"
-                margin={{ top: 5, right: 5, left: 5, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis 
-                  type="number" 
-                  domain={[0, 25]} 
-                  tick={{ fontSize: 10, fontFamily: "'Poppins', sans-serif" }} 
-                  label={{ 
-                    value: "Percentage of distribution", 
-                    position: "insideBottom", 
-                    offset: -5, 
-                    fontSize: 10,
-                    fontFamily: "'Poppins', sans-serif"
-                  }}
-                />
-                <YAxis 
-                  dataKey="range" 
-                  type="category" 
-                  tick={{ fontSize: 8, fontFamily: "'Poppins', sans-serif" }} 
-                  width={45} 
-                />
-                <Tooltip 
-                  formatter={(value) => [`${value}%`, 'Percentage']} 
-                  contentStyle={{ fontFamily: "'Poppins', sans-serif" }} 
-                  labelStyle={{ fontFamily: "'Montserrat', sans-serif", fontWeight: "bold" }}
-                />
-                <Bar dataKey="percentage" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <h2 className="font-semibold text-lg mb-3 font-montserrat">Transaction Count Distribution</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart layout="vertical" data={transactionCountData}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="range" type="category" tick={{ fontSize: 10 }} width={60} axisLine={false} tickLine={false} />
+              <Tooltip />
+              <Bar dataKey="percentage" fill="#8884d8" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

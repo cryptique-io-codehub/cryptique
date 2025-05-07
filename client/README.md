@@ -20,6 +20,17 @@ REACT_APP_GEMINI_API_KEY=your_gemini_api_key
 
 # CQ Intelligence PIN for access control
 REACT_APP_CQ_INTELLIGENCE_PIN=your_pin_code
+
+Let's summarize what we've accomplished so far:
+Created a central chain registry (chainRegistry.js) to act as a single source of truth for all blockchain-specific configurations.
+Updated the ContractDataContext.js to use the new chain registry, making it more scalable and easier to add new chains.
+Created a reusable ChainBanner component to display chain-specific information across all on-chain screens.
+Updated the OnchainDashboard.js and OnchainTraffic.js to use our new chain-aware components and data.
+Used chain-specific colors and information in the UI components to provide visual consistency.
+These changes make the app automatically scalable whenever a new chain is added. To add support for a new blockchain, you just need to:
+Add a new entry to the chains object in chainRegistry.js with the necessary configuration.
+Create a new chain implementation file (e.g., solanaChain.js) in the utils/chains directory.
+No changes to the UI components or screens are needed, as they now dynamically use the chain information from the registry.
 ```
 
 **Important**: Never commit your `.env` file to version control. Make sure to add it to `.gitignore`.

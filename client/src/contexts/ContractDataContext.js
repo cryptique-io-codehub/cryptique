@@ -1,11 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../axiosInstance';
-import { fetchBnbTransactions } from '../utils/chains/bnbChain';
-import { fetchBaseTransactions } from '../utils/chains/baseChain';
-import { fetchEthereumTransactions } from '../utils/chains/ethereumChain';
-import { fetchPolygonTransactions } from '../utils/chains/polygonChain';
-import { fetchArbitrumTransactions } from '../utils/chains/arbitrumChain';
-import { fetchOptimismTransactions } from '../utils/chains/optimismChain';
+import { getChainConfig, isChainSupported, getDefaultTokenType } from '../utils/chainRegistry';
 
 // Create the context
 const ContractDataContext = createContext();
@@ -165,131 +160,43 @@ export const ContractDataProvider = ({ children }) => {
       // Fetch only new transactions from blockchain API
       let newTransactions = [];
       
-      // Use the appropriate chain-specific module based on blockchain
-      switch (contract.blockchain) {
-        case 'BNB Chain':
-          setLoadingStatus(`Fetching new transactions from BscScan...`);
-          console.log('Fetching new transactions from BscScan');
-          const bnbResult = await fetchBnbTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (bnbResult.transactions?.length > 0) {
-            console.log(`Retrieved ${bnbResult.transactions.length} new transactions from BscScan`);
-            // Update token symbol in transactions
-            newTransactions = bnbResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('BEP20', contract.tokenSymbol || 'BEP20')
-            }));
-          } else {
-            console.log('No new transactions found');
-          }
-          break;
-          
-        case 'Base':
-          console.log('Using Base Chain module for new transactions');
-          const baseResult = await fetchBaseTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (baseResult.transactions?.length > 0) {
-            // Update token symbol in transactions
-            newTransactions = baseResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ETH', contract.tokenSymbol || 'ETH')
-            }));
-            console.log(`Retrieved ${newTransactions.length} new transactions from Base API`);
-          } else {
-            console.log('No new transactions found or error:', baseResult.metadata?.message);
-          }
-          break;
-          
-        case 'Ethereum':
-          console.log('Fetching new transactions from Etherscan');
-          const ethResult = await fetchEthereumTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (ethResult.transactions?.length > 0) {
-            console.log(`Retrieved ${ethResult.transactions.length} new transactions from Etherscan`);
-            // Update token symbol in transactions
-            newTransactions = ethResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ERC20', contract.tokenSymbol || 'ERC20')
-            }));
-          } else {
-            console.log('No new transactions found or error:', ethResult.metadata?.message);
-          }
-          break;
-          
-        case 'Polygon':
-          console.log('Fetching new transactions from Polygonscan');
-          const polygonResult = await fetchPolygonTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (polygonResult.transactions?.length > 0) {
-            console.log(`Retrieved ${polygonResult.transactions.length} new transactions from Polygonscan`);
-            // Update token symbol in transactions
-            newTransactions = polygonResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('MATIC', contract.tokenSymbol || 'MATIC')
-            }));
-          } else {
-            console.log('No new transactions found or error:', polygonResult.metadata?.message);
-          }
-          break;
-          
-        case 'Arbitrum':
-          console.log('Fetching new transactions from Arbiscan');
-          const arbitrumResult = await fetchArbitrumTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (arbitrumResult.transactions?.length > 0) {
-            console.log(`Retrieved ${arbitrumResult.transactions.length} new transactions from Arbiscan`);
-            // Update token symbol in transactions
-            newTransactions = arbitrumResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('ARB', contract.tokenSymbol || 'ARB')
-            }));
-          } else {
-            console.log('No new transactions found or error:', arbitrumResult.metadata?.message);
-          }
-          break;
-          
-        case 'Optimism':
-          console.log('Fetching new transactions from Optimistic Etherscan');
-          const optimismResult = await fetchOptimismTransactions(contract.address, {
-            limit: 100000,
-            startBlock: startBlock
-          });
-          
-          if (optimismResult.transactions?.length > 0) {
-            console.log(`Retrieved ${optimismResult.transactions.length} new transactions from Optimistic Etherscan`);
-            // Update token symbol in transactions
-            newTransactions = optimismResult.transactions.map(tx => ({
-              ...tx,
-              token_symbol: contract.tokenSymbol || tx.token_symbol,
-              value_eth: tx.value_eth.replace('OP', contract.tokenSymbol || 'OP')
-            }));
-          } else {
-            console.log('No new transactions found or error:', optimismResult.metadata?.message);
-          }
-          break;
-          
-        default:
-          console.log(`${contract.blockchain} chain not fully implemented yet for transaction fetching`);
+      // Use the chain registry to determine which blockchain API to use
+      if (!isChainSupported(contract.blockchain)) {
+        console.log(`Chain ${contract.blockchain} is not supported yet.`);
+        setLoadingStatus(`Chain ${contract.blockchain} is not supported yet.`);
+        setUpdatingTransactions(false);
+        return;
+      }
+      
+      const chainConfig = getChainConfig(contract.blockchain);
+      
+      if (!chainConfig || !chainConfig.fetchTransactions) {
+        console.log(`No transaction fetcher available for ${contract.blockchain}.`);
+        setLoadingStatus(`No transaction fetcher available for ${contract.blockchain}.`);
+        setUpdatingTransactions(false);
+        return;
+      }
+      
+      setLoadingStatus(`Fetching new transactions from ${chainConfig.name} (${chainConfig.blockExplorerUrl})...`);
+      console.log(`Using ${chainConfig.name} API to fetch new transactions`);
+      
+      const chainResult = await chainConfig.fetchTransactions(contract.address, {
+        limit: 100000,
+        startBlock: startBlock
+      });
+      
+      if (chainResult.transactions?.length > 0) {
+        console.log(`Retrieved ${chainResult.transactions.length} new transactions from ${chainConfig.name} API`);
+        
+        // Update token symbol in transactions
+        const defaultTokenType = getDefaultTokenType(contract.blockchain);
+        newTransactions = chainResult.transactions.map(tx => ({
+          ...tx,
+          token_symbol: contract.tokenSymbol || tx.token_symbol,
+          value_eth: tx.value_eth.replace(defaultTokenType, contract.tokenSymbol || defaultTokenType)
+        }));
+      } else {
+        console.log('No new transactions found or error:', chainResult.metadata?.message);
       }
       
       let totalSaved = 0;
@@ -540,6 +447,10 @@ export const ContractDataProvider = ({ children }) => {
         color: "#eab308" 
       }
     ];
+
+    // Get chain configuration if available
+    const chainConfig = getChainConfig(selectedContract.blockchain);
+    const chainColor = chainConfig?.color || '#627EEA'; // Default to Ethereum blue if not found
     
     // Create processed data object with metrics extracted from transactions
     const processedData = {
@@ -548,7 +459,9 @@ export const ContractDataProvider = ({ children }) => {
         name: selectedContract.name,
         blockchain: selectedContract.blockchain,
         tokenSymbol: selectedContract.tokenSymbol || 'Unknown',
-        totalTransactions: contractTransactions.length
+        totalTransactions: contractTransactions.length,
+        chainColor: chainColor,
+        blockExplorerUrl: chainConfig?.blockExplorerUrl
       },
       summary: {
         uniqueUsers: uniqueWallets.size,
