@@ -254,31 +254,49 @@ export const ContractDataProvider = ({ children }) => {
           
           console.log(`Saved ${totalSaved} new transactions to API in batches`);
           
-          // If we saved any new transactions, fetch all transactions again
+          // If we saved any new transactions, update our local data instead of re-fetching everything
           if (totalSaved > 0) {
-            setLoadingStatus(`Added ${totalSaved} new transactions. Refreshing data...`);
+            setLoadingStatus(`Added ${totalSaved} new transactions. Updating local data...`);
             
-            // Fetch all transactions again to include the new ones
-            const updatedTransactionsResponse = await axiosInstance.get(`/transactions/contract/${contract.id}`, {
-              params: { 
-                limit: 100000,
-                page: 1
+            // FIXED: Instead of re-fetching all transactions (which might hit the pagination limit),
+            // let's directly append the new transactions to our existing ones
+            try {
+              // Fetch only the new transactions we just saved
+              const newSavedTransactionsResponse = await axiosInstance.get(`/transactions/contract/${contract.id}`, {
+                params: { 
+                  limit: totalSaved * 2, // Fetch a bit more to be safe
+                  page: 1,
+                  sort: '-block_number' // Sort by newest first
+                }
+              });
+              
+              if (newSavedTransactionsResponse.data && newSavedTransactionsResponse.data.transactions) {
+                const newSavedTransactions = newSavedTransactionsResponse.data.transactions;
+                
+                // Get transaction hashes from existing transactions for deduplication
+                const existingTxHashes = new Set(existingTransactions.map(tx => tx.tx_hash));
+                
+                // Filter out any transactions that might already be in our existing set
+                const uniqueNewTransactions = newSavedTransactions.filter(tx => !existingTxHashes.has(tx.tx_hash));
+                
+                // Combine with existing, making sure to add at the beginning since they're newer
+                const updatedTransactions = [...uniqueNewTransactions, ...existingTransactions];
+                
+                setContractTransactions(updatedTransactions);
+                console.log(`Updated transaction list, now showing ${updatedTransactions.length} transactions`);
+                
+                // Print transaction count information
+                console.log('======== TRANSACTION COUNT SUMMARY ========');
+                console.log(`Before update: ${existingTransactions.length} transactions`);
+                console.log(`New transactions saved: ${totalSaved}`);
+                console.log(`Unique new transactions added: ${uniqueNewTransactions.length}`);
+                console.log(`After update: ${updatedTransactions.length} transactions`);
+                console.log(`Net increase: ${updatedTransactions.length - existingTransactions.length} transactions`);
+                console.log('==========================================');
               }
-            });
-            
-            if (updatedTransactionsResponse.data && updatedTransactionsResponse.data.transactions) {
-              const updatedTransactions = updatedTransactionsResponse.data.transactions;
-              
-              setContractTransactions(updatedTransactions);
-              console.log(`Refreshed transaction list, now showing ${updatedTransactions.length} transactions`);
-              
-              // Print transaction count information
-              console.log('======== TRANSACTION COUNT SUMMARY ========');
-              console.log(`Before update: ${existingTransactions.length} transactions`);
-              console.log(`New transactions saved: ${totalSaved}`);
-              console.log(`After update: ${updatedTransactions.length} transactions`);
-              console.log(`Net increase: ${updatedTransactions.length - existingTransactions.length} transactions`);
-              console.log('==========================================');
+            } catch (error) {
+              console.error("Error fetching newly saved transactions:", error);
+              setLoadingStatus(`Error updating local data: ${error.message}`);
             }
           } else {
             setLoadingStatus('No new transactions found');
