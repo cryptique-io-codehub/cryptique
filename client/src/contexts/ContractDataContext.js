@@ -364,6 +364,14 @@ export const ContractDataProvider = ({ children }) => {
     sixMonthsAgo.setMonth(now.getMonth() - 6);
     const twoYearsAgo = new Date();
     twoYearsAgo.setFullYear(now.getFullYear() - 2);
+
+    // Get dates for previous periods (for percentage calculations)
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(now.getDate() - 14);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(now.getDate() - 60);
+    const twoYearsAgo2 = new Date();
+    twoYearsAgo2.setFullYear(now.getFullYear() - 2);
     
     // Get unique wallet addresses (from_address represents the wallet)
     const uniqueWallets = new Set(contractTransactions.map(tx => tx.from_address));
@@ -380,7 +388,7 @@ export const ContractDataProvider = ({ children }) => {
         .map(tx => tx.from_address)
     );
     
-    // Filter transactions for the last 7 and 30 days
+    // Filter transactions for different time periods
     const transactionsLast7Days = contractTransactions.filter(tx => {
       const txDate = new Date(tx.block_time);
       return txDate >= sevenDaysAgo && txDate <= now;
@@ -391,10 +399,25 @@ export const ContractDataProvider = ({ children }) => {
       return txDate >= thirtyDaysAgo && txDate <= now;
     });
     
-    // Filter transactions for the last year
     const transactionsLastYear = contractTransactions.filter(tx => {
       const txDate = new Date(tx.block_time);
       return txDate >= oneYearAgo && txDate <= now;
+    });
+
+    // Filter transactions for previous periods (for calculating percentage changes)
+    const transactionsPrevious7Days = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= fourteenDaysAgo && txDate < sevenDaysAgo;
+    });
+    
+    const transactionsPrevious30Days = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= sixtyDaysAgo && txDate < thirtyDaysAgo;
+    });
+    
+    const transactionsPreviousYear = contractTransactions.filter(tx => {
+      const txDate = new Date(tx.block_time);
+      return txDate >= twoYearsAgo2 && txDate < oneYearAgo;
     });
     
     // Calculate transaction volume for recent periods
@@ -413,11 +436,40 @@ export const ContractDataProvider = ({ children }) => {
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
+    // Calculate transaction volume for previous periods
+    const volumePrevious7Days = transactionsPrevious7Days.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    const volumePrevious30Days = transactionsPrevious30Days.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
+    const volumePreviousYear = transactionsPreviousYear.reduce((sum, tx) => {
+      const value = parseFloat(tx.value_eth) || 0;
+      return isNaN(value) ? sum : sum + value;
+    }, 0);
+    
     // Calculate lifetime volume (all transactions)
     const volumeLifetime = contractTransactions.reduce((sum, tx) => {
       const value = parseFloat(tx.value_eth) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
+    
+    // Calculate percentage changes
+    const percentChange7Days = volumePrevious7Days > 0 
+      ? ((volumeLast7Days - volumePrevious7Days) / volumePrevious7Days) * 100 
+      : 0;
+    
+    const percentChange30Days = volumePrevious30Days > 0 
+      ? ((volumeLast30Days - volumePrevious30Days) / volumePrevious30Days) * 100 
+      : 0;
+    
+    const percentChangeYear = volumePreviousYear > 0 
+      ? ((volumeLastYear - volumePreviousYear) / volumePreviousYear) * 100 
+      : 0;
     
     // Process wallet age distribution
     // First get the first transaction date for each wallet
@@ -525,7 +577,10 @@ export const ContractDataProvider = ({ children }) => {
         last7Days: volumeLast7Days.toFixed(2),
         last30Days: volumeLast30Days.toFixed(2),
         lastYear: volumeLastYear.toFixed(2),
-        lifetime: volumeLifetime.toFixed(2)
+        lifetime: volumeLifetime.toFixed(2),
+        percentChange7Days: percentChange7Days.toFixed(1),
+        percentChange30Days: percentChange30Days.toFixed(1),
+        percentChangeYear: percentChangeYear.toFixed(1)
       },
       walletAgeData: walletAgeData,
       medianWalletStats: {

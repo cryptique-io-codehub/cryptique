@@ -275,43 +275,91 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 mb-1">Last 7 Days</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData ? "15.5" : contractData?.recentVolume?.last7Days || "0"}
+                  {showDemoData 
+                    ? "15,500.00" 
+                    : parseFloat(contractData?.recentVolume?.last7Days || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                  }
                 </h3>
-                <div className="flex items-center text-green-500 text-xs">
-                  <ArrowUp size={12} />
-                  <span>24.3%</span>
-                </div>
+                {!showDemoData && contractData?.recentVolume?.percentChange7Days && (
+                  <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChange7Days) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {parseFloat(contractData.recentVolume.percentChange7Days) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                    <span>{Math.abs(parseFloat(contractData.recentVolume.percentChange7Days)).toFixed(1)}%</span>
+                  </div>
+                )}
+                {showDemoData && (
+                  <div className="flex items-center text-green-500 text-xs">
+                    <ArrowUp size={12} />
+                    <span>24.3%</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData ? "75.8" : contractData?.recentVolume?.last30Days || "0"}
+                  {showDemoData 
+                    ? "75,800.00" 
+                    : parseFloat(contractData?.recentVolume?.last30Days || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                  }
                 </h3>
-                <div className="flex items-center text-green-500 text-xs">
-                  <ArrowUp size={12} />
-                  <span>18.7%</span>
-                </div>
+                {!showDemoData && contractData?.recentVolume?.percentChange30Days && (
+                  <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChange30Days) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {parseFloat(contractData.recentVolume.percentChange30Days) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                    <span>{Math.abs(parseFloat(contractData.recentVolume.percentChange30Days)).toFixed(1)}%</span>
+                  </div>
+                )}
+                {showDemoData && (
+                  <div className="flex items-center text-green-500 text-xs">
+                    <ArrowUp size={12} />
+                    <span>18.7%</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Last Year</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData ? "420.5" : contractData?.recentVolume?.lastYear || "0"}
+                  {showDemoData 
+                    ? "420,500.00" 
+                    : parseFloat(contractData?.recentVolume?.lastYear || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                  }
                 </h3>
-                <div className="flex items-center text-green-500 text-xs">
-                  <ArrowUp size={12} />
-                  <span>32.1%</span>
-                </div>
+                {!showDemoData && contractData?.recentVolume?.percentChangeYear && (
+                  <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChangeYear) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {parseFloat(contractData.recentVolume.percentChangeYear) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
+                    <span>{Math.abs(parseFloat(contractData.recentVolume.percentChangeYear)).toFixed(1)}%</span>
+                  </div>
+                )}
+                {showDemoData && (
+                  <div className="flex items-center text-green-500 text-xs">
+                    <ArrowUp size={12} />
+                    <span>32.1%</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Lifetime</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData ? "1,250.2" : contractData?.recentVolume?.lifetime || "0"}
+                  {showDemoData 
+                    ? "1,250,200.00" 
+                    : parseFloat(contractData?.recentVolume?.lifetime || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                  }
                 </h3>
               </div>
             </div>
