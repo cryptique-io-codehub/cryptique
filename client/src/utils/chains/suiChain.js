@@ -13,7 +13,6 @@ import {
 
 // SUI API endpoints - using public endpoints since SUI doesn't require API keys
 const SUI_API_URL = 'https://fullnode.mainnet.sui.io';
-const SUI_REST_API = `${SUI_API_URL}/rest`;
 
 // Max results per page
 const MAX_RESULTS = 100;
@@ -82,7 +81,7 @@ export const validateAddress = (address) => {
  * @returns {string} - API URL
  */
 export const getApiUrl = (address) => {
-  return `${SUI_REST_API}/objects?owner=${address}`;
+  return `${SUI_API_URL}/rest`;
 };
 
 /**
@@ -150,21 +149,53 @@ const processSuiTransaction = (tx) => {
     // Default 9 decimals for SUI
     const decimals = 9;
     
+    // Extract transaction information
+    const digest = tx.digest;
+    const timestamp = tx.timestampMs ? parseInt(tx.timestampMs) : Date.now();
+    
+    // Extract sender from transaction
+    const sender = tx.transaction?.data?.sender || '';
+    
+    // Try to extract recipient from effects or transaction data
+    let recipient = '';
+    let amount = '0';
+    
+    // Check if there are effects from the transaction
+    if (tx.effects && tx.effects.events && Array.isArray(tx.effects.events)) {
+      // Look for transfer events
+      for (const event of tx.effects.events) {
+        if (event.type && event.type.includes('TransferObject')) {
+          recipient = event.recipient || '';
+          break;
+        }
+      }
+    }
+    
+    // Try to find amount from transaction data
+    if (tx.transaction && tx.transaction.data && tx.transaction.data.transactions) {
+      for (const innerTx of tx.transaction.data.transactions) {
+        if (innerTx.Pay && innerTx.Pay.amount) {
+          amount = innerTx.Pay.amount;
+          break;
+        }
+      }
+    }
+    
     // Format token amount
-    const tokenAmount = formatTokenAmount(tx.amount || '0', decimals, 'SUI');
+    const tokenAmount = formatTokenAmount(amount, decimals, 'SUI');
     
     // Create standardized transaction object
     return {
-      tx_hash: tx.digest,
-      from_address: tx.sender?.toLowerCase() || '',
-      to_address: tx.recipient?.toLowerCase() || '',
+      tx_hash: digest,
+      from_address: sender.toLowerCase(),
+      to_address: recipient.toLowerCase(),
       value_eth: tokenAmount,
-      block_number: parseInt(tx.checkpoint || '0'),
-      block_time: new Date(parseInt(tx.timestamp_ms)).toISOString(),
+      block_number: tx.checkpoint || '0',
+      block_time: new Date(timestamp).toISOString(),
       chain: "SUI",
       contract_address: '',
       token_type: "SUI",
-      token_amount: tx.amount || '0',
+      token_amount: amount,
       token_symbol: 'SUI'
     };
   } catch (error) {
@@ -172,11 +203,11 @@ const processSuiTransaction = (tx) => {
     
     // Return a fallback transaction with minimal info
     return {
-      tx_hash: tx.digest,
-      from_address: tx.sender?.toLowerCase() || '',
-      to_address: tx.recipient?.toLowerCase() || '',
+      tx_hash: tx.digest || 'unknown',
+      from_address: tx.transaction?.data?.sender?.toLowerCase() || '',
+      to_address: '',
       value_eth: "0 SUI",
-      block_number: parseInt(tx.checkpoint || '0'),
+      block_number: tx.checkpoint || '0',
       block_time: new Date().toISOString(),
       chain: "SUI"
     };
@@ -207,26 +238,20 @@ export const fetchSuiTransactions = async (address, options = {}) => {
 
     // Default options
     const limit = Math.min(options.limit || 100, 1000);
-    const startBlock = options.startBlock || 0;
-    const batchSize = 100; // SUI API typically limits to 100 results per request
-    const maxRetries = 3; // Maximum number of retries for failed requests
+    const batchSize = 50; // Smaller batch size for reliability
+    const maxRetries = 3;
     
-    console.log(`Fetching up to ${limit} latest transactions from SUI Network for address: ${address}, starting from block ${startBlock}`);
-    
-    // Calculate number of batches needed
-    const batchCount = Math.ceil(limit / batchSize);
-    console.log(`Will fetch in ${batchCount} batch(es) of ${batchSize}`);
+    console.log(`Fetching transactions for SUI address: ${address} (limit: ${limit})`);
     
     let allTransactions = [];
-    
-    // Construct API URL to fetch transactions
     let cursor = null;
     
-    // Fetch transactions in batches
+    // Calculate number of batches
+    const batchCount = Math.ceil(limit / batchSize);
+    
+    // Fetch transactions using JSON RPC method
     for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-      // If we've reached the limit, stop fetching
       if (allTransactions.length >= limit) {
-        console.log(`Reached limit of ${limit} transactions`);
         break;
       }
       
@@ -234,81 +259,75 @@ export const fetchSuiTransactions = async (address, options = {}) => {
       
       let retryCount = 0;
       let success = false;
-      let response;
+      let data;
       
       while (!success && retryCount < maxRetries) {
         try {
-          // Prepare API URL with pagination parameters
-          let apiUrl = `${SUI_REST_API}/transactions?limit=${batchSize}&filter={"FromAddress":"${address}"}`;
+          // Use the JSON RPC endpoint with queryTransactionBlocks method
+          const response = await axios.post(SUI_API_URL, {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'sui_getTransactionBlocks',
+            params: [
+              { FromAddress: address },
+              {
+                limit: batchSize,
+                descendingOrder: true,
+                cursor,
+                options: {
+                  showEffects: true,
+                  showInput: true,
+                  showEvents: true
+                }
+              }
+            ]
+          });
           
-          // Add cursor for pagination if we have one
-          if (cursor) {
-            apiUrl += `&cursor=${cursor}`;
-          }
-          
-          // Add delay for retries to prevent rate limiting
-          if (retryCount > 0) {
-            console.log(`Retry attempt ${retryCount}/${maxRetries} after delay...`);
-            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount)); // Exponential backoff
-          }
-          
-          // Fetch data - no API key needed for SUI
-          response = await axios.get(apiUrl);
-          
-          // Success
+          data = response.data;
           success = true;
         } catch (error) {
           console.error(`API request error (attempt ${retryCount + 1}/${maxRetries}):`, error.message);
           retryCount++;
           
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          continue;
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+          }
         }
       }
       
-      // If all retries failed, break the loop
       if (!success) {
-        console.log(`Batch ${batchIndex + 1} failed after ${maxRetries} retries. Using data collected so far.`);
+        console.error(`Failed to fetch batch ${batchIndex + 1} after ${maxRetries} retries`);
         break;
       }
       
-      // Check if we have data
-      const data = response.data;
-      if (!data || !data.result || !Array.isArray(data.result)) {
-        console.log('No more transactions found or invalid data format');
+      // Process response data
+      if (!data || !data.result || !data.result.data || !Array.isArray(data.result.data)) {
+        console.log('No transactions found or invalid data format');
         break;
       }
       
-      const batchTransactions = data.result;
+      const transactions = data.result.data;
       
-      // If no more transactions found, break out of the loop
-      if (batchTransactions.length === 0) {
-        console.log(`No more transactions found after batch ${batchIndex}`);
+      if (transactions.length === 0) {
+        console.log('No more transactions available');
         break;
       }
       
-      console.log(`Retrieved ${batchTransactions.length} transactions in batch ${batchIndex + 1}`);
+      console.log(`Retrieved ${transactions.length} transactions in batch ${batchIndex + 1}`);
       
-      // Save cursor for next batch if available
-      if (data.nextCursor) {
-        cursor = data.nextCursor;
+      // Update cursor for next batch if available
+      if (data.result.hasNextPage && data.result.nextCursor) {
+        cursor = data.result.nextCursor;
       } else {
-        console.log('No next cursor available, pagination complete');
+        console.log('No next page available');
         break;
       }
       
-      // Transform SUI transactions into the standard format
-      const formattedTransactions = batchTransactions.map(tx => processSuiTransaction(tx));
+      // Process transactions
+      const formattedTransactions = transactions.map(tx => processSuiTransaction(tx));
       
-      // Add transactions to our collection
+      // Add to collection
       allTransactions = [...allTransactions, ...formattedTransactions];
-      
-      // If we didn't get a full batch, we've reached the end
-      if (batchTransactions.length < batchSize) {
-        console.log(`Received less than ${batchSize} transactions, no more to fetch`);
-        break;
-      }
     }
     
     return {
