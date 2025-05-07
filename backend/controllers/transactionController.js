@@ -130,7 +130,7 @@ exports.saveTransactions = async (req, res) => {
     // Process transactions in batches
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
       try {
-      const batch = transactions.slice(i, i + BATCH_SIZE);
+        const batch = transactions.slice(i, i + BATCH_SIZE);
         console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(transactions.length/BATCH_SIZE)}: ${batch.length} transactions`);
         
         // Validate each transaction and ensure required fields
@@ -144,21 +144,24 @@ exports.saveTransactions = async (req, res) => {
           continue;
         }
       
-      // Create operations for this batch
+        // Create operations for this batch
         const operations = validTransactions.map(tx => ({
-        updateOne: {
-          filter: { tx_hash: tx.tx_hash },
-          update: { 
-            $setOnInsert: {
-              ...tx,
-              contract: contract._id,
-                contractId: contractId, // Ensure contractId is set correctly
-              createdAt: new Date()
-            }
-          },
-          upsert: true
-        }
-      }));
+          updateOne: {
+            filter: { 
+              contractId: contractId,
+              tx_hash: tx.tx_hash 
+            },
+            update: { 
+              $setOnInsert: {
+                ...tx,
+                contract: contract._id,
+                contractId: contractId,
+                createdAt: new Date()
+              }
+            },
+            upsert: true
+          }
+        }));
       
         // Log a sample operation for debugging
         if (operations.length > 0) {
@@ -168,8 +171,8 @@ exports.saveTransactions = async (req, res) => {
         const batchResult = await Transaction.bulkWrite(operations, { ordered: false });
         console.log(`Batch result: upserted=${batchResult.upsertedCount}, modified=${batchResult.modifiedCount}`);
         
-      totalInserted += batchResult.upsertedCount;
-      totalModified += batchResult.modifiedCount;
+        totalInserted += batchResult.upsertedCount;
+        totalModified += batchResult.modifiedCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);

@@ -14,8 +14,7 @@ const transactionSchema = new mongoose.Schema({
   },
   tx_hash: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   block_number: {
     type: Number,
@@ -51,6 +50,9 @@ const transactionSchema = new mongoose.Schema({
 // Compound index for efficient queries
 transactionSchema.index({ contractId: 1, block_number: -1 });
 transactionSchema.index({ contractId: 1, block_time: -1 });
+
+// Make tx_hash unique per contract instead of globally unique
+transactionSchema.index({ contractId: 1, tx_hash: 1 }, { unique: true });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
