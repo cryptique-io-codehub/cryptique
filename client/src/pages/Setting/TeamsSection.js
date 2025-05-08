@@ -162,7 +162,7 @@ const TeamsSection = () => {
             console.log("Fetching teams for user:", { email: userEmail, id: userId });
             
             // Fetch teams from API
-                const response = await axiosInstance.get('/team/details');
+            const response = await axiosInstance.get('/team/details');
             console.log("Team details raw response:", response.data);
             
             if (response.data && response.data.team) {
@@ -200,6 +200,21 @@ const TeamsSection = () => {
                             if (firstMember.role !== 'admin') {
                                 // This is just for display purposes - the actual DB update will happen separately
                                 team.user[0].role = 'admin';
+                            }
+                        } else {
+                            // For non-owners, get their role from the members list
+                            const currentUserMember = team.user.find(member => 
+                                (member.userId === userId) || 
+                                (member.userId && member.userId._id === userId) || 
+                                (member.email === userEmail)
+                            );
+                            
+                            if (currentUserMember) {
+                                // Normalize roles to either 'admin' or 'user'
+                                processedTeam.role = currentUserMember.role === 'admin' ? 'admin' : 'user';
+                            } else {
+                                // Default to user role if we can't find the user in the member list
+                                processedTeam.role = 'user';
                             }
                         }
                     }
@@ -647,8 +662,19 @@ const TeamsSection = () => {
             
             console.log("Opening members modal for team:", teamToManage.name);
             
-            // Fetch team members
-            const response = await axiosInstance.post('/team/members', { teams: teamToManage.name });
+            await fetchTeamMembers(teamToManage);
+        } catch (err) {
+            console.error("Error fetching team members:", err);
+            setError("Failed to load team members. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    // Separate function to fetch team members so it can be reused
+    const fetchTeamMembers = async (team) => {
+        try {
+            const response = await axiosInstance.post('/team/members', { teams: team.name });
             console.log("Team members response:", response.data);
             
             // Normalize roles to ensure we only have 'admin' or 'user'
@@ -670,13 +696,12 @@ const TeamsSection = () => {
             
             console.log("Normalized members:", normalizedMembers);
             setTeamMembers(normalizedMembers || []);
-            
             setIsMembersModalOpen(true);
+            
+            return normalizedMembers;
         } catch (err) {
             console.error("Error fetching team members:", err);
-            setError("Failed to load team members. Please try again.");
-        } finally {
-            setIsLoading(false);
+            throw err;
         }
     };
 
@@ -868,6 +893,16 @@ const TeamsSection = () => {
             // Show success message
             const roleDisplay = newRole === 'admin' ? 'Admin' : 'User';
             alert(`Successfully updated ${memberEmail}'s role to ${roleDisplay}`);
+            
+            // Refresh the teams list to update role displays in the main table
+            // This ensures the role shown in the teams table is updated if the current user's role changed
+            if (memberEmail === currentUserEmail) {
+                console.log("Current user's role changed, refreshing teams list");
+                fetchTeams();
+            }
+            
+            // Refresh the member list to ensure we have the latest data
+            await fetchTeamMembers(selectedTeam);
         } catch (err) {
             console.error("Error updating member role:", err);
             console.error("Error details:", {
@@ -984,10 +1019,7 @@ const TeamsSection = () => {
     };
 
     return (
-        <div className="max-w-5xl relative">
-            <h1 className="text-2xl font-bold mb-1">Manage your teams</h1>
-            <p className="text-sm text-gray-500 mb-8">Create teams, add members, and manage team settings</p>
-            
+        <div className="max-w-5xl relative">           
             <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-medium">Your teams</h2>
@@ -1046,7 +1078,9 @@ const TeamsSection = () => {
                                             </button>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            <span className={`capitalize ${isOwner ? 'font-bold text-green-700' : ''}`}>
+                                            <span className={`capitalize ${isOwner ? 'font-bold text-green-700' : ''} ${
+                                                team.role === 'admin' ? 'text-blue-700' : 'text-gray-600'
+                                            }`}>
                                                 {team.role === 'admin' ? 'Admin' : 'User'}
                                             </span>
                                             {team.role === 'admin' && (
