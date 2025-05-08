@@ -297,24 +297,11 @@ const Settings = ({ onMenuClick }) => {
                   {/* Team Name Section */}
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold mb-4">Team Information</h2>
-                    <form onSubmit={handleUpdateTeamName}>
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
-                        <input 
-                          type="text" 
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                          value={teamDetails.name}
-                          onChange={(e) => setTeamDetails({...teamDetails, name: e.target.value})}
-                          placeholder="Enter team name"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">This is the name of your team that will be displayed to your team members.</p>
-                      </div>
-                      <div className="mt-2">
-                        <button type="submit" className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">
-                          Save Name
-                        </button>
-                      </div>
-                    </form>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
+                      <p className="text-sm bg-gray-50 p-3 rounded-md">{teamDetails.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">This is your current team name.</p>
+                    </div>
                   </div>
                   
                   {/* Company Description Section */}
@@ -369,7 +356,7 @@ const Settings = ({ onMenuClick }) => {
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Primary Email Address</label>
                       <p className="text-sm bg-gray-50 p-3 rounded-md">{teamDetails.email || "No email address set"}</p>
-                      <p className="text-xs text-gray-500 mt-1">This is the email address of the team creator and will be used for important notifications.</p>
+                      <p className="text-xs text-gray-500 mt-1">This is the email address used to create your account.</p>
                     </div>
                   </div>
                 </div>
