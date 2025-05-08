@@ -89,9 +89,20 @@ const Dashboard = () => {
     if (newPage !== selectedPage) {
       // Preload data when navigating to pages that need dropdowns
       const pagesWithDropdowns = ['offchain-analytics', 'onchain-explorer', 'campaigns', 'conversion-events', 'cq-intelligence'];
+      
       if (pagesWithDropdowns.includes(newPage)) {
-        preloadData()
-          .catch(err => console.error("Error preloading data for new tab:", err));
+        const forceRefresh = newPage === 'onchain-explorer';
+        
+        console.log(`Preloading data for ${newPage}${forceRefresh ? ' with forced refresh' : ''}`);
+        
+        preloadData(forceRefresh)
+          .then(() => {
+            // Clear any existing session data for this page type if we're doing a force refresh
+            if (forceRefresh) {
+              console.log("Forced refresh completed for contracts");
+            }
+          })
+          .catch(err => console.error(`Error preloading data for ${newPage}:`, err));
       }
       
       setSelectedPage(newPage);

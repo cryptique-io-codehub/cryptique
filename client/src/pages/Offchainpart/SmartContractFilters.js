@@ -111,6 +111,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   useEffect(() => {
     if (contextContractArray?.length > 0) {
       setcontractarray(contextContractArray);
+    } else {
+      // If the context doesn't have contracts yet, try to get them from sessionStorage
+      const preloadedContracts = sessionStorage.getItem("preloadedContracts");
+      if (preloadedContracts) {
+        try {
+          const parsedContracts = JSON.parse(preloadedContracts);
+          if (parsedContracts.length > 0) {
+            setcontractarray(parsedContracts);
+            console.log("Using preloaded contracts from sessionStorage");
+          }
+        } catch (err) {
+          console.error("Error parsing preloaded contracts:", err);
+        }
+      }
     }
   }, [contextContractArray, setcontractarray]);
 

@@ -6,6 +6,8 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
+import preloadData from "../../utils/preloadService";
+import { useContractData } from "../../contexts/ContractDataContext";
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -20,7 +22,30 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
+    const { contractArray } = useContractData();
 
+    // Ensure contract data is loaded when this component mounts
+    useEffect(() => {
+      const loadContractData = async () => {
+        setIsLoading(true);
+        try {
+          // Force refresh of contract data
+          await preloadData();
+          
+          // If we have contracts from context, use them
+          if (contractArray && contractArray.length > 0) {
+            setcontractarray(contractArray);
+          }
+        } catch (error) {
+          console.error("Error loading contract data:", error);
+          setError("Failed to load smart contract data. Please refresh the page.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadContractData();
+    }, [contractArray]);
 
     const navItems = [
       { section: 'On-chain analytics', type: 'header' },
