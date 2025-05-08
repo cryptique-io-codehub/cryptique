@@ -12,8 +12,7 @@ const TeamsSection = () => {
     const [teamName, setTeamName] = useState('');
     const [teamDescription, setTeamDescription] = useState('');
     const [error, setError] = useState('');
-    const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
-    const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
+    const [selectedTeam, setSelectedTeam] = useState(null);
     const [teamToEdit, setTeamToEdit] = useState(null);
     const [teamToDelete, setTeamToDelete] = useState(null);
     const [teamMembers, setTeamMembers] = useState([]);
@@ -228,39 +227,44 @@ const TeamsSection = () => {
                 console.log("Processed teams with ownership:", processedTeams);
                 setTeams(processedTeams);
                 
-                // Update selected team if needed
-                if (processedTeams.length > 0) {
-                    if (!selectedTeam || !selectedTeam.name) {
+                // Get the currently selected team name from localStorage (set by the header dropdown)
+                const selectedTeamName = localStorage.getItem('selectedTeam');
+                
+                if (selectedTeamName && processedTeams.length > 0) {
+                    // Find the team object that matches the name in localStorage
+                    const matchingTeam = processedTeams.find(team => team.name === selectedTeamName);
+                    
+                    if (matchingTeam) {
+                        // If we found a matching team, set it as the selected team
+                        setSelectedTeam(matchingTeam);
+                    } else {
+                        // If no match found (team was deleted or renamed), use the first team
                         setSelectedTeam(processedTeams[0]);
                         localStorage.setItem('selectedTeam', processedTeams[0].name);
-                    } else {
-                        // Find and update the selected team if it exists
-                        const updatedSelectedTeam = processedTeams.find(t => 
-                            t.name === selectedTeam.name || t._id === selectedTeam._id
-                        );
-                        
-                        if (updatedSelectedTeam) {
-                            setSelectedTeam(updatedSelectedTeam);
-                        } else if (isTeamDeleted(selectedTeam._id, selectedTeam.name)) {
-                            // If selected team was deleted, select first available team
-                            setSelectedTeam(processedTeams[0]);
-                            localStorage.setItem('selectedTeam', processedTeams[0].name);
-                        }
                     }
+                } else if (processedTeams.length > 0) {
+                    // If no team was selected or localStorage is empty, default to first team
+                    setSelectedTeam(processedTeams[0]);
+                    localStorage.setItem('selectedTeam', processedTeams[0].name);
+                } else {
+                    // No teams available
+                    setSelectedTeam(null);
                 }
             } else {
                 console.error("Invalid team data format:", response.data);
                 setTeams([]);
+                setSelectedTeam(null);
             }
         } catch (error) {
             console.error("Error fetching teams:", error);
             setError("Failed to load teams. Please try again.");
             setTeams([]);
+            setSelectedTeam(null);
         } finally {
             setIsLoading(false);
         }
     };
-    
+
     // Initial fetch on component mount and setup refresh listeners
     useEffect(() => {
         // Fetch teams on first load
@@ -309,6 +313,27 @@ const TeamsSection = () => {
             }
         }
     }, [selectedTeam]);
+    
+    // Add a new effect to update the local selectedTeam when it changes in localStorage
+    useEffect(() => {
+        // Listen for changes to the selectedTeam in localStorage (from header dropdown)
+        const handleStorageChange = (e) => {
+            if (e.key === 'selectedTeam') {
+                const teamName = e.newValue;
+                // Find matching team in our teams list
+                const matchingTeam = teams.find(team => team.name === teamName);
+                if (matchingTeam) {
+                    setSelectedTeam(matchingTeam);
+                }
+            }
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
+    }, [teams]);
 
     // Function to filter teams owned by the current user
     const getOwnedTeams = () => {
@@ -342,7 +367,7 @@ const TeamsSection = () => {
             });
             
             // Use the CORRECT endpoint for team creation with description
-            const response = await axiosInstance.post('/team/createNewTeam', 
+            const response = await axiosInstance.post('/team/createNewTeam',
                 { 
                     teamName: teamName.trim(),
                     email: userEmail,
@@ -542,7 +567,7 @@ const TeamsSection = () => {
             setTeams(updatedTeams);
             
             // If the deleted team is the selected team, select another team
-            if (selectedTeam._id === teamToDelete._id && updatedTeams.length > 0) {
+            if (selectedTeam && selectedTeam._id === teamToDelete._id && updatedTeams.length > 0) {
                 setSelectedTeam(updatedTeams[0]);
                 localStorage.setItem('selectedTeam', updatedTeams[0].name);
             } else if (updatedTeams.length === 0) {
@@ -677,7 +702,10 @@ const TeamsSection = () => {
     };
 
     const removeMember = async (memberEmail) => {
-        if (!memberEmail || !selectedTeam) return;
+        if (!memberEmail || !selectedTeam || !selectedTeam.name) {
+            setError("No team selected");
+            return;
+        }
         
         // Confirmation before removing
         if (!window.confirm(`Remove ${memberEmail} from team ${selectedTeam.name}?`)) {
@@ -709,16 +737,6 @@ const TeamsSection = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const toggleTeamDropdown = () => {
-        setIsTeamDropdownOpen(!isTeamDropdownOpen);
-    };
-
-    const selectTeam = (team) => {
-        setSelectedTeam(team);
-        localStorage.setItem('selectedTeam', team.name);
-        setIsTeamDropdownOpen(false);
     };
 
     // Function to filter and show only teams in the table
@@ -772,32 +790,23 @@ const TeamsSection = () => {
     return (
         <div className="max-w-5xl relative">
             <h1 className="text-2xl font-bold mb-1">Manage your teams</h1>
-            <p className="text-sm text-gray-500 mb-8">Create teams, add members, and manage team settings</p>
-
-            {/* Team Selector Dropdown */}
-            <div className="relative mb-6">
-                <button 
-                    onClick={toggleTeamDropdown}
-                    className="w-full flex justify-between items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm"
-                >
-                    <span className="truncate">{selectedTeam ? selectedTeam.name : 'Select a Team'}</span>
-                    <ChevronDown size={18} />
-                </button>
-                
-                {isTeamDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {teams.map((team, index) => (
-                            <div 
-                                key={index} 
-                                onClick={() => selectTeam(team)}
-                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-ellipsis whitespace-nowrap"
-                            >
-                                {team.name}
-                            </div>
-                        ))}
+            <p className="text-sm text-gray-500 mb-2">Create teams, add members, and manage team settings</p>
+            
+            {/* Display current team */}
+            {selectedTeam && (
+                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-md px-4 py-2 flex items-center">
+                    <span className="text-blue-600 mr-2">
+                        <Users size={16} />
+                    </span>
+                    <div>
+                        <p className="text-sm text-gray-600">Currently managing teams for:</p>
+                        <p className="font-medium">{selectedTeam.name}</p>
                     </div>
-                )}
-            </div>
+                    <p className="ml-auto text-xs text-gray-500">
+                        Use the team selector in the header to change teams
+                    </p>
+                </div>
+            )}
 
             <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
