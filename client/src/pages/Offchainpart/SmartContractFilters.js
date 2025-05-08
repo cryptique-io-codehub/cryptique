@@ -240,12 +240,37 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const handleDropdownToggle = () => {
     // If we're opening the dropdown, refresh contract data
     if (!showDropdown) {
-      console.log("Smart contract dropdown opened, refreshing data");
+      console.log("Smart contract dropdown opened, checking cache first");
       
-      // Force a refresh of contract data
+      // Check if we have cached data and it's recent
+      const cachedContracts = sessionStorage.getItem("preloadedContracts");
+      if (cachedContracts) {
+        try {
+          const contracts = JSON.parse(cachedContracts);
+          setcontractarray(contracts);
+          console.log(`Using cached contracts, loaded ${contracts.length} contracts`);
+          setShowDropdown(true);
+          return;
+        } catch (error) {
+          console.error("Error parsing cached contracts:", error);
+          // Continue with API call if cache parsing fails
+        }
+      }
+      
+      // Only fetch if no cached data available or parsing failed
       const selectedTeam = localStorage.getItem("selectedTeam");
       if (selectedTeam) {
         try {
+          // Use throttling - check if we've refreshed recently (within 10 seconds)
+          const now = Date.now();
+          const lastRefreshTime = parseInt(sessionStorage.getItem("lastContractRefreshTime") || "0");
+          
+          if (now - lastRefreshTime < 10000) {
+            console.log("Contract refresh throttled - using existing data");
+            setShowDropdown(true);
+            return;
+          }
+          
           // Trigger a refresh of contract data in the context
           if (typeof refreshContracts === 'function') {
             refreshContracts();
@@ -253,6 +278,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             // Fallback if context function not available
             forceLoadContractData();
           }
+          
+          // Update last refresh time
+          sessionStorage.setItem("lastContractRefreshTime", now.toString());
         } catch (error) {
           console.error("Error refreshing contract data:", error);
         }

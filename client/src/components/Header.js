@@ -8,10 +8,13 @@ import preloadData from "../utils/preloadService";
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
-  const [curTeams, setCurTeams] = useState([]); 
+  const [curTeams, setCurTeams] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
   const dropdownRef = useRef(null);
+  const teamsRequestRef = useRef(null);
+  const lastFetchTimeRef = useRef(0);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -27,28 +30,79 @@ const TeamSelector = () => {
     };
   }, []);
 
+  // Fetch teams only once when component mounts
   useEffect(() => {
     const fetchTeams = async () => {
+      // If we're already loading or fetched recently (within 30 seconds), skip
+      const now = Date.now();
+      if (isLoadingTeams || (now - lastFetchTimeRef.current < 30000)) {
+        return;
+      }
+      
       try {
+        setIsLoadingTeams(true);
+        lastFetchTimeRef.current = now;
+        
         const token = localStorage.getItem("token");
-        const response = await axiosInstance.get('/team/details',{
+        const response = await axiosInstance.get('/team/details', {
           headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type':'application/json'
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
-        // console.log('a');
-        // console.log(response);
-        // console.log('b');
+        
         const teams = response.data.team;
         setCurTeams(teams);
       } catch (error) {
         console.error("Error fetching teams:", error);
+      } finally {
+        setIsLoadingTeams(false);
       }
     };
 
+    // Initial fetch when component mounts
     fetchTeams();
-  }, [selectedTeam]);
+    
+    // Clean up any pending requests when component unmounts
+    return () => {
+      if (teamsRequestRef.current) {
+        clearTimeout(teamsRequestRef.current);
+      }
+    };
+  }, []);
+  
+  // When dropdown is opened, fetch teams if needed
+  useEffect(() => {
+    const fetchTeamsIfNeeded = async () => {
+      if (dropdownOpen && curTeams.length === 0 && !isLoadingTeams) {
+        const now = Date.now();
+        // Only fetch if not recently fetched (30 seconds)
+        if (now - lastFetchTimeRef.current > 30000) {
+          try {
+            setIsLoadingTeams(true);
+            lastFetchTimeRef.current = now;
+            
+            const token = localStorage.getItem("token");
+            const response = await axiosInstance.get('/team/details', {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            const teams = response.data.team;
+            setCurTeams(teams);
+          } catch (error) {
+            console.error("Error fetching teams:", error);
+          } finally {
+            setIsLoadingTeams(false);
+          }
+        }
+      }
+    };
+    
+    fetchTeamsIfNeeded();
+  }, [dropdownOpen, curTeams.length, isLoadingTeams]);
 
   const handleTeamSelect = async (teamss) => {
     // If this is a different team than the currently selected one
@@ -130,7 +184,11 @@ const TeamSelector = () => {
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
               <div className="max-h-60 overflow-y-auto">
-                {curTeams.length > 0 ? (
+                {isLoadingTeams ? (
+                  <p className="px-4 py-2 text-sm text-gray-500 text-center">
+                    Loading teams...
+                  </p>
+                ) : curTeams.length > 0 ? (
                   curTeams.map((team) => (
                     <button
                       key={team.id}

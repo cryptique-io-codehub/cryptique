@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import axiosInstance from '../axiosInstance';
 import { getChainConfig, isChainSupported, getDefaultTokenType } from '../utils/chainRegistry';
 
@@ -15,6 +15,9 @@ export const ContractDataProvider = ({ children }) => {
   const [showDemoData, setShowDemoData] = useState(true); // By default, show demo data
   const [loadingStatus, setLoadingStatus] = useState('');
   const [updatingTransactions, setUpdatingTransactions] = useState(false);
+
+  // Add ref to track last refresh time
+  const lastRefreshTime = useRef(Date.now() - 60000); // Initialize to 1 minute ago
 
   // Fetch smart contracts for the current team
   useEffect(() => {
@@ -803,8 +806,16 @@ export const ContractDataProvider = ({ children }) => {
 
   // Add a refreshContracts function that can be called by components
   const refreshContracts = async () => {
+    // Prevent multiple refreshes within a short timeframe (5 seconds)
+    const now = Date.now();
+    if (now - lastRefreshTime.current < 5000) {
+      console.log("Contract refresh throttled - too many requests. Please wait.");
+      return;
+    }
+    
     try {
       setIsLoadingContracts(true);
+      lastRefreshTime.current = now;
       const selectedTeam = localStorage.getItem("selectedTeam");
       
       if (!selectedTeam) {
@@ -813,6 +824,22 @@ export const ContractDataProvider = ({ children }) => {
       }
 
       console.log("Refreshing contract data");
+      
+      // Check if we already have contracts cached in session storage and use those
+      // instead of making a new API call if they exist and we refreshed recently
+      const cachedContracts = sessionStorage.getItem("preloadedContracts");
+      if (cachedContracts && now - lastRefreshTime.current < 30000) {
+        try {
+          const contracts = JSON.parse(cachedContracts);
+          setContractArray(contracts);
+          console.log(`Using cached contracts, loaded ${contracts.length} contracts`);
+          setIsLoadingContracts(false);
+          return;
+        } catch (error) {
+          console.error("Error parsing cached contracts:", error);
+          // Continue with API call if cache parsing fails
+        }
+      }
       
       // Force fetch from API
       const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
@@ -845,21 +872,30 @@ export const ContractDataProvider = ({ children }) => {
   useEffect(() => {
     // Store the current team for comparison
     let currentTeam = localStorage.getItem("selectedTeam");
+    // Add ref to track last refresh time
+    const lastTeamRefreshTime = useRef(Date.now() - 60000); // Initialize to 1 minute ago
     
     // Function to check for team changes
     const checkTeamChange = () => {
       const newTeam = localStorage.getItem("selectedTeam");
+      const now = Date.now();
+      
       if (newTeam && newTeam !== currentTeam) {
         console.log(`Team changed in context from ${currentTeam} to ${newTeam}, refreshing contracts`);
         currentTeam = newTeam;
+        lastTeamRefreshTime.current = now;
         
         // Refresh contract data for the new team
+        refreshContracts();
+      } else if (newTeam && (now - lastTeamRefreshTime.current > 300000)) {
+        // Refresh every 5 minutes at most to keep data fresh but avoid excessive requests
+        lastTeamRefreshTime.current = now;
         refreshContracts();
       }
     };
     
-    // Check for team changes every 2 seconds
-    const intervalId = setInterval(checkTeamChange, 2000);
+    // Check for team changes every 5 seconds instead of 2 seconds
+    const intervalId = setInterval(checkTeamChange, 5000);
     
     return () => {
       clearInterval(intervalId);
