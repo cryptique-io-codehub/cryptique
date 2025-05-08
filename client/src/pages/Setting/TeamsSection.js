@@ -70,42 +70,69 @@ const TeamsSection = () => {
                 }
             }
             
+            if (!userId && !userEmail) {
+                console.error("No user ID or email found, cannot determine ownership");
+                return false;
+            }
+            
             // In the backend, ownership is determined by:
             // 1. The user's ID matching the team's createdBy field
             // 2. The user having 'admin' role in the user array
             
-            // Check if user is the creator
-            const isCreator = team.createdBy && 
-                             ((team.createdBy === userId) || 
-                              (team.createdBy._id === userId) ||
-                              (team.createdBy.email === userEmail));
-            
-            // Check if user has admin role in the team
-            let hasAdminRole = false;
-            
-            // Check the user array if it exists
-            if (team.user && Array.isArray(team.user)) {
-                hasAdminRole = team.user.some(member => 
-                    // Check by userId if available
-                    ((member.userId === userId) || 
-                     (member.userId && member.userId._id === userId)) && 
-                    member.role === 'admin'
-                );
+            // Case 1: Check if user is the creator by ID
+            let isCreatorById = false;
+            if (userId && team.createdBy) {
+                // Different possible formats of createdBy
+                if (typeof team.createdBy === 'string') {
+                    isCreatorById = team.createdBy === userId;
+                } else if (team.createdBy._id) {
+                    isCreatorById = team.createdBy._id === userId;
+                }
             }
             
-            // Check simple role property (used in frontend representation)
+            // Case 2: Check if user is the creator by email
+            let isCreatorByEmail = false;
+            if (userEmail && team.createdBy && team.createdBy.email) {
+                isCreatorByEmail = team.createdBy.email === userEmail;
+            }
+            
+            // Case 3: Check if user has admin role in the team's user array
+            let hasAdminRoleInArray = false;
+            if (userId && team.user && Array.isArray(team.user)) {
+                // Find the user entry in the team's user array
+                const userEntry = team.user.find(entry => {
+                    // Different ways the userId might be stored
+                    if (typeof entry.userId === 'string') {
+                        return entry.userId === userId;
+                    } else if (entry.userId && entry.userId._id) {
+                        return entry.userId._id === userId;
+                    }
+                    return false;
+                });
+                
+                // Check if user has admin role
+                if (userEntry && userEntry.role === 'admin') {
+                    hasAdminRoleInArray = true;
+                }
+            }
+            
+            // Case 4: Simple role property (frontend representation only)
+            // Only use this if we have other evidence of ownership
             const hasAdminRoleProp = team.role === 'admin';
             
-            // Determine final ownership status
-            const isOwner = isCreator || hasAdminRole || hasAdminRoleProp;
+            // Final ownership determination - be more strict
+            // Either creator status OR admin role in user array is required
+            const isOwner = isCreatorById || isCreatorByEmail || hasAdminRoleInArray;
             
+            // Log detailed information for debugging
             console.log(`Team "${team.name}" ownership check:`, {
                 userId,
                 userEmail,
                 teamCreator: team.createdBy,
-                hasCreatorMatch: isCreator,
+                isCreatorById,
+                isCreatorByEmail,
+                hasAdminRoleInArray,
                 hasAdminRoleProp,
-                hasAdminRoleInArray: hasAdminRole,
                 finalOwnerStatus: isOwner
             });
             
@@ -437,34 +464,72 @@ const TeamsSection = () => {
         setError('');
 
         try {
-            console.log("Deleting team:", teamToDelete._id);
+            console.log("Deleting team:", teamToDelete);
             
-            // Use the correct endpoint for team deletion
-            const response = await axiosInstance.post(`/team/delete`, { 
-                teamId: teamToDelete._id 
-            });
-            
-            console.log("Team deletion response:", response.data);
-            
-            // Remove the deleted team from the teams array
-            const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
-            setTeams(updatedTeams);
-            
-            // If the deleted team is the selected team, select another team
-            if (selectedTeam._id === teamToDelete._id && updatedTeams.length > 0) {
-                setSelectedTeam(updatedTeams[0]);
-                localStorage.setItem('selectedTeam', updatedTeams[0].name);
-            } else if (updatedTeams.length === 0) {
-                setSelectedTeam(null);
-                localStorage.removeItem('selectedTeam');
+            if (!teamToDelete._id) {
+                throw new Error("Team ID is missing, cannot delete");
             }
             
-            // Close modal and reset
-            setIsDeleteModalOpen(false);
-            setTeamToDelete(null);
+            // Log the exact endpoint being used
+            const deleteEndpoint = `/team/delete/${teamToDelete._id}`;
+            console.log("Using delete endpoint:", deleteEndpoint);
             
-            // Show success message
-            alert(`Team "${teamToDelete.name}" deleted successfully!`);
+            // Use the correct API endpoint format - check the team router file for correct format!
+            // Try both formats to determine which one works
+            try {
+                // First try: /team/delete/:id
+                const response = await axiosInstance.post(deleteEndpoint);
+                console.log("Team deletion response:", response.data);
+                
+                // Remove the deleted team from the teams array
+                const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
+                setTeams(updatedTeams);
+                
+                // If the deleted team is the selected team, select another team
+                if (selectedTeam._id === teamToDelete._id && updatedTeams.length > 0) {
+                    setSelectedTeam(updatedTeams[0]);
+                    localStorage.setItem('selectedTeam', updatedTeams[0].name);
+                    localStorage.removeItem('selectedTeamData');
+                } else if (updatedTeams.length === 0) {
+                    setSelectedTeam(null);
+                    localStorage.removeItem('selectedTeam');
+                    localStorage.removeItem('selectedTeamData');
+                }
+                
+                // Close modal and reset
+                setIsDeleteModalOpen(false);
+                setTeamToDelete(null);
+                
+                // Show success message
+                alert(`Team "${teamToDelete.name}" deleted successfully!`);
+            } catch (firstError) {
+                console.error("First deletion attempt failed:", firstError);
+                
+                // Second try: /team/delete with teamId in body
+                const response = await axiosInstance.post('/team/delete', { 
+                    teamId: teamToDelete._id 
+                });
+                
+                console.log("Team deletion response (second attempt):", response.data);
+                
+                // Process same as above
+                const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
+                setTeams(updatedTeams);
+                
+                if (selectedTeam._id === teamToDelete._id && updatedTeams.length > 0) {
+                    setSelectedTeam(updatedTeams[0]);
+                    localStorage.setItem('selectedTeam', updatedTeams[0].name);
+                    localStorage.removeItem('selectedTeamData');
+                } else if (updatedTeams.length === 0) {
+                    setSelectedTeam(null);
+                    localStorage.removeItem('selectedTeam');
+                    localStorage.removeItem('selectedTeamData');
+                }
+                
+                setIsDeleteModalOpen(false);
+                setTeamToDelete(null);
+                alert(`Team "${teamToDelete.name}" deleted successfully!`);
+            }
         } catch (err) {
             console.error("Team deletion error:", err);
             const errorMsg = err.response?.data?.message || 'Failed to delete team. Please try again.';
@@ -720,13 +785,20 @@ const TeamsSection = () => {
                         <tbody className="divide-y divide-gray-200">
                                 {getDisplayTeams().map((team, index) => {
                                     const isOwner = isTeamOwner(team);
+                                    
+                                    // For debugging - show exactly why this team is considered owned
+                                    const ownershipDetails = isOwner ? 
+                                        (team.createdBy && team.createdBy._id ? 'Creator' : 
+                                         team.user && team.user.some(u => u.role === 'admin') ? 'Admin Member' : 
+                                         'Other') : '';
+                                         
                                     return (
-                                <tr key={index} className="bg-white hover:bg-gray-50">
+                                    <tr key={index} className={`bg-white hover:bg-gray-50 ${isOwner ? 'border-l-4 border-green-500' : ''}`}>
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {team.name}
                                             {isOwner && (
                                                 <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-bold border border-green-300">
-                                                    Owner
+                                                    {ownershipDetails}
                                                 </span>
                                             )}
                                         </td>
@@ -753,7 +825,7 @@ const TeamsSection = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 flex justify-center space-x-3">
-                                            {isOwner && (
+                                            {isOwner ? (
                                                 <>
                                                     <button 
                                                         onClick={() => openEditModal(team)}
@@ -770,9 +842,11 @@ const TeamsSection = () => {
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">Member only</span>
                                             )}
                                         </td>
-                                </tr>
+                                    </tr>
                                 )})}
                         </tbody>
                     </table>
