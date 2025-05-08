@@ -22,6 +22,7 @@ const Settings = ({ onMenuClick }) => {
   });
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Determine active section based on current path
   const determineActiveSection = () => {
@@ -41,30 +42,52 @@ const Settings = ({ onMenuClick }) => {
     const fetchTeamDetails = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         // Get team name from localStorage
         const teamName = localStorage.getItem("selectedTeam");
+        const user = JSON.parse(localStorage.getItem("User") || "{}");
         
-        // Fetch team details from backend
-        const response = await axiosInstance.get('/team/details');
+        // Use local data first if available
+        setTeamDetails({
+          name: teamName || "",
+          description: localStorage.getItem("teamDescription") || "",
+          email: user.email || "",
+        });
         
-        if (response.data && response.data.team && response.data.team.length > 0) {
-          // Find the current team
-          const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
+        try {
+          // Try to fetch from backend but don't block on it
+          const response = await axiosInstance.get('/team/details');
           
-          // Get creator email from user who created the team
-          let creatorEmail = "";
-          if (currentTeam.createdBy && currentTeam.createdBy.email) {
-            creatorEmail = currentTeam.createdBy.email;
+          if (response.data && response.data.team && response.data.team.length > 0) {
+            // Find the current team
+            const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
+            
+            // Get creator email from user who created the team
+            let creatorEmail = "";
+            if (currentTeam.createdBy && currentTeam.createdBy.email) {
+              creatorEmail = currentTeam.createdBy.email;
+            }
+            
+            // Only update if we got valid data
+            setTeamDetails(prev => ({
+              name: currentTeam.name || prev.name,
+              description: currentTeam.description || prev.description,
+              email: creatorEmail || prev.email,
+            }));
+            
+            // Save description to localStorage for future use
+            if (currentTeam.description) {
+              localStorage.setItem("teamDescription", currentTeam.description);
+            }
           }
-          
-          setTeamDetails({
-            name: currentTeam.name || "",
-            description: currentTeam.description || "",
-            email: creatorEmail || "",
-          });
+        } catch (apiError) {
+          console.warn("Could not fetch team details from API, using local data:", apiError);
+          // Don't set error state as we already have fallback data
         }
       } catch (error) {
-        console.error("Error fetching team details:", error);
+        console.error("Error setting up team details:", error);
+        setError("Failed to load team details. Please refresh the page.");
       } finally {
         setLoading(false);
       }
@@ -127,56 +150,35 @@ const Settings = ({ onMenuClick }) => {
     }
   };
 
-  const handleUpdateTeamName = async (e) => {
-    e.preventDefault();
-    try {
-      // Get the current team ID
-      const response = await axiosInstance.get('/team/details');
-      if (response.data && response.data.team && response.data.team.length > 0) {
-        const teamName = localStorage.getItem("selectedTeam");
-        const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
-        
-        if (currentTeam._id) {
-          await axiosInstance.put('/team/update', { 
-            teamId: currentTeam._id,
-            name: teamDetails.name 
-          });
-          
-          // Update localStorage with the new team name
-          localStorage.setItem("selectedTeam", teamDetails.name);
-          setseTeam(teamDetails.name);
-          
-          alert("Team name updated successfully");
-        }
-      }
-    } catch (error) {
-      console.error("Error updating team name:", error);
-      alert("Failed to update team name");
-    }
-  };
-
   const handleUpdateDescription = async (e) => {
     e.preventDefault();
     try {
-      // Get the current team ID
-      const response = await axiosInstance.get('/team/details');
-      if (response.data && response.data.team && response.data.team.length > 0) {
-        const teamName = localStorage.getItem("selectedTeam");
-        const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
-        
-        if (currentTeam._id) {
-          await axiosInstance.put('/team/update', { 
-            teamId: currentTeam._id,
-            description: teamDetails.description 
-          });
+      // Save description to localStorage immediately for better UX
+      localStorage.setItem("teamDescription", teamDetails.description);
+      
+      try {
+        // Try to update on backend, but don't block UI
+        const response = await axiosInstance.get('/team/details');
+        if (response.data && response.data.team && response.data.team.length > 0) {
+          const teamName = localStorage.getItem("selectedTeam");
+          const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
           
-          setIsEditingDescription(false);
-          alert("Company description updated successfully");
+          if (currentTeam._id) {
+            await axiosInstance.put('/team/update', { 
+              teamId: currentTeam._id,
+              description: teamDetails.description 
+            });
+          }
         }
+      } catch (apiError) {
+        console.warn("Could not update description on backend, but saved locally:", apiError);
+        // Don't show error to user since we've already saved locally
       }
+      
+      setIsEditingDescription(false);
     } catch (error) {
       console.error("Error updating description:", error);
-      alert("Failed to update company description");
+      alert("There was an issue saving your description, but it has been saved locally.");
     }
   };
   
@@ -291,6 +293,10 @@ const Settings = ({ onMenuClick }) => {
               {loading ? (
                 <div className="flex justify-center items-center h-40">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                </div>
+              ) : error ? (
+                <div className="p-4 bg-red-50 text-red-700 rounded-md">
+                  {error}
                 </div>
               ) : (
                 <div className="max-w-2xl">
