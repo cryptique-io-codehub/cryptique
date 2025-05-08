@@ -277,30 +277,20 @@ exports.updateTeam = async (req, res) => {
             });
         }
         
-        // Check if the new name is already taken by another team (skip if same team)
-        if (name !== team.name) {
-            const existingTeam = await Team.findOne({ name });
-            if (existingTeam && !existingTeam._id.equals(teamId)) {
-                return res.status(400).json({ message: "Team name already exists" });
-            }
+        // Check if the new name is already in use by another team
+        const existingTeam = await Team.findOne({ name, _id: { $ne: teamId } });
+        if (existingTeam) {
+            return res.status(400).json({ message: "Team name already exists" });
         }
-        
-        // Create the update object
-        const updateData = { 
-            name,
-            description: description || '' 
-        };
-        
-        console.log("Update data being sent to MongoDB:", updateData);
         
         // Update the team
         const updatedTeam = await Team.findByIdAndUpdate(
             teamId,
-            updateData,
+            { name, description },
             { new: true, runValidators: true }
         );
         
-        console.log("Team after update:", {
+        console.log("Updated team:", {
             id: updatedTeam._id,
             name: updatedTeam.name,
             description: updatedTeam.description,
@@ -309,12 +299,89 @@ exports.updateTeam = async (req, res) => {
         
         return res.status(200).json({ 
             message: "Team updated successfully", 
-            team: updatedTeam 
+            team: updatedTeam
         });
     } catch (error) {
         console.error("Error updating team:", error);
         return res.status(500).json({ 
             message: "Error updating team", 
+            error: error.message 
+        });
+    }
+};
+
+exports.removeMember = async (req, res) => {
+    try {
+        // Get the email and team name from the request
+        const { email, teamName } = req.body;
+        
+        console.log("Remove member request:", { email, teamName });
+        
+        if (!email || !teamName) {
+            return res.status(400).json({ message: "Email and team name are required" });
+        }
+        
+        // Find the team by name
+        const team = await Team.findOne({ name: teamName });
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Find the user by email
+        const user = await User.findOne({ email });
+        
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Check if the user is a member of the team
+        const memberIndex = team.user.findIndex(member => 
+            member.userId.toString() === user._id.toString()
+        );
+        
+        if (memberIndex === -1) {
+            return res.status(404).json({ message: "User is not a member of this team" });
+        }
+        
+        // Check if the logged-in user is authorized to remove a member
+        // Only admins can remove team members
+        const loggedInUserMember = team.user.find(member => 
+            member.userId.toString() === req.userId.toString()
+        );
+        
+        if (!loggedInUserMember || loggedInUserMember.role !== 'admin') {
+            return res.status(403).json({ 
+                message: "Unauthorized. Only team admins can remove members." 
+            });
+        }
+        
+        // Cannot remove the first member (team owner)
+        if (memberIndex === 0) {
+            return res.status(403).json({ 
+                message: "Cannot remove the team owner" 
+            });
+        }
+        
+        // Remove the user from the team
+        team.user.splice(memberIndex, 1);
+        await team.save();
+        
+        // Remove the team from the user's teams array
+        await User.findByIdAndUpdate(
+            user._id, 
+            { $pull: { team: team._id } }
+        );
+        
+        return res.status(200).json({ 
+            message: "Member removed successfully", 
+            teamId: team._id,
+            userId: user._id
+        });
+    } catch (error) {
+        console.error("Error removing team member:", error);
+        return res.status(500).json({ 
+            message: "Error removing team member", 
             error: error.message 
         });
     }

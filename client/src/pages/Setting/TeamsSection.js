@@ -17,7 +17,7 @@ const TeamsSection = () => {
     const [teamToDelete, setTeamToDelete] = useState(null);
     const [teamMembers, setTeamMembers] = useState([]);
     const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [newMemberRole, setNewMemberRole] = useState('editor');
+    const [newMemberRole, setNewMemberRole] = useState('user');
     const [isLoading, setIsLoading] = useState(false);
     const [currentUserEmail, setCurrentUserEmail] = useState('');
 
@@ -65,6 +65,7 @@ const TeamsSection = () => {
             // In the backend, ownership is determined by:
             // 1. The user is the first member of the team (as mentioned by the user)
             // 2. Or the user's ID matches the team's createdBy field
+            // 3. Or the user has an admin role
             
             // Check if user is the creator
             const isCreator = team.createdBy && 
@@ -82,12 +83,10 @@ const TeamsSection = () => {
                     (firstMember.email === userEmail);
             }
             
-            // For frontend display purposes, we also check the role property
+            // Check if user has admin role
             const hasAdminRole = team.role === 'admin';
             
-            // Combine all checks to determine final ownership
-            // Per user's clarification, the first member is the owner
-            // So we prioritize first member check over other checks
+            // All admins have owner privileges with full access to team settings
             const isOwner = isFirstMember || isCreator || hasAdminRole;
             
             // Cache the result on the object
@@ -162,7 +161,7 @@ const TeamsSection = () => {
             console.log("Fetching teams for user:", { email: userEmail, id: userId });
             
             // Fetch teams from API
-            const response = await axiosInstance.get('/team/details');
+                const response = await axiosInstance.get('/team/details');
             console.log("Team details raw response:", response.data);
             
             if (response.data && response.data.team) {
@@ -221,6 +220,11 @@ const TeamsSection = () => {
                         localStorage.removeItem('justCreatedTeam');
                     }
                     
+                    // Normalize roles to either 'admin' or 'user'
+                    if (processedTeam.role !== 'admin') {
+                        processedTeam.role = 'user';
+                    }
+                    
                     return processedTeam;
                 });
                 
@@ -254,17 +258,17 @@ const TeamsSection = () => {
                 console.error("Invalid team data format:", response.data);
                 setTeams([]);
                 setSelectedTeam(null);
-            }
-        } catch (error) {
-            console.error("Error fetching teams:", error);
+                }
+            } catch (error) {
+                console.error("Error fetching teams:", error);
             setError("Failed to load teams. Please try again.");
             setTeams([]);
             setSelectedTeam(null);
         } finally {
             setIsLoading(false);
-        }
-    };
-
+            }
+        };
+    
     // Initial fetch on component mount and setup refresh listeners
     useEffect(() => {
         // Fetch teams on first load
@@ -305,7 +309,7 @@ const TeamsSection = () => {
                 localStorage.setItem('selectedTeamData', JSON.stringify({
                     _id: selectedTeam._id,
                     name: selectedTeam.name,
-                    role: selectedTeam.role || 'member',
+                    role: selectedTeam.role || 'user',
                     isOwner: isTeamOwner(selectedTeam)
                 }));
             } catch (err) {
@@ -732,8 +736,43 @@ const TeamsSection = () => {
             alert(`Successfully removed ${memberEmail} from the team.`);
         } catch (err) {
             console.error("Error removing member:", err);
-            setError(err.response?.data?.message || "Failed to remove team member. Please try again.");
-            alert("Failed to remove team member. Please try again.");
+            
+            let errorMessage = "Failed to remove team member. ";
+            
+            // Handle specific error cases based on server response
+            if (err.response) {
+                const status = err.response.status;
+                const serverMessage = err.response.data?.message;
+                
+                if (status === 404) {
+                    if (serverMessage === "Team not found") {
+                        errorMessage += "The specified team could not be found.";
+                    } else if (serverMessage === "User not found") {
+                        errorMessage += "The specified user could not be found.";
+                    } else if (serverMessage === "User is not a member of this team") {
+                        errorMessage += "This user is not a member of the team.";
+                    } else {
+                        errorMessage += "Resource not found.";
+                    }
+                } else if (status === 403) {
+                    if (serverMessage === "Cannot remove the team owner") {
+                        errorMessage += "You cannot remove the team owner.";
+                    } else {
+                        errorMessage += "You don't have permission to remove this member.";
+                    }
+                } else if (status === 400) {
+                    errorMessage += serverMessage || "Invalid request.";
+                } else {
+                    errorMessage += serverMessage || "Please try again.";
+                }
+            } else if (err.request) {
+                errorMessage += "Server is not responding. Please check your connection and try again.";
+            } else {
+                errorMessage += "An unexpected error occurred.";
+            }
+            
+            setError(errorMessage);
+            alert(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -805,8 +844,8 @@ const TeamsSection = () => {
                     <p className="ml-auto text-xs text-gray-500">
                         Use the team selector in the header to change teams
                     </p>
-                </div>
-            )}
+                    </div>
+                )}
 
             <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
@@ -867,16 +906,21 @@ const TeamsSection = () => {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             <span className={`capitalize ${isOwner ? 'font-bold text-green-700' : ''}`}>
-                                                {team.role || "Member"}
+                                                {team.role === 'admin' ? 'Admin' : 'User'}
                                             </span>
-                                            {isOwner && (
+                                            {team.role === 'admin' && (
                                                 <div className="text-xs text-gray-500 mt-1">
-                                                    Full control
+                                                    Full access
+                                                </div>
+                                            )}
+                                            {team.role === 'user' && (
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    View-only access
                                                 </div>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 flex justify-center space-x-3">
-                                            {isOwner && (
+                                            {team.role === 'admin' && (
                                                 <>
                                                     <button 
                                                         onClick={() => openEditModal(team)}
@@ -1099,7 +1143,7 @@ const TeamsSection = () => {
                                 setIsMembersModalOpen(false);
                                 setTeamMembers([]);
                                 setNewMemberEmail('');
-                                setNewMemberRole('editor');
+                                setNewMemberRole('user');
                                 setError('');
                             }}
                             className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
@@ -1111,15 +1155,14 @@ const TeamsSection = () => {
                             Manage members for {selectedTeam?.name}
                         </p>
                         
-                        {/* Always show this section for debugging/development */}
+                        {/* Debug info */}
                         <div className="mb-2 text-xs text-gray-500">
-                            Team Owner: {isTeamOwner(selectedTeam) ? 'Yes' : 'No'} | 
-                            Role: {selectedTeam?.role} | 
+                            Role: {selectedTeam?.role === 'admin' ? 'Admin (Full Access)' : 'User (View-Only)'} | 
                             Creator Email: {selectedTeam?.createdBy?.email || 'Unknown'} | 
                             Your Email: {currentUserEmail || 'Unknown'}
                         </div>
                         
-                        {isTeamOwner(selectedTeam) && (
+                        {selectedTeam?.role === 'admin' && (
                             <div className="mb-6 bg-gray-50 p-4 rounded-md">
                                 <h3 className="text-md font-medium mb-3">Invite new member</h3>
                                 <div className="flex flex-col sm:flex-row gap-2">
@@ -1135,9 +1178,8 @@ const TeamsSection = () => {
                                         onChange={(e) => setNewMemberRole(e.target.value)}
                                         className="sm:w-32 px-3 py-2 border border-gray-300 rounded-md"
                                     >
-                                        <option value="editor">Editor</option>
+                                        <option value="user">User</option>
                                         <option value="admin">Admin</option>
-                                        <option value="viewer">Viewer</option>
                                     </select>
                                     <button 
                                         onClick={inviteMember}
@@ -1153,6 +1195,10 @@ const TeamsSection = () => {
                                     </button>
                                 </div>
                                 {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                                <div className="mt-2 text-xs text-gray-500">
+                                    <p><strong>Admin:</strong> Full access to add/delete websites, contracts, and manage team settings</p>
+                                    <p><strong>User:</strong> View-only access without ability to add/delete websites or contracts</p>
+                                </div>
                             </div>
                         )}
                         
@@ -1173,20 +1219,35 @@ const TeamsSection = () => {
                                                     <div>
                                                         <p className="text-sm font-medium">{member.name || 'Unnamed User'}</p>
                                                         <p className="text-xs text-gray-500">{member.email}</p>
-                                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded capitalize">
-                                                            {member.role}
+                                                        <span className={`text-xs px-2 py-0.5 rounded capitalize ${
+                                                            member.role === 'admin' 
+                                                                ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                                                                : 'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {member.role === 'admin' ? 'Admin' : 'User'}
                                                         </span>
+                                                        {member.email === currentUserEmail && (
+                                                            <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded border border-green-200">
+                                                                You
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 
-                                                {isTeamOwner(selectedTeam) && member.email !== currentUserEmail && (
+                                                {selectedTeam?.role === 'admin' && member.email !== currentUserEmail && (
                                                     <button 
                                                         onClick={() => removeMember(member.email)}
                                                         disabled={isLoading}
-                                                        className="text-red-600 hover:text-red-800"
+                                                        className={`text-red-600 hover:text-red-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         title="Remove member"
                                                     >
-                                                        <UserMinus size={18} />
+                                                        {isLoading ? (
+                                                            <span className="inline-block animate-pulse">
+                                                                <UserMinus size={18} />
+                                                            </span>
+                                                        ) : (
+                                                            <UserMinus size={18} />
+                                                        )}
                                                     </button>
                                                 )}
                                             </li>
