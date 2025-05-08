@@ -321,9 +321,13 @@ class AnalyticsProcessor {
       
       console.log(`Found ${analytics.sessions.length} sessions to process for site ${siteId}`);
       
+      // Validate and normalize session data
+      const fixedSessions = await this.validateAndFixSessionData(analytics.sessions);
+      console.log(`Validated and fixed ${fixedSessions.length} sessions`);
+      
       // Group sessions by userId
       const userSessions = {};
-      analytics.sessions.forEach(session => {
+      fixedSessions.forEach(session => {
         if (!session.userId) return;
         
         if (!userSessions[session.userId]) {
@@ -357,7 +361,15 @@ class AnalyticsProcessor {
           firstVisit: sessions[0].startTime,
           lastVisit: sessions[sessions.length - 1].startTime,
           totalSessions: sessions.length,
-          totalPageViews: sessions.reduce((total, session) => total + session.pagesViewed, 0),
+          totalPageViews: sessions.reduce((total, session) => {
+            // Properly calculate page views from either pagesViewed count or visitedPages array
+            if (session.visitedPages && Array.isArray(session.visitedPages)) {
+              return total + session.visitedPages.length;
+            } else if (typeof session.pagesViewed === 'number') {
+              return total + session.pagesViewed;
+            }
+            return total;
+          }, 0),
           totalTimeSpent: sessions.reduce((total, session) => total + (session.duration || 0), 0),
           hasConverted: false,
           acquisitionSource: this.getAcquisitionSource(sessions[0])
@@ -679,6 +691,101 @@ class AnalyticsProcessor {
       console.error(`Error processing user journeys for site ${siteId}:`, error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Validates and fixes session data to ensure consistency
+   * @param {Array} sessions - Array of session objects
+   * @returns {Promise<Array>} - Array of validated and fixed sessions
+   */
+  async validateAndFixSessionData(sessions) {
+    const fixedSessions = [];
+    let fixedCount = 0;
+    
+    for (const session of sessions) {
+      let wasFixed = false;
+      const fixedSession = { ...session.toObject() };
+      
+      // Ensure visitedPages is an array
+      if (!fixedSession.visitedPages) {
+        fixedSession.visitedPages = [];
+        wasFixed = true;
+      }
+      
+      // Ensure pagesViewed count matches visitedPages length
+      if (Array.isArray(fixedSession.visitedPages)) {
+        if (typeof fixedSession.pagesViewed !== 'number' || 
+            fixedSession.pagesViewed !== fixedSession.visitedPages.length) {
+          fixedSession.pagesViewed = fixedSession.visitedPages.length;
+          wasFixed = true;
+        }
+      }
+      
+      // If visitedPages is empty but pagesViewed is set, create placeholder visitedPages
+      if (Array.isArray(fixedSession.visitedPages) && 
+          fixedSession.visitedPages.length === 0 && 
+          typeof fixedSession.pagesViewed === 'number' && 
+          fixedSession.pagesViewed > 0) {
+        
+        // Create placeholder visited pages based on pagesViewed count
+        for (let i = 0; i < fixedSession.pagesViewed; i++) {
+          fixedSession.visitedPages.push({
+            path: '/unknown-page',
+            timestamp: fixedSession.startTime,
+            duration: Math.floor((fixedSession.duration || 0) / fixedSession.pagesViewed),
+            isEntry: i === 0,
+            isExit: i === fixedSession.pagesViewed - 1
+          });
+        }
+        wasFixed = true;
+      }
+      
+      // Ensure duration is set
+      if (typeof fixedSession.duration !== 'number' || fixedSession.duration <= 0) {
+        // Calculate approximate duration from visitedPages
+        if (Array.isArray(fixedSession.visitedPages) && fixedSession.visitedPages.length > 0) {
+          const pageDurations = fixedSession.visitedPages
+            .map(page => page.duration || 0)
+            .reduce((sum, duration) => sum + duration, 0);
+            
+          if (pageDurations > 0) {
+            fixedSession.duration = pageDurations;
+          } else {
+            // Default duration of 1 minute per page if no durations available
+            fixedSession.duration = fixedSession.visitedPages.length * 60;
+          }
+        } else {
+          // Default duration if no other data is available
+          fixedSession.duration = 60;
+        }
+        wasFixed = true;
+      }
+      
+      // If fixes were made, save the session
+      if (wasFixed) {
+        try {
+          // Find and update the original session in the database
+          await session.model('Session').findByIdAndUpdate(
+            session._id,
+            {
+              $set: {
+                visitedPages: fixedSession.visitedPages,
+                pagesViewed: fixedSession.pagesViewed,
+                duration: fixedSession.duration
+              }
+            }
+          );
+          fixedCount++;
+        } catch (error) {
+          console.error(`Error updating session ${session._id}:`, error);
+        }
+      }
+      
+      fixedSessions.push(wasFixed ? fixedSession : session);
+    }
+    
+    console.log(`Fixed ${fixedCount} sessions with data inconsistencies`);
+    return fixedSessions;
   }
 }
 

@@ -204,6 +204,37 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
                                   )}
                                 </div>
                                 
+                                {/* Device Info */}
+                                <div className="mb-3 flex flex-wrap gap-4">
+                                  {session.device && (
+                                    <div className="bg-gray-50 p-2 rounded">
+                                      <p className="font-semibold">Device:</p>
+                                      <p className="text-xs">Type: {session.device.type || 'Unknown'}</p>
+                                      <p className="text-xs">Browser: {session.device.browser || 'Unknown'}</p>
+                                      <p className="text-xs">OS: {session.device.os || 'Unknown'}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Session summary stats */}
+                                  <div className="bg-blue-50 p-2 rounded">
+                                    <p className="font-semibold">Session Stats:</p>
+                                    <div className="flex gap-2 text-xs">
+                                      <p>Pages: <span className="font-medium">{session.pagesViewed || 0}</span></p>
+                                      <p>•</p>
+                                      <p>Duration: <span className="font-medium">{formatDuration(session.duration)}</span></p>
+                                    </div>
+                                    
+                                    {/* Highlight data inconsistencies */}
+                                    {session.visitedPages && Array.isArray(session.visitedPages) && 
+                                     session.pagesViewed !== session.visitedPages.length && (
+                                      <p className="text-xs text-orange-600 mt-1">
+                                        ⚠️ Data inconsistency: Page count ({session.pagesViewed}) doesn't match 
+                                        actual pages ({session.visitedPages.length})
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                
                                 {/* Wallet info if available */}
                                 {hasWalletConnection(session) && (
                                   <div className="mb-3 p-2 bg-green-50 rounded">
@@ -217,10 +248,10 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
                                 )}
                                 
                                 {/* Page visits */}
-                                {session.visitedPages && session.visitedPages.length > 0 && (
+                                {session.visitedPages && session.visitedPages.length > 0 ? (
                                   <div>
                                     <p className="font-semibold text-gray-700 mb-2">
-                                      Page Journey ({session.pagesViewed} pages):
+                                      Page Journey ({session.visitedPages.length} pages):
                                     </p>
                                     <ol className="border-l border-gray-200 ml-2 space-y-2">
                                       {session.visitedPages.map((page, i) => (
@@ -255,6 +286,22 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
                                       ))}
                                     </ol>
                                   </div>
+                                ) : session.pagesViewed > 0 ? (
+                                  <div className="bg-yellow-50 p-2 rounded">
+                                    <p className="font-semibold text-yellow-700">
+                                      Page data incomplete
+                                    </p>
+                                    <p className="text-xs text-yellow-600">
+                                      This session has {session.pagesViewed} recorded page views,
+                                      but detailed page visit data is not available.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="bg-gray-50 p-2 rounded">
+                                    <p className="text-xs text-gray-500">
+                                      No page views recorded for this session.
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -271,114 +318,165 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
               )}
 
               {activeTab === 'overview' && (
-                <div className="space-y-6">
-                  {/* User summary card */}
-                  <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">User Summary</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div>
-                        <p className="text-sm text-gray-500">First Visit</p>
-                        <p className="text-lg font-medium">
-                          {userJourney.firstVisit ? formatDateTime(userJourney.firstVisit) : '-'}
-                        </p>
+                <div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Total Sessions</h3>
+                      <p className="text-2xl font-semibold text-gray-900">{userJourney.totalSessions}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {userJourney.totalSessions !== sessions.length && 
+                          `Note: ${sessions.length} sessions loaded`}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Page Views</h3>
+                      <p className="text-2xl font-semibold text-gray-900">{userJourney.totalPageViews}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {sessions.length > 0 && (() => {
+                          // Calculate total pages across all sessions
+                          const calculatedPages = sessions.reduce((total, session) => {
+                            if (Array.isArray(session.visitedPages)) {
+                              return total + session.visitedPages.length;
+                            } else if (typeof session.pagesViewed === 'number') {
+                              return total + session.pagesViewed;
+                            }
+                            return total;
+                          }, 0);
+                          
+                          // Check for discrepancy
+                          if (calculatedPages !== userJourney.totalPageViews) {
+                            return (
+                              <p className="text-orange-600">
+                                ⚠️ Data inconsistency: {calculatedPages} pages calculated from sessions
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Last Visit</p>
-                        <p className="text-lg font-medium">
-                          {userJourney.lastVisit ? formatDateTime(userJourney.lastVisit) : '-'}
-                        </p>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Total Time</h3>
+                      <p className="text-2xl font-semibold text-gray-900">{formatDuration(userJourney.totalTimeSpent)}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {sessions.length > 0 && (() => {
+                          // Calculate total duration across all sessions
+                          const calculatedDuration = sessions.reduce((total, session) => {
+                            return total + (session.duration || 0);
+                          }, 0);
+                          
+                          // Check for discrepancy
+                          if (Math.abs(calculatedDuration - userJourney.totalTimeSpent) > 10) {
+                            return (
+                              <p className="text-orange-600">
+                                ⚠️ Data inconsistency: {formatDuration(calculatedDuration)} calculated from sessions
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Total Sessions</p>
-                        <p className="text-lg font-medium">{userJourney.totalSessions || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Total Page Views</p>
-                        <p className="text-lg font-medium">{userJourney.totalPageViews || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Total Time Spent</p>
-                        <p className="text-lg font-medium">{formatDuration(userJourney.totalTimeSpent)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Acquisition Source</p>
-                        <p className="text-lg font-medium">{userJourney.acquisitionSource || 'Direct'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Segment</p>
-                        <p className="text-lg font-medium">{userJourney.userSegment || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Converted</p>
-                        <p className="text-lg font-medium">
-                          {userJourney.hasConverted ? 'Yes' : 'No'}
-                          {userJourney.hasConverted && userJourney.daysToConversion && (
-                            <span className="text-sm text-gray-500 ml-2">
-                              (after {userJourney.daysToConversion} days)
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      {userJourney.sessionsBeforeConversion && (
-                        <div>
-                          <p className="text-sm text-gray-500">Sessions Before Conversion</p>
-                          <p className="text-lg font-medium">{userJourney.sessionsBeforeConversion}</p>
-                        </div>
-                      )}
                     </div>
                   </div>
-
-                  {/* Sessions summary */}
-                  <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Session Summary</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">User Segment</h3>
+                      <div className="flex items-center">
+                        <div className={`px-3 py-1 rounded-full ${
+                          userJourney.userSegment === 'converter' ? 'bg-green-100 text-green-800' :
+                          userJourney.userSegment === 'engaged' ? 'bg-blue-100 text-blue-800' :
+                          userJourney.userSegment === 'bounced' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        } font-medium`}>
+                          {userJourney.userSegment || 'Unknown'}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <p className="text-sm">
+                          {userJourney.userSegment === 'converter' ? 
+                            `Converted after ${userJourney.sessionsBeforeConversion || '?'} sessions (${userJourney.daysToConversion || '?'} days)` :
+                          userJourney.userSegment === 'engaged' ? 
+                            'Actively engaged with multiple sessions' :
+                          userJourney.userSegment === 'bounced' ? 
+                            'Visited once and left quickly' :
+                            'Browsed but hasn\'t converted yet'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg shadow-sm border p-4">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">First & Last Visit</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-gray-500">First Visit:</p>
+                          <p className="font-medium">{formatDateTime(userJourney.firstVisit)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Last Visit:</p>
+                          <p className="font-medium">{formatDateTime(userJourney.lastVisit)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Time Between:</p>
+                          <p>{userJourney.firstVisit && userJourney.lastVisit ? 
+                            formatDistance(new Date(userJourney.lastVisit), new Date(userJourney.firstVisit)) : 
+                            'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Session Summary</h3>
+                    
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Session
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Duration
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Pages
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Source
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Wallet
-                            </th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Session</th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Pages</th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Duration</th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Device</th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500">Converted</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {sessions.map((session, index) => (
-                            <tr key={session._id || index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <tr key={session._id || index} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                                 {session.sessionNumber || index + 1}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {formatDateTime(session.startTime)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                <span className={
+                                  session.visitedPages && 
+                                  session.pagesViewed !== session.visitedPages.length 
+                                  ? 'text-orange-600 font-medium' 
+                                  : ''
+                                }>
+                                  {session.pagesViewed || 0}
+                                  {session.visitedPages && 
+                                   session.pagesViewed !== session.visitedPages.length && 
+                                   ` (${session.visitedPages.length} actual)`}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {formatDuration(session.duration)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {session.pagesViewed || 0}
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                {session.device ? session.device.type : 'Unknown'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {session.utmData && session.utmData.source 
-                                  ? `${session.utmData.source}/${session.utmData.medium || 'none'}`
-                                  : session.referrer || 'Direct'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {hasWalletConnection(session) 
-                                  ? <span className="text-green-600">Connected</span>
-                                  : <span className="text-red-600">No</span>}
+                              <td className="px-3 py-2 whitespace-nowrap text-sm">
+                                <span className={hasWalletConnection(session) ? 'text-green-600' : 'text-red-600'}>
+                                  {hasWalletConnection(session) ? '✓' : '✗'}
+                                </span>
                               </td>
                             </tr>
                           ))}
