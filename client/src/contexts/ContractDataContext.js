@@ -868,12 +868,13 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
 
+  // Create a ref for tracking the last team refresh time
+  const lastTeamRefreshTime = useRef(Date.now() - 60000); // Initialize to 1 minute ago
+
   // Listen for team changes
   useEffect(() => {
     // Store the current team for comparison
     let currentTeam = localStorage.getItem("selectedTeam");
-    // Add ref to track last refresh time
-    const lastTeamRefreshTime = useRef(Date.now() - 60000); // Initialize to 1 minute ago
     
     // Function to check for team changes
     const checkTeamChange = () => {
