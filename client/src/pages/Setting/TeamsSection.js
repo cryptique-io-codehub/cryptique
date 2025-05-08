@@ -123,6 +123,14 @@ const TeamsSection = () => {
 
         setIsLoading(true);
         try {
+            // Check if user is the team owner/creator
+            const userEmail = localStorage.getItem('userEmail');
+            const isCreator = teamToManage.createdBy?.email === userEmail;
+            
+            if (isCreator || teamToManage.role === 'admin') {
+                throw new Error("Cannot leave a team you own. Please delete it instead.");
+            }
+            
             await axiosInstance.post(`/team/leave/${teamToManage._id}`);
             
             // Update teams list
@@ -143,7 +151,7 @@ const TeamsSection = () => {
             setIsLeaveModalOpen(false);
         } catch (err) {
             console.error("Team leave error:", err);
-            setError(err.response?.data?.message || 'Failed to leave team');
+            setError(err.response?.data?.message || err.message || 'Failed to leave team');
         } finally {
             setIsLoading(false);
         }
@@ -166,12 +174,20 @@ const TeamsSection = () => {
 
     const openLeaveModal = (team) => {
         setTeamToManage(team);
+        setError('');
         setIsLeaveModalOpen(true);
     };
 
     const openEditMembersModal = async (team) => {
+        // Only allow team admins to manage members
+        if (team.role !== 'admin') {
+            setError('Only team administrators can manage members');
+            return;
+        }
+        
         setTeamToManage(team);
         setIsLoading(true);
+        setError('');
         
         try {
             // Fetch team members
@@ -330,13 +346,16 @@ const TeamsSection = () => {
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">
                                         <div className="flex space-x-2">
-                                            <button 
-                                                onClick={() => openEditMembersModal(team)}
-                                                className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-                                                title="Manage Members"
-                                            >
-                                                <UserPlus size={16} />
-                                            </button>
+                                            {/* Only show Manage Members button to team admins */}
+                                            {team.role === 'admin' && (
+                                                <button 
+                                                    onClick={() => openEditMembersModal(team)}
+                                                    className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                                                    title="Manage Members"
+                                                >
+                                                    <UserPlus size={16} />
+                                                </button>
+                                            )}
                                             
                                             {team.role === 'admin' && (
                                                 <button 
@@ -482,6 +501,9 @@ const TeamsSection = () => {
                             <p className="text-gray-500 text-sm mt-2">
                                 You will lose access to all team data and will need a new invitation to rejoin.
                             </p>
+                            {error && (
+                                <p className="text-red-500 text-sm mt-3">{error}</p>
+                            )}
                         </div>
                         
                         <div className="flex space-x-3">
@@ -503,8 +525,8 @@ const TeamsSection = () => {
                 </div>
             )}
 
-            {/* Edit Members Modal */}
-            {isEditMembersModalOpen && teamToManage && (
+            {/* Edit Members Modal - Only accessible to team admins */}
+            {isEditMembersModalOpen && teamToManage && teamToManage.role === 'admin' && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
                         <button 
@@ -518,43 +540,41 @@ const TeamsSection = () => {
                             Team: <span className="font-medium">{teamToManage.name}</span>
                         </p>
                         
-                        {/* Add Member Form */}
-                        {teamToManage.role === 'admin' && (
-                            <div className="bg-gray-50 p-4 rounded-md mb-6">
-                                <h3 className="text-md font-medium mb-3">Add New Member</h3>
-                                <div className="flex flex-col sm:flex-row gap-3 mb-2">
-                                    <input 
-                                        type="email" 
-                                        placeholder="Email address"
-                                        value={newMemberEmail}
-                                        onChange={(e) => setNewMemberEmail(e.target.value)}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                                    />
-                                    <select
-                                        value={newMemberRole}
-                                        onChange={(e) => setNewMemberRole(e.target.value)}
-                                        className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="editor">Editor</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                    <button
-                                        onClick={handleAddMember}
-                                        disabled={isLoading || !newMemberEmail}
-                                        className={`px-4 py-2 rounded-md text-white ${isLoading || !newMemberEmail ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                                <div className="text-xs text-gray-500 flex items-center mt-2">
-                                    <Info size={14} className="mr-1" />
-                                    <span>
-                                        <strong>Admin:</strong> Full control to add/remove websites and smart contracts. 
-                                        <strong className="ml-2">Editor:</strong> View-only access.
-                                    </span>
-                                </div>
+                        {/* Add Member Form - Only available for admins */}
+                        <div className="bg-gray-50 p-4 rounded-md mb-6">
+                            <h3 className="text-md font-medium mb-3">Add New Member</h3>
+                            <div className="flex flex-col sm:flex-row gap-3 mb-2">
+                                <input 
+                                    type="email" 
+                                    placeholder="Email address"
+                                    value={newMemberEmail}
+                                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                />
+                                <select
+                                    value={newMemberRole}
+                                    onChange={(e) => setNewMemberRole(e.target.value)}
+                                    className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-md"
+                                >
+                                    <option value="editor">Editor</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                                <button
+                                    onClick={handleAddMember}
+                                    disabled={isLoading || !newMemberEmail}
+                                    className={`px-4 py-2 rounded-md text-white ${isLoading || !newMemberEmail ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                >
+                                    Add
+                                </button>
                             </div>
-                        )}
+                            <div className="text-xs text-gray-500 flex items-center mt-2">
+                                <Info size={14} className="mr-1" />
+                                <span>
+                                    <strong>Admin:</strong> Full control to add/remove websites and smart contracts. 
+                                    <strong className="ml-2">Editor:</strong> View-only access.
+                                </span>
+                            </div>
+                        </div>
                         
                         {/* Team Members List */}
                         <div className="border rounded-md overflow-hidden">
@@ -567,23 +587,21 @@ const TeamsSection = () => {
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Role
                                         </th>
-                                        {teamToManage.role === 'admin' && (
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        )}
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {isLoading ? (
                                         <tr>
-                                            <td colSpan={teamToManage.role === 'admin' ? 3 : 2} className="px-6 py-4 text-center text-gray-500">
+                                            <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
                                                 Loading members...
                                             </td>
                                         </tr>
                                     ) : teamMembers.length === 0 ? (
                                         <tr>
-                                            <td colSpan={teamToManage.role === 'admin' ? 3 : 2} className="px-6 py-4 text-center text-gray-500">
+                                            <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
                                                 No members found
                                             </td>
                                         </tr>
@@ -603,35 +621,27 @@ const TeamsSection = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {teamToManage.role === 'admin' ? (
-                                                        <div className="relative">
-                                                            <select
-                                                                value={member.role}
-                                                                onChange={(e) => handleChangeRole(member._id, e.target.value)}
-                                                                className="text-sm border border-gray-300 rounded px-2 py-1"
-                                                                disabled={isLoading}
-                                                            >
-                                                                <option value="admin">Admin</option>
-                                                                <option value="editor">Editor</option>
-                                                            </select>
-                                                        </div>
-                                                    ) : (
-                                                        <span className={`px-2 py-1 text-xs rounded-full ${member.role === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                            {member.role}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                {teamToManage.role === 'admin' && (
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <button
-                                                            onClick={() => handleRemoveMember(member._id)}
+                                                    <div className="relative">
+                                                        <select
+                                                            value={member.role}
+                                                            onChange={(e) => handleChangeRole(member._id, e.target.value)}
+                                                            className="text-sm border border-gray-300 rounded px-2 py-1"
                                                             disabled={isLoading}
-                                                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
                                                         >
-                                                            Remove
-                                                        </button>
-                                                    </td>
-                                                )}
+                                                            <option value="admin">Admin</option>
+                                                            <option value="editor">Editor</option>
+                                                        </select>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button
+                                                        onClick={() => handleRemoveMember(member._id)}
+                                                        disabled={isLoading}
+                                                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))
                                     )}
