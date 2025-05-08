@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../../axiosInstance";
 import sdkApi from '../../utils/sdkApi';
-import useSubscriptionCheck from '../../hooks/useSubscriptionCheck';
-import UpgradePrompt from '../../components/UpgradePrompt';
-import { useParams } from "react-router-dom";
 
 const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   // State declarations
@@ -21,10 +18,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
-  const { team } = useParams();
-  const { checkAccess, getFeatureUsageAndLimit, subscription } = useSubscriptionCheck();
-  const [websites, setWebsites] = useState([]);
-  const [showSubscriptionAlert, setShowSubscriptionAlert] = useState(false);
 
   // Fetch websites when component mounts
   useEffect(() => {
@@ -40,7 +33,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       
       if (response.status === 200) {
         setWebsiteArray(response.data.websites);
-        setWebsites(response.data.websites);
         
         // Check if there's a currently selected website in localStorage
         const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
@@ -62,7 +54,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           const updatedResponse = await axiosInstance.get(`/website/team/${selectedTeam}`);
           if (updatedResponse.status === 200) {
             setWebsiteArray(updatedResponse.data.websites);
-            setWebsites(updatedResponse.data.websites);
             
             // If we had a selected website, make sure it's updated too
             if (selectedWebsite) {
@@ -135,15 +126,6 @@ Trigger Type: Page View / Window Loaded
   const handleAddWebsite = async (e) => {
     e.preventDefault();
     try {
-      // Check if user has reached website limit
-      const websiteCount = websites.length;
-      const canAddWebsite = checkAccess('websites', websiteCount + 1);
-      
-      if (!canAddWebsite) {
-        setShowSubscriptionAlert(true);
-        return;
-      }
-      
       const response = await axiosInstance.post('/website/create', {
         Domain: newWebsiteDomain,
         Name: newWebsiteName,
@@ -286,40 +268,6 @@ Trigger Type: Page View / Window Loaded
   // Function to close script modal
   const handleCloseScriptModal = () => {
     setScriptModal(false);
-  };
-
-  // Add this inside the return statement, above the main content
-  if (showSubscriptionAlert) {
-    return (
-      <div className="p-4 md:p-8">
-        <UpgradePrompt 
-          feature="websites"
-          teamId={team} 
-          currentPlan={subscription?.plan || 'current'}
-        />
-      </div>
-    );
-  }
-
-  // Add this to show usage information
-  const renderUsageInfo = () => {
-    const { usage, limit } = getFeatureUsageAndLimit('websites');
-    const actualUsage = websites.length; // Use actual count from state
-    
-    return (
-      <div className="mb-4 bg-gray-50 p-4 rounded-md border border-gray-200">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Website Usage</span>
-          <span className="text-sm text-gray-600">{actualUsage} of {limit}</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className={`h-2.5 rounded-full ${actualUsage >= limit ? 'bg-red-600' : 'bg-blue-600'}`}
-            style={{ width: `${Math.min((actualUsage / limit) * 100, 100)}%` }}
-          ></div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -540,8 +488,6 @@ Trigger Type: Page View / Window Loaded
           </div>
         </div>
       )}
-
-      {subscription && renderUsageInfo()}
     </div>
   );
 };

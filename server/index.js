@@ -9,23 +9,17 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
-// CORS configuration - Updated to allow requests from app domains
+// CORS configuration - Updated to allow requests from any origin during development
 app.use(cors({
-  origin: ['https://app.cryptique.io', 'http://localhost:3000'], 
+  origin: '*', // Allow all origins for development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
-  exposedHeaders: ['Content-Length', 'Content-Type'],
-  credentials: true,
-  optionsSuccessStatus: 204, // Set preflight response status to 204 for better compatibility
-  maxAge: 86400 // Cache preflight response for 24 hours
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Special handling for Coinbase webhook (needs raw body)
-app.use('/billing/webhook/coinbase', express.raw({ type: 'application/json' }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
@@ -37,16 +31,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 
 // Routes
 const analyticsRoutes = require('./routes/analytics');
-const billingRoutes = require('./routes/billing');
-const crmRoutes = require('./routes/crm');
-
-// Mount routes without the /api prefix since it's already in the URLs
-app.use('/analytics', analyticsRoutes);
-app.use('/billing', billingRoutes);
-app.use('/crm', crmRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
@@ -55,10 +43,8 @@ app.get('/', (req, res) => {
   res.json({
     message: 'Cryptique Analytics API Server',
     endpoints: {
-      analytics: '/analytics/*',
-      billing: '/billing/*',
-      crm: '/crm/*',
-      health: '/health'
+      analytics: '/api/analytics/*',
+      health: '/api/health'
     },
     env: {
       backend_url: process.env.BACKEND_API_URL || 'Not configured'

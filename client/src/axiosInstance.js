@@ -7,7 +7,7 @@ console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: baseURL,
+  baseURL: baseURL + '/api',
   headers: {
     'Content-Type': 'application/json',
     // Adding additional headers that might help with CORS
@@ -140,99 +140,5 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Billing APIs
-export const getSubscriptionPlans = async () => {
-  try {
-    const response = await axiosInstance.get('/billing/plans');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching subscription plans:', error);
-    throw error;
-  }
-};
-
-export const createCheckoutSession = async (teamId, planType, hasCQIntelligence = false) => {
-  try {
-    const response = await axiosInstance.post('/billing/checkout', {
-      teamId,
-      planType,
-      hasCQIntelligence
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    throw error;
-  }
-};
-
-export const getActiveSubscription = async (teamId) => {
-  try {
-    const response = await axiosInstance.get(`/billing/subscription/${teamId}`);
-    return response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      // No active subscription - this is a valid state
-      return null;
-    }
-    console.error('Error fetching active subscription:', error);
-    throw error;
-  }
-};
-
-export const getSubscriptionHistory = async (teamId) => {
-  try {
-    const response = await axiosInstance.get(`/billing/subscriptions/${teamId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching subscription history:', error);
-    throw error;
-  }
-};
-
-export const updateBillingDetails = async (teamId, billingDetails) => {
-  try {
-    const response = await axiosInstance.put(`/billing/billing/${teamId}`, billingDetails);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating billing details:', error);
-    throw error;
-  }
-};
-
-export const cancelSubscription = async (subscriptionId) => {
-  try {
-    const response = await axiosInstance.post(`/billing/cancel/${subscriptionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error cancelling subscription:', error);
-    throw error;
-  }
-};
-
-// Zoho CRM APIs
-export const createOrUpdateContact = async (contactData) => {
-  try {
-    const response = await axiosInstance.post('/crm/contact', contactData);
-    return response.data;
-  } catch (error) {
-    console.error('Error managing contact:', error);
-    throw error;
-  }
-};
-
-export const getContactDetails = async (teamId) => {
-  try {
-    const response = await axiosInstance.get(`/crm/contact/${teamId}`);
-    return response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      // No contact found - this is a valid state
-      return null;
-    }
-    console.error('Error fetching contact details:', error);
-    throw error;
-  }
-};
 
 export default axiosInstance;

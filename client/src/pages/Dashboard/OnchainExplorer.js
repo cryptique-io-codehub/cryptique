@@ -8,9 +8,6 @@ import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 import { useContractData } from "../../contexts/ContractDataContext";
 import preloadData from "../../utils/preloadService";
-import useSubscriptionCheck from '../../hooks/useSubscriptionCheck';
-import UpgradePrompt from '../../components/UpgradePrompt';
-import { useParams } from 'react-router-dom';
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -25,16 +22,11 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
-    const { team } = useParams();
-    const { checkAccess, getFeatureUsageAndLimit, subscription } = useSubscriptionCheck();
-    const [contracts, setContracts] = useState([]);
-    const [showSubscriptionAlert, setShowSubscriptionAlert] = useState(false);
-    const [showAddContractForm, setShowAddContractForm] = useState(false);
     
     // Import the refreshContracts function from context
     const { refreshContracts } = useContractData();
     
-    // Update the loadContractData function to set contracts state
+    // Refresh contract data when component mounts or when team changes
     useEffect(() => {
       const loadContractData = async () => {
         console.log("OnchainExplorer mounted, refreshing contract data");
@@ -45,17 +37,11 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
           
           // Then use the context's refresh function
           if (typeof refreshContracts === 'function') {
-            const contractData = await refreshContracts();
-            if (contractData && Array.isArray(contractData)) {
-              setContracts(contractData);
-            }
+            await refreshContracts();
           }
           
           // Also run the preload service with force refresh
-          const preloadedData = await preloadData(true);
-          if (preloadedData && preloadedData.contracts) {
-            setContracts(preloadedData.contracts);
-          }
+          await preloadData(true);
           
           console.log("Successfully refreshed contract data on OnchainExplorer mount");
         } catch (error) {
@@ -96,43 +82,6 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
   const toggleSecondNav = () => {
     setSecondNavOpen(!secondNavOpen);
   };
-
-  // Update this function to check subscription limits
-  const handleAddContract = async () => {
-    // Check if user has reached contract limit
-    const contractCount = contracts.length || 0;
-    const canAddContract = checkAccess('contracts', contractCount + 1);
-    
-    if (!canAddContract) {
-      setShowSubscriptionAlert(true);
-      return;
-    }
-    
-    // If they have access, show the add contract form
-    setShowAddContractForm(true);
-  };
-
-  // Add this to render usage information
-  const renderUsageInfo = () => {
-    const { usage, limit } = getFeatureUsageAndLimit('contracts');
-    const actualUsage = contracts.length; // Use actual count from state
-    
-    return (
-      <div className="mb-4 bg-gray-50 p-4 rounded-md border border-gray-200">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Smart Contract Usage</span>
-          <span className="text-sm text-gray-600">{actualUsage} of {limit}</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className={`h-2.5 rounded-full ${actualUsage >= limit ? 'bg-red-600' : 'bg-blue-600'}`}
-            style={{ width: `${Math.min((actualUsage / limit) * 100, 100)}%` }}
-          ></div>
-        </div>
-      </div>
-    );
-  };
-
     return (
       <div className="flex h-screen overflow-hidden bg-gray-50">
         {/* Content area with header and flexible content */}
@@ -215,21 +164,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     selectedPage={selectedPage}
                     onMenuClick={onMenuClick}
                   />
-                    
-                    {/* Add a button to add contracts */}
-                    <div className="flex justify-end mb-4">
-                      <button
-                        onClick={handleAddContract}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none flex items-center"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                        Add Smart Contract
-                      </button>
-                    </div>
-                    
-                    <OnchainDashboard/>
+                      <OnchainDashboard/>
                       </>
 
                     )}
@@ -344,52 +279,6 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
               setSecondNavOpen(false);
             }}
           />
-        )}
-
-        {/* Subscription alert */}
-        {showSubscriptionAlert && (
-          <div className="p-4 md:p-8">
-            <UpgradePrompt 
-              feature="contracts"
-              teamId={team} 
-              currentPlan={subscription?.plan || 'current'}
-            />
-          </div>
-        )}
-
-        {/* Add Contract Modal */}
-        {showAddContractForm && (
-          <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">Add a new contract</h2>
-                  <button onClick={() => setShowAddContractForm(false)} className="text-gray-500 hover:text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                
-                {/* Contract form will go here */}
-                <p>Form to add a new contract will be implemented here</p>
-                
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => setShowAddContractForm(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none mr-2"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none"
-                  >
-                    Add Contract
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
       </div>
     );

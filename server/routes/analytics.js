@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { trackApiUsage, checkCQIntelligenceAccess } = require('../middleware/subscriptionCheck');
 
 // Set backend API URL - use environment variable or default to production
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app';
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app/api';
 
 // Create axios instance for backend API calls
 const backendAPI = axios.create({
@@ -17,51 +16,28 @@ const backendAPI = axios.create({
 
 // Get chart data
 router.get('/chart', async (req, res) => {
-  const { siteId, timeframe = 'daily', start, end } = req.query;
+  const { siteId, timeframe = 'daily' } = req.query;
   
   if (!siteId) {
     return res.status(400).json({ success: false, error: 'Site ID is required' });
   }
   
-  console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}, dates: ${start} to ${end}`);
+  console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}`);
   
   try {
-    // Add options to pass through CORS headers
-    const options = { 
-      params: { 
-        siteId, 
-        timeframe,
-        start,
-        end
-      },
-      headers: {
-        'Origin': req.headers.origin || '',
-        'Referer': req.headers.referer || ''
-      }
-    };
-    
     // Forward request to real backend
-    const response = await backendAPI.get('/analytics/chart', options);
+    const response = await backendAPI.get('/analytics/chart', { 
+      params: { siteId, timeframe } 
+    });
     
     // Return real data
     res.json(response.data);
   } catch (error) {
-    console.error('Error fetching chart data from backend:', error.message);
-    
-    // Provide more detailed error for debugging
-    const errorResponse = {
-      success: false,
-      error: error.response?.data?.error || 'Failed to fetch chart data from backend',
-      message: error.message,
-      request: {
-        siteId,
-        timeframe,
-        start,
-        end
-      }
-    };
-    
-    res.status(error.response?.status || 500).json(errorResponse);
+    console.error('Error fetching chart data from backend:', error);
+    res.status(error.response?.status || 500).json({
+      success: false, 
+      error: error.response?.data?.error || 'Failed to fetch chart data from backend'
+    });
   }
 });
 
@@ -194,17 +170,6 @@ router.get('/test', async (req, res) => {
       error: error.message 
     });
   }
-});
-
-// Add the middleware to API-intensive routes
-// Example: Add API tracking to routes that make expensive API calls
-router.get('/onchain/:contractAddress', trackApiUsage, async (req, res) => {
-  // ... existing route handler
-});
-
-// Example: Add CQ Intelligence access check to AI-powered routes
-router.get('/intelligence/:type', checkCQIntelligenceAccess, async (req, res) => {
-  // ... existing route handler
 });
 
 module.exports = router; 
