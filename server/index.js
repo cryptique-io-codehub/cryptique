@@ -11,7 +11,7 @@ const app = express();
 
 // CORS configuration - Updated to allow requests from any origin during development
 app.use(cors({
-  origin: '*', // Allow all origins for development
+  origin: ['https://app.cryptique.io', 'http://localhost:3000'], // Allow specific origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -37,12 +37,13 @@ const analyticsRoutes = require('./routes/analytics');
 const billingRoutes = require('./routes/billing');
 const crmRoutes = require('./routes/crm');
 
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/billing', billingRoutes);
-app.use('/api/crm', crmRoutes);
+// Mount routes without the /api prefix since it's already in the URLs
+app.use('/analytics', analyticsRoutes);
+app.use('/billing', billingRoutes);
+app.use('/crm', crmRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
@@ -51,10 +52,10 @@ app.get('/', (req, res) => {
   res.json({
     message: 'Cryptique Analytics API Server',
     endpoints: {
-      analytics: '/api/analytics/*',
-      billing: '/api/billing/*',
-      crm: '/api/crm/*',
-      health: '/api/health'
+      analytics: '/analytics/*',
+      billing: '/billing/*',
+      crm: '/crm/*',
+      health: '/health'
     },
     env: {
       backend_url: process.env.BACKEND_API_URL || 'Not configured'
