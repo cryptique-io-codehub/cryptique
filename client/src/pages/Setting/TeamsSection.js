@@ -22,21 +22,27 @@ const TeamsSection = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [currentUserEmail, setCurrentUserEmail] = useState('');
 
-    useEffect(() => {
-        const fetchTeams = async () => {
-            try {
-                setIsLoading(true);
-                // Get user info first
-                const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
-                setCurrentUserEmail(userEmail);
-                
-                // Now fetch teams
-                const response = await axiosInstance.get('/team/details');
-                console.log("Team details response:", response.data);
+    // Function to fetch teams
+    const fetchTeams = async () => {
+        try {
+            setIsLoading(true);
+            setError('');
+            
+            // Get user info first
+            const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
+            setCurrentUserEmail(userEmail);
+            
+            console.log("Fetching teams for user:", userEmail);
+            
+            // Now fetch teams
+            const response = await axiosInstance.get('/team/details');
+            console.log("Team details response:", response.data);
+            
+            if (response.data && response.data.team) {
                 setTeams(response.data.team);
                 
-                // Automatically select the first team if available
-                if (response.data.team.length > 0 && !selectedTeam) {
+                // Automatically select the first team if available and none is selected
+                if (response.data.team.length > 0 && (!selectedTeam || !selectedTeam.name)) {
                     setSelectedTeam(response.data.team[0]);
                     localStorage.setItem('selectedTeam', response.data.team[0].name);
                 }
@@ -44,16 +50,52 @@ const TeamsSection = () => {
                 // Log user and team info for debugging
                 console.log("Current user email:", userEmail);
                 console.log("Teams loaded:", response.data.team);
-            } catch (error) {
-                console.error("Error fetching teams:", error);
-                setError("Failed to load teams. Please try again.");
-            } finally {
-                setIsLoading(false);
+                
+                // Check team ownership for debugging
+                response.data.team.forEach(team => {
+                    const isOwner = isTeamOwner(team);
+                    console.log(`Team "${team.name}" ownership check:`, isOwner);
+                });
+            } else {
+                console.error("Invalid team data format:", response.data);
+                setTeams([]);
             }
-        };
-    
+        } catch (error) {
+            console.error("Error fetching teams:", error);
+            setError("Failed to load teams. Please try again.");
+            setTeams([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Initial fetch on component mount
+    useEffect(() => {
         fetchTeams();
     }, []);
+
+    // Improved isTeamOwner function with better debugging
+    const isTeamOwner = (team) => {
+        // Get current user email for comparison
+        const userEmail = currentUserEmail || localStorage.getItem('userEmail') || localStorage.getItem('email');
+        
+        // Comprehensive team ownership check
+        const isAdmin = team.role === 'admin';
+        const isCreator = team.createdBy && team.createdBy.email === userEmail;
+        const result = isAdmin || isCreator;
+        
+        // Detailed logging for debugging ownership issues
+        console.log(`Team ownership check for "${team.name}":`, {
+            teamRole: team.role,
+            isAdmin,
+            creatorEmail: team.createdBy?.email,
+            userEmail,
+            isCreator,
+            finalResult: result
+        });
+        
+        return result;
+    };
 
     // Function to filter teams owned by the current user
     const getOwnedTeams = () => {
@@ -72,23 +114,36 @@ const TeamsSection = () => {
         setError('');
 
         try {
-            const userEmail = currentUserEmail;
-            const response = await axiosInstance.post('/team/createNewTeam',
+            // Get current user email from localStorage
+            const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
+            
+            console.log("Creating team with payload:", {
+                teamName: teamName.trim(),
+                description: teamDescription.trim() || '',
+                email: userEmail,
+                role: 'admin'
+            });
+            
+            // Use the correct endpoint - check if it should be /team/create
+            const response = await axiosInstance.post('/team/create', 
                 { 
                     teamName: teamName.trim(),
-                    teamDescription: teamDescription.trim() || '',
+                    description: teamDescription.trim() || '',
                     email: userEmail,
                     role: 'admin'
                 }
             );
             
+            console.log("Team creation response:", response.data);
+            
             // Ensure the new team has the same structure as existing teams
             const newTeam = {
-                name: response.data.newTeam.name || teamName.trim(),
+                _id: response.data.team?._id || response.data._id || Date.now().toString(),
+                name: response.data.team?.name || response.data.teamName || teamName.trim(),
                 description: teamDescription.trim() || '',
                 user: [{ email: userEmail }],
                 role: 'admin',
-                createdBy: response.data.newTeam.createdBy
+                createdBy: { email: userEmail }
             };
 
             // Update teams list and select the newly created team
@@ -101,9 +156,17 @@ const TeamsSection = () => {
             setIsCreateModalOpen(false);
             setTeamName('');
             setTeamDescription('');
+            
+            // Alert success message
+            alert(`Team "${newTeam.name}" created successfully!`);
+            
+            // Refresh teams list
+            fetchTeams();
         } catch (err) {
             console.error("Team creation error:", err);
-            setError(err.response?.data?.message || 'Failed to create team');
+            const errorMsg = err.response?.data?.message || 'Failed to create team. Please try again.';
+            setError(errorMsg);
+            alert(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -119,10 +182,20 @@ const TeamsSection = () => {
         setError('');
 
         try {
-            const response = await axiosInstance.put(`/team/update/${teamToEdit._id}`, {
+            console.log("Updating team with payload:", {
+                teamId: teamToEdit._id,
                 name: teamName.trim(),
                 description: teamDescription.trim()
             });
+            
+            // Use the correct endpoint for team update
+            const response = await axiosInstance.post(`/team/update`, {
+                teamId: teamToEdit._id,
+                name: teamName.trim(),
+                description: teamDescription.trim()
+            });
+
+            console.log("Team update response:", response.data);
 
             // Update the team in the teams array
             const updatedTeams = teams.map(team => 
@@ -145,9 +218,14 @@ const TeamsSection = () => {
             setTeamName('');
             setTeamDescription('');
             setTeamToEdit(null);
+            
+            // Show success message
+            alert(`Team "${teamName.trim()}" updated successfully!`);
         } catch (err) {
             console.error("Team update error:", err);
-            setError(err.response?.data?.message || 'Failed to update team');
+            const errorMsg = err.response?.data?.message || 'Failed to update team. Please try again.';
+            setError(errorMsg);
+            alert(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -160,7 +238,14 @@ const TeamsSection = () => {
         setError('');
 
         try {
-            await axiosInstance.delete(`/team/delete/${teamToDelete._id}`);
+            console.log("Deleting team:", teamToDelete._id);
+            
+            // Use the correct endpoint for team deletion
+            const response = await axiosInstance.post(`/team/delete`, { 
+                teamId: teamToDelete._id 
+            });
+            
+            console.log("Team deletion response:", response.data);
             
             // Remove the deleted team from the teams array
             const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
@@ -178,9 +263,14 @@ const TeamsSection = () => {
             // Close modal and reset
             setIsDeleteModalOpen(false);
             setTeamToDelete(null);
+            
+            // Show success message
+            alert(`Team "${teamToDelete.name}" deleted successfully!`);
         } catch (err) {
             console.error("Team deletion error:", err);
-            setError(err.response?.data?.message || 'Failed to delete team');
+            const errorMsg = err.response?.data?.message || 'Failed to delete team. Please try again.';
+            setError(errorMsg);
+            alert(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -318,16 +408,6 @@ const TeamsSection = () => {
         setIsTeamDropdownOpen(false);
     };
 
-    const isTeamOwner = (team) => {
-        // Temporary debugging log
-        console.log("Team role check:", team.role, "Team creator:", team.createdBy?.email, "Current user:", currentUserEmail);
-        // Check if user has admin role or is the creator of the team
-        return team.role === 'admin' || 
-               (team.createdBy && team.createdBy.email === currentUserEmail) ||
-               // Fallback if createdBy is missing but user is admin
-               (team.role === 'admin' && (!team.createdBy || !team.createdBy.email));
-    };
-
     // Function to filter and show only teams in the table
     const getDisplayTeams = () => {
         // If no teams, return empty array
@@ -389,22 +469,22 @@ const TeamsSection = () => {
                         <p className="text-gray-500">You don't have any teams yet. Create your first team to get started!</p>
                     </div>
                 ) : (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-gray-100 text-xs uppercase text-gray-600">
-                                    <th className="px-6 py-3 text-left font-medium">Team name</th>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-gray-100 text-xs uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left font-medium">Team name</th>
                                     <th className="px-6 py-3 text-left font-medium">Description</th>
                                     <th className="px-6 py-3 text-left font-medium">Members</th>
-                                    <th className="px-6 py-3 text-left font-medium">Your role</th>
+                                <th className="px-6 py-3 text-left font-medium">Your role</th>
                                     <th className="px-6 py-3 text-center font-medium">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
                                 {getDisplayTeams().map((team, index) => {
                                     const isOwner = isTeamOwner(team);
                                     return (
-                                    <tr key={index} className="bg-white hover:bg-gray-50">
+                                <tr key={index} className="bg-white hover:bg-gray-50">
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {team.name}
                                             {isOwner && (
@@ -448,11 +528,11 @@ const TeamsSection = () => {
                                                 </>
                                             )}
                                         </td>
-                                    </tr>
+                                </tr>
                                 )})}
-                            </tbody>
-                        </table>
-                    </div>
+                        </tbody>
+                    </table>
+                </div>
                 )}
             </div>
 
