@@ -24,12 +24,74 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
     const selectteam = localStorage.getItem("selectedTeam");
     setSelectedTeam(selectteam);
     
-    console.log("Fetching websites, current selectedWebsite:", localStorage.getItem("selectedWebsite"));
-  
     const fetchWebsites = async () => {
       setIsLoading(true);
       try {
-        // Use the correct GET endpoint with team name in path parameter
+        // Check for preloaded data in sessionStorage first
+        const preloadedWebsites = sessionStorage.getItem("preloadedWebsites");
+        
+        if (preloadedWebsites) {
+          console.log("Using preloaded website data");
+          const websites = JSON.parse(preloadedWebsites);
+          setWebsitearray(websites);
+          
+          // Process the preloaded data the same way we would process API data
+          const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+          
+          // If no website is selected or selection is empty
+          if(!savedWebsiteDomain || savedWebsiteDomain === '') {
+            const firstWebsite = websites[0];
+            if (firstWebsite) {
+              localStorage.setItem("idy", firstWebsite.siteId);
+              localStorage.setItem("selectedWebsite", firstWebsite.Domain);
+              setSelectedWebsite(firstWebsite);
+              setidy(firstWebsite.siteId);
+              
+              // Generate script code for the first website
+              const iD = firstWebsite.siteId;
+              const scriptHTML = `<script>
+              var script = document.createElement('script');
+              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+              script.setAttribute('site-id', '${iD}');
+              document.head.appendChild(script);
+            </script>`;
+              setscriptcode(scriptHTML);
+            }
+          } else {
+            // Find the selected website in the array
+            const currentWebsite = websites.find(
+              website => website.Domain === savedWebsiteDomain
+            );
+            
+            if (currentWebsite) {
+              console.log("Setting selected website:", currentWebsite);
+              setSelectedWebsite(currentWebsite);
+              setidy(currentWebsite.siteId);
+              
+              // Generate script code for current website
+              const iD = currentWebsite.siteId;
+              const scriptHTML = `<script>
+              var script = document.createElement('script');
+              script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+              script.setAttribute('site-id', '${iD}');
+              document.head.appendChild(script);
+            </script>`;
+              setscriptcode(scriptHTML);
+            }
+          }
+          
+          setIsLoading(false);
+          return; // Skip API call
+        }
+        
+        // If no preloaded data exists, fetch from API
+        if (!selectteam) {
+          console.log("No team selected, skipping website fetch");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Original API fetch logic
         const response = await axiosInstance.get(`/website/team/${selectteam}`);
         
         if (response.status === 200) {
@@ -97,6 +159,12 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
             setIsDropdownOpen(false);
           }
         }
+
+        // After successful fetch, update the sessionStorage too
+        if (response.status === 200 && response.data.websites) {
+          sessionStorage.setItem("preloadedWebsites", JSON.stringify(response.data.websites));
+        }
+        
       } catch (error) {
         console.error("Error refreshing websites:", error);
         setfalsemessage("Error refreshing websites");

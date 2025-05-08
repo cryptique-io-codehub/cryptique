@@ -28,6 +28,19 @@ export const ContractDataProvider = ({ children }) => {
           return;
         }
 
+        // Check for preloaded data in sessionStorage first
+        const preloadedContracts = sessionStorage.getItem("preloadedContracts");
+        
+        if (preloadedContracts) {
+          console.log("Using preloaded contract data");
+          const contracts = JSON.parse(preloadedContracts);
+          setContractArray(contracts);
+          console.log(`Loaded ${contracts.length} preloaded contracts for team ${selectedTeam}`);
+          setIsLoadingContracts(false);
+          return; // Skip API call
+        }
+
+        // If no preloaded data, fetch from API
         const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
         
         if (response.data && response.data.contracts) {
@@ -41,6 +54,10 @@ export const ContractDataProvider = ({ children }) => {
           }));
           
           setContractArray(contracts);
+          
+          // Save to sessionStorage for future quick access
+          sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
+          
           console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
         }
       } catch (error) {

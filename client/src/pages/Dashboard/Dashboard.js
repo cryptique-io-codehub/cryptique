@@ -16,6 +16,7 @@ import ConversionEvents from './ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
+import preloadData from '../../utils/preloadService.js'
 
 const Dashboard = () => {
   // State management
@@ -58,7 +59,7 @@ const Dashboard = () => {
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
 
-  // Sync selectedPage with URL
+  // Sync selectedPage with URL and preload data for new tabs
   useEffect(() => {
     const path = location.pathname;
     
@@ -82,13 +83,21 @@ const Dashboard = () => {
     };
     
     // Set the selected page based on the current route
-    if (routeToPageMap[currentRoute]) {
-      setSelectedPage(routeToPageMap[currentRoute]);
-    } else {
-      setSelectedPage('dashboard'); // Default to dashboard
+    const newPage = routeToPageMap[currentRoute] || 'dashboard';
+    
+    // If page is changing, preload data
+    if (newPage !== selectedPage) {
+      // Preload data when navigating to pages that need dropdowns
+      const pagesWithDropdowns = ['offchain-analytics', 'onchain-explorer', 'campaigns', 'conversion-events', 'cq-intelligence'];
+      if (pagesWithDropdowns.includes(newPage)) {
+        preloadData()
+          .catch(err => console.error("Error preloading data for new tab:", err));
+      }
+      
+      setSelectedPage(newPage);
     }
     
-  }, [location, selectedTeam]);
+  }, [location, selectedPage, selectedTeam]);
 
   // Update isCompactMode based on the selected page
   useEffect(() => {

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { auth } from '../../components/firebase.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance.js';
+import preloadData from '../../utils/preloadService.js';
 
 function SignupForm({ onBackToLogin }) {
   const [fullName, setFullName] = useState('');
@@ -93,6 +94,10 @@ function SignupForm({ onBackToLogin }) {
         localStorage.setItem('selectedTeam',aa);
         // Store user data
         localStorage.setItem('User', JSON.stringify(response.data.user));
+        
+        // Preload data before navigating to dashboard
+        await preloadData();
+        
         navigate(`/dashboard`);
       } else {
         // If verification fails, reset to signup view
@@ -129,6 +134,10 @@ function SignupForm({ onBackToLogin }) {
         localStorage.setItem('selectedTeam',aa);
         // Store user data
         localStorage.setItem('User', JSON.stringify(response.data.user));
+        
+        // Preload data before navigating to dashboard
+        await preloadData();
+        
         // Redirect to dashboard
         navigate(`/dashboard`);
       }

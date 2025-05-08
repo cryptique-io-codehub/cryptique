@@ -5,6 +5,7 @@ import { auth } from '../../components/firebase.js';
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import phone from './login-phone.png'
 import axiosInstance from '../../axiosInstance.js';
+import preloadData from '../../utils/preloadService.js';
 
 function Interface() {
   const [loading, setLoading] = useState(false);
@@ -125,10 +126,14 @@ function LoginForm({ onSignupClick, toggleLoading }) {
       });
       const aa=email.split('@')[0];
       if (response.data.user) {
-        toggleLoading(false);
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam', aa);
         localStorage.setItem('User', JSON.stringify(response.data.user));
+        
+        // Preload data before navigating to dashboard
+        await preloadData();
+        
+        toggleLoading(false);
         navigate(`/dashboard`);
       } else {
         toggleLoading(false);
@@ -165,10 +170,14 @@ function LoginForm({ onSignupClick, toggleLoading }) {
       console.log(user.email);
       const aa=user.email.split('@')[0];
       if (response.data.user) {
-        toggleLoading(false);
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('selectedTeam', aa);
         localStorage.setItem('User', JSON.stringify(response.data.user));
+        
+        // Preload data before navigating to dashboard
+        await preloadData();
+        
+        toggleLoading(false);
         navigate(`/dashboard`);
       }
     } catch (error) {
