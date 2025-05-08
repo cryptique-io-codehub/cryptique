@@ -7,10 +7,6 @@ const teamsSchema=new mongoose.Schema({
         type:String,
         required:true
     },
-    description:{
-        type:String,
-        default: ""
-    },
     createdBy:{type:mongoose.Schema.Types.ObjectId},
     user:[{
         userId:{

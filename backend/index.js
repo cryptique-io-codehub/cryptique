@@ -202,8 +202,7 @@ app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOpti
 
 // Apply main CORS for all other routes
 app.use("/api/auth", cors(mainCorsOptions), userRouter);
-// Team router has its own CORS middleware
-app.use("/api/team", require("./routes/teamRouter"));
+app.use("/api/team", cors(mainCorsOptions), require("./routes/teamRouter"));
 app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter"));
 app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
 app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));

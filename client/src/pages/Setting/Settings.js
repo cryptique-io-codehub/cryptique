@@ -8,21 +8,12 @@ import TeamsSection from "./TeamsSection";
 import Sidebar from "../../components/Sidebar";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
-import axiosInstance from "../../axiosInstance";
 
 const Settings = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { team } = useParams();
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
-  const [teamDetails, setTeamDetails] = useState({
-    name: "",
-    description: "",
-    email: "",
-  });
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Determine active section based on current path
   const determineActiveSection = () => {
@@ -36,67 +27,6 @@ const Settings = ({ onMenuClick }) => {
 
   const [activeSection, setActiveSection] = useState(determineActiveSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Fetch team details
-  useEffect(() => {
-    const fetchTeamDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Get team name from localStorage
-        const teamName = localStorage.getItem("selectedTeam");
-        const user = JSON.parse(localStorage.getItem("User") || "{}");
-        
-        // Use local data first if available
-        setTeamDetails({
-          name: teamName || "",
-          description: localStorage.getItem("teamDescription") || "",
-          email: user.email || "",
-        });
-        
-        try {
-          // Try to fetch from backend but don't block on it
-          const response = await axiosInstance.get('/team/details');
-          
-          if (response.data && response.data.team && response.data.team.length > 0) {
-            // Find the current team
-            const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
-            
-            // Get creator email from user who created the team
-            let creatorEmail = "";
-            if (currentTeam.createdBy && currentTeam.createdBy.email) {
-              creatorEmail = currentTeam.createdBy.email;
-            }
-            
-            // Only update if we got valid data
-            setTeamDetails(prev => ({
-              name: currentTeam.name || prev.name,
-              description: currentTeam.description || prev.description,
-              email: creatorEmail || prev.email,
-            }));
-            
-            // Save description to localStorage for future use
-            if (currentTeam.description) {
-              localStorage.setItem("teamDescription", currentTeam.description);
-            }
-          }
-        } catch (apiError) {
-          console.warn("Could not fetch team details from API, using local data:", apiError);
-          // Don't set error state as we already have fallback data
-        }
-      } catch (error) {
-        console.error("Error setting up team details:", error);
-        setError("Failed to load team details. Please refresh the page.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (seteam) {
-      fetchTeamDetails();
-    }
-  }, [seteam]);
 
   useEffect(() => {
     setseTeam(localStorage.getItem("selectedTeam"));
@@ -147,38 +77,6 @@ const Settings = ({ onMenuClick }) => {
     // On mobile, close the sidebar after selecting a section
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
-    }
-  };
-
-  const handleUpdateDescription = async (e) => {
-    e.preventDefault();
-    try {
-      // Save description to localStorage immediately for better UX
-      localStorage.setItem("teamDescription", teamDetails.description);
-      
-      try {
-        // Try to update on backend, but don't block UI
-        const response = await axiosInstance.get('/team/details');
-        if (response.data && response.data.team && response.data.team.length > 0) {
-          const teamName = localStorage.getItem("selectedTeam");
-          const currentTeam = response.data.team.find(t => t.name === teamName) || response.data.team[0];
-          
-          if (currentTeam._id) {
-            await axiosInstance.put('/team/update', { 
-              teamId: currentTeam._id,
-              description: teamDetails.description 
-            });
-          }
-        }
-      } catch (apiError) {
-        console.warn("Could not update description on backend, but saved locally:", apiError);
-        // Don't show error to user since we've already saved locally
-      }
-      
-      setIsEditingDescription(false);
-    } catch (error) {
-      console.error("Error updating description:", error);
-      alert("There was an issue saving your description, but it has been saved locally.");
     }
   };
   
@@ -290,86 +188,71 @@ const Settings = ({ onMenuClick }) => {
         <div className="flex-1 overflow-y-auto bg-gray-50">
           {activeSection === "general" && (
             <div className="p-4 sm:p-6 bg-white">
-              {loading ? (
-                <div className="flex justify-center items-center h-40">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              
+              <div className="max-w-2xl">
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="User name or email address" />
+                  <p className="text-xs text-gray-500 mt-1">This is the name of your team that will be displayed to your team members.</p>
+                  <div className="mt-2">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                  </div>
                 </div>
-              ) : error ? (
-                <div className="p-4 bg-red-50 text-red-700 rounded-md">
-                  {error}
-                </div>
-              ) : (
-                <div className="max-w-2xl">
-                  {/* Team Name Section */}
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Team Information</h2>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
-                      <p className="text-sm bg-gray-50 p-3 rounded-md">{teamDetails.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">This is your current team name.</p>
+                
+                <div className="mb-6 border-t pt-6">
+                  <h2 className="text-xl font-semibold mb-4">Billing details</h2>
+                  <p className="text-xs text-gray-500 mb-4">Company data is required to activate the paid package and for invoicing.</p>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-red-500">*</span></label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code <span className="text-red-500">*</span></label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                   </div>
                   
-                  {/* Company Description Section */}
-                  <div className="mb-6 border-t pt-6">
-                    <h2 className="text-xl font-semibold mb-4">Company Description</h2>
-                    {isEditingDescription ? (
-                      <form onSubmit={handleUpdateDescription}>
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                          <textarea
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md h-32"
-                            value={teamDetails.description}
-                            onChange={(e) => setTeamDetails({...teamDetails, description: e.target.value})}
-                            placeholder="Describe your company or team"
-                          ></textarea>
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="submit" className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">
-                            Save
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => setIsEditingDescription(false)}
-                            className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded-md"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div>
-                        <div className="mb-4 bg-gray-50 p-4 rounded-md">
-                          {teamDetails.description ? (
-                            <p className="text-sm text-gray-700">{teamDetails.description}</p>
-                          ) : (
-                            <p className="text-sm text-gray-500 italic">No company description set</p>
-                          )}
-                        </div>
-                        <button 
-                          onClick={() => setIsEditingDescription(true)}
-                          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm rounded-md"
-                        >
-                          Edit Description
-                        </button>
-                      </div>
-                    )}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Country <span className="text-red-500">*</span></label>
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option>Select a country</option>
+                    </select>
                   </div>
                   
-                  {/* Team Email Section */}
-                  <div className="mb-6 border-t pt-6">
-                    <h2 className="text-xl font-semibold mb-4">Team Email</h2>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Primary Email Address</label>
-                      <p className="text-sm bg-gray-50 p-3 rounded-md">{teamDetails.email || "No email address set"}</p>
-                      <p className="text-xs text-gray-500 mt-1">This is the email address used to create your account.</p>
-                    </div>
+                  <div className="mt-2 mb-6">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
                   </div>
                 </div>
-              )}
+                
+                <div className="mb-6 border-t pt-6">
+                  <h2 className="text-xl font-semibold mb-4">Invoice Email Recipient</h2>
+                  <p className="text-xs text-gray-500 mb-4">By default, all your invoices will be sent to the email address of the creator of your team. If you want to use a custom email address specifically for receiving invoices, enter it here.</p>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  
+                  <div className="mt-2">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          {activeSection === "billing" && (
+           {activeSection === "billing" && (
             <div className="p-4 sm:p-6 bg-white">
               
               <Billing/>
