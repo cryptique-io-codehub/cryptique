@@ -22,15 +22,55 @@ const TeamsSection = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [currentUserEmail, setCurrentUserEmail] = useState('');
 
+    // Helper function to get the current user email from various localStorage keys
+    const getCurrentUserEmail = () => {
+        const userEmail = localStorage.getItem('userEmail');
+        const email = localStorage.getItem('email');
+        const userString = localStorage.getItem('User');
+        
+        // Try to parse user object if it exists
+        let userObject = null;
+        if (userString) {
+            try {
+                userObject = JSON.parse(userString);
+                console.log("Found user object in localStorage:", userObject);
+            } catch (err) {
+                console.error("Error parsing User from localStorage:", err);
+            }
+        }
+        
+        // Get email from different possible sources
+        const emailFromUserObject = userObject?.email || userObject?.userEmail;
+        
+        // Use the first valid email found
+        const finalEmail = userEmail || email || emailFromUserObject || '';
+        
+        console.log("Determined user email:", finalEmail);
+        return finalEmail;
+    };
+
     // Function to fetch teams
     const fetchTeams = async () => {
         try {
             setIsLoading(true);
             setError('');
             
-            // Get user info first
-            const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
-            setCurrentUserEmail(userEmail);
+            // Get user info first - check all possible storage locations
+            const userEmail = getCurrentUserEmail();
+            
+            // Debug the current user email to ensure we have it
+            console.log("User email storage locations:", {
+                userEmail: localStorage.getItem('userEmail'),
+                email: localStorage.getItem('email'),
+                user: localStorage.getItem('user'),
+                selectedEmail: userEmail
+            });
+            
+            if (userEmail) {
+                setCurrentUserEmail(userEmail);
+            } else {
+                console.warn("No user email found in localStorage!");
+            }
             
             console.log("Fetching teams for user:", userEmail);
             
@@ -72,12 +112,21 @@ const TeamsSection = () => {
     // Initial fetch on component mount
     useEffect(() => {
         fetchTeams();
+        
+        // Also log the current authentication state
+        const token = localStorage.getItem('accessToken');
+        console.log("Authentication state:", {
+            hasToken: !!token,
+            tokenPrefix: token ? token.substring(0, 10) + '...' : 'Not found'
+        });
     }, []);
 
     // Improved isTeamOwner function with better debugging
     const isTeamOwner = (team) => {
+        if (!team) return false;
+        
         // Get current user email for comparison
-        const userEmail = currentUserEmail || localStorage.getItem('userEmail') || localStorage.getItem('email');
+        const userEmail = getCurrentUserEmail();
         
         // Comprehensive team ownership check
         const isAdmin = team.role === 'admin';
@@ -114,23 +163,25 @@ const TeamsSection = () => {
         setError('');
 
         try {
-            // Get current user email from localStorage
-            const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
+            // Get current user email using our helper function
+            const userEmail = getCurrentUserEmail();
+            
+            if (!userEmail) {
+                throw new Error("User email not found. Please login again.");
+            }
             
             console.log("Creating team with payload:", {
                 teamName: teamName.trim(),
-                description: teamDescription.trim() || '',
                 email: userEmail,
-                role: 'admin'
+                // Note: description is not used in the createNewTeam endpoint
             });
             
-            // Use the correct endpoint - check if it should be /team/create
-            const response = await axiosInstance.post('/team/create', 
+            // Use the CORRECT endpoint for team creation
+            const response = await axiosInstance.post('/team/createNewTeam', 
                 { 
                     teamName: teamName.trim(),
-                    description: teamDescription.trim() || '',
                     email: userEmail,
-                    role: 'admin'
+                    // The description will be handled separately or in a follow-up update
                 }
             );
             
@@ -138,8 +189,8 @@ const TeamsSection = () => {
             
             // Ensure the new team has the same structure as existing teams
             const newTeam = {
-                _id: response.data.team?._id || response.data._id || Date.now().toString(),
-                name: response.data.team?.name || response.data.teamName || teamName.trim(),
+                _id: response.data.newTeam?._id || Date.now().toString(),
+                name: response.data.newTeam?.name || teamName.trim(),
                 description: teamDescription.trim() || '',
                 user: [{ email: userEmail }],
                 role: 'admin',
@@ -164,7 +215,16 @@ const TeamsSection = () => {
             fetchTeams();
         } catch (err) {
             console.error("Team creation error:", err);
-            const errorMsg = err.response?.data?.message || 'Failed to create team. Please try again.';
+            let errorMsg = "";
+            
+            if (err.response?.status === 404 && err.response?.data?.message === "User not found") {
+                errorMsg = "User not found. Please ensure you are logged in correctly.";
+            } else if (err.response?.status === 400 && err.response?.data?.message === "Team already exist") {
+                errorMsg = "A team with this name already exists. Please choose a different name.";
+            } else {
+                errorMsg = err.response?.data?.message || 'Failed to create team. Please try again.';
+            }
+            
             setError(errorMsg);
             alert(errorMsg);
         } finally {
