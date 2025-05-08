@@ -40,6 +40,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       
       if (response.status === 200) {
         setWebsiteArray(response.data.websites);
+        setWebsites(response.data.websites);
         
         // Check if there's a currently selected website in localStorage
         const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
@@ -61,6 +62,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           const updatedResponse = await axiosInstance.get(`/website/team/${selectedTeam}`);
           if (updatedResponse.status === 200) {
             setWebsiteArray(updatedResponse.data.websites);
+            setWebsites(updatedResponse.data.websites);
             
             // If we had a selected website, make sure it's updated too
             if (selectedWebsite) {

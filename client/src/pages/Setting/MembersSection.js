@@ -16,6 +16,7 @@ const MembersSection = () => {
   const { team } = useParams();
   const { checkAccess, getFeatureUsageAndLimit, subscription } = useSubscriptionCheck();
   const [showSubscriptionAlert, setShowSubscriptionAlert] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Fetch members when component mounts or when active tab changes
   useEffect(() => {
@@ -90,6 +91,9 @@ const MembersSection = () => {
 
   const sendInvite = async () => {
     try {
+      // Close the invite modal first
+      setShowInviteModal(false);
+      
       // Basic validation
       if (!email.trim()) {
         setError("Email is required");
@@ -193,7 +197,7 @@ const MembersSection = () => {
             className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
               loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
             } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-            onClick={sendInvite}
+            onClick={handleInviteMember}
             disabled={loading}
           >
             {loading ? "Sending..." : 
@@ -262,6 +266,83 @@ const MembersSection = () => {
       {activeTab === "invitations" && (
         <div className="bg-white rounded-lg shadow">
           {/* Pending invitations would go here */}
+        </div>
+      )}
+
+      {/* Invite Member Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Invite Team Member</h2>
+                <button onClick={() => setShowInviteModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address*
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    placeholder="Enter email address"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="role"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md appearance-none"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="editor">Editor</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendInvite}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-md text-white ${
+                    loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {loading ? "Sending..." : "Send Invite"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
