@@ -131,7 +131,11 @@ const TeamsSection = () => {
                 throw new Error("Cannot leave a team you own. Please delete it instead.");
             }
             
-            await axiosInstance.post(`/team/leave/${teamToManage._id}`);
+            // Fix the API endpoint - use 'leaveTeam' instead of 'leave'
+            // and pass team ID in the request body instead of URL parameter
+            await axiosInstance.post('/team/leaveTeam', {
+                teamId: teamToManage._id
+            });
             
             // Update teams list
             const updatedTeams = teams.filter(team => team._id !== teamToManage._id);
@@ -151,7 +155,22 @@ const TeamsSection = () => {
             setIsLeaveModalOpen(false);
         } catch (err) {
             console.error("Team leave error:", err);
-            setError(err.response?.data?.message || err.message || 'Failed to leave team');
+            
+            // Enhanced error handling to provide more user-friendly messages
+            let errorMessage = 'Failed to leave team';
+            
+            if (err.message) {
+                // Custom error messages from our code
+                errorMessage = err.message;
+            } else if (err.response) {
+                if (err.response.status === 404) {
+                    errorMessage = 'The leave team functionality is not available. Please contact support.';
+                } else if (err.response.data && err.response.data.message) {
+                    errorMessage = err.response.data.message;
+                }
+            }
+            
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
