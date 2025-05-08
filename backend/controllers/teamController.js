@@ -386,3 +386,84 @@ exports.removeMember = async (req, res) => {
         });
     }
 };
+
+exports.updateMemberRole = async (req, res) => {
+    try {
+        // Get the email, team name, and new role from the request
+        const { email, teamName, newRole } = req.body;
+        
+        console.log("Update member role request:", { email, teamName, newRole });
+        
+        // Validate inputs
+        if (!email || !teamName || !newRole) {
+            return res.status(400).json({ message: "Email, team name, and new role are required" });
+        }
+        
+        // Validate role value
+        if (newRole !== 'admin' && newRole !== 'user') {
+            return res.status(400).json({ message: "Role must be either 'admin' or 'user'" });
+        }
+        
+        // Find the team by name
+        const team = await Team.findOne({ name: teamName });
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Find the user by email
+        const user = await User.findOne({ email });
+        
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Check if the user is a member of the team
+        const memberIndex = team.user.findIndex(member => 
+            member.userId.toString() === user._id.toString()
+        );
+        
+        if (memberIndex === -1) {
+            return res.status(404).json({ message: "User is not a member of this team" });
+        }
+        
+        // Check if the logged-in user is authorized to update member roles
+        // Only admins can update member roles
+        const loggedInUserMember = team.user.find(member => 
+            member.userId.toString() === req.userId.toString()
+        );
+        
+        if (!loggedInUserMember || loggedInUserMember.role !== 'admin') {
+            return res.status(403).json({ 
+                message: "Unauthorized. Only team admins can update member roles." 
+            });
+        }
+        
+        // Cannot change the role of the team owner (first member)
+        if (memberIndex === 0) {
+            return res.status(403).json({ 
+                message: "Cannot change the role of the team owner" 
+            });
+        }
+        
+        // Update the user's role
+        team.user[memberIndex].role = newRole;
+        await team.save();
+        
+        return res.status(200).json({ 
+            message: "Member role updated successfully",
+            member: {
+                userId: user._id,
+                email: user.email,
+                name: user.firstName || user.name,
+                role: newRole
+            }
+        });
+    } catch (error) {
+        console.error("Error updating member role:", error);
+        return res.status(500).json({ 
+            message: "Error updating member role", 
+            error: error.message 
+        });
+    }
+};

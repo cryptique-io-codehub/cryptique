@@ -20,6 +20,7 @@ const TeamsSection = () => {
     const [newMemberRole, setNewMemberRole] = useState('user');
     const [isLoading, setIsLoading] = useState(false);
     const [currentUserEmail, setCurrentUserEmail] = useState('');
+    const [updatingRoleFor, setUpdatingRoleFor] = useState(null);
 
     // Helper function to get the current user email from various localStorage keys
     const getCurrentUserEmail = () => {
@@ -193,7 +194,13 @@ const TeamsSection = () => {
                             
                         if (isFirstMember) {
                             processedTeam.isOwner = true;
-                            processedTeam.role = 'admin';
+                            processedTeam.role = 'admin'; // Owner is always admin
+                            
+                            // Ensure the first member (owner) also has admin role in the DB
+                            if (firstMember.role !== 'admin') {
+                                // This is just for display purposes - the actual DB update will happen separately
+                                team.user[0].role = 'admin';
+                            }
                         }
                     }
                     
@@ -778,6 +785,85 @@ const TeamsSection = () => {
         }
     };
 
+    const updateMemberRole = async (memberEmail, newRole) => {
+        if (!memberEmail || !selectedTeam || !selectedTeam.name) {
+            setError("No team selected");
+            return;
+        }
+
+        // Set the member we're updating for loading state
+        setUpdatingRoleFor(memberEmail);
+        setError('');
+        
+        try {
+            console.log("Updating member role:", { 
+                email: memberEmail, 
+                teamName: selectedTeam.name, 
+                newRole 
+            });
+            
+            const response = await axiosInstance.post('/team/update-member-role', {
+                email: memberEmail,
+                teamName: selectedTeam.name,
+                newRole
+            });
+            
+            console.log("Update member role response:", response.data);
+
+            // Update the member's role in the list
+            setTeamMembers(teamMembers.map(member => 
+                member.email === memberEmail 
+                    ? { ...member, role: newRole } 
+                    : member
+            ));
+            
+            // Show success message
+            const roleDisplay = newRole === 'admin' ? 'Admin' : 'User';
+            alert(`Successfully updated ${memberEmail}'s role to ${roleDisplay}`);
+        } catch (err) {
+            console.error("Error updating member role:", err);
+            
+            let errorMessage = "Failed to update member role. ";
+            
+            // Handle specific error cases based on server response
+            if (err.response) {
+                const status = err.response.status;
+                const serverMessage = err.response.data?.message;
+                
+                if (status === 404) {
+                    if (serverMessage === "Team not found") {
+                        errorMessage += "The specified team could not be found.";
+                    } else if (serverMessage === "User not found") {
+                        errorMessage += "The specified user could not be found.";
+                    } else if (serverMessage === "User is not a member of this team") {
+                        errorMessage += "This user is not a member of the team.";
+                    } else {
+                        errorMessage += "Resource not found.";
+                    }
+                } else if (status === 403) {
+                    if (serverMessage === "Cannot change the role of the team owner") {
+                        errorMessage += "You cannot change the role of the team owner.";
+                    } else {
+                        errorMessage += "You don't have permission to update member roles.";
+                    }
+                } else if (status === 400) {
+                    errorMessage += serverMessage || "Invalid request.";
+                } else {
+                    errorMessage += serverMessage || "Please try again.";
+                }
+            } else if (err.request) {
+                errorMessage += "Server is not responding. Please check your connection and try again.";
+            } else {
+                errorMessage += "An unexpected error occurred.";
+            }
+            
+            setError(errorMessage);
+            alert(errorMessage);
+        } finally {
+            setUpdatingRoleFor(null);
+        }
+    };
+
     // Function to filter and show only teams in the table
     const getDisplayTeams = () => {
         // If no teams, return empty array
@@ -1195,9 +1281,13 @@ const TeamsSection = () => {
                                     </button>
                                 </div>
                                 {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                                <div className="mt-2 text-xs text-gray-500">
-                                    <p><strong>Admin:</strong> Full access to add/delete websites, contracts, and manage team settings</p>
-                                    <p><strong>User:</strong> View-only access without ability to add/delete websites or contracts</p>
+                                <div className="mt-3 text-xs text-gray-600 bg-gray-100 p-2 rounded border border-gray-200">
+                                    <h4 className="font-medium mb-1">Role Permissions:</h4>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li><strong>Admin:</strong> Full access to add/delete websites, contracts, and manage team members</li>
+                                        <li><strong>User:</strong> View-only access without ability to add/delete websites or contracts</li>
+                                    </ul>
+                                    <p className="mt-1 italic">Note: The team owner is always an admin and cannot be removed or have their role changed.</p>
                                 </div>
                             </div>
                         )}
@@ -1235,20 +1325,51 @@ const TeamsSection = () => {
                                                 </div>
                                                 
                                                 {selectedTeam?.role === 'admin' && member.email !== currentUserEmail && (
-                                                    <button 
-                                                        onClick={() => removeMember(member.email)}
-                                                        disabled={isLoading}
-                                                        className={`text-red-600 hover:text-red-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                        title="Remove member"
-                                                    >
-                                                        {isLoading ? (
-                                                            <span className="inline-block animate-pulse">
-                                                                <UserMinus size={18} />
-                                                            </span>
-                                                        ) : (
-                                                            <UserMinus size={18} />
+                                                    <div className="flex items-center space-x-2">
+                                                        {/* Role toggle */}
+                                                        {index !== 0 && ( // Don't show for team owner (first member)
+                                                            <div className="mr-3">
+                                                                <button
+                                                                    onClick={() => updateMemberRole(
+                                                                        member.email, 
+                                                                        member.role === 'admin' ? 'user' : 'admin'
+                                                                    )}
+                                                                    disabled={updatingRoleFor === member.email}
+                                                                    className={`text-xs px-2 py-1 rounded ${
+                                                                        updatingRoleFor === member.email 
+                                                                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                                                                            : member.role === 'admin'
+                                                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
+                                                                                : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-300'
+                                                                    }`}
+                                                                >
+                                                                    {updatingRoleFor === member.email ? (
+                                                                        <span>Updating...</span>
+                                                                    ) : member.role === 'admin' ? (
+                                                                        <span>Make User</span>
+                                                                    ) : (
+                                                                        <span>Make Admin</span>
+                                                                    )}
+                                                                </button>
+                                                            </div>
                                                         )}
-                                                    </button>
+                                                        
+                                                        {/* Remove button */}
+                                                        <button 
+                                                            onClick={() => removeMember(member.email)}
+                                                            disabled={isLoading}
+                                                            className={`text-red-600 hover:text-red-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            title="Remove member"
+                                                        >
+                                                            {isLoading ? (
+                                                                <span className="inline-block animate-pulse">
+                                                                    <UserMinus size={18} />
+                                                                </span>
+                                                            ) : (
+                                                                <UserMinus size={18} />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </li>
                                         ))}

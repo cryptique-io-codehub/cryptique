@@ -1,5 +1,5 @@
 const express = require('express');
-const {addMember,getTeamDetails,createNewTeam,getAdminTeamDetails,getMembers,deleteTeam,updateTeam,removeMember}=require ('../controllers/teamController')
+const {addMember,getTeamDetails,createNewTeam,getAdminTeamDetails,getMembers,deleteTeam,updateTeam,removeMember,updateMemberRole}=require ('../controllers/teamController')
 const {verifyToken}=require('../middleware/auth')
 const router = express.Router();
 
@@ -12,4 +12,6 @@ router.post('/createNewTeam',verifyToken,createNewTeam);
 router.post('/delete',verifyToken,deleteTeam);
 router.post('/update',verifyToken,updateTeam);
 router.post('/remove-member',verifyToken,removeMember);
+router.post('/update-member-role',verifyToken,updateMemberRole);
+
 module.exports = router;
