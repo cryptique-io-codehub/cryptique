@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../axiosInstance';
 import { getChainConfig, isChainSupported, getDefaultTokenType } from '../utils/chainRegistry';
-import { useLocation } from 'react-router-dom';
 
 // Create the context
 const ContractDataContext = createContext();
@@ -16,27 +15,10 @@ export const ContractDataProvider = ({ children }) => {
   const [showDemoData, setShowDemoData] = useState(true); // By default, show demo data
   const [loadingStatus, setLoadingStatus] = useState('');
   const [updatingTransactions, setUpdatingTransactions] = useState(false);
-  // Add a flag to track whether contract data is loaded
-  const [isContractDataLoaded, setIsContractDataLoaded] = useState(false);
-  const location = useLocation ? useLocation() : null;
-
-  // Reset contract data when provider unmounts or page changes
-  const resetContractData = () => {
-    setContractArray([]);
-    setSelectedContract(null);
-    setContractTransactions([]);
-    setIsContractDataLoaded(false);
-  };
 
   // Fetch smart contracts for the current team
   useEffect(() => {
     const fetchSmartContracts = async () => {
-      // Skip if already loaded
-      if (isContractDataLoaded && contractArray.length > 0) {
-        console.log("Contract data already loaded, skipping fetch");
-        return;
-      }
-
       try {
         setIsLoadingContracts(true);
         const selectedTeam = localStorage.getItem("selectedTeam");
@@ -53,7 +35,6 @@ export const ContractDataProvider = ({ children }) => {
           console.log("Using preloaded contract data");
           const contracts = JSON.parse(preloadedContracts);
           setContractArray(contracts);
-          setIsContractDataLoaded(true);
           console.log(`Loaded ${contracts.length} preloaded contracts for team ${selectedTeam}`);
           setIsLoadingContracts(false);
           return; // Skip API call
@@ -73,7 +54,6 @@ export const ContractDataProvider = ({ children }) => {
           }));
           
           setContractArray(contracts);
-          setIsContractDataLoaded(true);
           
           // Save to sessionStorage for future quick access
           sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
@@ -88,12 +68,7 @@ export const ContractDataProvider = ({ children }) => {
     };
 
     fetchSmartContracts();
-    
-    // Cleanup function to reset data when component unmounts
-    return () => {
-      resetContractData();
-    };
-  }, [isContractDataLoaded, location?.pathname]);
+  }, []);
 
   // Function to fetch transactions for a selected smart contract
   const fetchContractTransactions = async (contractId) => {
@@ -826,6 +801,46 @@ export const ContractDataProvider = ({ children }) => {
     return new Date(year, monthIdx, parseInt(day), hour);
   };
 
+  // Add a refreshContracts function that can be called by components
+  const refreshContracts = async () => {
+    try {
+      setIsLoadingContracts(true);
+      const selectedTeam = localStorage.getItem("selectedTeam");
+      
+      if (!selectedTeam) {
+        setIsLoadingContracts(false);
+        return;
+      }
+
+      console.log("Refreshing contract data");
+      
+      // Force fetch from API
+      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
+      
+      if (response.data && response.data.contracts) {
+        // Format contract data
+        const contracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
+          address: contract.address,
+          name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol
+        }));
+        
+        setContractArray(contracts);
+        
+        // Update sessionStorage
+        sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
+        
+        console.log(`Refreshed contracts, loaded ${contracts.length} contracts`);
+      }
+    } catch (error) {
+      console.error("Error refreshing contract data:", error);
+    } finally {
+      setIsLoadingContracts(false);
+    }
+  };
+
   return (
     <ContractDataContext.Provider
       value={{
@@ -838,7 +853,8 @@ export const ContractDataProvider = ({ children }) => {
         updatingTransactions,
         loadingStatus,
         handleContractChange,
-        processContractTransactions
+        processContractTransactions,
+        refreshContracts
       }}
     >
       {children}

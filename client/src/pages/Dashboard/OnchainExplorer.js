@@ -6,8 +6,8 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
-import preloadData from "../../utils/preloadService";
 import { useContractData } from "../../contexts/ContractDataContext";
+import preloadData from "../../utils/preloadService";
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -22,30 +22,28 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
-    const { contractArray } = useContractData();
-
-    // Ensure contract data is loaded when this component mounts
+    
+    // Import the refreshContracts function from context
+    const { refreshContracts } = useContractData();
+    
+    // Refresh contract data when component mounts
     useEffect(() => {
       const loadContractData = async () => {
-        setIsLoading(true);
+        console.log("OnchainExplorer mounted, refreshing contract data");
+        
         try {
-          // Force refresh of contract data
-          await preloadData();
+          // First try using the context's refresh function
+          await refreshContracts();
           
-          // If we have contracts from context, use them
-          if (contractArray && contractArray.length > 0) {
-            setcontractarray(contractArray);
-          }
+          // Also run the preload service as a backup approach
+          await preloadData();
         } catch (error) {
-          console.error("Error loading contract data:", error);
-          setError("Failed to load smart contract data. Please refresh the page.");
-        } finally {
-          setIsLoading(false);
+          console.error("Error refreshing contract data in OnchainExplorer:", error);
         }
       };
       
       loadContractData();
-    }, [contractArray]);
+    }, []); // Empty dependency array to run only on mount
 
     const navItems = [
       { section: 'On-chain analytics', type: 'header' },

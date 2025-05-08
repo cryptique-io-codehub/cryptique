@@ -88,20 +88,23 @@ const Dashboard = () => {
     // If page is changing, preload data
     if (newPage !== selectedPage) {
       // Preload data when navigating to pages that need dropdowns
-      const pagesWithDropdowns = ['offchain-analytics', 'onchain-explorer', 'campaigns', 'conversion-events', 'cq-intelligence'];
-      
-      if (pagesWithDropdowns.includes(newPage)) {
-        const forceRefresh = newPage === 'onchain-explorer';
+      if (newPage === 'onchain-explorer') {
+        // Special handling for onchain explorer: actively clear the cache to force reload
+        console.log("Navigating to onchain explorer, ensuring fresh contract data");
         
-        console.log(`Preloading data for ${newPage}${forceRefresh ? ' with forced refresh' : ''}`);
+        // Clear preloaded contract data to ensure fresh load
+        sessionStorage.removeItem("preloadedContracts");
         
-        preloadData(forceRefresh)
-          .then(() => {
-            // Clear any existing session data for this page type if we're doing a force refresh
-            if (forceRefresh) {
-              console.log("Forced refresh completed for contracts");
-            }
-          })
+        // Specifically preload the contract data
+        const selectedTeam = localStorage.getItem("selectedTeam");
+        if (selectedTeam) {
+          preloadData()
+            .then(() => console.log("Successfully preloaded fresh data for onchain page"))
+            .catch(err => console.error("Error preloading data for onchain page:", err));
+        }
+      } else if (['offchain-analytics', 'campaigns', 'conversion-events', 'cq-intelligence'].includes(newPage)) {
+        // For other pages with dropdowns, use regular preloading
+        preloadData()
           .catch(err => console.error(`Error preloading data for ${newPage}:`, err));
       }
       

@@ -82,7 +82,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     selectedContract: contextSelectedContract, 
     handleContractChange,
     isLoadingContracts: contextIsLoading,
-    isLoadingTransactions
+    isLoadingTransactions,
+    refreshContracts
   } = useContractData();
 
   // We'll still use the local component state for UI controls
@@ -111,20 +112,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   useEffect(() => {
     if (contextContractArray?.length > 0) {
       setcontractarray(contextContractArray);
-    } else {
-      // If the context doesn't have contracts yet, try to get them from sessionStorage
-      const preloadedContracts = sessionStorage.getItem("preloadedContracts");
-      if (preloadedContracts) {
-        try {
-          const parsedContracts = JSON.parse(preloadedContracts);
-          if (parsedContracts.length > 0) {
-            setcontractarray(parsedContracts);
-            console.log("Using preloaded contracts from sessionStorage");
-          }
-        } catch (err) {
-          console.error("Error parsing preloaded contracts:", err);
-        }
-      }
     }
   }, [contextContractArray, setcontractarray]);
 
@@ -175,6 +162,47 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     initWeb3();
   }, []);
 
+  // Add the forceLoadContractData function as a named function in the component
+  // This will be easier to call from other places
+  const forceLoadContractData = async () => {
+    try {
+      console.log("Forcefully loading contract data on demand");
+      const selectedTeam = localStorage.getItem("selectedTeam");
+      
+      if (!selectedTeam) {
+        console.log("No team selected, can't load contracts");
+        return;
+      }
+
+      // Force fetch from API regardless of cache
+      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
+      
+      if (response.data && response.data.contracts) {
+        // Format contract data
+        const contracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
+          address: contract.address,
+          name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol
+        }));
+        
+        // Update state and session storage
+        setcontractarray(contracts);
+        sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
+        
+        console.log(`Forcefully loaded ${contracts.length} contracts on demand`);
+      }
+    } catch (error) {
+      console.error("Error forcefully loading contract data:", error);
+    }
+  };
+
+  // Update the useEffect to use this function
+  useEffect(() => {
+    forceLoadContractData();
+  }, [setcontractarray]);
+
   // Function to handle contract selection that works with both props and context
   const handleSelectContract = async (contract) => {
     // Update the context (this will also fetch transactions)
@@ -185,6 +213,27 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   };
 
   const handleDropdownToggle = () => {
+    // If we're opening the dropdown, refresh contract data
+    if (!showDropdown) {
+      console.log("Smart contract dropdown opened, refreshing data");
+      
+      // Force a refresh of contract data
+      const selectedTeam = localStorage.getItem("selectedTeam");
+      if (selectedTeam) {
+        try {
+          // Trigger a refresh of contract data in the context
+          if (typeof refreshContracts === 'function') {
+            refreshContracts();
+          } else {
+            // Fallback if context function not available
+            forceLoadContractData();
+          }
+        } catch (error) {
+          console.error("Error refreshing contract data:", error);
+        }
+      }
+    }
+    
     setShowDropdown(!showDropdown);
   };
 
