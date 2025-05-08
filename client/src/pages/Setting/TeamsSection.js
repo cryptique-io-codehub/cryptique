@@ -55,22 +55,9 @@ const TeamsSection = () => {
             setIsLoading(true);
             setError('');
             
-            // Get user info first - check all possible storage locations
+            // Get current user email
             const userEmail = getCurrentUserEmail();
-            
-            // Debug the current user email to ensure we have it
-            console.log("User email storage locations:", {
-                userEmail: localStorage.getItem('userEmail'),
-                email: localStorage.getItem('email'),
-                user: localStorage.getItem('user'),
-                selectedEmail: userEmail
-            });
-            
-            if (userEmail) {
-                setCurrentUserEmail(userEmail);
-            } else {
-                console.warn("No user email found in localStorage!");
-            }
+            setCurrentUserEmail(userEmail);
             
             console.log("Fetching teams for user:", userEmail);
             
@@ -79,22 +66,63 @@ const TeamsSection = () => {
             console.log("Team details response:", response.data);
             
             if (response.data && response.data.team) {
-                setTeams(response.data.team);
+                // Process each team to ensure ownership is properly set
+                const processedTeams = response.data.team.map(team => {
+                    // Create a copy of the team with consistent structure
+                    const processedTeam = {
+                        ...team,
+                        // Ensure consistent name property
+                        name: team.name || team.teamName || '',
+                        // Ensure role is preserved or defaulted
+                        role: team.role || 'member',
+                        // Ensure createdBy always has email if we can determine it
+                        createdBy: team.createdBy || { email: '' }
+                    };
+                    
+                    // If the user is the creator of the team, force role to admin
+                    if (processedTeam.createdBy && 
+                        processedTeam.createdBy.email === userEmail) {
+                        processedTeam.role = 'admin';
+                        console.log(`Enforcing admin role for team "${processedTeam.name}" as user is creator`);
+                    }
+                    
+                    // Special case: If team was just created (it's in localStorage)
+                    const justCreatedTeamName = localStorage.getItem('justCreatedTeam');
+                    if (justCreatedTeamName && processedTeam.name === justCreatedTeamName) {
+                        processedTeam.role = 'admin';
+                        processedTeam.createdBy = { email: userEmail };
+                        console.log(`Setting ownership for just created team "${processedTeam.name}"`);
+                        // Clear the just created flag
+                        localStorage.removeItem('justCreatedTeam');
+                    }
+                    
+                    return processedTeam;
+                });
                 
-                // Automatically select the first team if available and none is selected
-                if (response.data.team.length > 0 && (!selectedTeam || !selectedTeam.name)) {
-                    setSelectedTeam(response.data.team[0]);
-                    localStorage.setItem('selectedTeam', response.data.team[0].name);
+                setTeams(processedTeams);
+                
+                // Automatically select the first team if needed
+                if (processedTeams.length > 0 && (!selectedTeam || !selectedTeam.name)) {
+                    setSelectedTeam(processedTeams[0]);
+                    localStorage.setItem('selectedTeam', processedTeams[0].name);
                 }
                 
-                // Log user and team info for debugging
-                console.log("Current user email:", userEmail);
-                console.log("Teams loaded:", response.data.team);
+                // Update selected team if it exists in the new teams list
+                else if (selectedTeam && selectedTeam.name) {
+                    const updatedSelectedTeam = processedTeams.find(t => t.name === selectedTeam.name);
+                    if (updatedSelectedTeam) {
+                        setSelectedTeam(updatedSelectedTeam);
+                    }
+                }
                 
-                // Check team ownership for debugging
-                response.data.team.forEach(team => {
+                // Log each team's ownership status
+                processedTeams.forEach(team => {
                     const isOwner = isTeamOwner(team);
-                    console.log(`Team "${team.name}" ownership check:`, isOwner);
+                    console.log(`Team ownership check for "${team.name}":`, {
+                        role: team.role, 
+                        createdBy: team.createdBy?.email,
+                        isOwner
+                    });
                 });
             } else {
                 console.error("Invalid team data format:", response.data);
@@ -187,12 +215,16 @@ const TeamsSection = () => {
             
             console.log("Team creation response:", response.data);
             
+            // Mark this team as just created for the fetch logic to handle
+            localStorage.setItem('justCreatedTeam', teamName.trim());
+            
             // Ensure the new team has the same structure as existing teams
             const newTeam = {
                 _id: response.data.newTeam?._id || Date.now().toString(),
                 name: response.data.newTeam?.name || teamName.trim(),
                 description: teamDescription.trim() || '',
                 user: [{ email: userEmail }],
+                // Force owner role regardless of what the API returned
                 role: 'admin',
                 createdBy: { email: userEmail }
             };
@@ -548,7 +580,7 @@ const TeamsSection = () => {
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {team.name}
                                             {isOwner && (
-                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-bold border border-green-300">
                                                     Owner
                                                 </span>
                                             )}
@@ -565,8 +597,15 @@ const TeamsSection = () => {
                                                 View
                                             </button>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500 capitalize">
-                                            {team.role || "Member"}
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            <span className={`capitalize ${isOwner ? 'font-bold text-green-700' : ''}`}>
+                                                {team.role || "Member"}
+                                            </span>
+                                            {isOwner && (
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    Full control
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 flex justify-center space-x-3">
                                             {isOwner && (
