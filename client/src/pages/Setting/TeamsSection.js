@@ -650,7 +650,27 @@ const TeamsSection = () => {
             // Fetch team members
             const response = await axiosInstance.post('/team/members', { teams: teamToManage.name });
             console.log("Team members response:", response.data);
-            setTeamMembers(response.data || []);
+            
+            // Normalize roles to ensure we only have 'admin' or 'user'
+            const normalizedMembers = response.data.map((member, index) => {
+                // Make sure the first member (owner) is always admin
+                if (index === 0) {
+                    return {
+                        ...member,
+                        role: 'admin'
+                    };
+                }
+                
+                // Normalize other roles: anything not 'admin' should be 'user'
+                return {
+                    ...member,
+                    role: member.role === 'admin' ? 'admin' : 'user'
+                };
+            });
+            
+            console.log("Normalized members:", normalizedMembers);
+            setTeamMembers(normalizedMembers || []);
+            
             setIsMembersModalOpen(true);
         } catch (err) {
             console.error("Error fetching team members:", err);
@@ -850,6 +870,13 @@ const TeamsSection = () => {
             alert(`Successfully updated ${memberEmail}'s role to ${roleDisplay}`);
         } catch (err) {
             console.error("Error updating member role:", err);
+            console.error("Error details:", {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                message: err.response?.data?.message,
+                error: err.response?.data?.error,
+                validationErrors: err.response?.data?.validationErrors
+            });
             
             let errorMessage = "Failed to update member role. ";
             
@@ -857,6 +884,7 @@ const TeamsSection = () => {
             if (err.response) {
                 const status = err.response.status;
                 const serverMessage = err.response.data?.message;
+                const serverError = err.response.data?.error;
                 
                 if (status === 404) {
                     if (serverMessage === "Team not found") {
@@ -869,13 +897,19 @@ const TeamsSection = () => {
                         errorMessage += "Resource not found.";
                     }
                 } else if (status === 403) {
-                    if (serverMessage === "Cannot change the role of the team owner") {
-                        errorMessage += "You cannot change the role of the team owner.";
+                    if (serverMessage === "Cannot change the team owner's role. The owner must remain an admin.") {
+                        errorMessage += "You cannot change the role of the team owner. The owner must remain an admin.";
                     } else {
                         errorMessage += "You don't have permission to update member roles.";
                     }
                 } else if (status === 400) {
-                    errorMessage += serverMessage || "Invalid request.";
+                    errorMessage += serverMessage || "Invalid request parameters.";
+                } else if (status === 500) {
+                    if (serverError && serverError.includes("validation failed")) {
+                        errorMessage += "The role value is not valid. Please try again.";
+                    } else {
+                        errorMessage += serverMessage || "A server error occurred. Please try again.";
+                    }
                 } else {
                     errorMessage += serverMessage || "Please try again.";
                 }
@@ -887,6 +921,15 @@ const TeamsSection = () => {
             
             setError(errorMessage);
             alert(errorMessage);
+            
+            // If we get a 500 error, attempt to refresh the member list to show current roles
+            if (err.response?.status === 500) {
+                try {
+                    openMembersModal(selectedTeam);
+                } catch (refreshErr) {
+                    console.error("Error refreshing members after role update failure:", refreshErr);
+                }
+            }
         } finally {
             setUpdatingRoleFor(null);
         }
@@ -1377,13 +1420,17 @@ const TeamsSection = () => {
                                                                                 ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
                                                                                 : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-300'
                                                                     }`}
+                                                                    title={member.role === 'admin' ? 
+                                                                        "Change this member's role to User (view-only access)" : 
+                                                                        "Change this member's role to Admin (full access)"
+                                                                    }
                                                                 >
                                                                     {updatingRoleFor === member.email ? (
                                                                         <span>Updating...</span>
                                                                     ) : member.role === 'admin' ? (
-                                                                        <span>Make User</span>
+                                                                        <span>Change to User</span>
                                                                     ) : (
-                                                                        <span>Make Admin</span>
+                                                                        <span>Change to Admin</span>
                                                                     )}
                                                                 </button>
                                                             </div>

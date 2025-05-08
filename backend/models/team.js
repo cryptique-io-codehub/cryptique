@@ -19,7 +19,7 @@ const teamsSchema=new mongoose.Schema({
         },
         role:{
             type:String,
-            enum:['admin','editor','viewer']
+            enum:['admin','editor','viewer','user']
         }
     }],
     websites:[{

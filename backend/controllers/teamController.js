@@ -36,27 +36,54 @@ exports.getMembers=async (req,res)=>{
             console.log(`Updated team ${team_name} to ensure owner has admin role`);
         }
         
-        const this_array=this_team.user;
+        // Normalize all member roles to either 'admin' or 'user'
+        let needsSave = false;
+        if (this_team.user && this_team.user.length > 0) {
+            for (let i = 0; i < this_team.user.length; i++) {
+                // Skip the first member (owner) as we already ensured it's an admin
+                if (i === 0) continue;
+                
+                // Convert 'editor' and 'viewer' roles to 'user'
+                if (this_team.user[i].role !== 'admin' && this_team.user[i].role !== 'user') {
+                    console.log(`Converting role '${this_team.user[i].role}' to 'user' for member at index ${i}`);
+                    this_team.user[i].role = 'user';
+                    needsSave = true;
+                }
+            }
+            
+            // Save the team if any roles were changed
+            if (needsSave) {
+                await this_team.save();
+                console.log(`Updated team ${team_name} to normalize member roles`);
+            }
+        }
+        
+        const this_array = this_team.user;
         async function getUserNameArray(this_array) {
             const userNames = await Promise.all(
                 this_array.map(async (item) => {
                     const user = await User.findOne({_id:item.userId});
+                    // Skip if user not found
+                    if (!user) return null;
+                    
                     // Combine user data with role information
-                    return user ? {
+                    // Ensure role is either 'admin' or 'user'
+                    const normalizedRole = item.role === 'admin' ? 'admin' : 'user';
+                    
+                    return {
                         ...user.toObject(),
-                        role: item.role || 'user' // Default to 'user' if role is not specified
-                    } : null;
+                        role: normalizedRole
+                    };
                 })
             );
             res.status(200).json(userNames.filter(user => user !== null));
         }
         
-        // Example usage
         getUserNameArray(this_array);
     } catch (e) {
-        res.status(500).json({ message: "Error while fetching teams", error: e.message });
+        console.error("Error in getMembers:", e);
+        res.status(500).json({ message: "Error while fetching team members", error: e.message });
     }
-
 }
 exports.getTeamDetails = async (req, res) => {
     
@@ -510,19 +537,29 @@ exports.updateMemberRole = async (req, res) => {
             });
         }
         
-        // Update the user's role
-        team.user[memberIndex].role = newRole;
-        await team.save();
-        
-        return res.status(200).json({ 
-            message: "Member role updated successfully",
-            member: {
-                userId: user._id,
-                email: user.email,
-                name: user.firstName || user.name,
-                role: newRole
-            }
-        });
+        try {
+            // Update the user's role
+            console.log(`Updating role for user ${user.email} from ${team.user[memberIndex].role} to ${newRole}`);
+            team.user[memberIndex].role = newRole;
+            await team.save();
+            
+            return res.status(200).json({ 
+                message: "Member role updated successfully",
+                member: {
+                    userId: user._id,
+                    email: user.email,
+                    name: user.firstName || user.name,
+                    role: newRole
+                }
+            });
+        } catch (saveError) {
+            console.error("Error saving team with updated role:", saveError);
+            return res.status(500).json({ 
+                message: "Error saving team with updated role", 
+                error: saveError.message,
+                validationErrors: saveError.errors
+            });
+        }
     } catch (error) {
         console.error("Error updating member role:", error);
         return res.status(500).json({ 
