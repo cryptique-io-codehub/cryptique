@@ -15,8 +15,8 @@ const axiosInstance = axios.create({
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  // Ensure credentials are included for CORS requests if needed
-  withCredentials: true, // Changed to true to include cookies in requests
+  // Set withCredentials based on environment
+  withCredentials: false, // Changed to false by default
   // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
@@ -26,6 +26,18 @@ axiosInstance.interceptors.request.use(
   config => {
     // Log requests for debugging
     console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
+    
+    // Check if this is an analytics endpoint that's causing CORS issues
+    if (config.url && (
+      config.url.includes('/sdk/analytics/') ||
+      config.url.includes('/intelligence/')
+    )) {
+      // For these endpoints, explicitly set withCredentials to false
+      config.withCredentials = false;
+    } else {
+      // For all other endpoints, use credentials
+      config.withCredentials = true;
+    }
     
     // Get token dynamically on each request - not from closure
     const token = localStorage.getItem("accessToken");

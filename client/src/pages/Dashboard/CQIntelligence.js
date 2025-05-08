@@ -212,7 +212,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const fetchAnalyticsData = async (siteId) => {
     setIsDataLoading(true);
     try {
-      const response = await axiosInstance.get(`/sdk/analytics/${siteId}`);
+      // Create a direct axios call without withCredentials for this specific endpoint
+      // to avoid CORS issues with the wildcard Access-Control-Allow-Origin
+      const response = await axiosInstance.get(`/sdk/analytics/${siteId}`, {
+        withCredentials: false, // Explicitly set to false for this request
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
       if (response.data && response.data.analytics) {
         setAnalytics(response.data.analytics);
         setError(null);
