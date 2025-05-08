@@ -52,7 +52,12 @@ exports.getTeamDetails = async (req, res) => {
             .populate('createdBy', '-password') // populate user details, excluding password
             .exec();
 
-        // console.log(teamDetails);
+        console.log("Team details being returned:", teamDetails.map(team => ({
+            id: team._id,
+            name: team.name,
+            description: team.description,
+            hasDescriptionField: team.hasOwnProperty('description')
+        })));
 
         if (!teamDetails || teamDetails.length === 0) {
             return res.status(404).json({ message: "Details not found" });
@@ -129,7 +134,7 @@ exports.addMember=async (req,res)=>{
 
 exports.createNewTeam=async(req,res)=>{
     try{
-    const {teamName,email}=req.body;
+    const {teamName, email, description} = req.body;
     const user = await User.findOne({ email });
     console.log('a');
     // console.log(user);
@@ -140,9 +145,10 @@ exports.createNewTeam=async(req,res)=>{
     // console.log(teams);
     if(!teams){
         const newTeam = new Team({
-            name:teamName,
-            createdBy:user._id,
-            user:[{userId:user._id,role:'admin'}]
+            name: teamName,
+            description: description || '', // Add the description field
+            createdBy: user._id,
+            user: [{userId: user._id, role: 'admin'}]
           })
        
           //save the team to the database
@@ -160,9 +166,8 @@ exports.createNewTeam=async(req,res)=>{
     
     }
     catch(err){
-        res.status(500).json({ message: 'Error creating team', error: error.message });
+        res.status(500).json({ message: 'Error creating team', error: err.message });
     }
-
 }
 
 exports.deleteTeam = async (req, res) => {
@@ -225,6 +230,14 @@ exports.updateTeam = async (req, res) => {
         // Get the team data from the request
         const { teamId, name, description } = req.body;
         
+        console.log("Update team request:", {
+            teamId,
+            name,
+            description,
+            descriptionType: typeof description,
+            descriptionLength: description ? description.length : 0
+        });
+        
         if (!teamId) {
             return res.status(400).json({ message: "Team ID is required" });
         }
@@ -239,6 +252,13 @@ exports.updateTeam = async (req, res) => {
         if (!team) {
             return res.status(404).json({ message: "Team not found" });
         }
+        
+        console.log("Current team before update:", {
+            id: team._id,
+            name: team.name,
+            description: team.description,
+            hasDescriptionField: team.hasOwnProperty('description')
+        });
         
         // Check if the logged-in user is authorized to update the team
         // Only the team creator or the first admin can update a team
@@ -265,15 +285,27 @@ exports.updateTeam = async (req, res) => {
             }
         }
         
+        // Create the update object
+        const updateData = { 
+            name,
+            description: description || '' 
+        };
+        
+        console.log("Update data being sent to MongoDB:", updateData);
+        
         // Update the team
         const updatedTeam = await Team.findByIdAndUpdate(
             teamId,
-            { 
-                name,
-                description: description || '' 
-            },
+            updateData,
             { new: true, runValidators: true }
         );
+        
+        console.log("Team after update:", {
+            id: updatedTeam._id,
+            name: updatedTeam.name,
+            description: updatedTeam.description,
+            hasDescriptionField: updatedTeam.hasOwnProperty('description')
+        });
         
         return res.status(200).json({ 
             message: "Team updated successfully", 

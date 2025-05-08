@@ -338,15 +338,15 @@ const TeamsSection = () => {
             console.log("Creating team with payload:", {
                 teamName: teamName.trim(),
                 email: userEmail,
-                // Note: description is not used in the createNewTeam endpoint
+                description: teamDescription.trim() || ''
             });
             
-            // Use the CORRECT endpoint for team creation
-            const response = await axiosInstance.post('/team/createNewTeam',
+            // Use the CORRECT endpoint for team creation with description
+            const response = await axiosInstance.post('/team/createNewTeam', 
                 { 
                     teamName: teamName.trim(),
                     email: userEmail,
-                    // The description will be handled separately or in a follow-up update
+                    description: teamDescription.trim() || ''
                 }
             );
             
@@ -432,17 +432,23 @@ const TeamsSection = () => {
         setError('');
 
         try {
+            // Prepare the description - ensure it's a string and trim it
+            const description = teamDescription || '';
+            const trimmedDescription = typeof description === 'string' ? description.trim() : '';
+            
             console.log("Updating team with payload:", {
                 teamId: teamToEdit._id,
                 name: teamName.trim(),
-                description: teamDescription.trim()
+                description: trimmedDescription,
+                descriptionType: typeof trimmedDescription,
+                descriptionLength: trimmedDescription.length
             });
             
             // Use the correct endpoint for team update that we just added to the backend
             const response = await axiosInstance.post('/team/update', {
                 teamId: teamToEdit._id,
                 name: teamName.trim(),
-                description: teamDescription.trim()
+                description: trimmedDescription
             });
 
             console.log("Team update response:", response.data);
@@ -453,7 +459,7 @@ const TeamsSection = () => {
                     ? {
                         ...team, 
                         name: teamName.trim(), 
-                        description: teamDescription.trim()
+                        description: trimmedDescription
                       } 
                     : team
             );
@@ -465,7 +471,7 @@ const TeamsSection = () => {
                 const updatedSelectedTeam = {
                     ...selectedTeam, 
                     name: teamName, 
-                    description: teamDescription
+                    description: trimmedDescription
                 };
                 setSelectedTeam(updatedSelectedTeam);
                 localStorage.setItem('selectedTeam', teamName);
