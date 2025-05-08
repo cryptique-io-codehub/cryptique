@@ -46,7 +46,6 @@ export const ChainIcon = ({ chainName, size = 24 }) => {
  * @param {Object} props.contract - Selected contract data
  * @param {Object} props.contractData - Processed contract data
  * @param {Array} props.transactions - Transaction data
- * @param {Object} props.fetchError - Error that occurred during data fetch
  * @returns {JSX.Element} - The chain banner component
  */
 const ChainBanner = ({ 
@@ -56,8 +55,7 @@ const ChainBanner = ({
   loadingStatus,
   contract,
   contractData,
-  transactions = [],
-  fetchError = null
+  transactions = []
 }) => {
   // Build the address link for block explorer
   const getBlockExplorerLink = () => {
@@ -67,23 +65,6 @@ const ChainBanner = ({
     const blockExplorerUrl = contractData?.contractInfo?.blockExplorerUrl || chainConfig?.blockExplorerUrl || 'https://etherscan.io';
     return `${blockExplorerUrl}/address/${contract.address}`;
   };
-
-  // Check if there's a rate limit error
-  const isRateLimited = fetchError && fetchError.response && fetchError.response.status === 429;
-
-  // Display rate limit error banner
-  if (isRateLimited) {
-    return (
-      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 mb-4 rounded">
-        <p className="text-sm font-bold">
-          Rate limit exceeded (429)
-        </p>
-        <p className="text-sm">
-          The API is currently rate limited. Using cached data when available. Please wait a moment before trying again.
-        </p>
-      </div>
-    );
-  }
 
   if (showDemoData) {
     return (

@@ -15,8 +15,7 @@ export default function OnchainDashboard() {
     isLoadingTransactions,
     updatingTransactions,
     loadingStatus,
-    processContractTransactions,
-    fetchError
+    processContractTransactions
   } = useContractData();
 
   // Add state for modal and chart time range
@@ -255,7 +254,6 @@ export default function OnchainDashboard() {
         contract={selectedContract}
         contractData={contractData}
         transactions={contractTransactions}
-        fetchError={fetchError}
       />
 
       {/* Top Stats Row */}

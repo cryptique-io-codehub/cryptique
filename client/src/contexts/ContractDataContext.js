@@ -1,67 +1,6 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import axiosInstance from '../axiosInstance';
 import { getChainConfig, isChainSupported, getDefaultTokenType } from '../utils/chainRegistry';
-
-// Add utility for exponential backoff and debouncing
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-// Debounce utility to prevent multiple rapid API calls
-const debounce = (func, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
-  };
-};
-
-/**
- * Helper function to make API requests with exponential backoff retry
- * @param {Function} apiCall - Function that returns a promise for the API call
- * @param {number} maxRetries - Maximum number of retries
- * @param {number} initialBackoff - Initial backoff time in ms
- */
-const fetchWithRetry = async (apiCall, maxRetries = 3, initialBackoff = 1000) => {
-  let retries = 0;
-  let lastError;
-
-  while (retries <= maxRetries) {
-    try {
-      // If not the first attempt, wait with exponential backoff
-      if (retries > 0) {
-        const backoffTime = initialBackoff * Math.pow(2, retries - 1);
-        console.log(`Retry attempt ${retries}/${maxRetries}, waiting ${backoffTime}ms...`);
-        await sleep(backoffTime);
-      }
-
-      return await apiCall();
-    } catch (error) {
-      lastError = error;
-      
-      // If rate limited (429), we definitely want to retry with longer backoff
-      if (error.response && error.response.status === 429) {
-        console.log(`Rate limited (429), will retry after backoff`);
-        retries++;
-        initialBackoff = Math.max(initialBackoff * 2, 5000); // Increase minimum backoff
-        continue;
-      }
-      
-      // For other errors, only retry on network errors or 5xx server errors
-      if (!error.response || (error.response.status >= 500 && error.response.status < 600)) {
-        retries++;
-        continue;
-      }
-      
-      // For 4xx errors other than 429, don't retry
-      throw error;
-    }
-  }
-  
-  // If we've exhausted all retries
-  console.error(`Failed after ${maxRetries} retries`, lastError);
-  throw lastError;
-};
 
 // Create the context
 const ContractDataContext = createContext();
@@ -76,58 +15,33 @@ export const ContractDataProvider = ({ children }) => {
   const [showDemoData, setShowDemoData] = useState(true); // By default, show demo data
   const [loadingStatus, setLoadingStatus] = useState('');
   const [updatingTransactions, setUpdatingTransactions] = useState(false);
-  const [fetchError, setFetchError] = useState(null);
-  const lastFetchRef = useRef(0);
-  const isFetchingRef = useRef(false);
 
   // Fetch smart contracts for the current team
-  // Using useEffect with debouncing to prevent excessive API calls
   useEffect(() => {
-    // Create a debounced version of fetchSmartContracts
-    const debouncedFetchSmartContracts = debounce(async () => {
-      // Check if we're already fetching or if we've fetched recently (within 10 seconds)
-      const now = Date.now();
-      if (isFetchingRef.current || (now - lastFetchRef.current < 10000)) {
-        console.log('Skipping fetch - already in progress or fetched recently');
-        return;
-      }
-      
-      isFetchingRef.current = true;
-      
+    const fetchSmartContracts = async () => {
       try {
         setIsLoadingContracts(true);
         const selectedTeam = localStorage.getItem("selectedTeam");
         
         if (!selectedTeam) {
           setIsLoadingContracts(false);
-          isFetchingRef.current = false;
           return;
         }
 
-        // Check for cached data in sessionStorage first
+        // Check for preloaded data in sessionStorage first
         const preloadedContracts = sessionStorage.getItem("preloadedContracts");
-        const contractsLastFetch = sessionStorage.getItem("contractsLastFetch");
         
-        // Use cached data if it exists and is less than 5 minutes old
-        if (preloadedContracts && contractsLastFetch) {
-          const cacheAge = now - parseInt(contractsLastFetch);
-          if (cacheAge < 5 * 60 * 1000) { // 5 minutes in milliseconds
-            console.log("Using cached contract data (less than 5 minutes old)");
-            const contracts = JSON.parse(preloadedContracts);
-            setContractArray(contracts);
-            console.log(`Loaded ${contracts.length} cached contracts for team ${selectedTeam}`);
-            setIsLoadingContracts(false);
-            isFetchingRef.current = false;
-            setFetchError(null);
-            return; // Skip API call
-          }
+        if (preloadedContracts) {
+          console.log("Using preloaded contract data");
+          const contracts = JSON.parse(preloadedContracts);
+          setContractArray(contracts);
+          console.log(`Loaded ${contracts.length} preloaded contracts for team ${selectedTeam}`);
+          setIsLoadingContracts(false);
+          return; // Skip API call
         }
 
-        // If no recent cached data, fetch from API with retry logic
-        console.log(`Fetching contracts for team ${selectedTeam} with retry logic`);
-        const response = await fetchWithRetry(
-          () => axiosInstance.get(`/contracts/team/${selectedTeam}`)
-        );
+        // If no preloaded data, fetch from API
+        const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
         
         if (response.data && response.data.contracts) {
           // Format contract data
@@ -141,32 +55,19 @@ export const ContractDataProvider = ({ children }) => {
           
           setContractArray(contracts);
           
-          // Save to sessionStorage for future quick access with timestamp
+          // Save to sessionStorage for future quick access
           sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
-          sessionStorage.setItem("contractsLastFetch", now.toString());
           
           console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
-          setFetchError(null);
         }
       } catch (error) {
         console.error("Error fetching smart contracts:", error);
-        setFetchError(error);
-        
-        // If we have cached data, use it as fallback even if it's older than 5 minutes
-        const preloadedContracts = sessionStorage.getItem("preloadedContracts");
-        if (preloadedContracts) {
-          console.log("Using cached contract data as fallback after error");
-          const contracts = JSON.parse(preloadedContracts);
-          setContractArray(contracts);
-        }
       } finally {
         setIsLoadingContracts(false);
-        isFetchingRef.current = false;
-        lastFetchRef.current = Date.now();
       }
-    }, 1000); // 1 second debounce
+    };
 
-    debouncedFetchSmartContracts();
+    fetchSmartContracts();
   }, []);
 
   // Function to fetch transactions for a selected smart contract
@@ -183,33 +84,6 @@ export const ContractDataProvider = ({ children }) => {
       setIsLoadingTransactions(true);
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
-      // Check for cached transaction data first
-      const cachedTransactions = sessionStorage.getItem(`transactions_${contractId}`);
-      const transactionsLastFetch = sessionStorage.getItem(`transactions_${contractId}_lastFetch`);
-      
-      // Use cached data if it exists and is less than 5 minutes old
-      if (cachedTransactions && transactionsLastFetch) {
-        const now = Date.now();
-        const cacheAge = now - parseInt(transactionsLastFetch);
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes in milliseconds
-          console.log("Using cached transaction data (less than 5 minutes old)");
-          const transactions = JSON.parse(cachedTransactions);
-          setContractTransactions(transactions);
-          console.log(`Loaded ${transactions.length} cached transactions for contract ${contractId}`);
-          
-          // After using cached data, check for new ones in the background
-          const contract = contractArray.find(c => c.id === contractId);
-          if (contract) {
-            // Don't await this - let it run in background
-            fetchLatestTransactions(contract, transactions);
-          }
-          
-          setIsLoadingTransactions(false);
-          return transactions;
-        }
-      }
-      
-      // If no recent cached data, fetch from API with retry logic
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
@@ -219,59 +93,40 @@ export const ContractDataProvider = ({ children }) => {
       while (hasMore) {
         console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        try {
-          const response = await fetchWithRetry(
-            () => axiosInstance.get(`/transactions/contract/${contractId}`, {
-              params: { 
-                limit: pageSize,
-                page: page
-              }
-            })
-          );
+        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+          params: { 
+            limit: pageSize,
+            page: page
+          }
+        });
+        
+        if (response.data && response.data.transactions) {
+          const fetchedTransactions = response.data.transactions;
           
-          if (response.data && response.data.transactions) {
-            const fetchedTransactions = response.data.transactions;
-            
-            // Add to our accumulated transactions
-            allTransactions = [...allTransactions, ...fetchedTransactions];
-            
-            console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
-            
-            // Check if we need to fetch more
-            hasMore = response.data.metadata?.hasMore;
-            
-            // If we got fewer transactions than the page size, we're done
-            if (fetchedTransactions.length < pageSize) {
-              hasMore = false;
-            }
-            
-            // Move to next page
-            page++;
-            
-            // Safety check - don't loop more than 10 times (1,000,000 transactions)
-            if (page > 10) {
-              console.log("Reached maximum page fetch limit (1,000,000 transactions)");
-              hasMore = false;
-            }
-          } else {
+          // Add to our accumulated transactions
+          allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
+          
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
             hasMore = false;
           }
-        } catch (error) {
-          console.error(`Error fetching transactions page ${page}:`, error);
-          hasMore = false;
           
-          // If rate limited, break the loop and use what we have
-          if (error.response && error.response.status === 429) {
-            console.log("Rate limited (429) during transaction fetch, using partial results");
-            break;
+          // Move to next page
+          page++;
+          
+          // Safety check - don't loop more than 10 times (1,000,000 transactions)
+          if (page > 10) {
+            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
+            hasMore = false;
           }
+        } else {
+          hasMore = false;
         }
-      }
-      
-      // Cache the transactions we've fetched
-      if (allTransactions.length > 0) {
-        sessionStorage.setItem(`transactions_${contractId}`, JSON.stringify(allTransactions));
-        sessionStorage.setItem(`transactions_${contractId}_lastFetch`, Date.now().toString());
       }
       
       setContractTransactions(allTransactions);
@@ -286,16 +141,6 @@ export const ContractDataProvider = ({ children }) => {
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
-      
-      // Try to use cached data as fallback
-      const cachedTransactions = sessionStorage.getItem(`transactions_${contractId}`);
-      if (cachedTransactions) {
-        console.log("Using cached transaction data as fallback after error");
-        const transactions = JSON.parse(cachedTransactions);
-        setContractTransactions(transactions);
-        return transactions;
-      }
-      
       setShowDemoData(true); // Fallback to demo data on error
       return [];
     } finally {
@@ -958,31 +803,19 @@ export const ContractDataProvider = ({ children }) => {
 
   // Add a refreshContracts function that can be called by components
   const refreshContracts = async () => {
-    // Skip if we're already fetching or fetched recently (within 10 seconds)
-    const now = Date.now();
-    if (isFetchingRef.current || (now - lastFetchRef.current < 10000)) {
-      console.log('Skipping refresh - already in progress or refreshed recently');
-      return;
-    }
-    
-    isFetchingRef.current = true;
-    
     try {
       setIsLoadingContracts(true);
       const selectedTeam = localStorage.getItem("selectedTeam");
       
       if (!selectedTeam) {
         setIsLoadingContracts(false);
-        isFetchingRef.current = false;
         return;
       }
 
       console.log("Refreshing contract data");
       
-      // Force fetch from API with retry logic
-      const response = await fetchWithRetry(
-        () => axiosInstance.get(`/contracts/team/${selectedTeam}`)
-      );
+      // Force fetch from API
+      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
       
       if (response.data && response.data.contracts) {
         // Format contract data
@@ -998,18 +831,13 @@ export const ContractDataProvider = ({ children }) => {
         
         // Update sessionStorage
         sessionStorage.setItem("preloadedContracts", JSON.stringify(contracts));
-        sessionStorage.setItem("contractsLastFetch", now.toString());
         
         console.log(`Refreshed contracts, loaded ${contracts.length} contracts`);
-        setFetchError(null);
       }
     } catch (error) {
       console.error("Error refreshing contract data:", error);
-      setFetchError(error);
     } finally {
       setIsLoadingContracts(false);
-      isFetchingRef.current = false;
-      lastFetchRef.current = Date.now();
     }
   };
 
@@ -1049,7 +877,6 @@ export const ContractDataProvider = ({ children }) => {
         showDemoData,
         updatingTransactions,
         loadingStatus,
-        fetchError,
         handleContractChange,
         processContractTransactions,
         refreshContracts

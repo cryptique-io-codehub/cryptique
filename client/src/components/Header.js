@@ -5,26 +5,13 @@ import axios from "axios";
 import axiosInstance from "../axiosInstance";
 import preloadData from "../utils/preloadService";
 
-// Add debounce utility function
-const debounce = (func, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
-  };
-};
-
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
-  const fetchTimeoutRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -40,62 +27,28 @@ const TeamSelector = () => {
     };
   }, []);
 
-  // Create debounced fetch function
-  const debouncedFetchTeams = useRef(
-    debounce(async () => {
-      if (isLoading) return;
-      
+  useEffect(() => {
+    const fetchTeams = async () => {
       try {
-        setIsLoading(true);
         const token = localStorage.getItem("token");
-        const response = await axiosInstance.get('/team/details', {
+        const response = await axiosInstance.get('/team/details',{
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type':'application/json'
           }
         });
-        
+        // console.log('a');
+        // console.log(response);
+        // console.log('b');
         const teams = response.data.team;
         setCurTeams(teams);
       } catch (error) {
         console.error("Error fetching teams:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 1000)
-  ).current;
-
-  useEffect(() => {
-    // Use sessionStorage to cache team data to reduce API calls
-    const cachedTeams = sessionStorage.getItem('cachedTeams');
-    
-    if (cachedTeams) {
-      try {
-        setCurTeams(JSON.parse(cachedTeams));
-      } catch (e) {
-        console.error("Error parsing cached teams:", e);
-      }
-    }
-    
-    // Only fetch if dropdown is open or if we don't have cached data
-    if (dropdownOpen || !cachedTeams) {
-      debouncedFetchTeams();
-    }
-    
-    return () => {
-      // Clear any pending fetch timeout when component unmounts
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [dropdownOpen, selectedTeam, debouncedFetchTeams]);
 
-  // Cache teams when we get them
-  useEffect(() => {
-    if (curTeams.length > 0) {
-      sessionStorage.setItem('cachedTeams', JSON.stringify(curTeams));
-    }
-  }, [curTeams]);
+    fetchTeams();
+  }, [selectedTeam]);
 
   const handleTeamSelect = async (teamss) => {
     // If this is a different team than the currently selected one
@@ -177,11 +130,7 @@ const TeamSelector = () => {
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
               <div className="max-h-60 overflow-y-auto">
-                {isLoading ? (
-                  <p className="px-4 py-2 text-sm text-gray-500 text-center">
-                    Loading teams...
-                  </p>
-                ) : curTeams.length > 0 ? (
+                {curTeams.length > 0 ? (
                   curTeams.map((team) => (
                     <button
                       key={team.id}
