@@ -49,80 +49,175 @@ const TeamsSection = () => {
         return finalEmail;
     };
 
-    // Function to fetch teams
+    // Helper function to determine if user is a team owner
+    const isTeamOwner = (team) => {
+        if (!team) return false;
+        
+        try {
+            // Get current user information
+            const userEmail = getCurrentUserEmail();
+            const userString = localStorage.getItem('User');
+            let userId = '';
+            
+            // Get user ID from the User object in localStorage
+            if (userString) {
+                try {
+                    const userObj = JSON.parse(userString);
+                    userId = userObj._id;
+                    console.log("Found user ID:", userId);
+                } catch (err) {
+                    console.error("Error parsing User from localStorage:", err);
+                }
+            }
+            
+            // In the backend, ownership is determined by:
+            // 1. The user's ID matching the team's createdBy field
+            // 2. The user having 'admin' role in the user array
+            
+            // Check if user is the creator
+            const isCreator = team.createdBy && 
+                             ((team.createdBy === userId) || 
+                              (team.createdBy._id === userId) ||
+                              (team.createdBy.email === userEmail));
+            
+            // Check if user has admin role in the team
+            let hasAdminRole = false;
+            
+            // Check the user array if it exists
+            if (team.user && Array.isArray(team.user)) {
+                hasAdminRole = team.user.some(member => 
+                    // Check by userId if available
+                    ((member.userId === userId) || 
+                     (member.userId && member.userId._id === userId)) && 
+                    member.role === 'admin'
+                );
+            }
+            
+            // Check simple role property (used in frontend representation)
+            const hasAdminRoleProp = team.role === 'admin';
+            
+            // Determine final ownership status
+            const isOwner = isCreator || hasAdminRole || hasAdminRoleProp;
+            
+            console.log(`Team "${team.name}" ownership check:`, {
+                userId,
+                userEmail,
+                teamCreator: team.createdBy,
+                hasCreatorMatch: isCreator,
+                hasAdminRoleProp,
+                hasAdminRoleInArray: hasAdminRole,
+                finalOwnerStatus: isOwner
+            });
+            
+            return isOwner;
+        } catch (err) {
+            console.error("Error in isTeamOwner:", err);
+            return false;
+        }
+    };
+
+    // Function to fetch teams with proper ownership handling
     const fetchTeams = async () => {
         try {
             setIsLoading(true);
             setError('');
             
-            // Get current user email
+            // Get user info
             const userEmail = getCurrentUserEmail();
+            const userString = localStorage.getItem('User');
+            let userId = '';
+            
+            if (userString) {
+                try {
+                    const userObj = JSON.parse(userString);
+                    userId = userObj._id;
+                    console.log("User ID for API calls:", userId);
+                } catch (err) {
+                    console.error("Error parsing User object:", err);
+                }
+            }
+            
             setCurrentUserEmail(userEmail);
             
-            console.log("Fetching teams for user:", userEmail);
+            console.log("Fetching teams for user:", { email: userEmail, id: userId });
             
-            // Now fetch teams
+            // Fetch teams from API
             const response = await axiosInstance.get('/team/details');
-            console.log("Team details response:", response.data);
+            console.log("Team details raw response:", response.data);
             
             if (response.data && response.data.team) {
-                // Process each team to ensure ownership is properly set
+                // Process each team to ensure proper structure and ownership
                 const processedTeams = response.data.team.map(team => {
-                    // Create a copy of the team with consistent structure
-                    const processedTeam = {
-                        ...team,
-                        // Ensure consistent name property
-                        name: team.name || team.teamName || '',
-                        // Ensure role is preserved or defaulted
-                        role: team.role || 'member',
-                        // Ensure createdBy always has email if we can determine it
-                        createdBy: team.createdBy || { email: '' }
-                    };
+                    // Copy to avoid mutation
+                    const processedTeam = { ...team };
                     
-                    // If the user is the creator of the team, force role to admin
-                    if (processedTeam.createdBy && 
-                        processedTeam.createdBy.email === userEmail) {
-                        processedTeam.role = 'admin';
-                        console.log(`Enforcing admin role for team "${processedTeam.name}" as user is creator`);
+                    // Ensure these fields exist
+                    processedTeam.name = team.name || '';
+                    
+                    // Check if user is in the team's user array with admin role
+                    if (team.user && Array.isArray(team.user)) {
+                        const userEntry = team.user.find(entry => 
+                            (entry.userId === userId || 
+                             (entry.userId && entry.userId._id === userId))
+                        );
+                        
+                        if (userEntry) {
+                            // Set role based on what's found in the user array
+                            processedTeam.role = userEntry.role;
+                            console.log(`Found user in team "${team.name}" with role: ${userEntry.role}`);
+                        }
                     }
                     
-                    // Special case: If team was just created (it's in localStorage)
+                    // Check if user is the creator
+                    const isCreator = team.createdBy && 
+                                     ((team.createdBy === userId) || 
+                                      (team.createdBy._id === userId) ||
+                                      (team.createdBy.email === userEmail));
+                    
+                    // If user is creator, ensure they have admin role
+                    if (isCreator && (!processedTeam.role || processedTeam.role !== 'admin')) {
+                        processedTeam.role = 'admin';
+                        console.log(`User is creator of team "${team.name}", enforcing admin role`);
+                    }
+                    
+                    // Handle just-created teams
                     const justCreatedTeamName = localStorage.getItem('justCreatedTeam');
                     if (justCreatedTeamName && processedTeam.name === justCreatedTeamName) {
                         processedTeam.role = 'admin';
-                        processedTeam.createdBy = { email: userEmail };
+                        if (!processedTeam.createdBy) {
+                            processedTeam.createdBy = { _id: userId, email: userEmail };
+                        }
                         console.log(`Setting ownership for just created team "${processedTeam.name}"`);
-                        // Clear the just created flag
                         localStorage.removeItem('justCreatedTeam');
                     }
                     
                     return processedTeam;
                 });
                 
+                console.log("Processed teams with ownership:", processedTeams);
                 setTeams(processedTeams);
                 
-                // Automatically select the first team if needed
-                if (processedTeams.length > 0 && (!selectedTeam || !selectedTeam.name)) {
-                    setSelectedTeam(processedTeams[0]);
-                    localStorage.setItem('selectedTeam', processedTeams[0].name);
-                }
-                
-                // Update selected team if it exists in the new teams list
-                else if (selectedTeam && selectedTeam.name) {
-                    const updatedSelectedTeam = processedTeams.find(t => t.name === selectedTeam.name);
-                    if (updatedSelectedTeam) {
-                        setSelectedTeam(updatedSelectedTeam);
+                // Update selected team if needed
+                if (processedTeams.length > 0) {
+                    if (!selectedTeam || !selectedTeam.name) {
+                        setSelectedTeam(processedTeams[0]);
+                        localStorage.setItem('selectedTeam', processedTeams[0].name);
+                    } else {
+                        // Find and update the selected team if it exists
+                        const updatedSelectedTeam = processedTeams.find(t => 
+                            t.name === selectedTeam.name || t._id === selectedTeam._id
+                        );
+                        
+                        if (updatedSelectedTeam) {
+                            setSelectedTeam(updatedSelectedTeam);
+                        }
                     }
                 }
                 
-                // Log each team's ownership status
+                // Final check of team ownership
                 processedTeams.forEach(team => {
-                    const isOwner = isTeamOwner(team);
-                    console.log(`Team ownership check for "${team.name}":`, {
-                        role: team.role, 
-                        createdBy: team.createdBy?.email,
-                        isOwner
-                    });
+                    const ownership = isTeamOwner(team);
+                    console.log(`Final team "${team.name}" ownership status:`, ownership ? "OWNER" : "MEMBER");
                 });
             } else {
                 console.error("Invalid team data format:", response.data);
@@ -137,42 +232,54 @@ const TeamsSection = () => {
         }
     };
 
-    // Initial fetch on component mount
+    // Initial fetch on component mount and setup refresh listeners
     useEffect(() => {
+        // Fetch teams on first load
         fetchTeams();
         
-        // Also log the current authentication state
+        // Log authentication state
         const token = localStorage.getItem('accessToken');
+        const userString = localStorage.getItem('User');
+        
         console.log("Authentication state:", {
             hasToken: !!token,
+            hasUserData: !!userString,
             tokenPrefix: token ? token.substring(0, 10) + '...' : 'Not found'
         });
+        
+        // Add page load event listener to ensure data persists across refreshes
+        const handlePageLoad = () => {
+            console.log("Page refresh detected, reloading team data...");
+            fetchTeams();
+        };
+        
+        // Listen for page reloads
+        window.addEventListener('load', handlePageLoad);
+        
+        // Clean up
+        return () => {
+            window.removeEventListener('load', handlePageLoad);
+        };
     }, []);
-
-    // Improved isTeamOwner function with better debugging
-    const isTeamOwner = (team) => {
-        if (!team) return false;
-        
-        // Get current user email for comparison
-        const userEmail = getCurrentUserEmail();
-        
-        // Comprehensive team ownership check
-        const isAdmin = team.role === 'admin';
-        const isCreator = team.createdBy && team.createdBy.email === userEmail;
-        const result = isAdmin || isCreator;
-        
-        // Detailed logging for debugging ownership issues
-        console.log(`Team ownership check for "${team.name}":`, {
-            teamRole: team.role,
-            isAdmin,
-            creatorEmail: team.createdBy?.email,
-            userEmail,
-            isCreator,
-            finalResult: result
-        });
-        
-        return result;
-    };
+    
+    // Effect to persist selected team to localStorage whenever it changes
+    useEffect(() => {
+        if (selectedTeam && selectedTeam.name) {
+            localStorage.setItem('selectedTeam', selectedTeam.name);
+            
+            // Also persist team data in a structured format
+            try {
+                localStorage.setItem('selectedTeamData', JSON.stringify({
+                    _id: selectedTeam._id,
+                    name: selectedTeam.name,
+                    role: selectedTeam.role || 'member',
+                    isOwner: isTeamOwner(selectedTeam)
+                }));
+            } catch (err) {
+                console.error("Error saving team data to localStorage:", err);
+            }
+        }
+    }, [selectedTeam]);
 
     // Function to filter teams owned by the current user
     const getOwnedTeams = () => {
@@ -508,6 +615,44 @@ const TeamsSection = () => {
         }
         // Return all teams for display
         return teams;
+    };
+
+    // Function to initialize teams from localStorage if available
+    useEffect(() => {
+        try {
+            // Check if we have cached team data
+            const cachedTeamData = localStorage.getItem('selectedTeamData');
+            if (cachedTeamData) {
+                const teamData = JSON.parse(cachedTeamData);
+                console.log("Found cached team data:", teamData);
+                
+                // Use cached data until API response comes back
+                if (!selectedTeam || !selectedTeam.name) {
+                    setSelectedTeam({
+                        _id: teamData._id,
+                        name: teamData.name,
+                        role: teamData.role,
+                        createdBy: { _id: getCurrentUserId() }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error loading cached team data:", err);
+        }
+    }, []);
+    
+    // Helper function to get user ID
+    const getCurrentUserId = () => {
+        const userString = localStorage.getItem('User');
+        if (!userString) return '';
+        
+        try {
+            const userObj = JSON.parse(userString);
+            return userObj._id || '';
+        } catch (err) {
+            console.error("Error getting user ID:", err);
+            return '';
+        }
     };
 
     return (
