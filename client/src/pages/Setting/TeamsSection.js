@@ -490,32 +490,12 @@ const TeamsSection = () => {
         try {
             console.log("Deleting team:", teamToDelete._id);
             
-            // Try server-side deletion first (even though we know it's not implemented)
-            let deleteSucceeded = false;
+            // Use the correct API endpoint that we just added to the backend
+            const response = await axiosInstance.post('/team/delete', { 
+                teamId: teamToDelete._id 
+            });
             
-            try {
-                // First attempt with teamId parameter
-                const response = await axiosInstance.delete(`/team/${teamToDelete._id}`);
-                console.log("Team deletion response:", response?.data);
-                deleteSucceeded = true;
-            } catch (innerErr1) {
-                console.log("First delete attempt failed, trying alternative endpoint...");
-                
-                try {
-                    // Second attempt with ID in request body
-                    const response = await axiosInstance.delete(`/team`, { 
-                        data: { teamId: teamToDelete._id }
-                    });
-                    console.log("Team deletion response:", response?.data);
-                    deleteSucceeded = true;
-                } catch (innerErr2) {
-                    console.log("Second delete attempt failed, proceeding with client-side deletion");
-                    deleteSucceeded = false;
-                }
-            }
-            
-            // Mark the team as deleted in localStorage (client-side deletion)
-            markTeamAsDeleted(teamToDelete._id, teamToDelete.name);
+            console.log("Team deletion response:", response?.data);
             
             // Remove the deleted team from the teams array in state
             const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
@@ -535,26 +515,35 @@ const TeamsSection = () => {
             setTeamToDelete(null);
             
             // Show success message
-            if (deleteSucceeded) {
-                alert(`Team "${teamToDelete.name}" deleted successfully on the server!`);
-            } else {
-                alert(`Team "${teamToDelete.name}" has been hidden from your view. (Note: The server doesn't support team deletion yet, but we've hidden it for you.)`);
+            alert(`Team "${teamToDelete.name}" deleted successfully!`);
+            
+            // Also remove from localStorage deleted teams list if it exists there
+            try {
+                const deletedTeamsString = localStorage.getItem('deletedTeams') || '[]';
+                const deletedTeams = JSON.parse(deletedTeamsString);
+                const filteredTeams = deletedTeams.filter(team => 
+                    team._id !== teamToDelete._id && team.name !== teamToDelete.name
+                );
+                localStorage.setItem('deletedTeams', JSON.stringify(filteredTeams));
+            } catch (err) {
+                console.error("Error updating localStorage:", err);
             }
             
         } catch (err) {
             console.error("Team deletion error:", err);
             
-            // Even if server-side deletion fails, proceed with client-side
-            markTeamAsDeleted(teamToDelete._id, teamToDelete.name);
+            let errorMsg = "Failed to delete team. ";
             
-            // Remove from UI
-            const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
-            setTeams(updatedTeams);
-            setIsDeleteModalOpen(false);
-            setTeamToDelete(null);
+            if (err.response?.status === 404) {
+                errorMsg += "Team not found.";
+            } else if (err.response?.status === 403) {
+                errorMsg += "You don't have permission to delete this team.";
+            } else {
+                errorMsg += err.response?.data?.message || "Please try again.";
+            }
             
-            // Show error message but confirm client-side deletion
-            alert(`Team "${teamToDelete.name}" has been hidden from your view. (Note: Server deletion failed, but we've hidden it for you.)`);
+            setError(errorMsg);
+            alert(errorMsg);
         } finally {
             setIsLoading(false);
         }

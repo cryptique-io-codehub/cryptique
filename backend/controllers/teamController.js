@@ -164,3 +164,58 @@ exports.createNewTeam=async(req,res)=>{
     }
 
 }
+
+exports.deleteTeam = async (req, res) => {
+    try {
+        // Get the teamId from the request
+        const { teamId } = req.body;
+        
+        if (!teamId) {
+            return res.status(400).json({ message: "Team ID is required" });
+        }
+        
+        // Find the team by ID
+        const team = await Team.findById(teamId);
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Check if the logged-in user is authorized to delete the team
+        // Only the team creator or the first admin can delete a team
+        const isCreator = team.createdBy && team.createdBy.equals(req.userId);
+        
+        // Check if the user is the first admin member of the team
+        let isFirstAdmin = false;
+        if (team.user && team.user.length > 0) {
+            const firstMember = team.user[0];
+            isFirstAdmin = firstMember.userId.equals(req.userId) && firstMember.role === 'admin';
+        }
+        
+        if (!isCreator && !isFirstAdmin) {
+            return res.status(403).json({ 
+                message: "Unauthorized. Only the team creator or admin can delete a team." 
+            });
+        }
+        
+        // Remove this team from all associated users
+        await User.updateMany(
+            { team: teamId },
+            { $pull: { team: teamId } }
+        );
+        
+        // Delete the team
+        await Team.findByIdAndDelete(teamId);
+        
+        return res.status(200).json({ 
+            message: "Team deleted successfully", 
+            teamId
+        });
+    } catch (error) {
+        console.error("Error deleting team:", error);
+        return res.status(500).json({ 
+            message: "Error deleting team", 
+            error: error.message 
+        });
+    }
+};
