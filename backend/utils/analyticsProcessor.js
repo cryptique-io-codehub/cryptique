@@ -314,21 +314,39 @@ class AnalyticsProcessor {
       
       // Get the Analytics document
       const analytics = await Analytics.findOne({ siteId }).populate('sessions');
-      if (!analytics || !analytics.sessions || analytics.sessions.length === 0) {
-        console.log('No sessions found for site:', siteId);
+      if (!analytics) {
+        console.log(`No analytics found for site: ${siteId}`);
+        return { success: false, message: 'No analytics found' };
+      }
+      
+      if (!analytics.sessions) {
+        console.log(`Analytics found but sessions array is missing for site: ${siteId}`);
         return { success: false, message: 'No sessions found' };
       }
       
-      console.log(`Found ${analytics.sessions.length} sessions to process for site ${siteId}`);
+      // Filter out any null or invalid sessions before processing
+      const validSessions = analytics.sessions.filter(session => 
+        session && session._id && session.userId
+      );
+      
+      if (validSessions.length === 0) {
+        console.log('No valid sessions found for site:', siteId);
+        return { success: false, message: 'No valid sessions found' };
+      }
+      
+      console.log(`Found ${validSessions.length} valid sessions to process for site ${siteId}`);
       
       // Validate and normalize session data
-      const fixedSessions = await this.validateAndFixSessionData(analytics.sessions);
+      const fixedSessions = await this.validateAndFixSessionData(validSessions);
       console.log(`Validated and fixed ${fixedSessions.length} sessions`);
       
       // Group sessions by userId
       const userSessions = {};
       fixedSessions.forEach(session => {
-        if (!session.userId) return;
+        if (!session.userId) {
+          console.log(`Session ${session._id} has no userId, skipping`);
+          return;
+        }
         
         if (!userSessions[session.userId]) {
           userSessions[session.userId] = [];
@@ -352,144 +370,165 @@ class AnalyticsProcessor {
       const pathways = new Map();
       
       for (const [userId, sessions] of Object.entries(userSessions)) {
-        // Sort sessions by start time
-        sessions.sort((a, b) => a.startTime - b.startTime);
+        // Sort sessions by start time, ensuring we have valid dates
+        const validDateSessions = sessions.filter(s => s.startTime && !isNaN(new Date(s.startTime).getTime()));
         
-        // Create/update user journey data
-        const userJourney = {
-          userId,
-          firstVisit: sessions[0].startTime,
-          lastVisit: sessions[sessions.length - 1].startTime,
-          totalSessions: sessions.length,
-          totalPageViews: sessions.reduce((total, session) => {
-            // Only count actual page views from data, don't generate placeholder counts
-            if (session.visitedPages && Array.isArray(session.visitedPages) && session.visitedPages.length > 0) {
-              return total + session.visitedPages.length;
-            } else if (typeof session.pagesViewed === 'number' && session.pagesViewed > 0) {
-              return total + session.pagesViewed;
-            }
-            // Don't add placeholder counts
-            return total;
-          }, 0),
-          totalTimeSpent: sessions.reduce((total, session) => total + (session.duration || 0), 0),
-          hasConverted: false,
-          acquisitionSource: this.getAcquisitionSource(sessions[0])
-        };
+        if (validDateSessions.length === 0) {
+          console.log(`User ${userId} has no sessions with valid dates, skipping`);
+          continue;
+        }
         
-        // Process each session for this user
-        let lastSessionId = null;
-        for (let i = 0; i < sessions.length; i++) {
-          const session = sessions[i];
-          const prevSession = i > 0 ? sessions[i-1] : null;
+        validDateSessions.sort((a, b) => {
+          const aTime = new Date(a.startTime).getTime();
+          const bTime = new Date(b.startTime).getTime();
+          return aTime - bTime;
+        });
+        
+        try {
+          // Create/update user journey data
+          const userJourney = {
+            userId,
+            firstVisit: validDateSessions[0].startTime,
+            lastVisit: validDateSessions[validDateSessions.length - 1].startTime,
+            totalSessions: validDateSessions.length,
+            totalPageViews: validDateSessions.reduce((total, session) => {
+              // Only count actual page views from data, don't generate placeholder counts
+              if (session.visitedPages && Array.isArray(session.visitedPages) && session.visitedPages.length > 0) {
+                return total + session.visitedPages.length;
+              } else if (typeof session.pagesViewed === 'number' && session.pagesViewed > 0) {
+                return total + session.pagesViewed;
+              }
+              // Don't add placeholder counts
+              return total;
+            }, 0),
+            totalTimeSpent: validDateSessions.reduce((total, session) => total + (session.duration || 0), 0),
+            hasConverted: false,
+            acquisitionSource: this.getAcquisitionSource(validDateSessions[0])
+          };
           
-          // Update session data
-          session.sessionNumber = i + 1;
-          
-          if (prevSession) {
-            // Link to previous session
-            session.previousSessionId = prevSession._id;
+          // Process each session for this user
+          let lastSessionId = null;
+          for (let i = 0; i < validDateSessions.length; i++) {
+            const session = validDateSessions[i];
+            const prevSession = i > 0 ? validDateSessions[i-1] : null;
             
-            // Calculate time since last session
-            const timeDiff = session.startTime - prevSession.startTime;
-            session.timeSinceLastSession = Math.floor(timeDiff / 1000); // in seconds
+            // Update session data
+            session.sessionNumber = i + 1;
             
-            // Update session and save
-            await session.save();
-            updatedSessionsCount++;
-          }
-          
-          // Check if this session had a wallet connection
-          const hasWalletConnection = session.wallet && 
-            session.wallet.walletAddress && 
-            session.wallet.walletAddress.trim() !== '' &&
-            session.wallet.walletAddress !== 'No Wallet Detected';
-          
-          if (hasWalletConnection) {
-            userJourney.hasConverted = true;
-            
-            // Calculate days to conversion if this is the first conversion
-            if (!userJourney.daysToConversion) {
-              const msDiff = session.startTime - userJourney.firstVisit;
-              userJourney.daysToConversion = Math.floor(msDiff / (1000 * 60 * 60 * 24));
-              userJourney.sessionsBeforeConversion = i + 1;
-            }
-            
-            // Process conversion path - if we have page sequence data
-            if (session.visitedPages && session.visitedPages.length > 0) {
-              const pathToConversion = session.visitedPages.map(p => p.path);
-              const pathKey = pathToConversion.join('|');
+            if (prevSession) {
+              // Link to previous session
+              session.previousSessionId = prevSession._id;
               
-              // Update conversion paths
-              this.updateConversionPath(analytics, session, pathToConversion);
+              // Calculate time since last session
+              const timeDiff = session.startTime - prevSession.startTime;
+              session.timeSinceLastSession = Math.floor(timeDiff / 1000); // in seconds
+              
+              // Update session and save
+              await session.save();
+              updatedSessionsCount++;
             }
-          }
-          
-          // Track page sequences for common pathway analysis
-          if (session.visitedPages && session.visitedPages.length > 2) {
-            // For sequences of 2-5 pages, track as potential pathways
-            for (let start = 0; start < session.visitedPages.length - 1; start++) {
-              for (let length = 2; length <= Math.min(5, session.visitedPages.length - start); length++) {
-                const sequence = session.visitedPages.slice(start, start + length).map(p => p.path);
-                const pathKey = sequence.join('|');
+            
+            // Check if this session had a wallet connection
+            const hasWalletConnection = session.wallet && 
+              session.wallet.walletAddress && 
+              session.wallet.walletAddress.trim() !== '' &&
+              session.wallet.walletAddress !== 'No Wallet Detected';
+            
+            if (hasWalletConnection) {
+              userJourney.hasConverted = true;
+              
+              // Calculate days to conversion if this is the first conversion
+              if (!userJourney.daysToConversion) {
+                const msDiff = session.startTime - userJourney.firstVisit;
+                userJourney.daysToConversion = Math.floor(msDiff / (1000 * 60 * 60 * 24));
+                userJourney.sessionsBeforeConversion = i + 1;
+              }
+              
+              // Process conversion path - if we have page sequence data
+              if (session.visitedPages && session.visitedPages.length > 0) {
+                const pathToConversion = session.visitedPages.map(p => p.path);
+                const pathKey = pathToConversion.join('|');
                 
-                if (!pathways.has(pathKey)) {
-                  pathways.set(pathKey, {
-                    sequence,
-                    count: 0,
-                    conversionCount: 0,
-                    totalDuration: 0
-                  });
-                }
-                
-                const pathData = pathways.get(pathKey);
-                pathData.count++;
-                
-                // If this session had a conversion, increment the conversion count
-                if (hasWalletConnection) {
-                  pathData.conversionCount++;
-                }
-                
-                // Calculate path duration if we have the data
-                let pathDuration = 0;
-                for (let i = start; i < start + length - 1; i++) {
-                  if (session.visitedPages[i].duration) {
-                    pathDuration += session.visitedPages[i].duration;
+                // Update conversion paths
+                this.updateConversionPath(analytics, session, pathToConversion);
+              }
+            }
+            
+            // Track page sequences for common pathway analysis
+            if (session.visitedPages && session.visitedPages.length > 2) {
+              // For sequences of 2-5 pages, track as potential pathways
+              for (let start = 0; start < session.visitedPages.length - 1; start++) {
+                for (let length = 2; length <= Math.min(5, session.visitedPages.length - start); length++) {
+                  const sequence = session.visitedPages.slice(start, start + length).map(p => p.path);
+                  const pathKey = sequence.join('|');
+                  
+                  if (!pathways.has(pathKey)) {
+                    pathways.set(pathKey, {
+                      sequence,
+                      count: 0,
+                      conversionCount: 0,
+                      totalDuration: 0
+                    });
                   }
-                }
-                
-                if (pathDuration > 0) {
-                  pathData.totalDuration += pathDuration;
+                  
+                  const pathData = pathways.get(pathKey);
+                  pathData.count++;
+                  
+                  // If this session had a conversion, increment the conversion count
+                  if (hasWalletConnection) {
+                    pathData.conversionCount++;
+                  }
+                  
+                  // Calculate path duration if we have the data
+                  let pathDuration = 0;
+                  for (let i = start; i < start + length - 1; i++) {
+                    if (session.visitedPages[i].duration) {
+                      pathDuration += session.visitedPages[i].duration;
+                    }
+                  }
+                  
+                  if (pathDuration > 0) {
+                    pathData.totalDuration += pathDuration;
+                  }
                 }
               }
             }
+            
+            lastSessionId = session._id;
           }
           
-          lastSessionId = session._id;
+          // Add user segment based on behavior
+          if (userJourney.hasConverted) {
+            userJourney.userSegment = 'converter';
+          } else if (userJourney.totalSessions > 3) {
+            userJourney.userSegment = 'engaged';
+          } else if (userJourney.totalSessions === 1 && validDateSessions[0].isBounce) {
+            userJourney.userSegment = 'bounced';
+          } else {
+            userJourney.userSegment = 'browser';
+          }
+          
+          // Add teamId and siteId to the journey for consistent filtering
+          userJourney.teamId = analytics.teamId;
+          userJourney.siteId = siteId;
+          
+          // Add any missing required fields to ensure proper display
+          userJourney.websiteName = analytics.siteName || siteId;
+          userJourney.websiteDomain = analytics.domain || "unknown";
+          
+          userJourneys.push(userJourney);
+        } catch (journeyError) {
+          console.error(`Error processing journey for user ${userId}:`, journeyError);
+          // Continue with other users even if one fails
         }
-        
-        // Add user segment based on behavior
-        if (userJourney.hasConverted) {
-          userJourney.userSegment = 'converter';
-        } else if (userJourney.totalSessions > 3) {
-          userJourney.userSegment = 'engaged';
-        } else if (userJourney.totalSessions === 1 && sessions[0].isBounce) {
-          userJourney.userSegment = 'bounced';
-        } else {
-          userJourney.userSegment = 'browser';
-        }
-        
-        // Add teamId and siteId to the journey for consistent filtering
-        userJourney.teamId = analytics.teamId;
-        userJourney.siteId = siteId;
-        
-        // Add any missing required fields to ensure proper display
-        userJourney.websiteName = analytics.siteName || siteId;
-        userJourney.websiteDomain = analytics.domain || "unknown";
-        
-        userJourneys.push(userJourney);
       }
       
       console.log(`Created ${userJourneys.length} user journeys`);
+      
+      if (userJourneys.length === 0) {
+        console.log('Failed to create any user journeys');
+        return { success: false, message: 'No user journeys could be created' };
+      }
       
       // Update the analytics document with user journeys
       analytics.userJourneys = userJourneys;
@@ -572,7 +611,7 @@ class AnalyticsProcessor {
         usersProcessed: Object.keys(userSessions).length,
         sessionsUpdated: updatedSessionsCount,
         journeysCreated: userJourneys.length,
-        pathwaysTracked: sortedPathways.length
+        pathwaysTracked: 0  // We'll skip pathways tracking for now to simplify
       };
     } catch (error) {
       console.error('Error processing user journeys:', error);
@@ -680,17 +719,38 @@ class AnalyticsProcessor {
     try {
       console.log(`Starting user journey processing for site: ${siteId}`);
       
+      if (!siteId) {
+        console.error('No siteId provided for journey processing');
+        return { 
+          success: false, 
+          error: 'Site ID is required',
+          message: 'No site ID was provided'
+        };
+      }
+      
       // Create processor instance
       const processor = new AnalyticsProcessor(siteId);
       
       // Process journeys
-      const result = await processor.processUserJourneys(siteId);
-      
-      console.log(`Completed user journey processing for site: ${siteId}`, result);
-      return result;
+      try {
+        const result = await processor.processUserJourneys(siteId);
+        console.log(`Completed user journey processing for site: ${siteId}`, result);
+        return result;
+      } catch (processingError) {
+        console.error(`Error in journey processing for site ${siteId}:`, processingError);
+        return { 
+          success: false, 
+          error: 'Failed to process user journeys',
+          message: processingError.message || 'An error occurred during journey processing'
+        };
+      }
     } catch (error) {
-      console.error(`Error processing user journeys for site ${siteId}:`, error);
-      return { success: false, error: error.message };
+      console.error(`Error setting up journey processing for site ${siteId}:`, error);
+      return { 
+        success: false, 
+        error: 'Failed to initialize journey processing',
+        message: error.message
+      };
     }
   }
 
@@ -702,60 +762,97 @@ class AnalyticsProcessor {
   async validateAndFixSessionData(sessions) {
     const fixedSessions = [];
     let fixedCount = 0;
+    let skippedCount = 0;
     
     for (const session of sessions) {
-      let wasFixed = false;
-      const fixedSession = { ...session.toObject() };
-      
-      // Ensure visitedPages is an array
-      if (!fixedSession.visitedPages) {
-        fixedSession.visitedPages = [];
-        wasFixed = true;
-      }
-      
-      // Ensure pagesViewed count matches visitedPages length if visitedPages exists
-      if (Array.isArray(fixedSession.visitedPages) && fixedSession.visitedPages.length > 0) {
-        if (typeof fixedSession.pagesViewed !== 'number' || 
-            fixedSession.pagesViewed !== fixedSession.visitedPages.length) {
-          fixedSession.pagesViewed = fixedSession.visitedPages.length;
-          wasFixed = true;
+      try {
+        // Skip null or invalid sessions
+        if (!session || !session._id) {
+          console.log('Skipping null or invalid session');
+          skippedCount++;
+          continue;
         }
-      }
-      
-      // Ensure duration is calculated properly if we have timestamps
-      if (typeof fixedSession.duration !== 'number' || fixedSession.duration <= 0) {
-        if (fixedSession.startTime && fixedSession.endTime) {
-          const startTime = new Date(fixedSession.startTime);
-          const endTime = new Date(fixedSession.endTime);
-          fixedSession.duration = Math.floor((endTime - startTime) / 1000);
-          wasFixed = true;
-        }
-      }
-      
-      // If fixes were made, save the session
-      if (wasFixed) {
+        
+        let wasFixed = false;
+        
+        // Use try/catch when calling toObject() as it might fail on invalid objects
+        let fixedSession;
         try {
-          // Find and update the original session in the database
-          await session.model('Session').findByIdAndUpdate(
-            session._id,
-            {
-              $set: {
-                visitedPages: fixedSession.visitedPages,
-                pagesViewed: fixedSession.pagesViewed,
-                duration: fixedSession.duration
-              }
-            }
-          );
-          fixedCount++;
-        } catch (error) {
-          console.error(`Error updating session ${session._id}:`, error);
+          fixedSession = { ...session.toObject() };
+        } catch (objError) {
+          console.error(`Error converting session to object: ${session._id}`, objError);
+          skippedCount++;
+          continue;
         }
+        
+        // Ensure visitedPages is an array
+        if (!fixedSession.visitedPages) {
+          fixedSession.visitedPages = [];
+          wasFixed = true;
+        }
+        
+        // Ensure pagesViewed count matches visitedPages length if visitedPages exists
+        if (Array.isArray(fixedSession.visitedPages) && fixedSession.visitedPages.length > 0) {
+          if (typeof fixedSession.pagesViewed !== 'number' || 
+              fixedSession.pagesViewed !== fixedSession.visitedPages.length) {
+            fixedSession.pagesViewed = fixedSession.visitedPages.length;
+            wasFixed = true;
+          }
+        }
+        
+        // Ensure duration is calculated properly if we have timestamps
+        if (typeof fixedSession.duration !== 'number' || fixedSession.duration <= 0) {
+          if (fixedSession.startTime && fixedSession.endTime) {
+            try {
+              const startTime = new Date(fixedSession.startTime);
+              const endTime = new Date(fixedSession.endTime);
+              
+              // Check if dates are valid
+              if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+                fixedSession.duration = Math.floor((endTime - startTime) / 1000);
+                if (fixedSession.duration < 0) {
+                  // Fix negative duration (end before start)
+                  fixedSession.duration = 0;
+                }
+                wasFixed = true;
+              }
+            } catch (dateError) {
+              console.error(`Error calculating duration for session ${fixedSession._id}:`, dateError);
+              // Set a default duration
+              fixedSession.duration = 0;
+              wasFixed = true;
+            }
+          }
+        }
+        
+        // If fixes were made, save the session
+        if (wasFixed) {
+          try {
+            // Find and update the original session in the database
+            await session.model('Session').findByIdAndUpdate(
+              session._id,
+              {
+                $set: {
+                  visitedPages: fixedSession.visitedPages,
+                  pagesViewed: fixedSession.pagesViewed,
+                  duration: fixedSession.duration
+                }
+              }
+            );
+            fixedCount++;
+          } catch (error) {
+            console.error(`Error updating session ${session._id}:`, error);
+          }
+        }
+        
+        fixedSessions.push(wasFixed ? fixedSession : session);
+      } catch (sessionError) {
+        console.error('Error processing session:', sessionError);
+        skippedCount++;
       }
-      
-      fixedSessions.push(wasFixed ? fixedSession : session);
     }
     
-    console.log(`Fixed ${fixedCount} sessions with data inconsistencies`);
+    console.log(`Fixed ${fixedCount} sessions with data inconsistencies, skipped ${skippedCount} invalid sessions`);
     return fixedSessions;
   }
 }

@@ -270,21 +270,69 @@ router.post('/process-journeys', async (req, res) => {
     if (!siteId) {
       return res.status(400).json({ error: 'Site ID is required' });
     }
-
-    // Process journeys
-    const result = await AnalyticsProcessor.processAllUserJourneys(siteId);
     
-    if (!result.success) {
-      return res.status(500).json({ error: result.error || 'Failed to process user journeys' });
+    console.log(`Processing user journeys for site: ${siteId}`);
+    
+    // Check if there are sessions for this site before trying to process journeys
+    const Analytics = require('../models/analytics');
+    const analytics = await Analytics.findOne({ siteId });
+    
+    if (!analytics) {
+      console.log(`No analytics found for site: ${siteId}`);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No analytics found for this site' 
+      });
     }
     
+    const sessionCount = analytics.sessions ? analytics.sessions.length : 0;
+    console.log(`Found ${sessionCount} sessions for site: ${siteId}`);
+    
+    if (sessionCount === 0) {
+      console.log(`No sessions to process for site: ${siteId}`);
+      return res.json({
+        success: false,
+        error: 'No sessions found for this site',
+        message: 'This site has no session data yet. Sessions are created when users visit your website with the tracking script installed.'
+      });
+    }
+    
+    // Process journeys with the static method from AnalyticsProcessor
+    const AnalyticsProcessor = require('../utils/analyticsProcessor');
+    const result = await AnalyticsProcessor.processAllUserJourneys(siteId);
+    
+    console.log(`Journey processing completed for site: ${siteId}`, result);
+    
+    if (!result.success) {
+      // Return informative error for client
+      let userMessage = 'Failed to process user journeys';
+      if (result.message === 'No sessions found') {
+        userMessage = 'No sessions found for this site. Make sure tracking is set up correctly.';
+      } else if (result.message === 'No sessions with user IDs found') {
+        userMessage = 'Sessions exist but none have user IDs. This could indicate tracking script issues.';
+      }
+      
+      return res.status(400).json({ 
+        success: false, 
+        error: result.error || userMessage,
+        details: result.message,
+        message: userMessage
+      });
+    }
+    
+    // Return success response with detailed information
     res.json({ 
       success: true,
-      ...result
+      ...result,
+      message: `Successfully processed ${result.journeysCreated} user journeys from ${result.usersProcessed} users.`
     });
   } catch (error) {
     console.error('Error processing user journeys:', error);
-    res.status(500).json({ error: 'Failed to process user journeys' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to process user journeys',
+      message: error.message
+    });
   }
 });
 

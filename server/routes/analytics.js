@@ -115,13 +115,42 @@ router.post('/process-journeys', async (req, res) => {
     // Forward request to real backend
     const response = await backendAPI.post('/analytics/process-journeys', { siteId });
     
-    // Return real data
-    res.json(response.data);
+    // Return real data with helpful status message
+    let responseData = response.data;
+    
+    // Add a user-friendly message if not already present
+    if (!responseData.message) {
+      if (responseData.success) {
+        responseData.message = `Successfully processed ${responseData.journeysCreated || 0} user journeys`;
+      } else {
+        responseData.message = 'Failed to process user journeys. Please try again later.';
+      }
+    }
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Error processing user journeys from backend:', error);
+    
+    // Get error details if available from the backend
+    let errorMessage = 'Failed to process user journeys. Please try again later.';
+    let errorDetails = null;
+    
+    if (error.response && error.response.data) {
+      errorDetails = error.response.data.error || error.response.data.message;
+      
+      if (error.response.data.error === 'No sessions found for this site') {
+        errorMessage = 'No sessions available to process. Please ensure users are visiting your site with the tracking script installed.';
+      } else if (error.response.data.error === 'No sessions with user IDs found') {
+        errorMessage = 'Sessions exist but no user data is available. This could indicate issues with the tracking script.';
+      } else if (error.response.data.error) {
+        errorMessage = error.response.data.error;
+      }
+    }
+    
     res.status(error.response?.status || 500).json({
       success: false, 
-      error: error.response?.data?.error || 'Failed to process user journeys'
+      error: errorMessage,
+      details: errorDetails || error.message
     });
   }
 });
