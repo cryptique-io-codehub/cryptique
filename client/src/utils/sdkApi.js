@@ -27,7 +27,7 @@ const sdkAxiosInstance = axios.create({
  */
 export const getAnalytics = async (siteId) => {
   try {
-    const response = await sdkAxiosInstance.get(`/api/sdk/analytics/${siteId}`);
+    const response = await sdkAxiosInstance.get(`/sdk/analytics/${siteId}`);
     return response.data;
   } catch (error) {
     console.error('SDK API Error - getAnalytics:', error);
@@ -45,8 +45,8 @@ export const getAnalytics = async (siteId) => {
  */
 export const getChart = async (siteId, startDate, endDate, timeframe = 'hourly') => {
   try {
-    // Note: This endpoint uses the authenticated axiosInstance (not SDK endpoint)
-    const response = await axiosInstance.get('/analytics/chart', {
+    // Use the sdkAxiosInstance since it doesn't use credentials (helps avoid CORS)
+    const response = await sdkAxiosInstance.get('/analytics/chart', {
       params: {
         siteId,
         timeframe,
@@ -70,8 +70,8 @@ export const getChart = async (siteId, startDate, endDate, timeframe = 'hourly')
  */
 export const getTrafficSources = async (siteId, startDate, endDate) => {
   try {
-    // Note: This endpoint uses the authenticated axiosInstance (not SDK endpoint)
-    const response = await axiosInstance.get('/analytics/traffic-sources', {
+    // Use the sdkAxiosInstance since it doesn't use credentials (helps avoid CORS)
+    const response = await sdkAxiosInstance.get('/analytics/traffic-sources', {
       params: {
         siteId,
         start: startDate,

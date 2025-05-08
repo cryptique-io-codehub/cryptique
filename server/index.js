@@ -9,12 +9,15 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
-// CORS configuration - Updated to allow requests from any origin during development
+// CORS configuration - Updated to allow requests from app domains
 app.use(cors({
-  origin: ['https://app.cryptique.io', 'http://localhost:3000'], // Allow specific origins
+  origin: ['https://app.cryptique.io', 'http://localhost:3000'], 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  credentials: true,
+  optionsSuccessStatus: 204, // Set preflight response status to 204 for better compatibility
+  maxAge: 86400 // Cache preflight response for 24 hours
 }));
 
 // Middleware
@@ -22,7 +25,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Special handling for Coinbase webhook (needs raw body)
-app.use('/api/billing/webhook/coinbase', express.raw({ type: 'application/json' }));
+app.use('/billing/webhook/coinbase', express.raw({ type: 'application/json' }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {

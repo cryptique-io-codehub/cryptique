@@ -4,7 +4,7 @@ const axios = require('axios');
 const { trackApiUsage, checkCQIntelligenceAccess } = require('../middleware/subscriptionCheck');
 
 // Set backend API URL - use environment variable or default to production
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app/api';
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app';
 
 // Create axios instance for backend API calls
 const backendAPI = axios.create({
@@ -17,28 +17,51 @@ const backendAPI = axios.create({
 
 // Get chart data
 router.get('/chart', async (req, res) => {
-  const { siteId, timeframe = 'daily' } = req.query;
+  const { siteId, timeframe = 'daily', start, end } = req.query;
   
   if (!siteId) {
     return res.status(400).json({ success: false, error: 'Site ID is required' });
   }
   
-  console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}`);
+  console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}, dates: ${start} to ${end}`);
   
   try {
+    // Add options to pass through CORS headers
+    const options = { 
+      params: { 
+        siteId, 
+        timeframe,
+        start,
+        end
+      },
+      headers: {
+        'Origin': req.headers.origin || '',
+        'Referer': req.headers.referer || ''
+      }
+    };
+    
     // Forward request to real backend
-    const response = await backendAPI.get('/analytics/chart', { 
-      params: { siteId, timeframe } 
-    });
+    const response = await backendAPI.get('/analytics/chart', options);
     
     // Return real data
     res.json(response.data);
   } catch (error) {
-    console.error('Error fetching chart data from backend:', error);
-    res.status(error.response?.status || 500).json({
-      success: false, 
-      error: error.response?.data?.error || 'Failed to fetch chart data from backend'
-    });
+    console.error('Error fetching chart data from backend:', error.message);
+    
+    // Provide more detailed error for debugging
+    const errorResponse = {
+      success: false,
+      error: error.response?.data?.error || 'Failed to fetch chart data from backend',
+      message: error.message,
+      request: {
+        siteId,
+        timeframe,
+        start,
+        end
+      }
+    };
+    
+    res.status(error.response?.status || 500).json(errorResponse);
   }
 });
 
