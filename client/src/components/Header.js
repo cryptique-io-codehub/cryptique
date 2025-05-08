@@ -134,7 +134,12 @@ const Header = ({ screenSize }) => {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileDropdownOpen && !event.target.closest('.profile-dropdown')) {
+      // Check if the click is outside both the profile icon and the dropdown content
+      const isOutsideProfileIcon = !event.target.closest('.profile-dropdown');
+      const isOutsideDropdownContent = !event.target.closest('.profile-dropdown-content');
+      
+      if (profileDropdownOpen && isOutsideProfileIcon && isOutsideDropdownContent) {
+        console.log('Closing dropdown due to outside click');
         setProfileDropdownOpen(false);
       }
     };
@@ -145,19 +150,30 @@ const Header = ({ screenSize }) => {
     };
   }, [profileDropdownOpen]);
 
-  const handleLogout = async () => {
+  const handleLogout = async (event) => {
+    // Prevent event propagation to stop the dropdown from closing prematurely
+    if (event) {
+      event.stopPropagation();
+      console.log('Logout button clicked, stopping event propagation');
+    }
+    
+    console.log('Starting logout process...');
     try {
       // Get the access token to use as a fallback authentication method
       const accessToken = localStorage.getItem('accessToken');
+      console.log('Access token retrieved for logout:', accessToken ? 'token exists' : 'no token');
       
       // Call the logout API endpoint to invalidate refresh token
+      console.log('Calling logout endpoint...');
       await axiosInstance.post('/auth/logout', {}, {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
       });
+      console.log('Logout API call successful');
       
       // Clear all auth-related items from localStorage
+      console.log('Clearing localStorage items...');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('selectedTeam');
       localStorage.removeItem('selectedWebsite');
@@ -165,23 +181,53 @@ const Header = ({ screenSize }) => {
       localStorage.removeItem('idy');
       
       // Navigate to login page
+      console.log('Navigating to login page...');
       navigate('/login');
     } catch (error) {
       console.error('Error during logout:', error);
       
       // Even if API call fails, still clear localStorage and redirect to be safe
+      console.log('Clearing localStorage after error...');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('selectedTeam');
       localStorage.removeItem('selectedWebsite');
       localStorage.removeItem('User');
       localStorage.removeItem('idy');
       
+      console.log('Navigating to login page after error...');
       navigate('/login');
     }
   };
 
   const toggleProfileDropdown = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
+  };
+
+  const handleLogoutButtonClick = (event) => {
+    // Prevent default behavior
+    event.preventDefault();
+    // Stop propagation to parent elements
+    event.stopPropagation();
+    
+    console.log('Logout button clicked with specific handler');
+    
+    // Immediately clear localStorage for responsive UI feedback
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('selectedTeam');
+    localStorage.removeItem('selectedWebsite');
+    localStorage.removeItem('User');
+    localStorage.removeItem('idy');
+    
+    // Call the logout API in the background but immediately redirect
+    setTimeout(() => {
+      navigate('/login');
+    }, 100);
+    
+    // Call the logout function in the background
+    handleLogout().catch(error => {
+      console.error('Background logout failed:', error);
+      // Already redirected and cleared localStorage, so nothing more to do
+    });
   };
 
   return (
@@ -208,14 +254,15 @@ const Header = ({ screenSize }) => {
 
         {/* Profile Dropdown */}
         {profileDropdownOpen && (
-          <div className={`absolute right-0 top-full mt-2 bg-white border border-gray-300 shadow-lg rounded-md z-50 ${isMobile ? 'w-56' : 'w-64'}`}>
+          <div className={`absolute right-0 top-full mt-2 bg-white border border-gray-300 shadow-lg rounded-md z-50 profile-dropdown-content ${isMobile ? 'w-56' : 'w-64'}`} onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-200">
               <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
             </div>
             <div className="py-1">
               <button 
-                onClick={handleLogout}
+                onClick={handleLogoutButtonClick}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onMouseDown={(e) => e.stopPropagation()} // Prevent mousedown event from closing dropdown
               >
                 <LogOut size={16} className="mr-2" />
                 Log out
