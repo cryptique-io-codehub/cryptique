@@ -64,6 +64,46 @@ exports.getTeamDetails = async (req, res) => {
     }
 }
 
+exports.updateTeam = async (req, res) => {
+    try {
+        const { teamId, name, description } = req.body;
+        
+        // Check if user is authorized to update this team
+        const team = await Team.findById(teamId);
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Check if user is admin of this team
+        const isAdmin = team.user.some(
+            user => user.userId.toString() === req.userId && user.role === 'admin'
+        );
+        
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Not authorized to update team details" });
+        }
+        
+        // Update fields that are provided
+        const updateData = {};
+        if (name) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        
+        const updatedTeam = await Team.findByIdAndUpdate(
+            teamId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+        
+        res.status(200).json({ 
+            message: "Team updated successfully", 
+            team: updatedTeam 
+        });
+    } catch (e) {
+        res.status(500).json({ message: "Error updating team", error: e.message });
+    }
+}
+
 exports.addMember=async (req,res)=>{
     try {
        const email=req.body.email;
