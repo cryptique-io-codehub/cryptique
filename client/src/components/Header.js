@@ -149,9 +149,7 @@ const Header = ({ screenSize }) => {
     try {
       // Call the logout API endpoint to invalidate refresh token
       await axiosInstance.post('/auth/logout');
-    } catch (error) {
-      console.error('Error during logout:', error);
-    } finally {
+      
       // Clear all auth-related items from localStorage
       localStorage.removeItem('accessToken');
       localStorage.removeItem('selectedTeam');
@@ -160,6 +158,17 @@ const Header = ({ screenSize }) => {
       localStorage.removeItem('idy');
       
       // Navigate to login page
+      navigate('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      
+      // Even if API call fails, still clear localStorage and redirect to be safe
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('selectedTeam');
+      localStorage.removeItem('selectedWebsite');
+      localStorage.removeItem('User');
+      localStorage.removeItem('idy');
+      
       navigate('/login');
     }
   };
