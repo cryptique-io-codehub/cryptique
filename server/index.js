@@ -21,6 +21,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Special handling for Coinbase webhook (needs raw body)
+app.use('/api/billing/webhook/coinbase', express.raw({ type: 'application/json' }));
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
   useNewUrlParser: true,
@@ -31,7 +34,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 
 // Routes
 const analyticsRoutes = require('./routes/analytics');
+const billingRoutes = require('./routes/billing');
+const crmRoutes = require('./routes/crm');
+
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/crm', crmRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -44,6 +52,8 @@ app.get('/', (req, res) => {
     message: 'Cryptique Analytics API Server',
     endpoints: {
       analytics: '/api/analytics/*',
+      billing: '/api/billing/*',
+      crm: '/api/crm/*',
       health: '/api/health'
     },
     env: {

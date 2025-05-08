@@ -141,4 +141,98 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// Billing APIs
+export const getSubscriptionPlans = async () => {
+  try {
+    const response = await axiosInstance.get('/api/billing/plans');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subscription plans:', error);
+    throw error;
+  }
+};
+
+export const createCheckoutSession = async (teamId, planType, hasCQIntelligence = false) => {
+  try {
+    const response = await axiosInstance.post('/api/billing/checkout', {
+      teamId,
+      planType,
+      hasCQIntelligence
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    throw error;
+  }
+};
+
+export const getActiveSubscription = async (teamId) => {
+  try {
+    const response = await axiosInstance.get(`/api/billing/subscription/${teamId}`);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      // No active subscription - this is a valid state
+      return null;
+    }
+    console.error('Error fetching active subscription:', error);
+    throw error;
+  }
+};
+
+export const getSubscriptionHistory = async (teamId) => {
+  try {
+    const response = await axiosInstance.get(`/api/billing/subscriptions/${teamId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subscription history:', error);
+    throw error;
+  }
+};
+
+export const updateBillingDetails = async (teamId, billingDetails) => {
+  try {
+    const response = await axiosInstance.put(`/api/billing/billing/${teamId}`, billingDetails);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating billing details:', error);
+    throw error;
+  }
+};
+
+export const cancelSubscription = async (subscriptionId) => {
+  try {
+    const response = await axiosInstance.post(`/api/billing/cancel/${subscriptionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    throw error;
+  }
+};
+
+// Zoho CRM APIs
+export const createOrUpdateContact = async (contactData) => {
+  try {
+    const response = await axiosInstance.post('/api/crm/contact', contactData);
+    return response.data;
+  } catch (error) {
+    console.error('Error managing contact:', error);
+    throw error;
+  }
+};
+
+export const getContactDetails = async (teamId) => {
+  try {
+    const response = await axiosInstance.get(`/api/crm/contact/${teamId}`);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      // No contact found - this is a valid state
+      return null;
+    }
+    console.error('Error fetching contact details:', error);
+    throw error;
+  }
+};
+
 export default axiosInstance;
