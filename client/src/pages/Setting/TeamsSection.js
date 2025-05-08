@@ -181,51 +181,50 @@ const TeamsSection = () => {
                     // Ensure these fields exist
                     processedTeam.name = team.name || '';
                     
-                    // Determine if user is owner (first member or creator)
-                    let isUserOwner = false;
+                    // Add isOwner flag based on first member rule
+                    processedTeam.isOwner = false;
                     
                     // Check if user is the first member of the team
                     if (team.user && Array.isArray(team.user) && team.user.length > 0) {
                         const firstMember = team.user[0];
-                        isUserOwner = 
+                        const isFirstMember = 
                             (firstMember.userId === userId) || 
                             (firstMember.userId && firstMember.userId._id === userId) || 
                             (firstMember.email === userEmail);
+                            
+                        if (isFirstMember) {
+                            processedTeam.isOwner = true;
+                            processedTeam.role = 'admin'; // Owner is always admin
+                            
+                            // Ensure the first member (owner) also has admin role in the DB
+                            if (firstMember.role !== 'admin') {
+                                // This is just for display purposes - the actual DB update will happen separately
+                                team.user[0].role = 'admin';
+                            }
+                        }
                     }
                     
-                    // Also check if user is creator
+                    // Check if user is creator (fallback)
                     const isCreator = team.createdBy && 
                                      ((team.createdBy === userId) || 
                                       (team.createdBy._id === userId) ||
                                       (team.createdBy.email === userEmail));
-                    
-                    // Set the isOwner flag for UI display
-                    processedTeam.isOwner = isUserOwner || isCreator;
-                    
-                    // Determine actual user role in this team
-                    if (team.user && Array.isArray(team.user)) {
-                        // Look for the current user in the team's user array
-                        const currentUserInTeam = team.user.find(member => 
-                            (member.userId === userId) || 
-                            (member.userId && member.userId._id === userId) || 
-                            (member.email === userEmail)
-                        );
-                        
-                        if (currentUserInTeam) {
-                            // Use the actual role from the team data
-                            processedTeam.role = currentUserInTeam.role === 'admin' ? 'admin' : 'user';
-                        } else {
-                            // Default to user if not found (shouldn't happen, but just in case)
-                            processedTeam.role = 'user';
-                        }
-                    } else {
-                        // Default to user if no user array
-                        processedTeam.role = 'user';
+                                      
+                    if (isCreator) {
+                        processedTeam.isOwner = true;
+                        processedTeam.role = 'admin';
                     }
                     
-                    // Ensure the first member (owner) is always displayed as admin in the UI
-                    if (isUserOwner) {
+                    // Handle just-created teams
+                    const justCreatedTeamName = localStorage.getItem('justCreatedTeam');
+                    if (justCreatedTeamName && processedTeam.name === justCreatedTeamName) {
+                        processedTeam.isOwner = true;
                         processedTeam.role = 'admin';
+                        if (!processedTeam.createdBy) {
+                            processedTeam.createdBy = { _id: userId, email: userEmail };
+                        }
+                        console.log(`Setting ownership for just created team "${processedTeam.name}"`);
+                        localStorage.removeItem('justCreatedTeam');
                     }
                     
                     // Normalize roles to either 'admin' or 'user'
@@ -306,7 +305,7 @@ const TeamsSection = () => {
             window.removeEventListener('load', handlePageLoad);
         };
     }, []);
-
+    
     // Effect to persist selected team to localStorage whenever it changes
     useEffect(() => {
         if (selectedTeam && selectedTeam.name) {
@@ -325,82 +324,6 @@ const TeamsSection = () => {
             }
         }
     }, [selectedTeam]);
-
-    // Add an interval to check for selectedTeam changes from the header
-    useEffect(() => {
-        // Function to check if the team in localStorage has changed
-        const checkTeamChange = () => {
-            const currentStoredTeamName = localStorage.getItem('selectedTeam');
-            
-            // If there's a stored team name and it doesn't match our current selectedTeam
-            if (currentStoredTeamName && 
-                (!selectedTeam || selectedTeam.name !== currentStoredTeamName)) {
-                console.log(`Team changed in localStorage: ${currentStoredTeamName}`);
-                
-                // Find matching team in our teams list
-                const matchingTeam = teams.find(team => team.name === currentStoredTeamName);
-                if (matchingTeam) {
-                    console.log(`Found matching team object, updating selected team to: ${matchingTeam.name}`);
-                    setSelectedTeam(matchingTeam);
-                } else {
-                    // If we can't find the team in our current list, refresh teams from server
-                    console.log(`Team "${currentStoredTeamName}" not found in current list, refreshing teams data`);
-                    fetchTeams();
-                }
-            }
-        };
-        
-        // Check immediately on component mount/update
-        checkTeamChange();
-        
-        // Also set up interval to periodically check (every 1 second)
-        const intervalId = setInterval(checkTeamChange, 1000);
-        
-        // Clean up interval on component unmount
-        return () => clearInterval(intervalId);
-    }, [teams, selectedTeam, fetchTeams]);
-
-    // Listen for URL param changes (when team is changed from header)
-    useEffect(() => {
-        // Function to check URL for team changes
-        const checkUrlForTeamChanges = () => {
-            if (typeof window !== 'undefined') {
-                const pathParts = window.location.pathname.split('/');
-                const teamFromUrl = pathParts.length > 1 ? pathParts[1] : null;
-                
-                // If we have a valid team in the URL and it's different from our current selection
-                if (teamFromUrl && (!selectedTeam || selectedTeam.name !== teamFromUrl)) {
-                    console.log(`Team changed in URL: ${teamFromUrl}`);
-                    
-                    // Find matching team in our teams list
-                    const matchingTeam = teams.find(team => team.name === teamFromUrl);
-                    if (matchingTeam) {
-                        console.log(`Found matching team for URL param, updating selected team`);
-                        setSelectedTeam(matchingTeam);
-                    } else {
-                        // If we can't find the team in our current list, refresh teams from server
-                        console.log(`Team from URL not found in current list, refreshing teams data`);
-                        fetchTeams();
-                    }
-                }
-            }
-        };
-        
-        // Check immediately
-        checkUrlForTeamChanges();
-        
-        // Also listen for popstate events (browser navigation)
-        const handlePopState = () => {
-            console.log("Navigation detected, checking for team changes");
-            checkUrlForTeamChanges();
-        };
-        
-        window.addEventListener('popstate', handlePopState);
-        
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, [teams, selectedTeam, fetchTeams]);
     
     // Add a new effect to update the local selectedTeam when it changes in localStorage
     useEffect(() => {
@@ -1063,33 +986,8 @@ const TeamsSection = () => {
     return (
         <div className="max-w-5xl relative">
             <h1 className="text-2xl font-bold mb-1">Manage your teams</h1>
-            <p className="text-sm text-gray-500 mb-2">Create teams, add members, and manage team settings</p>
+            <p className="text-sm text-gray-500 mb-8">Create teams, add members, and manage team settings</p>
             
-            {/* Display current team */}
-            {selectedTeam && (
-                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-md px-4 py-2 flex items-center">
-                    <span className="text-blue-600 mr-2">
-                        <Users size={16} />
-                    </span>
-                    <div>
-                        <p className="text-sm text-gray-600">Currently managing teams for:</p>
-                        <p className="font-medium">{selectedTeam.name}</p>
-                    </div>
-                    <div className="ml-auto flex items-center">
-                        <p className="text-xs text-gray-500 mr-2">
-                            Select a different team using the team selector in the header
-                        </p>
-                        <button 
-                            onClick={fetchTeams} 
-                            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded border border-blue-200"
-                            title="Refresh teams list"
-                        >
-                            Refresh
-                        </button>
-                    </div>
-                </div>
-            )}
-
             <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-medium">Your teams</h2>
@@ -1148,7 +1046,7 @@ const TeamsSection = () => {
                                             </button>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            <span className={`capitalize ${team.role === 'admin' ? 'font-bold text-green-700' : ''}`}>
+                                            <span className={`capitalize ${isOwner ? 'font-bold text-green-700' : ''}`}>
                                                 {team.role === 'admin' ? 'Admin' : 'User'}
                                             </span>
                                             {team.role === 'admin' && (

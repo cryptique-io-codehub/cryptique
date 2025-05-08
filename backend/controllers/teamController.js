@@ -153,14 +153,14 @@ exports.addMember=async (req,res)=>{
             await teamss.save();
         }
 
-        // The user ID to check
+         // The user ID to check
 
-        // Check if the user already exists in the array
+// Check if the user already exists in the array
         console.log(this_array);
         const user = this_array.some(item => item.userId.equals(userIdToCheck));
         console.log(user);  
         if (user) {
-            return res.status(400).json({ message: "User already exist" });
+        return res.status(400).json({ message: "User already exist" });
         }
         
         await Team.findOneAndUpdate(
@@ -241,8 +241,8 @@ exports.deleteTeam = async (req, res) => {
         
         if (!teamId) {
             return res.status(400).json({ message: "Team ID is required" });
-        }
-        
+    }
+
         // Find the team by ID
         const team = await Team.findById(teamId);
         
