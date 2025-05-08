@@ -111,6 +111,43 @@ const TeamsSection = () => {
         }
     };
 
+    // Function to manage deleted teams in localStorage
+    const markTeamAsDeleted = (teamId, teamName) => {
+        try {
+            // Get current list of deleted teams from localStorage
+            const deletedTeamsString = localStorage.getItem('deletedTeams') || '[]';
+            const deletedTeams = JSON.parse(deletedTeamsString);
+            
+            // Add this team to the deleted teams list
+            deletedTeams.push({
+                _id: teamId,
+                name: teamName,
+                deletedAt: new Date().toISOString()
+            });
+            
+            // Save back to localStorage
+            localStorage.setItem('deletedTeams', JSON.stringify(deletedTeams));
+            console.log(`Marked team "${teamName}" as deleted in localStorage`);
+        } catch (err) {
+            console.error("Error storing deleted team in localStorage:", err);
+        }
+    };
+    
+    // Function to check if a team is marked as deleted
+    const isTeamDeleted = (teamId, teamName) => {
+        try {
+            const deletedTeamsString = localStorage.getItem('deletedTeams') || '[]';
+            const deletedTeams = JSON.parse(deletedTeamsString);
+            
+            return deletedTeams.some(team => 
+                team._id === teamId || team.name === teamName
+            );
+        } catch (err) {
+            console.error("Error checking deleted teams in localStorage:", err);
+            return false;
+        }
+    };
+
     // Function to fetch teams with proper ownership handling
     const fetchTeams = async () => {
         try {
@@ -130,8 +167,15 @@ const TeamsSection = () => {
             console.log("Team details raw response:", response.data);
             
             if (response.data && response.data.team) {
+                // Filter out teams that were marked as deleted in localStorage
+                const filteredTeams = response.data.team.filter(team => 
+                    !isTeamDeleted(team._id, team.name)
+                );
+                
+                console.log(`Filtered out ${response.data.team.length - filteredTeams.length} deleted teams`);
+                
                 // Process each team to ensure proper structure and ownership
-                const processedTeams = response.data.team.map(team => {
+                const processedTeams = filteredTeams.map(team => {
                     // Copy to avoid mutation
                     const processedTeam = { ...team };
                     
@@ -197,6 +241,10 @@ const TeamsSection = () => {
                         
                         if (updatedSelectedTeam) {
                             setSelectedTeam(updatedSelectedTeam);
+                        } else if (isTeamDeleted(selectedTeam._id, selectedTeam.name)) {
+                            // If selected team was deleted, select first available team
+                            setSelectedTeam(processedTeams[0]);
+                            localStorage.setItem('selectedTeam', processedTeams[0].name);
                         }
                     }
                 }
@@ -212,7 +260,7 @@ const TeamsSection = () => {
             setIsLoading(false);
         }
     };
-
+    
     // Initial fetch on component mount and setup refresh listeners
     useEffect(() => {
         // Fetch teams on first load
@@ -294,7 +342,7 @@ const TeamsSection = () => {
             });
             
             // Use the CORRECT endpoint for team creation
-            const response = await axiosInstance.post('/team/createNewTeam', 
+            const response = await axiosInstance.post('/team/createNewTeam',
                 { 
                     teamName: teamName.trim(),
                     email: userEmail,
@@ -442,24 +490,34 @@ const TeamsSection = () => {
         try {
             console.log("Deleting team:", teamToDelete._id);
             
-            // Team deletion - try different endpoint formats since the actual endpoint is not in the backend code we found
-            let response;
+            // Try server-side deletion first (even though we know it's not implemented)
+            let deleteSucceeded = false;
+            
             try {
-                // Try with teamId parameter
-                response = await axiosInstance.delete(`/team/${teamToDelete._id}`);
-            } catch (innerErr) {
+                // First attempt with teamId parameter
+                const response = await axiosInstance.delete(`/team/${teamToDelete._id}`);
+                console.log("Team deletion response:", response?.data);
+                deleteSucceeded = true;
+            } catch (innerErr1) {
                 console.log("First delete attempt failed, trying alternative endpoint...");
-                // Try with ID in URL
-                response = await axiosInstance.delete(`/team`, { 
-                    data: { teamId: teamToDelete._id }
-                });
+                
+                try {
+                    // Second attempt with ID in request body
+                    const response = await axiosInstance.delete(`/team`, { 
+                        data: { teamId: teamToDelete._id }
+                    });
+                    console.log("Team deletion response:", response?.data);
+                    deleteSucceeded = true;
+                } catch (innerErr2) {
+                    console.log("Second delete attempt failed, proceeding with client-side deletion");
+                    deleteSucceeded = false;
+                }
             }
             
-            console.log("Team deletion response:", response?.data);
+            // Mark the team as deleted in localStorage (client-side deletion)
+            markTeamAsDeleted(teamToDelete._id, teamToDelete.name);
             
-            // If we get here, one of the attempts worked, or we proceed with optimistic UI update
-            
-            // Remove the deleted team from the teams array
+            // Remove the deleted team from the teams array in state
             const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
             setTeams(updatedTeams);
             
@@ -476,34 +534,27 @@ const TeamsSection = () => {
             setIsDeleteModalOpen(false);
             setTeamToDelete(null);
             
-            // Show success message for optimistic UI
-            alert(`Team "${teamToDelete.name}" deleted successfully!`);
+            // Show success message
+            if (deleteSucceeded) {
+                alert(`Team "${teamToDelete.name}" deleted successfully on the server!`);
+            } else {
+                alert(`Team "${teamToDelete.name}" has been hidden from your view. (Note: The server doesn't support team deletion yet, but we've hidden it for you.)`);
+            }
             
-            // Refresh the teams list
-            fetchTeams();
         } catch (err) {
             console.error("Team deletion error:", err);
             
-            // Show detailed error message
-            let errorMsg = "Failed to delete team. ";
+            // Even if server-side deletion fails, proceed with client-side
+            markTeamAsDeleted(teamToDelete._id, teamToDelete.name);
             
-            if (err.response?.status === 404) {
-                errorMsg += "The team delete endpoint was not found. This feature may not be implemented on the server.";
-            } else {
-                errorMsg += err.response?.data?.message || "Please try again or contact support.";
-            }
+            // Remove from UI
+            const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
+            setTeams(updatedTeams);
+            setIsDeleteModalOpen(false);
+            setTeamToDelete(null);
             
-            setError(errorMsg);
-            alert(errorMsg);
-            
-            // Since the server might not have team deletion implemented, we can still
-            // do an optimistic UI update to remove the team from the UI
-            if (err.response?.status === 404) {
-                const updatedTeams = teams.filter(team => team._id !== teamToDelete._id);
-                setTeams(updatedTeams);
-                setIsDeleteModalOpen(false);
-                setTeamToEdit(null);
-            }
+            // Show error message but confirm client-side deletion
+            alert(`Team "${teamToDelete.name}" has been hidden from your view. (Note: Server deletion failed, but we've hidden it for you.)`);
         } finally {
             setIsLoading(false);
         }
@@ -806,7 +857,7 @@ const TeamsSection = () => {
                                                 </>
                                             )}
                                         </td>
-                                    </tr>
+                                </tr>
                                 )})}
                         </tbody>
                     </table>
