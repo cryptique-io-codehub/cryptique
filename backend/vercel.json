@@ -8,6 +8,23 @@
   ],
   "routes": [
     {
+      "src": "/api/team/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://app.cryptique.io",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400"
+      },
+      "continue": true
+    },
+    {
+      "src": "/api/team/(.*)",
+      "methods": ["OPTIONS"],
+      "status": 204,
+      "dest": "/index.js"
+    },
+    {
       "src": "/api/sdk/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "*",

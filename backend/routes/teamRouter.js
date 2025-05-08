@@ -4,6 +4,10 @@ const {verifyToken}=require('../middleware/auth')
 const router = express.Router();
 const verifyTokenMiddleware = require("../middleware/verifyToken");
 const { validateMember } = require("../middleware/validateData");
+const { teamCorsMiddleware } = require('../middleware/corsMiddleware');
+
+// Apply the team-specific CORS middleware to all routes
+router.use(teamCorsMiddleware);
 
 router.use(verifyToken);
 router.post('/add-user', validateMember, addMember);
