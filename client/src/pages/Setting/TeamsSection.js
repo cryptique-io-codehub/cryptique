@@ -26,19 +26,24 @@ const TeamsSection = () => {
         const fetchTeams = async () => {
             try {
                 setIsLoading(true);
-                const response = await axiosInstance.get('/team/details');
-                console.log(response);
-                setTeams(response.data.team);
-                
-                // Get current user email
-                const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('selectedTeam') + "@gmail.com";
+                // Get user info first
+                const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
                 setCurrentUserEmail(userEmail);
+                
+                // Now fetch teams
+                const response = await axiosInstance.get('/team/details');
+                console.log("Team details response:", response.data);
+                setTeams(response.data.team);
                 
                 // Automatically select the first team if available
                 if (response.data.team.length > 0 && !selectedTeam) {
                     setSelectedTeam(response.data.team[0]);
                     localStorage.setItem('selectedTeam', response.data.team[0].name);
                 }
+                
+                // Log user and team info for debugging
+                console.log("Current user email:", userEmail);
+                console.log("Teams loaded:", response.data.team);
             } catch (error) {
                 console.error("Error fetching teams:", error);
                 setError("Failed to load teams. Please try again.");
@@ -196,13 +201,21 @@ const TeamsSection = () => {
     const openMembersModal = async (team) => {
         try {
             setIsLoading(true);
-            const response = await axiosInstance.post('/team/members', { teams: team.name });
+            setError('');
+            // Store the team we're working with
+            const teamToManage = team;
+            setSelectedTeam(teamToManage);
+            
+            console.log("Opening members modal for team:", teamToManage.name);
+            
+            // Fetch team members
+            const response = await axiosInstance.post('/team/members', { teams: teamToManage.name });
+            console.log("Team members response:", response.data);
             setTeamMembers(response.data || []);
-            setSelectedTeam(team);
             setIsMembersModalOpen(true);
         } catch (err) {
             console.error("Error fetching team members:", err);
-            setError("Failed to load team members");
+            setError("Failed to load team members. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -213,17 +226,30 @@ const TeamsSection = () => {
             setError("Email is required");
             return;
         }
+        
+        if (!selectedTeam || !selectedTeam.name) {
+            setError("No team selected");
+            return;
+        }
 
         setIsLoading(true);
         setError('');
 
         try {
+            console.log("Inviting member:", {
+                email: newMemberEmail.trim(),
+                role: newMemberRole,
+                teamss: selectedTeam.name
+            });
+            
             const response = await axiosInstance.post('/team/create', {
                 email: newMemberEmail.trim(),
                 role: newMemberRole,
                 teamss: selectedTeam.name
             });
 
+            console.log("Invite response:", response.data);
+            
             // Add new member to the list (optimistic update)
             const newMember = { 
                 email: newMemberEmail.trim(), 
@@ -234,9 +260,14 @@ const TeamsSection = () => {
             setTeamMembers([...teamMembers, newMember]);
             setNewMemberEmail('');
             setError('');
+            
+            // Show success message
+            alert(`Successfully invited ${newMemberEmail.trim()} to the team.`);
         } catch (err) {
             console.error("Error inviting member:", err);
-            setError(err.response?.data?.message || "Failed to invite member");
+            const errorMessage = err.response?.data?.message || "Failed to invite member. Please try again.";
+            setError(errorMessage);
+            alert(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -244,19 +275,34 @@ const TeamsSection = () => {
 
     const removeMember = async (memberEmail) => {
         if (!memberEmail || !selectedTeam) return;
+        
+        // Confirmation before removing
+        if (!window.confirm(`Remove ${memberEmail} from team ${selectedTeam.name}?`)) {
+            return;
+        }
 
         setIsLoading(true);
+        setError('');
+        
         try {
-            await axiosInstance.post('/team/remove-member', {
+            console.log("Removing member:", memberEmail, "from team:", selectedTeam.name);
+            
+            const response = await axiosInstance.post('/team/remove-member', {
                 email: memberEmail,
                 teamName: selectedTeam.name
             });
+            
+            console.log("Remove member response:", response.data);
 
             // Remove member from the list
             setTeamMembers(teamMembers.filter(member => member.email !== memberEmail));
+            
+            // Show success message
+            alert(`Successfully removed ${memberEmail} from the team.`);
         } catch (err) {
             console.error("Error removing member:", err);
-            setError("Failed to remove team member");
+            setError(err.response?.data?.message || "Failed to remove team member. Please try again.");
+            alert("Failed to remove team member. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -273,7 +319,23 @@ const TeamsSection = () => {
     };
 
     const isTeamOwner = (team) => {
-        return team.role === 'admin' || team.createdBy?.email === currentUserEmail;
+        // Temporary debugging log
+        console.log("Team role check:", team.role, "Team creator:", team.createdBy?.email, "Current user:", currentUserEmail);
+        // Check if user has admin role or is the creator of the team
+        return team.role === 'admin' || 
+               (team.createdBy && team.createdBy.email === currentUserEmail) ||
+               // Fallback if createdBy is missing but user is admin
+               (team.role === 'admin' && (!team.createdBy || !team.createdBy.email));
+    };
+
+    // Function to filter and show only teams in the table
+    const getDisplayTeams = () => {
+        // If no teams, return empty array
+        if (!teams || teams.length === 0) {
+            return [];
+        }
+        // Return all teams for display
+        return teams;
     };
 
     return (
@@ -339,10 +401,17 @@ const TeamsSection = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {teams.map((team, index) => (
+                                {getDisplayTeams().map((team, index) => {
+                                    const isOwner = isTeamOwner(team);
+                                    return (
                                     <tr key={index} className="bg-white hover:bg-gray-50">
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {team.name}
+                                            {isOwner && (
+                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                    Owner
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {team.description || "No description"}
@@ -357,10 +426,10 @@ const TeamsSection = () => {
                                             </button>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 capitalize">
-                                            {team.role}
+                                            {team.role || "Member"}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 flex justify-center space-x-3">
-                                            {isTeamOwner(team) && (
+                                            {isOwner && (
                                                 <>
                                                     <button 
                                                         onClick={() => openEditModal(team)}
@@ -380,7 +449,7 @@ const TeamsSection = () => {
                                             )}
                                         </td>
                                     </tr>
-                                ))}
+                                )})}
                             </tbody>
                         </table>
                     </div>
@@ -595,6 +664,14 @@ const TeamsSection = () => {
                             Manage members for {selectedTeam?.name}
                         </p>
                         
+                        {/* Always show this section for debugging/development */}
+                        <div className="mb-2 text-xs text-gray-500">
+                            Team Owner: {isTeamOwner(selectedTeam) ? 'Yes' : 'No'} | 
+                            Role: {selectedTeam?.role} | 
+                            Creator Email: {selectedTeam?.createdBy?.email || 'Unknown'} | 
+                            Your Email: {currentUserEmail || 'Unknown'}
+                        </div>
+                        
                         {isTeamOwner(selectedTeam) && (
                             <div className="mb-6 bg-gray-50 p-4 rounded-md">
                                 <h3 className="text-md font-medium mb-3">Invite new member</h3>
@@ -613,6 +690,7 @@ const TeamsSection = () => {
                                     >
                                         <option value="editor">Editor</option>
                                         <option value="admin">Admin</option>
+                                        <option value="viewer">Viewer</option>
                                     </select>
                                     <button 
                                         onClick={inviteMember}
