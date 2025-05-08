@@ -331,12 +331,12 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
                     
                     <div className="bg-white rounded-lg shadow-sm border p-4">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Page Views</h3>
-                      <p className="text-2xl font-semibold text-gray-900">{userJourney.totalPageViews}</p>
+                      <p className="text-2xl font-semibold text-gray-900">{userJourney.totalPageViews || 0}</p>
                       <div className="text-xs text-gray-500 mt-1">
                         {sessions.length > 0 && (() => {
                           // Calculate total pages across all sessions
                           const calculatedPages = sessions.reduce((total, session) => {
-                            if (Array.isArray(session.visitedPages)) {
+                            if (session.visitedPages && Array.isArray(session.visitedPages)) {
                               return total + session.visitedPages.length;
                             } else if (typeof session.pagesViewed === 'number') {
                               return total + session.pagesViewed;
@@ -344,8 +344,9 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
                             return total;
                           }, 0);
                           
-                          // Check for discrepancy
-                          if (calculatedPages !== userJourney.totalPageViews) {
+                          // Only show discrepancy warning if both values exist and don't match
+                          if (calculatedPages > 0 && userJourney.totalPageViews > 0 && 
+                              calculatedPages !== userJourney.totalPageViews) {
                             return (
                               <p className="text-orange-600">
                                 ⚠️ Data inconsistency: {calculatedPages} pages calculated from sessions

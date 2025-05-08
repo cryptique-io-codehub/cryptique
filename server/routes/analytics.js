@@ -1,59 +1,75 @@
 const express = require('express');
 const router = express.Router();
-const { generateAnalyticsData } = require('../services/analyticsService');
+const axios = require('axios');
+
+// Set backend API URL - use environment variable or default to production
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app/api';
+
+// Create axios instance for backend API calls
+const backendAPI = axios.create({
+  baseURL: BACKEND_API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 // Get chart data
-router.get('/chart', (req, res) => {
-  const { siteId = 'test-site-1', timeframe = 'daily' } = req.query;
+router.get('/chart', async (req, res) => {
+  const { siteId, timeframe = 'daily' } = req.query;
+  
+  if (!siteId) {
+    return res.status(400).json({ success: false, error: 'Site ID is required' });
+  }
   
   console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}`);
   
-  // In a production environment, this would connect to a real database
-  // Return a minimal empty data structure for the chart
-  res.json({
-    success: true,
-    data: [],
-    labels: [],
-    timeframe: timeframe,
-    message: 'To view real chart data, please ensure the backend database is properly configured.'
-  });
+  try {
+    // Forward request to real backend
+    const response = await backendAPI.get('/analytics/chart', { 
+      params: { siteId, timeframe } 
+    });
+    
+    // Return real data
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching chart data from backend:', error);
+    res.status(error.response?.status || 500).json({
+      success: false, 
+      error: error.response?.data?.error || 'Failed to fetch chart data from backend'
+    });
+  }
 });
 
 // Get user journeys data
-router.get('/user-journeys', (req, res) => {
+router.get('/user-journeys', async (req, res) => {
   const { siteId, teamId, timeframe, page = 1, limit = 25 } = req.query;
+  
+  if (!siteId) {
+    return res.status(400).json({ success: false, error: 'Site ID is required' });
+  }
   
   console.log("User-journeys request received:", { siteId, teamId, timeframe, page, limit });
   
-  // This would normally fetch real user journeys from a database
-  // For now, we'll return an empty array to demonstrate the front-end's empty state handling
-  // The user can use the process-journeys endpoint to generate real data
-  const journeys = [];
-  
-  // Calculate pagination
-  const totalItems = journeys.length;
-  const totalPages = Math.ceil(totalItems / limit) || 1;
-  const pageNum = parseInt(page);
-  const startIndex = (pageNum - 1) * limit;
-  const endIndex = startIndex + parseInt(limit);
-  
-  // Get paginated data
-  const paginatedJourneys = journeys.slice(startIndex, endIndex);
-  
-  console.log(`Sending ${paginatedJourneys.length} user journeys, total: ${totalItems}, pages: ${totalPages}`);
-  
-  // Send response
-  res.json({
-    success: true,
-    userJourneys: paginatedJourneys,
-    totalPages: totalPages,
-    page: pageNum,
-    totalItems: totalItems
-  });
+  try {
+    // Forward request to real backend
+    const response = await backendAPI.get('/analytics/user-journeys', { 
+      params: { siteId, teamId, timeframe, page, limit } 
+    });
+    
+    // Return real data
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching user journeys from backend:', error);
+    res.status(error.response?.status || 500).json({
+      success: false, 
+      error: error.response?.data?.error || 'Failed to fetch user journeys from backend'
+    });
+  }
 });
 
 // Get user sessions data
-router.get('/user-sessions', (req, res) => {
+router.get('/user-sessions', async (req, res) => {
   const { userId } = req.query;
   
   if (!userId) {
@@ -65,16 +81,25 @@ router.get('/user-sessions', (req, res) => {
   
   console.log(`Fetching sessions for user: ${userId}`);
   
-  // Return an empty array - in a real implementation this would fetch from the database
-  res.json({
-    success: true,
-    sessions: [],
-    message: 'To view real session data, please ensure the backend database is properly configured.'
-  });
+  try {
+    // Forward request to real backend
+    const response = await backendAPI.get('/analytics/user-sessions', { 
+      params: { userId } 
+    });
+    
+    // Return real data
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching user sessions from backend:', error);
+    res.status(error.response?.status || 500).json({
+      success: false, 
+      error: error.response?.data?.error || 'Failed to fetch user sessions from backend'
+    });
+  }
 });
 
 // Process user journeys - convert sessions into user journey data
-router.post('/process-journeys', (req, res) => {
+router.post('/process-journeys', async (req, res) => {
   const { siteId } = req.body;
   
   if (!siteId) {
@@ -86,26 +111,36 @@ router.post('/process-journeys', (req, res) => {
   
   console.log(`Processing user journeys for site: ${siteId}`);
   
-  // In a real implementation, this would:
-  // 1. Find all sessions for this site
-  // 2. Group them by user ID
-  // 3. Process them into journey analytics
-  // 4. Save the results
-  
-  // For the development server, we should connect to the real backend
-  // Return a placeholder response to inform the user they need to set up
-  // the full backend to see real data
-  res.json({
-    success: true,
-    processedCount: 0,
-    userJourneys: [],
-    message: 'To see real user journey data, please ensure the backend API is properly configured to process sessions.'
-  });
+  try {
+    // Forward request to real backend
+    const response = await backendAPI.post('/analytics/process-journeys', { siteId });
+    
+    // Return real data
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error processing user journeys from backend:', error);
+    res.status(error.response?.status || 500).json({
+      success: false, 
+      error: error.response?.data?.error || 'Failed to process user journeys'
+    });
+  }
 });
 
 // Test endpoint
-router.get('/test', (req, res) => {
-  res.json({ message: 'Server is working!' });
+router.get('/test', async (req, res) => {
+  try {
+    // Test connection to real backend
+    const response = await backendAPI.get('/health');
+    res.json({ 
+      message: 'Server is working!',
+      backendStatus: response.data 
+    });
+  } catch (error) {
+    res.json({ 
+      message: 'Server is working but backend connection failed',
+      error: error.message 
+    });
+  }
 });
 
 module.exports = router; 

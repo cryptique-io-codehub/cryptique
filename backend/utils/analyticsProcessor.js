@@ -362,12 +362,13 @@ class AnalyticsProcessor {
           lastVisit: sessions[sessions.length - 1].startTime,
           totalSessions: sessions.length,
           totalPageViews: sessions.reduce((total, session) => {
-            // Properly calculate page views from either pagesViewed count or visitedPages array
-            if (session.visitedPages && Array.isArray(session.visitedPages)) {
+            // Only count actual page views from data, don't generate placeholder counts
+            if (session.visitedPages && Array.isArray(session.visitedPages) && session.visitedPages.length > 0) {
               return total + session.visitedPages.length;
-            } else if (typeof session.pagesViewed === 'number') {
+            } else if (typeof session.pagesViewed === 'number' && session.pagesViewed > 0) {
               return total + session.pagesViewed;
             }
+            // Don't add placeholder counts
             return total;
           }, 0),
           totalTimeSpent: sessions.reduce((total, session) => total + (session.duration || 0), 0),
@@ -712,8 +713,8 @@ class AnalyticsProcessor {
         wasFixed = true;
       }
       
-      // Ensure pagesViewed count matches visitedPages length
-      if (Array.isArray(fixedSession.visitedPages)) {
+      // Ensure pagesViewed count matches visitedPages length if visitedPages exists
+      if (Array.isArray(fixedSession.visitedPages) && fixedSession.visitedPages.length > 0) {
         if (typeof fixedSession.pagesViewed !== 'number' || 
             fixedSession.pagesViewed !== fixedSession.visitedPages.length) {
           fixedSession.pagesViewed = fixedSession.visitedPages.length;
@@ -721,44 +722,14 @@ class AnalyticsProcessor {
         }
       }
       
-      // If visitedPages is empty but pagesViewed is set, create placeholder visitedPages
-      if (Array.isArray(fixedSession.visitedPages) && 
-          fixedSession.visitedPages.length === 0 && 
-          typeof fixedSession.pagesViewed === 'number' && 
-          fixedSession.pagesViewed > 0) {
-        
-        // Create placeholder visited pages based on pagesViewed count
-        for (let i = 0; i < fixedSession.pagesViewed; i++) {
-          fixedSession.visitedPages.push({
-            path: '/unknown-page',
-            timestamp: fixedSession.startTime,
-            duration: Math.floor((fixedSession.duration || 0) / fixedSession.pagesViewed),
-            isEntry: i === 0,
-            isExit: i === fixedSession.pagesViewed - 1
-          });
-        }
-        wasFixed = true;
-      }
-      
-      // Ensure duration is set
+      // Ensure duration is calculated properly if we have timestamps
       if (typeof fixedSession.duration !== 'number' || fixedSession.duration <= 0) {
-        // Calculate approximate duration from visitedPages
-        if (Array.isArray(fixedSession.visitedPages) && fixedSession.visitedPages.length > 0) {
-          const pageDurations = fixedSession.visitedPages
-            .map(page => page.duration || 0)
-            .reduce((sum, duration) => sum + duration, 0);
-            
-          if (pageDurations > 0) {
-            fixedSession.duration = pageDurations;
-          } else {
-            // Default duration of 1 minute per page if no durations available
-            fixedSession.duration = fixedSession.visitedPages.length * 60;
-          }
-        } else {
-          // Default duration if no other data is available
-          fixedSession.duration = 60;
+        if (fixedSession.startTime && fixedSession.endTime) {
+          const startTime = new Date(fixedSession.startTime);
+          const endTime = new Date(fixedSession.endTime);
+          fixedSession.duration = Math.floor((endTime - startTime) / 1000);
+          wasFixed = true;
         }
-        wasFixed = true;
       }
       
       // If fixes were made, save the session

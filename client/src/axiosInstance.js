@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use the actual production URL with https, fallback to localhost for development
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'http://localhost:5000';
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'http://localhost:3001';
 
 console.log('API Server URL:', baseURL);
 

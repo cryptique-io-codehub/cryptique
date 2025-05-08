@@ -2,9 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cors({
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
@@ -28,7 +30,27 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/api/analytics', require('./routes/analytics'));
+const analyticsRoutes = require('./routes/analytics');
+app.use('/api/analytics', analyticsRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Cryptique Analytics API Server',
+    endpoints: {
+      analytics: '/api/analytics/*',
+      health: '/api/health'
+    },
+    env: {
+      backend_url: process.env.BACKEND_API_URL || 'Not configured'
+    }
+  });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -37,7 +59,8 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
+  console.log(`Backend API URL: ${process.env.BACKEND_API_URL || 'Not configured'}`);
 }); 

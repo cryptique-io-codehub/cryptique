@@ -36,7 +36,7 @@
     "web-vitals": "^2.1.4",
     "web3": "^4.16.0"
   },
-  "proxy": "https://cryptique-backend.vercel.app",
+  "proxy": "http://localhost:3001",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
