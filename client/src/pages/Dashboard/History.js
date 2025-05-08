@@ -16,7 +16,8 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const usersPerPage = 25;
+  const [totalItems, setTotalItems] = useState(0);
+  const usersPerPage = 50;
   
   // Team and website options
   const [websites, setWebsites] = useState([]);
@@ -85,8 +86,17 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
           // Check if userJourneys array exists and set it (even if empty)
           if (Array.isArray(response.data.userJourneys)) {
             setUserJourneys(response.data.userJourneys);
-            setTotalPages(response.data.totalPages || 1);
-            console.log(`Loaded ${response.data.userJourneys.length} user journeys from API`);
+            
+            // Use the pagination data from the API response if available
+            if (response.data.pagination) {
+              setTotalPages(response.data.pagination.totalPages || 1);
+              setTotalItems(response.data.pagination.totalItems || 0);
+              console.log(`Loaded ${response.data.userJourneys.length} user journeys from API (page ${response.data.pagination.page} of ${response.data.pagination.totalPages}, total: ${response.data.pagination.totalItems})`);
+            } else {
+              setTotalPages(response.data.totalPages || 1);
+              setTotalItems(0);
+              console.log(`Loaded ${response.data.userJourneys.length} user journeys from API`);
+            }
             
             // Only set error if userJourneys is empty
             if (response.data.userJourneys.length === 0) {
@@ -96,12 +106,14 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
             console.log("API returned success but invalid journeys data format");
             setUserJourneys([]);
             setTotalPages(1);
+            setTotalItems(0);
             setError('Invalid data format received from the server.');
           }
         } else {
           console.log("API returned success but no journeys data");
           setUserJourneys([]);
           setTotalPages(1);
+          setTotalItems(0);
           setError('No user journey data available for the selected filters.');
         }
       } catch (err) {
@@ -109,6 +121,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         setError('Failed to load user journey data. Please try again later.');
         setUserJourneys([]);
         setTotalPages(1);
+        setTotalItems(0);
       } finally {
         setLoading(false);
       }
@@ -170,7 +183,16 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
         if (journeysResponse.data && journeysResponse.data.success && 
             Array.isArray(journeysResponse.data.userJourneys)) {
           setUserJourneys(journeysResponse.data.userJourneys);
-          setTotalPages(journeysResponse.data.totalPages || 1);
+          
+          // Use the pagination data from the API response if available
+          if (journeysResponse.data.pagination) {
+            setTotalPages(journeysResponse.data.pagination.totalPages || 1);
+            setTotalItems(journeysResponse.data.pagination.totalItems || 0);
+          } else {
+            setTotalPages(journeysResponse.data.totalPages || 1);
+            setTotalItems(0);
+          }
+          
           setCurrentPage(1); // Reset to first page
           
           if (journeysResponse.data.userJourneys.length === 0) {
@@ -436,6 +458,7 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
             <>
               Showing page {currentPage} of {totalPages}
               <span> • {userJourneys.length} users</span>
+              {totalItems > 0 && <span> (of {totalItems} total)</span>}
             </>
           ) : !loading && !processingJourneys && (
             <span>No user journey data available</span>

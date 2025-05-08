@@ -43,7 +43,7 @@ router.get('/chart', async (req, res) => {
 
 // Get user journeys data
 router.get('/user-journeys', async (req, res) => {
-  const { siteId, teamId, timeframe, page = 1, limit = 25 } = req.query;
+  const { siteId, teamId, timeframe, page = 1, limit = 50 } = req.query;
   
   if (!siteId) {
     return res.status(400).json({ success: false, error: 'Site ID is required' });

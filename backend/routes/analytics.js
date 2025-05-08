@@ -126,7 +126,7 @@ router.get('/user-sessions', async (req, res) => {
 // Get user journeys
 router.get('/user-journeys', async (req, res) => {
   try {
-    const { siteId, teamId, timeframe } = req.query;
+    const { siteId, teamId, timeframe, page = 1, limit = 50 } = req.query;
     
     if (!siteId) {
       return res.status(400).json({ error: 'Site ID is required' });
@@ -232,9 +232,31 @@ router.get('/user-journeys', async (req, res) => {
       }
     }
     
+    // Sort user journeys by last visit date (newest first)
+    userJourneys.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+    
+    // Calculate pagination
+    const pageNum = parseInt(page) || 1;
+    const pageSize = Math.min(parseInt(limit) || 50, 50); // Enforce max 50 per page
+    const totalItems = userJourneys.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Get paginated chunk of user journeys
+    const startIndex = (pageNum - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedJourneys = userJourneys.slice(startIndex, endIndex);
+    
+    console.log(`Pagination: Page ${pageNum}/${totalPages}, showing ${paginatedJourneys.length} of ${totalItems} journeys`);
+    
     res.json({ 
       success: true,
-      userJourneys,
+      userJourneys: paginatedJourneys,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        totalItems,
+        totalPages
+      },
       debugInfo
     });
   } catch (error) {
