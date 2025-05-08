@@ -162,6 +162,31 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     initWeb3();
   }, []);
 
+  // Add an effect to watch for team changes
+  useEffect(() => {
+    // Track the current team
+    const currentTeam = localStorage.getItem("selectedTeam");
+    teamRef.current = currentTeam;
+    
+    // Function to handle team changes
+    const handleTeamChange = () => {
+      const newTeam = localStorage.getItem("selectedTeam");
+      if (newTeam && newTeam !== teamRef.current) {
+        console.log(`Team changed from ${teamRef.current} to ${newTeam}, refreshing contract data`);
+        teamRef.current = newTeam;
+        
+        // Force reload contract data
+        forceLoadContractData();
+      }
+    };
+    
+    // Check for team changes every second
+    const intervalId = setInterval(handleTeamChange, 1000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Add the forceLoadContractData function as a named function in the component
   // This will be easier to call from other places
   const forceLoadContractData = async () => {

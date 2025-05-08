@@ -841,6 +841,31 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
 
+  // Listen for team changes
+  useEffect(() => {
+    // Store the current team for comparison
+    let currentTeam = localStorage.getItem("selectedTeam");
+    
+    // Function to check for team changes
+    const checkTeamChange = () => {
+      const newTeam = localStorage.getItem("selectedTeam");
+      if (newTeam && newTeam !== currentTeam) {
+        console.log(`Team changed in context from ${currentTeam} to ${newTeam}, refreshing contracts`);
+        currentTeam = newTeam;
+        
+        // Refresh contract data for the new team
+        refreshContracts();
+      }
+    };
+    
+    // Check for team changes every 2 seconds
+    const intervalId = setInterval(checkTeamChange, 2000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   return (
     <ContractDataContext.Provider
       value={{

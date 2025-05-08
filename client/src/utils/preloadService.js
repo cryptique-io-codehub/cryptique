@@ -3,16 +3,25 @@ import axiosInstance from '../axiosInstance';
 /**
  * Preloads important dropdown data when a user logs in
  * This improves the user experience by fetching frequently used data ahead of time
+ * @param {boolean} forceRefresh - Whether to force refresh all data even if cached
+ * @param {string} teamId - Optional team ID to load data for (defaults to selectedTeam from localStorage)
  */
-const preloadData = async () => {
+const preloadData = async (forceRefresh = false, teamId = null) => {
   try {
-    const selectedTeam = localStorage.getItem("selectedTeam");
+    const selectedTeam = teamId || localStorage.getItem("selectedTeam");
     if (!selectedTeam) {
       console.log("No team selected, skipping preload");
       return;
     }
 
     console.log("Preloading website and contract data for team:", selectedTeam);
+    
+    // If forceRefresh is true, clear existing cached data
+    if (forceRefresh) {
+      console.log("Force refresh requested, clearing existing data");
+      sessionStorage.removeItem("preloadedWebsites");
+      sessionStorage.removeItem("preloadedContracts");
+    }
     
     // Fetch websites and smart contracts in parallel
     await Promise.all([

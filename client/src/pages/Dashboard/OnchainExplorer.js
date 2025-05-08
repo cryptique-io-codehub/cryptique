@@ -26,24 +26,49 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     // Import the refreshContracts function from context
     const { refreshContracts } = useContractData();
     
-    // Refresh contract data when component mounts
+    // Refresh contract data when component mounts or when team changes
     useEffect(() => {
       const loadContractData = async () => {
         console.log("OnchainExplorer mounted, refreshing contract data");
         
         try {
-          // First try using the context's refresh function
-          await refreshContracts();
+          // First clear any cached data to ensure fresh data
+          sessionStorage.removeItem("preloadedContracts");
           
-          // Also run the preload service as a backup approach
-          await preloadData();
+          // Then use the context's refresh function
+          if (typeof refreshContracts === 'function') {
+            await refreshContracts();
+          }
+          
+          // Also run the preload service with force refresh
+          await preloadData(true);
+          
+          console.log("Successfully refreshed contract data on OnchainExplorer mount");
         } catch (error) {
           console.error("Error refreshing contract data in OnchainExplorer:", error);
         }
       };
       
       loadContractData();
-    }, []); // Empty dependency array to run only on mount
+      
+      // Also set up a listener for team changes
+      const currentTeam = localStorage.getItem("selectedTeam");
+      
+      const checkTeamChange = () => {
+        const newTeam = localStorage.getItem("selectedTeam");
+        if (newTeam && newTeam !== currentTeam) {
+          console.log(`Team changed in OnchainExplorer: ${currentTeam} → ${newTeam}, refreshing data`);
+          loadContractData();
+        }
+      };
+      
+      // Check for team changes
+      const intervalId = setInterval(checkTeamChange, 2000);
+      
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, [refreshContracts]);
 
     const navItems = [
       { section: 'On-chain analytics', type: 'header' },

@@ -119,6 +119,44 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
+  // Add team change detection
+  useEffect(() => {
+    let currentTeam = localStorage.getItem("selectedTeam");
+    
+    const handleTeamChange = () => {
+      const newTeam = localStorage.getItem("selectedTeam");
+      if (newTeam && newTeam !== currentTeam) {
+        console.log(`Team changed in Dashboard: ${currentTeam} → ${newTeam}`);
+        currentTeam = newTeam;
+        
+        // Force clear all cached data
+        sessionStorage.removeItem("preloadedWebsites");
+        sessionStorage.removeItem("preloadedContracts");
+        
+        // Use preload service to refresh all data
+        preloadData(true, newTeam).catch(err => {
+          console.error("Error preloading data after team change:", err);
+        });
+        
+        // Forcefully reload the current page to ensure all components update
+        // This is a more extreme solution but guarantees data is fresh
+        setTimeout(() => {
+          if (window.location.pathname.includes('onchain')) {
+            // If we're on the onchain page, force a reload
+            window.location.reload();
+          }
+        }, 500);
+      }
+    };
+    
+    // Check for team changes every 2 seconds
+    const intervalId = setInterval(handleTeamChange, 2000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const handleNavigation = (page) => {
     setSelectedPage(page);
     // Close sidebar on navigation only for mobile

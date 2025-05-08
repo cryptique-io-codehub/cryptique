@@ -22,7 +22,19 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
   // depend-selectedTeam
   useEffect(() => {
     const selectteam = localStorage.getItem("selectedTeam");
-    setSelectedTeam(selectteam);
+    
+    // If team has changed, force a refresh of data
+    if (selectteam !== selectedTeam) {
+      console.log(`Team changed in Filters from ${selectedTeam} to ${selectteam}, forcing refresh`);
+      setSelectedTeam(selectteam);
+      
+      // Force clear cached data
+      sessionStorage.removeItem("preloadedWebsites");
+      
+      // Reset website selection
+      localStorage.removeItem("selectedWebsite");
+      localStorage.removeItem("idy");
+    }
     
     const fetchWebsites = async () => {
       setIsLoading(true);
@@ -177,13 +189,21 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       fetchWebsites();
     }
     
-    // Setup event listener to detect team changes
+    // Function to detect team changes more aggressively
     const handleStorageChange = () => {
       const newTeam = localStorage.getItem("selectedTeam");
       if (newTeam && newTeam !== selectedTeam) {
+        console.log(`Team change detected in listener: ${selectedTeam} -> ${newTeam}`);
         setSelectedTeam(newTeam);
+        
+        // Clear cached website data
+        sessionStorage.removeItem("preloadedWebsites");
+        
+        // Reset website selection
         localStorage.removeItem("selectedWebsite");
         localStorage.removeItem("idy");
+        
+        // Immediately fetch new data
         if (newTeam) {
           fetchWebsites();
         }

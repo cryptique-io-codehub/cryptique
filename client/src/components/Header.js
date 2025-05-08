@@ -3,12 +3,14 @@ import { Bell, ChevronDown, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosInstance";
+import preloadData from "../utils/preloadService";
 
 const TeamSelector = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   const [curTeams, setCurTeams] = useState([]); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -48,14 +50,54 @@ const TeamSelector = () => {
     fetchTeams();
   }, [selectedTeam]);
 
-  const handleTeamSelect = (teamss) => {
-    localStorage.setItem('selectedTeam', teamss.name);
-    setSelectedTeam(teamss.name);
-    // console.log(teamss);
-    
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/settings')) {
+  const handleTeamSelect = async (teamss) => {
+    // If this is a different team than the currently selected one
+    const previousTeam = localStorage.getItem('selectedTeam');
+    if (previousTeam !== teamss.name) {
+      setIsRefreshing(true);
+      
+      // Update localStorage with new team
+      localStorage.setItem('selectedTeam', teamss.name);
+      setSelectedTeam(teamss.name);
+      
+      // Clear website selection since it's team-specific
+      localStorage.removeItem("selectedWebsite");
+      localStorage.removeItem("idy");
+      
+      // Clear session storage to force reload of data
+      sessionStorage.removeItem("preloadedWebsites");
+      sessionStorage.removeItem("preloadedContracts");
+      
+      // Preload data for the new team (force refresh)
+      console.log(`Team switched from ${previousTeam} to ${teamss.name}, refreshing data...`);
+      try {
+        await preloadData(true, teamss.name);
+        console.log("Successfully refreshed data for new team");
+      } catch (error) {
+        console.error("Failed to refresh data for new team:", error);
+      } finally {
+        setIsRefreshing(false);
+      }
+      
+      // Update URL if on settings page
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('/settings')) {
         navigate(`/${teamss.name}/settings`, { replace: true });
+      } else {
+        // For other pages, forcefully reload the current page to ensure all components update
+        const currentUrl = new URL(window.location.href);
+        const pathSegments = currentUrl.pathname.split('/').filter(Boolean);
+        
+        if (pathSegments.length > 1) {
+          // Replace the team segment in the URL
+          pathSegments[0] = teamss.name;
+          const newPath = `/${pathSegments.join('/')}`;
+          navigate(newPath, { replace: true });
+        } else {
+          // If we're on the dashboard or a page without team in URL
+          navigate('/dashboard');
+        }
+      }
     }
     
     setDropdownOpen(false);
@@ -70,9 +112,19 @@ const TeamSelector = () => {
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white whitespace-nowrap"
+            disabled={isRefreshing}
           >
-            <span className="truncate max-w-[100px] sm:max-w-[120px]">{selectedTeam}</span>
-            <ChevronDown size={16} />
+            {isRefreshing ? (
+              <>
+                <span className="truncate max-w-[100px] sm:max-w-[120px] text-gray-400">Refreshing...</span>
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+              </>
+            ) : (
+              <>
+                <span className="truncate max-w-[100px] sm:max-w-[120px]">{selectedTeam}</span>
+                <ChevronDown size={16} />
+              </>
+            )}
           </button>
 
           {dropdownOpen && (
@@ -82,10 +134,10 @@ const TeamSelector = () => {
                   curTeams.map((team) => (
                     <button
                       key={team.id}
-                      className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 
+                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 
                         transition-colors duration-200 
                         border-b border-gray-100 last:border-b-0
-                        hover:bg-blue-50"
+                        hover:bg-blue-50 ${team.name === selectedTeam ? 'bg-blue-50' : ''}`}
                       onClick={() => handleTeamSelect(team)}
                     >
                       <div className="flex justify-between items-center">
