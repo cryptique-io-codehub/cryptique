@@ -16,7 +16,7 @@ const axiosInstance = axios.create({
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
   // Ensure credentials are included for CORS requests if needed
-  withCredentials: false, // Changed to false for development with wildcard CORS
+  withCredentials: true, // Changed to true to include cookies in requests
   // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });

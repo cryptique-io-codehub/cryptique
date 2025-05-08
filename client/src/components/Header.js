@@ -147,8 +147,15 @@ const Header = ({ screenSize }) => {
 
   const handleLogout = async () => {
     try {
+      // Get the access token to use as a fallback authentication method
+      const accessToken = localStorage.getItem('accessToken');
+      
       // Call the logout API endpoint to invalidate refresh token
-      await axiosInstance.post('/auth/logout');
+      await axiosInstance.post('/auth/logout', {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       
       // Clear all auth-related items from localStorage
       localStorage.removeItem('accessToken');
