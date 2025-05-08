@@ -319,6 +319,8 @@ class AnalyticsProcessor {
         return { success: false, message: 'No sessions found' };
       }
       
+      console.log(`Found ${analytics.sessions.length} sessions to process for site ${siteId}`);
+      
       // Group sessions by userId
       const userSessions = {};
       analytics.sessions.forEach(session => {
@@ -329,6 +331,14 @@ class AnalyticsProcessor {
         }
         userSessions[session.userId].push(session);
       });
+      
+      const userCount = Object.keys(userSessions).length;
+      console.log(`Found sessions for ${userCount} unique users`);
+      
+      if (userCount === 0) {
+        console.log('No sessions with user IDs found. Cannot create user journeys.');
+        return { success: false, message: 'No sessions with user IDs found' };
+      }
       
       // Process each user's sessions
       const userJourneys = [];
@@ -455,8 +465,18 @@ class AnalyticsProcessor {
           userJourney.userSegment = 'browser';
         }
         
+        // Add teamId and siteId to the journey for consistent filtering
+        userJourney.teamId = analytics.teamId;
+        userJourney.siteId = siteId;
+        
+        // Add any missing required fields to ensure proper display
+        userJourney.websiteName = analytics.siteName || siteId;
+        userJourney.websiteDomain = analytics.domain || "unknown";
+        
         userJourneys.push(userJourney);
       }
+      
+      console.log(`Created ${userJourneys.length} user journeys`);
       
       // Update the analytics document with user journeys
       analytics.userJourneys = userJourneys;
@@ -518,8 +538,21 @@ class AnalyticsProcessor {
       
       analytics.crossDeviceUsers = crossDeviceCount;
       
+      // Force update of modified date to ensure changes are tracked
+      analytics.markModified('userJourneys');
+      
       // Save the analytics document
-      await analytics.save();
+      try {
+        await analytics.save();
+        console.log(`Successfully saved analytics with ${userJourneys.length} user journeys`);
+      } catch (saveError) {
+        console.error('Error saving analytics document:', saveError);
+        return { 
+          success: false, 
+          error: 'Failed to save user journeys',
+          details: saveError.message
+        };
+      }
       
       return {
         success: true,

@@ -140,6 +140,14 @@ router.get('/user-journeys', async (req, res) => {
       return res.status(404).json({ error: 'Analytics data not found for site' });
     }
     
+    // Add debug information to help debug
+    const debugInfo = {
+      sessionCount: analytics.sessions ? analytics.sessions.length : 0,
+      hasUserJourneys: !!analytics.userJourneys,
+      userJourneysCount: analytics.userJourneys ? analytics.userJourneys.length : 0
+    };
+    console.log('Debug info for user journeys:', debugInfo);
+    
     // Extract user journeys
     let userJourneys = analytics.userJourneys || [];
     
@@ -153,13 +161,31 @@ router.get('/user-journeys', async (req, res) => {
       
       try {
         const processingResult = await processor.processUserJourneys(siteId);
+        console.log('Processing result:', processingResult);
         
         if (processingResult && processingResult.success) {
           // Reload the analytics document after processing
           const updatedAnalytics = await Analytics.findOne({ siteId });
-          if (updatedAnalytics && updatedAnalytics.userJourneys) {
+          if (updatedAnalytics && updatedAnalytics.userJourneys && updatedAnalytics.userJourneys.length > 0) {
             userJourneys = updatedAnalytics.userJourneys;
             console.log(`Successfully processed ${userJourneys.length} user journeys for site ${siteId}`);
+          } else {
+            console.log('Analytics document found but userJourneys is still empty after processing');
+            
+            // Check if we need to manually save the journeys
+            if (processingResult.journeysCreated > 0) {
+              console.log('Journeys were created but not saved. Manually updating analytics document...');
+              
+              // Manually update the document with the processed journeys if available
+              analytics.userJourneys = analytics.userJourneys || [];
+              await analytics.save();
+              
+              // Reload the analytics document again
+              const reloadedAnalytics = await Analytics.findOne({ siteId });
+              if (reloadedAnalytics && reloadedAnalytics.userJourneys) {
+                userJourneys = reloadedAnalytics.userJourneys;
+              }
+            }
           }
         } else {
           console.log('User journey processing returned no results:', processingResult);
@@ -198,15 +224,18 @@ router.get('/user-journeys', async (req, res) => {
       }
       
       if (startDate) {
+        const filteredCount = userJourneys.length;
         userJourneys = userJourneys.filter(journey => 
-          journey.lastVisit >= startDate
+          new Date(journey.lastVisit) >= startDate
         );
+        console.log(`Applied timeframe filter: ${timeframe}, filtered from ${filteredCount} to ${userJourneys.length} journeys`);
       }
     }
     
     res.json({ 
       success: true,
-      userJourneys
+      userJourneys,
+      debugInfo
     });
   } catch (error) {
     console.error('Error getting user journeys:', error);

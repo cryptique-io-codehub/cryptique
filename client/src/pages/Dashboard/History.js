@@ -272,6 +272,31 @@ const History = ({ onMenuClick, onClose, screenSize, siteId: defaultSiteId }) =>
                 </button>
               </div>
             )}
+            
+            {/* Refresh journeys button - visible even if journeys exist */}
+            {userJourneys.length > 0 && !loading && (
+              <div className="w-full md:w-auto mt-2 md:mt-0 md:ml-auto">
+                <button
+                  onClick={processUserJourneys}
+                  disabled={processingJourneys || !selectedSite}
+                  className={`px-4 py-2 rounded-md text-white font-medium ${
+                    processingJourneys || !selectedSite
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                  title="Update user journey data from the latest sessions"
+                >
+                  {processingJourneys ? (
+                    <>
+                      <span className="inline-block mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Journeys'
+                  )}
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Selected filters display */}
