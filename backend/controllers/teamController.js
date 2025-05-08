@@ -219,3 +219,71 @@ exports.deleteTeam = async (req, res) => {
         });
     }
 };
+
+exports.updateTeam = async (req, res) => {
+    try {
+        // Get the team data from the request
+        const { teamId, name, description } = req.body;
+        
+        if (!teamId) {
+            return res.status(400).json({ message: "Team ID is required" });
+        }
+        
+        if (!name) {
+            return res.status(400).json({ message: "Team name is required" });
+        }
+        
+        // Find the team by ID
+        const team = await Team.findById(teamId);
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Check if the logged-in user is authorized to update the team
+        // Only the team creator or the first admin can update a team
+        const isCreator = team.createdBy && team.createdBy.equals(req.userId);
+        
+        // Check if the user is the first admin member of the team
+        let isFirstAdmin = false;
+        if (team.user && team.user.length > 0) {
+            const firstMember = team.user[0];
+            isFirstAdmin = firstMember.userId.equals(req.userId) && firstMember.role === 'admin';
+        }
+        
+        if (!isCreator && !isFirstAdmin) {
+            return res.status(403).json({ 
+                message: "Unauthorized. Only the team creator or admin can update a team." 
+            });
+        }
+        
+        // Check if the new name is already taken by another team (skip if same team)
+        if (name !== team.name) {
+            const existingTeam = await Team.findOne({ name });
+            if (existingTeam && !existingTeam._id.equals(teamId)) {
+                return res.status(400).json({ message: "Team name already exists" });
+            }
+        }
+        
+        // Update the team
+        const updatedTeam = await Team.findByIdAndUpdate(
+            teamId,
+            { 
+                name,
+                description: description || '' 
+            },
+            { new: true, runValidators: true }
+        );
+        
+        return res.status(200).json({ 
+            message: "Team updated successfully", 
+            team: updatedTeam 
+        });
+    } catch (error) {
+        console.error("Error updating team:", error);
+        return res.status(500).json({ 
+            message: "Error updating team", 
+            error: error.message 
+        });
+    }
+};

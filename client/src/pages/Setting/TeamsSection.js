@@ -438,8 +438,8 @@ const TeamsSection = () => {
                 description: teamDescription.trim()
             });
             
-            // Use the correct endpoint for team update
-            const response = await axiosInstance.post(`/team/update`, {
+            // Use the correct endpoint for team update that we just added to the backend
+            const response = await axiosInstance.post('/team/update', {
                 teamId: teamToEdit._id,
                 name: teamName.trim(),
                 description: teamDescription.trim()
@@ -450,17 +450,38 @@ const TeamsSection = () => {
             // Update the team in the teams array
             const updatedTeams = teams.map(team => 
                 team._id === teamToEdit._id 
-                    ? {...team, name: teamName.trim(), description: teamDescription.trim()} 
+                    ? {
+                        ...team, 
+                        name: teamName.trim(), 
+                        description: teamDescription.trim()
+                      } 
                     : team
             );
             
             setTeams(updatedTeams);
             
             // If the edited team is the selected team, update selectedTeam
-            if (selectedTeam._id === teamToEdit._id) {
-                const updatedSelectedTeam = {...selectedTeam, name: teamName, description: teamDescription};
+            if (selectedTeam && selectedTeam._id === teamToEdit._id) {
+                const updatedSelectedTeam = {
+                    ...selectedTeam, 
+                    name: teamName, 
+                    description: teamDescription
+                };
                 setSelectedTeam(updatedSelectedTeam);
                 localStorage.setItem('selectedTeam', teamName);
+                
+                // Also update in localStorage
+                try {
+                    localStorage.setItem('selectedTeamData', JSON.stringify({
+                        _id: updatedSelectedTeam._id,
+                        name: updatedSelectedTeam.name,
+                        description: updatedSelectedTeam.description,
+                        role: updatedSelectedTeam.role || 'admin',
+                        isOwner: true
+                    }));
+                } catch (err) {
+                    console.error("Error saving team data to localStorage:", err);
+                }
             }
             
             // Close modal and reset
@@ -471,9 +492,22 @@ const TeamsSection = () => {
             
             // Show success message
             alert(`Team "${teamName.trim()}" updated successfully!`);
+            
         } catch (err) {
             console.error("Team update error:", err);
-            const errorMsg = err.response?.data?.message || 'Failed to update team. Please try again.';
+            
+            let errorMsg = "Failed to update team. ";
+            
+            if (err.response?.status === 404) {
+                errorMsg += "Team not found.";
+            } else if (err.response?.status === 403) {
+                errorMsg += "You don't have permission to update this team.";
+            } else if (err.response?.status === 400 && err.response?.data?.message === "Team name already exists") {
+                errorMsg += "A team with this name already exists. Please choose a different name.";
+            } else {
+                errorMsg += err.response?.data?.message || "Please try again.";
+            }
+            
             setError(errorMsg);
             alert(errorMsg);
         } finally {
