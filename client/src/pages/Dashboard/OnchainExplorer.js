@@ -8,6 +8,9 @@ import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 import { useContractData } from "../../contexts/ContractDataContext";
 import preloadData from "../../utils/preloadService";
+import useSubscriptionCheck from '../../hooks/useSubscriptionCheck';
+import UpgradePrompt from '../../components/UpgradePrompt';
+import { useParams } from 'react-router-dom';
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -22,6 +25,10 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
+    const { team } = useParams();
+    const { checkAccess, getFeatureUsageAndLimit, subscription } = useSubscriptionCheck();
+    const [contracts, setContracts] = useState([]);
+    const [showSubscriptionAlert, setShowSubscriptionAlert] = useState(false);
     
     // Import the refreshContracts function from context
     const { refreshContracts } = useContractData();
@@ -82,6 +89,43 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
   const toggleSecondNav = () => {
     setSecondNavOpen(!secondNavOpen);
   };
+
+  // Update this function to check subscription limits
+  const handleAddContract = async () => {
+    // Check if user has reached contract limit
+    const contractCount = contracts.length;
+    const canAddContract = checkAccess('contracts', contractCount + 1);
+    
+    if (!canAddContract) {
+      setShowSubscriptionAlert(true);
+      return;
+    }
+    
+    // If they have access, show the add contract form
+    setShowAddContractForm(true);
+  };
+
+  // Add this to render usage information
+  const renderUsageInfo = () => {
+    const { usage, limit } = getFeatureUsageAndLimit('contracts');
+    const actualUsage = contracts.length; // Use actual count from state
+    
+    return (
+      <div className="mb-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">Smart Contract Usage</span>
+          <span className="text-sm text-gray-600">{actualUsage} of {limit}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div 
+            className={`h-2.5 rounded-full ${actualUsage >= limit ? 'bg-red-600' : 'bg-blue-600'}`}
+            style={{ width: `${Math.min((actualUsage / limit) * 100, 100)}%` }}
+          ></div>
+        </div>
+      </div>
+    );
+  };
+
     return (
       <div className="flex h-screen overflow-hidden bg-gray-50">
         {/* Content area with header and flexible content */}
@@ -279,6 +323,17 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
               setSecondNavOpen(false);
             }}
           />
+        )}
+
+        {/* Subscription alert */}
+        {showSubscriptionAlert && (
+          <div className="p-4 md:p-8">
+            <UpgradePrompt 
+              feature="contracts"
+              teamId={team} 
+              currentPlan={subscription?.plan || 'current'}
+            />
+          </div>
         )}
       </div>
     );

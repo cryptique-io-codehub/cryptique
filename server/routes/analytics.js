@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const { trackApiUsage, checkCQIntelligenceAccess } = require('../middleware/subscriptionCheck');
 
 // Set backend API URL - use environment variable or default to production
 const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app/api';
@@ -170,6 +171,17 @@ router.get('/test', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+// Add the middleware to API-intensive routes
+// Example: Add API tracking to routes that make expensive API calls
+router.get('/onchain/:contractAddress', trackApiUsage, async (req, res) => {
+  // ... existing route handler
+});
+
+// Example: Add CQ Intelligence access check to AI-powered routes
+router.get('/intelligence/:type', checkCQIntelligenceAccess, async (req, res) => {
+  // ... existing route handler
 });
 
 module.exports = router; 

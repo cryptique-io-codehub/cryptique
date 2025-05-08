@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Trash2, Users } from "lucide-react";
 import axiosInstance from "../../axiosInstance";
+import useSubscriptionCheck from '../../hooks/useSubscriptionCheck';
+import UpgradePrompt from '../../components/UpgradePrompt';
+import { useParams } from "react-router-dom";
 
 const MembersSection = () => {
   const [email, setEmail] = useState("");
@@ -10,6 +13,9 @@ const MembersSection = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [members, setMembers] = useState([]);
+  const { team } = useParams();
+  const { checkAccess, getFeatureUsageAndLimit, subscription } = useSubscriptionCheck();
+  const [showSubscriptionAlert, setShowSubscriptionAlert] = useState(false);
 
   // Fetch members when component mounts or when active tab changes
   useEffect(() => {
@@ -46,6 +52,40 @@ const MembersSection = () => {
 
   const handleRoleChange = (value) => {
     setRole(value);
+  };
+
+  const handleInviteMember = () => {
+    // Check if user has reached member limit
+    const memberCount = members.length;
+    const canAddMember = checkAccess('teamMembers', memberCount + 1);
+    
+    if (!canAddMember) {
+      setShowSubscriptionAlert(true);
+      return;
+    }
+    
+    // If they have access, show the invite form
+    setShowInviteModal(true);
+  };
+
+  const renderUsageInfo = () => {
+    const { usage, limit } = getFeatureUsageAndLimit('teamMembers');
+    const actualUsage = members.length; // Use actual count from state
+    
+    return (
+      <div className="mb-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">Team Member Usage</span>
+          <span className="text-sm text-gray-600">{actualUsage} of {limit}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div 
+            className={`h-2.5 rounded-full ${actualUsage >= limit ? 'bg-red-600' : 'bg-blue-600'}`}
+            style={{ width: `${Math.min((actualUsage / limit) * 100, 100)}%` }}
+          ></div>
+        </div>
+      </div>
+    );
   };
 
   const sendInvite = async () => {
@@ -87,10 +127,24 @@ const MembersSection = () => {
     }
   };
 
+  if (showSubscriptionAlert) {
+    return (
+      <div className="p-4 md:p-8">
+        <UpgradePrompt 
+          feature="teamMembers"
+          teamId={team} 
+          currentPlan={subscription?.plan || 'current'}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold mb-1">Members</h1>
       <p className="text-sm text-gray-500 mb-6">Manage and Invite Team Members</p>
+
+      {subscription && renderUsageInfo()}
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-medium mb-4">Add members to your team</h2>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, AlertCircle, Check, ExternalLink } from "lucide-react";
+import { X, AlertCircle, Check, ExternalLink, ArrowUp } from "lucide-react";
 import {
   getSubscriptionPlans,
   createCheckoutSession,
@@ -8,7 +8,7 @@ import {
   updateBillingDetails
 } from "../../../axiosInstance";
 import PlanDisplay from "./PlanDisplay";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData = {} }) => {
@@ -225,7 +225,7 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData = {} }) => {
 };
 
 // Alert component for notifications
-const Alert = ({ type, message, onClose }) => {
+const Alert = ({ type, message, icon, onClose }) => {
   const colors = {
     success: "bg-green-50 text-green-800 border-green-200",
     error: "bg-red-50 text-red-800 border-red-200",
@@ -258,6 +258,7 @@ const Alert = ({ type, message, onClose }) => {
 // Main BillingSection Component
 const Billing = () => {
   const { team } = useParams();
+  const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState(null);
@@ -266,6 +267,36 @@ const Billing = () => {
   const [hasCQIntelligence, setHasCQIntelligence] = useState(false);
   const [alert, setAlert] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [upgradeInfo, setUpgradeInfo] = useState(null);
+
+  // Parse URL parameters for upgrade info
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const shouldUpgrade = searchParams.get('upgrade') === 'true';
+    const feature = searchParams.get('feature');
+    
+    if (shouldUpgrade && feature) {
+      setUpgradeInfo({
+        feature,
+        featureLabel: getFeatureLabel(feature)
+      });
+      
+      // Clear URL parameters while preserving the route
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location]);
+
+  // Helper function to get feature labels
+  const getFeatureLabel = (feature) => {
+    const labels = {
+      websites: 'Website Limit',
+      contracts: 'Smart Contract Limit',
+      teamMembers: 'Team Members Limit',
+      apiCalls: 'API Calls Limit',
+      cqIntelligence: 'CQ Intelligence'
+    };
+    return labels[feature] || feature;
+  };
 
   // Fetch subscription plans and active subscription on component mount
   useEffect(() => {
@@ -406,6 +437,43 @@ const Billing = () => {
     }
   }, []);
 
+  // Recommend a plan based on the feature needed
+  const getRecommendedPlan = (feature, currentPlan) => {
+    // If user needs CQ Intelligence, they can add it to any plan
+    if (feature === 'cqIntelligence') {
+      setHasCQIntelligence(true);
+      return currentPlan || 'basic';
+    }
+    
+    // Otherwise recommend moving up a tier
+    if (currentPlan === 'offchain') return 'basic';
+    if (currentPlan === 'basic') return 'pro';
+    if (currentPlan === 'pro') return 'enterprise';
+    
+    // Default to basic if no current plan
+    return 'basic';
+  };
+
+  // Set recommended plan for upgrade if upgrade info exists
+  useEffect(() => {
+    if (upgradeInfo && activeSubscription) {
+      const recommendedPlan = getRecommendedPlan(upgradeInfo.feature, activeSubscription.plan);
+      setSelectedPlan(recommendedPlan);
+      
+      setAlert({
+        type: 'info',
+        message: `Upgrade your plan to access more ${upgradeInfo.featureLabel.toLowerCase()}.`,
+        icon: <ArrowUp size={18} className="text-blue-500" />
+      });
+      
+      // Scroll to plans section
+      const plansSection = document.getElementById('plans-section');
+      if (plansSection) {
+        plansSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [upgradeInfo, activeSubscription]);
+
   return (
     <div className="p-6">
       {/* Alerts */}
@@ -413,6 +481,7 @@ const Billing = () => {
         <Alert
           type={alert.type}
           message={alert.message}
+          icon={alert.icon}
           onClose={() => setAlert(null)}
         />
       )}
@@ -467,7 +536,7 @@ const Billing = () => {
       </div>
       
       {/* Subscription Plans */}
-      <div className="mb-8">
+      <div id="plans-section" className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
         <PlanDisplay
           plans={subscriptionPlans || {}}
