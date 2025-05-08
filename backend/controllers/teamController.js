@@ -24,21 +24,34 @@ exports.getMembers=async (req,res)=>{
         const team_name=req.body.teams;
         // Fetch teams where the logged-in user is the creator
         const this_team = await Team.findOne({name:team_name});
+        
+        if (!this_team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Ensure the owner (first member) is always an admin
+        if (this_team.user && this_team.user.length > 0 && this_team.user[0].role !== 'admin') {
+            this_team.user[0].role = 'admin';
+            await this_team.save();
+            console.log(`Updated team ${team_name} to ensure owner has admin role`);
+        }
+        
         const this_array=this_team.user;
         async function getUserNameArray(this_array) {
             const userNames = await Promise.all(
                 this_array.map(async (item) => {
                     const user = await User.findOne({_id:item.userId});
-                    return user ? user: null; // Store the name or null if not found
+                    // Combine user data with role information
+                    return user ? {
+                        ...user.toObject(),
+                        role: item.role || 'user' // Default to 'user' if role is not specified
+                    } : null;
                 })
             );
-            res.status(200).json(userNames);
-            
-            // console.log(userNames.filter(name => name !== null)); // Remove null values
+            res.status(200).json(userNames.filter(user => user !== null));
         }
         
         // Example usage
-        
         getUserNameArray(this_array);
     } catch (e) {
         res.status(500).json({ message: "Error while fetching teams", error: e.message });
@@ -51,6 +64,22 @@ exports.getTeamDetails = async (req, res) => {
         const teamDetails = await Team.find({ "user.userId": req.userId })
             .populate('createdBy', '-password') // populate user details, excluding password
             .exec();
+
+        // Ensure the first member (owner) of each team is always an admin
+        const teamsToUpdate = [];
+        
+        for (const team of teamDetails) {
+            if (team.user && team.user.length > 0 && team.user[0].role !== 'admin') {
+                team.user[0].role = 'admin';
+                teamsToUpdate.push(team);
+            }
+        }
+        
+        // Save any teams that needed updating
+        if (teamsToUpdate.length > 0) {
+            await Promise.all(teamsToUpdate.map(team => team.save()));
+            console.log(`Updated ${teamsToUpdate.length} teams to ensure owner has admin role`);
+        }
 
         console.log("Team details being returned:", teamDetails.map(team => ({
             id: team._id,
@@ -81,24 +110,32 @@ exports.addMember=async (req,res)=>{
             return res.status(404).json({ message: "User not found" });
         }
 
-        
-
         // Find team created by current user
         const teamss = await Team.findOne({name:team_name });
+        if (!teamss) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
         const userIdToCheck=this_user._id;
         // console.log(teamss);
         const this_array=teamss.user;
 
+        // Ensure the first user (owner) always has admin role
+        if (this_array.length > 0 && this_array[0].role !== 'admin') {
+            this_array[0].role = 'admin';
+            await teamss.save();
+        }
 
-         // The user ID to check
+        // The user ID to check
 
-// Check if the user already exists in the array
+        // Check if the user already exists in the array
         console.log(this_array);
         const user = this_array.some(item => item.userId.equals(userIdToCheck));
         console.log(user);  
         if (user) {
-        return res.status(400).json({ message: "User already exist" });
+            return res.status(400).json({ message: "User already exist" });
         }
+        
         await Team.findOneAndUpdate(
             { _id: teamss._id },
             { $push: { user: { userId: this_user._id, role } } },
@@ -148,7 +185,7 @@ exports.createNewTeam=async(req,res)=>{
             name: teamName,
             description: description || '', // Add the description field
             createdBy: user._id,
-            user: [{userId: user._id, role: 'admin'}]
+            user: [{userId: user._id, role: 'admin'}] // Explicitly set the first user as admin
           })
        
           //save the team to the database
@@ -427,6 +464,40 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(404).json({ message: "User is not a member of this team" });
         }
         
+        // Cannot change the role of the team owner (first member)
+        if (memberIndex === 0) {
+            // If attempting to change owner to 'user', reject the request
+            if (newRole === 'user') {
+                return res.status(403).json({ 
+                    message: "Cannot change the team owner's role. The owner must remain an admin." 
+                });
+            } else if (team.user[0].role !== 'admin') {
+                // If the owner is not an admin, make them an admin
+                team.user[0].role = 'admin';
+                await team.save();
+                return res.status(200).json({ 
+                    message: "Team owner's role set to admin as required", 
+                    member: {
+                        userId: user._id,
+                        email: user.email,
+                        name: user.firstName || user.name,
+                        role: 'admin'
+                    }
+                });
+            } else {
+                // Owner is already an admin, no change needed
+                return res.status(200).json({ 
+                    message: "No change needed. Team owner is already an admin.",
+                    member: {
+                        userId: user._id,
+                        email: user.email,
+                        name: user.firstName || user.name,
+                        role: 'admin'
+                    }
+                });
+            }
+        }
+        
         // Check if the logged-in user is authorized to update member roles
         // Only admins can update member roles
         const loggedInUserMember = team.user.find(member => 
@@ -436,13 +507,6 @@ exports.updateMemberRole = async (req, res) => {
         if (!loggedInUserMember || loggedInUserMember.role !== 'admin') {
             return res.status(403).json({ 
                 message: "Unauthorized. Only team admins can update member roles." 
-            });
-        }
-        
-        // Cannot change the role of the team owner (first member)
-        if (memberIndex === 0) {
-            return res.status(403).json({ 
-                message: "Cannot change the role of the team owner" 
             });
         }
         

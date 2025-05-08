@@ -704,7 +704,35 @@ const TeamsSection = () => {
             alert(`Successfully invited ${newMemberEmail.trim()} to the team.`);
         } catch (err) {
             console.error("Error inviting member:", err);
-            const errorMessage = err.response?.data?.message || "Failed to invite member. Please try again.";
+            
+            let errorMessage = "Failed to invite member. ";
+            
+            // Handle specific error cases based on server response
+            if (err.response) {
+                const status = err.response.status;
+                const serverMessage = err.response.data?.message;
+                
+                if (status === 404) {
+                    if (serverMessage === "User not found") {
+                        errorMessage += "The specified user could not be found. Please check the email address.";
+                    } else if (serverMessage === "Team not found") {
+                        errorMessage += "The specified team could not be found.";
+                    } else {
+                        errorMessage += "Resource not found.";
+                    }
+                } else if (status === 400 && serverMessage === "User already exist") {
+                    errorMessage += "This user is already a member of the team.";
+                } else if (status === 403) {
+                    errorMessage += "You don't have permission to invite members to this team.";
+                } else {
+                    errorMessage += serverMessage || "Please try again.";
+                }
+            } else if (err.request) {
+                errorMessage += "Server is not responding. Please check your connection and try again.";
+            } else {
+                errorMessage += "An unexpected error occurred.";
+            }
+            
             setError(errorMessage);
             alert(errorMessage);
         } finally {
@@ -926,7 +954,7 @@ const TeamsSection = () => {
                     <div>
                         <p className="text-sm text-gray-600">Currently managing teams for:</p>
                         <p className="font-medium">{selectedTeam.name}</p>
-                    </div>
+                            </div>
                     <p className="ml-auto text-xs text-gray-500">
                         Use the team selector in the header to change teams
                     </p>
@@ -1309,25 +1337,32 @@ const TeamsSection = () => {
                                                     <div>
                                                         <p className="text-sm font-medium">{member.name || 'Unnamed User'}</p>
                                                         <p className="text-xs text-gray-500">{member.email}</p>
-                                                        <span className={`text-xs px-2 py-0.5 rounded capitalize ${
-                                                            member.role === 'admin' 
-                                                                ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                                                                : 'bg-gray-100 text-gray-700'
-                                                        }`}>
-                                                            {member.role === 'admin' ? 'Admin' : 'User'}
-                                                        </span>
-                                                        {member.email === currentUserEmail && (
-                                                            <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded border border-green-200">
-                                                                You
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            <span className={`text-xs px-2 py-0.5 rounded capitalize ${
+                                                                member.role === 'admin' 
+                                                                    ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                                                                    : 'bg-gray-100 text-gray-700'
+                                                            }`}>
+                                                                {member.role === 'admin' ? 'Admin' : 'User'}
                                                             </span>
-                                                        )}
+                                                            {index === 0 && (
+                                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded border border-green-200">
+                                                                    Owner
+                                                                </span>
+                                                            )}
+                                                            {member.email === currentUserEmail && (
+                                                                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded border border-purple-200">
+                                                                    You
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
                                                 {selectedTeam?.role === 'admin' && member.email !== currentUserEmail && (
                                                     <div className="flex items-center space-x-2">
-                                                        {/* Role toggle */}
-                                                        {index !== 0 && ( // Don't show for team owner (first member)
+                                                        {/* Role toggle - don't show for team owner (first member) */}
+                                                        {index !== 0 && (
                                                             <div className="mr-3">
                                                                 <button
                                                                     onClick={() => updateMemberRole(
@@ -1354,21 +1389,23 @@ const TeamsSection = () => {
                                                             </div>
                                                         )}
                                                         
-                                                        {/* Remove button */}
-                                                        <button 
-                                                            onClick={() => removeMember(member.email)}
-                                                            disabled={isLoading}
-                                                            className={`text-red-600 hover:text-red-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                            title="Remove member"
-                                                        >
-                                                            {isLoading ? (
-                                                                <span className="inline-block animate-pulse">
+                                                        {/* Remove button - don't show for team owner */}
+                                                        {index !== 0 && (
+                                                            <button 
+                                                                onClick={() => removeMember(member.email)}
+                                                                disabled={isLoading}
+                                                                className={`text-red-600 hover:text-red-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                title="Remove member"
+                                                            >
+                                                                {isLoading ? (
+                                                                    <span className="inline-block animate-pulse">
+                                                                        <UserMinus size={18} />
+                                                                    </span>
+                                                                ) : (
                                                                     <UserMinus size={18} />
-                                                                </span>
-                                                            ) : (
-                                                                <UserMinus size={18} />
-                                                            )}
-                                                        </button>
+                                                                )}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </li>
