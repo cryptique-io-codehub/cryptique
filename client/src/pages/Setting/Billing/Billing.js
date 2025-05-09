@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -189,28 +190,65 @@ const Billing = () => {
   const [billingDetails, setBillingDetails] = useState(null);
   const [currentTeam, setCurrentTeam] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
-    // Get team name from localStorage
-    const teamName = localStorage.getItem("selectedTeam");
-    
-    if (teamName) {
-      // In this app, it seems selectedTeam is just the team name, not a JSON object
-      // We need to fetch the team details from backend or set up a mock team object
-      // For now, let's create a simple object with the team name
-      const teamObj = {
-        name: teamName,
-        _id: "temp-id", // This will be replaced with actual team ID when fetching from backend
-        subscription: {
-          plan: "free",
-          status: "inactive"
+    const loadTeam = async () => {
+      try {
+        setLoading(true);
+        
+        // Get team name from localStorage
+        const teamName = localStorage.getItem("selectedTeam");
+        
+        if (!teamName) {
+          setError("No team selected. Please select a team first.");
+          setLoading(false);
+          return;
         }
-      };
-      
-      setCurrentTeam(teamObj);
-    }
+        
+        try {
+          // Try to get actual team data from API if possible
+          // This is just a placeholder - implement actual API call based on your backend
+          // const response = await axios.get(`/api/teams/by-name/${teamName}`);
+          // setCurrentTeam(response.data);
+          
+          // For now, simulate a team object
+          const teamObj = {
+            name: teamName,
+            _id: localStorage.getItem("selectedTeamId") || "temp-id", // Try to get a real ID if available
+            subscription: {
+              plan: "free",
+              status: "inactive"
+            }
+          };
+          
+          setCurrentTeam(teamObj);
+          setError(null);
+        } catch (apiError) {
+          console.error("Error fetching team:", apiError);
+          
+          // Fallback to basic team object
+          const teamObj = {
+            name: teamName,
+            _id: "temp-id",
+            subscription: {
+              plan: "free",
+              status: "inactive"
+            }
+          };
+          
+          setCurrentTeam(teamObj);
+          setError("Unable to fetch complete team details. Some functionality may be limited.");
+        }
+      } catch (err) {
+        console.error("Error loading team:", err);
+        setError("Failed to load team information.");
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setLoading(false);
+    loadTeam();
   }, []);
 
   const openModal = () => setIsModalOpen(true);
@@ -221,11 +259,43 @@ const Billing = () => {
   };
 
   if (loading) {
-    return <div className="p-6">Loading team information...</div>;
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-700"></div>
+        </div>
+        <div className="text-center mt-2">Loading team information...</div>
+      </div>
+    );
   }
 
   return (
     <div className="p-6">
+      {/* Error notification if present */}
+      {error && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                {error}
+                {error.includes("No team selected") && (
+                  <span className="ml-2">
+                    <Link to="/teams" className="font-medium underline text-yellow-700 hover:text-yellow-600">
+                      Go to Teams
+                    </Link>
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Plan management section */}
       <div className="mt-6 mb-10">
         <div className="text-lg font-semibold flex flex-wrap items-center gap-4 md:gap-6 px-4 text-center">
@@ -287,6 +357,14 @@ const Billing = () => {
                 : 'Free'}
             </span>
           </div>
+          {currentTeam?._id === "temp-id" && (
+            <div className="mt-4 p-3 bg-yellow-50 rounded-md border border-yellow-200 text-sm text-yellow-800">
+              You need to select a valid team to subscribe to a plan.
+              <Link to="/teams" className="block mt-2 text-blue-600 hover:underline">
+                Go to Teams Page
+              </Link>
+            </div>
+          )}
         </div>
       </div>
       

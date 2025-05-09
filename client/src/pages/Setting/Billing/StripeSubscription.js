@@ -22,8 +22,12 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  ToggleButtonGroup,
+  ToggleButton,
+  Tooltip,
+  Stack
 } from '@mui/material';
-import { Check } from '@mui/icons-material';
+import { Check, Info, Star, StarBorder } from '@mui/icons-material';
 import { 
   getSubscriptionPlans, 
   getSubscription, 
@@ -43,6 +47,8 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [selectedPlanType, setSelectedPlanType] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,13 +102,20 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     }
   };
 
-  const handleSubscribe = async (planId) => {
+  const handleBillingCycleChange = (event, newBillingCycle) => {
+    if (newBillingCycle !== null) {
+      setBillingCycle(newBillingCycle);
+    }
+  };
+
+  const handleSubscribe = async (planId, planType) => {
     if (teamId === "temp-id") {
       setError("Please select a team with a valid ID to subscribe to a plan.");
       return;
     }
     
     setSelectedPlan(planId);
+    setSelectedPlanType(planType);
     setUpgradeDialogOpen(true);
   };
 
@@ -117,7 +130,8 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         teamId,
         selectedPlan,
         `${hostUrl}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        `${hostUrl}/settings/billing?canceled=true`
+        `${hostUrl}/settings/billing?canceled=true`,
+        selectedPlanType || billingCycle
       );
       
       // Redirect to Stripe Checkout
@@ -261,7 +275,7 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
       
       {teamId === "temp-id" && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          This is a preview mode. To subscribe to a plan, please use a team with a valid ID.
+          This is a preview mode. To subscribe to a plan, please select a team first by going to the Teams page and creating or selecting a team.
         </Alert>
       )}
       
@@ -291,7 +305,7 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2" color="text.secondary">
-                Billing Period: <strong>Monthly</strong>
+                Billing Period: <strong>{billingCycle === 'monthly' ? 'Monthly' : 'Annual'}</strong>
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -357,113 +371,265 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         </Paper>
       )}
       
+      {/* Billing cycle toggle */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4, mt: 4 }}>
+        <Paper elevation={0} sx={{ p: 1, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+          <ToggleButtonGroup
+            color="primary"
+            value={billingCycle}
+            exclusive
+            onChange={handleBillingCycleChange}
+            aria-label="billing cycle"
+            size="small"
+          >
+            <ToggleButton value="monthly">Monthly</ToggleButton>
+            <ToggleButton value="annual">
+              Annual
+              <Chip 
+                label="Save ~17%" 
+                color="success" 
+                size="small" 
+                sx={{ ml: 1, height: '20px' }}
+              />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Paper>
+      </Box>
+      
       {/* Subscription Plans */}
       <Typography variant="h6" gutterBottom>
         Available Plans
       </Typography>
       
       <Grid container spacing={3}>
-        {plans.map((plan) => (
-          <Grid item xs={12} md={6} lg={3} key={plan.id}>
-            <Card 
-              variant="outlined" 
-              sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                ...(subscription?.subscription?.plan?.toUpperCase() === plan.id ? {
-                  borderColor: 'primary.main',
-                  borderWidth: 2
-                } : {})
-              }}
-            >
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" gutterBottom>
-                  {plan.name}
-                  {subscription?.subscription?.plan?.toUpperCase() === plan.id && (
-                    <Chip 
-                      label="Current" 
-                      color="primary" 
-                      size="small" 
-                      sx={{ ml: 1 }}
-                    />
-                  )}
-                </Typography>
+        {plans.map((plan) => {
+          const isCurrentPlan = subscription?.subscription?.plan?.toUpperCase() === plan.id;
+          const isPopularPlan = plan.id === 'PRO';
+          
+          return (
+            <Grid item xs={12} md={6} lg={3} key={plan.id}>
+              <Card 
+                elevation={isPopularPlan ? 3 : 1}
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  position: 'relative',
+                  transform: isPopularPlan ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: isPopularPlan ? 'scale(1.04)' : 'scale(1.02)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                  },
+                  ...(isCurrentPlan ? {
+                    borderColor: 'primary.main',
+                    borderWidth: 2,
+                    borderStyle: 'solid'
+                  } : {})
+                }}
+              >
+                {isPopularPlan && (
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      right: 20, 
+                      transform: 'translateY(-50%)',
+                      bgcolor: 'secondary.main',
+                      color: 'white',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: '16px',
+                      fontWeight: 'bold',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    <Star fontSize="small" />
+                    MOST POPULAR
+                  </Box>
+                )}
                 
-                <Typography variant="h5" color="primary" gutterBottom>
-                  {plan.price ? `$${plan.price}/mo` : 'Custom Pricing'}
-                </Typography>
+                <CardContent sx={{ flexGrow: 1, pt: 3 }}>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>{plan.name}</span>
+                    {isCurrentPlan && (
+                      <Chip 
+                        label="Current" 
+                        color="primary" 
+                        size="small"
+                      />
+                    )}
+                  </Typography>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h4" color="primary" component="div" sx={{ display: 'flex', alignItems: 'baseline' }}>
+                      ${billingCycle === 'monthly' ? plan.price : (plan.annualPrice / 12).toFixed(0)}
+                      <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
+                        /mo
+                      </Typography>
+                    </Typography>
+                    
+                    {billingCycle === 'annual' && plan.annualPrice && (
+                      <Typography variant="body2" color="text.secondary">
+                        ${plan.annualPrice}/year (billed annually)
+                      </Typography>
+                    )}
+                  </Box>
+                  
+                  <Typography variant="body2" color="text.secondary" paragraph sx={{ minHeight: '40px' }}>
+                    {plan.description}
+                  </Typography>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <List dense>
+                    {plan.features.map((feature, index) => (
+                      <ListItem key={index} disableGutters>
+                        <ListItemIcon sx={{ minWidth: 30 }}>
+                          <Check color="success" fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={feature} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
                 
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  {plan.description}
-                </Typography>
-                
-                <Divider sx={{ my: 2 }} />
-                
-                <List dense>
-                  {plan.features.map((feature, index) => (
-                    <ListItem key={index} disableGutters>
-                      <ListItemIcon sx={{ minWidth: 30 }}>
-                        <Check color="primary" fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={feature} />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-              
-              <CardActions>
-                <Button 
-                  variant="contained" 
-                  fullWidth
-                  disabled={
-                    loading || 
-                    subscription?.subscription?.plan?.toUpperCase() === plan.id ||
-                    plan.id === 'ENTERPRISE'
-                  }
-                  onClick={() => handleSubscribe(plan.id)}
-                >
-                  {subscription?.subscription?.plan?.toUpperCase() === plan.id
-                    ? 'Current Plan'
-                    : plan.id === 'ENTERPRISE'
-                      ? 'Contact Sales'
-                      : 'Subscribe'}
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
+                <CardActions sx={{ p: 2, pt: 0 }}>
+                  <Button 
+                    variant={isPopularPlan ? "contained" : "outlined"} 
+                    fullWidth
+                    size="large"
+                    color={isPopularPlan ? "secondary" : "primary"}
+                    disabled={
+                      loading || 
+                      isCurrentPlan ||
+                      plan.id === 'ENTERPRISE'
+                    }
+                    onClick={() => handleSubscribe(plan.id, billingCycle)}
+                    sx={{ py: 1.5 }}
+                  >
+                    {isCurrentPlan
+                      ? 'Current Plan'
+                      : plan.id === 'ENTERPRISE'
+                        ? 'Contact Sales'
+                        : 'Subscribe'}
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
       
       {/* CQ Intelligence Add-on Card */}
-      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-        Add-ons
+      <Typography variant="h6" sx={{ mt: 6, mb: 3 }}>
+        Powerful Add-ons
       </Typography>
       
-      <Card variant="outlined" sx={{ maxWidth: 300 }}>
+      <Card 
+        variant="outlined" 
+        sx={{ 
+          maxWidth: 400,
+          borderRadius: 2,
+          bgcolor: 'rgba(25, 118, 210, 0.03)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            CQ Intelligence
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box 
+              sx={{ 
+                bgcolor: 'primary.main', 
+                color: 'white', 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 2
+              }}
+            >
+              <Info />
+            </Box>
+            <Typography variant="h6">
+              CQ Intelligence
+            </Typography>
+          </Box>
           
-          <Typography variant="h5" color="primary" gutterBottom>
-            ${addons?.CQ_INTELLIGENCE?.price || 299}/mo
-          </Typography>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h5" color="primary" component="div" sx={{ display: 'flex', alignItems: 'baseline' }}>
+              ${billingCycle === 'monthly' ? 
+                addons?.CQ_INTELLIGENCE?.price : 
+                (addons?.CQ_INTELLIGENCE?.annualPrice / 12).toFixed(0)
+              }
+              <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
+                /mo
+              </Typography>
+            </Typography>
+            
+            {billingCycle === 'annual' && addons?.CQ_INTELLIGENCE?.annualPrice && (
+              <Typography variant="body2" color="text.secondary">
+                ${addons?.CQ_INTELLIGENCE?.annualPrice}/year (billed annually)
+              </Typography>
+            )}
+          </Box>
           
           <Typography variant="body2" color="text.secondary" paragraph>
-            {addons?.CQ_INTELLIGENCE?.description || 'AI-powered analytics and insights'}
+            {addons?.CQ_INTELLIGENCE?.description || 'AI-powered analytics and insights to supercharge your decision making'}
           </Typography>
+          
+          <Divider sx={{ my: 2 }} />
+          
+          <List dense>
+            <ListItem disableGutters>
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Advanced AI analytics" />
+            </ListItem>
+            <ListItem disableGutters>
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Predictive insights" />
+            </ListItem>
+            <ListItem disableGutters>
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Automated reporting" />
+            </ListItem>
+          </List>
         </CardContent>
         
-        <CardActions>
-          <Switch 
-            checked={hasCQIntelligence()} 
-            onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
-            disabled={loading || !subscription}
-          />
-          <Typography variant="body2">
-            {hasCQIntelligence() ? 'Enabled' : 'Disabled'}
-          </Typography>
+        <CardActions sx={{ p: 2, pt: 0 }}>
+          <Stack direction="row" spacing={1} alignItems="center" width="100%">
+            <Switch 
+              checked={hasCQIntelligence()} 
+              onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
+              disabled={loading || !subscription}
+            />
+            <Typography variant="body2" fontWeight="500">
+              {hasCQIntelligence() ? 'Enabled' : 'Disabled'}
+            </Typography>
+            
+            {!subscription && (
+              <Tooltip title="Subscribe to a plan first to enable add-ons">
+                <Box sx={{ ml: 'auto' }}>
+                  <Info color="info" fontSize="small" />
+                </Box>
+              </Tooltip>
+            )}
+          </Stack>
         </CardActions>
       </Card>
       

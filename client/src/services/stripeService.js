@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://cryptique-backend.vercel.app');
 
 /**
  * Get all subscription plans
@@ -18,6 +18,7 @@ export const getSubscriptionPlans = async () => {
         OFFCHAIN: {
           name: 'Off-chain',
           price: 59,
+          annualPrice: 590, // ~2 months free
           description: 'Off-chain analytics, 1 website, no extra users',
           limits: { websites: 1, smartContracts: 0, apiCalls: 0, teamMembers: 1 },
           features: ['Off-chain analytics only', 'Link 1 website', 'Basic reporting']
@@ -25,6 +26,7 @@ export const getSubscriptionPlans = async () => {
         BASIC: {
           name: 'Basic',
           price: 299,
+          annualPrice: 2990, // ~2 months free
           description: 'Full access with limits, 2 websites, 1 smart contract, 2 team members',
           limits: { websites: 2, smartContracts: 1, apiCalls: 40000, teamMembers: 2 },
           features: ['Full app access', 'Link 2 websites', 'Link 1 smart contract', 'Monthly API calls: 40,000', 'Team size: 2 members']
@@ -32,6 +34,7 @@ export const getSubscriptionPlans = async () => {
         PRO: {
           name: 'Pro',
           price: 599,
+          annualPrice: 5990, // ~2 months free
           description: 'Enhanced access, 3 websites, 3 smart contracts, 3 team members',
           limits: { websites: 3, smartContracts: 3, apiCalls: 150000, teamMembers: 3 },
           features: ['Full app access', 'Link 3 websites', 'Link 3 smart contracts', 'Monthly API calls: 150,000', 'Team size: 3 members']
@@ -39,6 +42,7 @@ export const getSubscriptionPlans = async () => {
         ENTERPRISE: {
           name: 'Enterprise',
           price: null,
+          annualPrice: null,
           description: 'Custom plan with tailored limits and support',
           limits: { websites: null, smartContracts: null, apiCalls: null, teamMembers: null },
           features: ['Full app access', 'Custom number of websites', 'Custom number of smart contracts', 'Custom API call limits', 'Custom team size', 'Priority support']
@@ -48,6 +52,7 @@ export const getSubscriptionPlans = async () => {
         CQ_INTELLIGENCE: {
           name: 'CQ Intelligence',
           price: 299,
+          annualPrice: 2990,
           description: 'AI-powered analytics and insights'
         }
       }
@@ -58,13 +63,14 @@ export const getSubscriptionPlans = async () => {
 /**
  * Create checkout session for a subscription
  */
-export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl) => {
+export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly') => {
   try {
     const response = await axios.post(`${API_URL}/api/stripe/create-checkout-session`, {
       teamId,
       planType,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      billingCycle
     });
     return response.data;
   } catch (error) {
