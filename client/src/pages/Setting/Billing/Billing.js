@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
-import { TeamContext } from "../../../contexts/TeamContext";
+import { useTeam } from "../../../context/teamContext";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -187,7 +187,7 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
-  const { currentTeam } = useContext(TeamContext);
+  const { currentTeam } = useTeam();
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
