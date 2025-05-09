@@ -8,6 +8,7 @@ import Billing from './pages/Setting/Billing/Billing.js'
 import MembersSection from './pages/Setting/MembersSection.js'
 import PersonalInfoSection from './pages/Setting/PersonalInfoSection.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
+import SubscriptionConfirmation from './pages/Setting/Billing/Confirmation.js'
 import { useTeam } from "./context/teamContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
@@ -21,9 +22,6 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
-import BillingPage from './pages/Billing';
-import PaymentSuccessPage from './pages/PaymentSuccess';
-import PaymentCancelPage from './pages/PaymentCancel';
 
 const RouteListener = () => {
   const location = useLocation();
@@ -84,6 +82,7 @@ function App() {
           <Route path="/:team/settings" element={<Settings />}>
             {/* Child Route for Billing */}
             <Route path="/:team/settings/billing"  element={<Billing />} />
+            <Route path="/:team/settings/billing/confirmation" element={<SubscriptionConfirmation />} />
             <Route path="/:team/settings/members" element={<MembersSection />} />
             <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
             <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
@@ -91,10 +90,6 @@ function App() {
           </Route>
   
           <Route path="/test-analytics" element={<TestAnalytics />} />
-  
-          <Route path="/settings/billing" element={<Dashboard><BillingPage /></Dashboard>} />
-          <Route path="/settings/billing/success" element={<Dashboard><PaymentSuccessPage /></Dashboard>} />
-          <Route path="/settings/billing/cancel" element={<Dashboard><PaymentCancelPage /></Dashboard>} />
   
         </Routes>
       </BrowserRouter>

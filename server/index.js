@@ -13,16 +13,13 @@ const app = express();
 app.use(cors({
   origin: '*', // Allow all origins for development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CC-Webhook-Signature'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Special middleware for Coinbase webhooks that need raw body
-app.use('/api/coinbase/webhook', express.raw({ type: 'application/json' }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
@@ -36,18 +33,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 const analyticsRoutes = require('./routes/analytics');
 app.use('/api/analytics', analyticsRoutes);
 
-// Add Zoho CRM routes
-const zohoRoutes = require('./routes/zoho');
-app.use('/api/zoho', zohoRoutes);
-
-// Add Coinbase Commerce routes
-const coinbaseRoutes = require('./routes/coinbase');
-app.use('/api/coinbase', coinbaseRoutes);
-
-// Add Plans routes
-const plansRoutes = require('./routes/plans');
-app.use('/api/plans', plansRoutes);
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
@@ -59,8 +44,6 @@ app.get('/', (req, res) => {
     message: 'Cryptique Analytics API Server',
     endpoints: {
       analytics: '/api/analytics/*',
-      zoho: '/api/zoho/*',
-      coinbase: '/api/coinbase/*',
       health: '/api/health'
     },
     env: {
