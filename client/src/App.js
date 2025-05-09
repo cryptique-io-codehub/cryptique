@@ -8,7 +8,6 @@ import Billing from './pages/Setting/Billing/Billing.js'
 import MembersSection from './pages/Setting/MembersSection.js'
 import PersonalInfoSection from './pages/Setting/PersonalInfoSection.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
-import SubscriptionConfirmation from './pages/Setting/Billing/Confirmation.js'
 import { useTeam } from "./context/teamContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
@@ -82,7 +81,6 @@ function App() {
           <Route path="/:team/settings" element={<Settings />}>
             {/* Child Route for Billing */}
             <Route path="/:team/settings/billing"  element={<Billing />} />
-            <Route path="/:team/settings/billing/confirmation" element={<SubscriptionConfirmation />} />
             <Route path="/:team/settings/members" element={<MembersSection />} />
             <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
             <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />

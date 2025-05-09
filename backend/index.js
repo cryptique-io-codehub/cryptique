@@ -9,7 +9,6 @@ const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
 const { connectToDatabase } = require("./config/database");
 const healthRouter = require("./routes/healthRouter");
-const subscriptionRouter = require("./routes/subscriptionRouter");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -210,7 +209,6 @@ app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter")
 app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
-app.use("/api/subscription", cors(mainCorsOptions), subscriptionRouter);
 
 // Load AI router with explicit error handling
 try {
