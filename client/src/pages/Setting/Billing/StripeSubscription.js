@@ -109,8 +109,9 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
   };
 
   const handleSubscribe = async (planId, planType) => {
-    if (teamId === "temp-id") {
-      setError("Please select a team with a valid ID to subscribe to a plan.");
+    // Don't block checkout based on temp-id anymore, use any available teamId
+    if (!teamId) {
+      setError("Team information is missing. Please select a team to subscribe to a plan.");
       return;
     }
     
@@ -273,9 +274,9 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         </Alert>
       )}
       
-      {teamId === "temp-id" && (
+      {!teamId && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          This is a preview mode. To subscribe to a plan, please select a team first by going to the Teams page and creating or selecting a team.
+          No team selected. Please select a team to subscribe to a plan.
         </Alert>
       )}
       

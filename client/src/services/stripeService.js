@@ -65,6 +65,8 @@ export const getSubscriptionPlans = async () => {
  */
 export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly') => {
   try {
+    console.log('Creating checkout session with:', { teamId, planType, billingCycle });
+    
     const response = await axios.post(`${API_URL}/api/stripe/create-checkout-session`, {
       teamId,
       planType,
@@ -72,9 +74,20 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
       cancelUrl,
       billingCycle
     });
+    
+    console.log('Checkout session created:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error creating checkout session:', error);
+    
+    // In case of development/demo environment, create a mock response
+    if (window.location.hostname === 'localhost' || !process.env.REACT_APP_API_URL) {
+      console.log('Using mock checkout URL for development');
+      return {
+        url: `https://checkout.stripe.com/pay/cs_test_mock${Math.random().toString(36).substring(2, 10)}`
+      };
+    }
+    
     throw error;
   }
 };

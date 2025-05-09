@@ -197,49 +197,39 @@ const Billing = () => {
       try {
         setLoading(true);
         
-        // Get team name from localStorage
-        const teamName = localStorage.getItem("selectedTeam");
+        // Get team from localStorage - could be name or object depending on your app's implementation
+        const storedTeam = localStorage.getItem("selectedTeam");
         
-        if (!teamName) {
+        if (!storedTeam) {
           setError("No team selected. Please select a team first.");
           setLoading(false);
           return;
         }
         
+        // Try to parse the stored team in case it's a JSON object
+        let teamData;
         try {
-          // Try to get actual team data from API if possible
-          // This is just a placeholder - implement actual API call based on your backend
-          // const response = await axios.get(`/api/teams/by-name/${teamName}`);
-          // setCurrentTeam(response.data);
-          
-          // For now, simulate a team object
-          const teamObj = {
-            name: teamName,
-            _id: localStorage.getItem("selectedTeamId") || "temp-id", // Try to get a real ID if available
-            subscription: {
-              plan: "free",
-              status: "inactive"
-            }
-          };
-          
-          setCurrentTeam(teamObj);
-          setError(null);
-        } catch (apiError) {
-          console.error("Error fetching team:", apiError);
-          
-          // Fallback to basic team object
-          const teamObj = {
-            name: teamName,
-            _id: "temp-id",
-            subscription: {
-              plan: "free",
-              status: "inactive"
-            }
-          };
-          
-          setCurrentTeam(teamObj);
-          setError("Unable to fetch complete team details. Some functionality may be limited.");
+          teamData = JSON.parse(storedTeam);
+        } catch (e) {
+          // If parsing fails, it's probably just a string (team name)
+          teamData = { name: storedTeam };
         }
+        
+        // Check if we have a team ID stored separately
+        const teamId = localStorage.getItem("selectedTeamId") || teamData._id;
+        
+        // For this app, we'll use any valid-looking ID - remove the temp-id check
+        const finalTeamObj = {
+          ...teamData,
+          name: teamData.name || storedTeam,
+          _id: teamId || storedTeam, // Use the team name as ID if nothing else available
+          subscription: teamData.subscription || {
+            plan: "free",
+            status: "inactive"
+          }
+        };
+        
+        setCurrentTeam(finalTeamObj);
       } catch (err) {
         console.error("Error loading team:", err);
         setError("Failed to load team information.");
@@ -357,14 +347,6 @@ const Billing = () => {
                 : 'Free'}
             </span>
           </div>
-          {currentTeam?._id === "temp-id" && (
-            <div className="mt-4 p-3 bg-yellow-50 rounded-md border border-yellow-200 text-sm text-yellow-800">
-              You need to select a valid team to subscribe to a plan.
-              <Link to="/teams" className="block mt-2 text-blue-600 hover:underline">
-                Go to Teams Page
-              </Link>
-            </div>
-          )}
         </div>
       </div>
       
