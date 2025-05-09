@@ -6,6 +6,7 @@ const SUBSCRIPTION_PLANS = {
   OFFCHAIN: {
     name: 'Off-chain',
     price: 59, // Monthly price in USD
+    annualPrice: 590, // Annual price (saving ~2 months)
     description: 'Off-chain analytics, 1 website, no extra users',
     limits: {
       websites: 1,
@@ -22,6 +23,7 @@ const SUBSCRIPTION_PLANS = {
   BASIC: {
     name: 'Basic',
     price: 299, // Monthly price in USD
+    annualPrice: 2990, // Annual price (saving ~2 months)
     description: 'Full access with limits, 2 websites, 1 smart contract, 2 team members',
     limits: {
       websites: 2,
@@ -40,6 +42,7 @@ const SUBSCRIPTION_PLANS = {
   PRO: {
     name: 'Pro',
     price: 599, // Monthly price in USD
+    annualPrice: 5990, // Annual price (saving ~2 months)
     description: 'Enhanced access, 3 websites, 3 smart contracts, 3 team members',
     limits: {
       websites: 3,
@@ -58,6 +61,7 @@ const SUBSCRIPTION_PLANS = {
   ENTERPRISE: {
     name: 'Enterprise',
     price: null, // Custom pricing
+    annualPrice: null, // Custom pricing
     description: 'Custom plan with tailored limits and support',
     limits: {
       websites: null, // Custom
@@ -81,6 +85,7 @@ const ADDONS = {
   CQ_INTELLIGENCE: {
     name: 'CQ Intelligence',
     price: 299, // Monthly price in USD
+    annualPrice: 2990, // Annual price (saving ~2 months)
     description: 'AI-powered analytics and insights'
   }
 };
@@ -90,13 +95,19 @@ module.exports = {
   SUBSCRIPTION_PLANS,
   ADDONS,
   
-  // These should be populated from Stripe dashboard
-  // after creating products and prices
+  // Price IDs from Stripe dashboard for different billing cycles
   STRIPE_PRICE_IDS: {
+    // Monthly price IDs
     OFFCHAIN: process.env.STRIPE_PRICE_ID_OFFCHAIN,
     BASIC: process.env.STRIPE_PRICE_ID_BASIC,
     PRO: process.env.STRIPE_PRICE_ID_PRO,
     ENTERPRISE: process.env.STRIPE_PRICE_ID_ENTERPRISE,
-    CQ_INTELLIGENCE: process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE
+    CQ_INTELLIGENCE: process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE,
+    
+    // Annual price IDs
+    OFFCHAIN_ANNUAL: process.env.STRIPE_PRICE_ID_OFFCHAIN_ANNUAL,
+    BASIC_ANNUAL: process.env.STRIPE_PRICE_ID_BASIC_ANNUAL,
+    PRO_ANNUAL: process.env.STRIPE_PRICE_ID_PRO_ANNUAL,
+    CQ_INTELLIGENCE_ANNUAL: process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE_ANNUAL
   }
 }; 

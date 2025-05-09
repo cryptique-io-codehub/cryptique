@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { SUBSCRIPTION_PLANS, ADDONS } = require('../config/stripe');
+const { stripe, SUBSCRIPTION_PLANS, ADDONS } = require('../config/stripe');
 const stripeService = require('../services/stripeService');
 const Team = require('../models/team');
 const mongoose = require('mongoose');
@@ -26,7 +26,7 @@ router.get('/plans', (req, res) => {
  */
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const { teamId, planType, successUrl, cancelUrl } = req.body;
+    const { teamId, planType, successUrl, cancelUrl, billingCycle } = req.body;
 
     if (!teamId || !planType || !successUrl || !cancelUrl) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -36,7 +36,8 @@ router.post('/create-checkout-session', async (req, res) => {
       teamId,
       planType,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      billingCycle || 'monthly'
     );
 
     res.json({ sessionId: session.id, url: session.url });
@@ -51,14 +52,14 @@ router.post('/create-checkout-session', async (req, res) => {
  */
 router.post('/add-cq-intelligence', async (req, res) => {
   try {
-    const { teamId, subscriptionId } = req.body;
+    const { teamId, subscriptionId, billingCycle } = req.body;
 
     if (!teamId || !subscriptionId) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    const subscriptionItem = await stripeService.addCQIntelligence(subscriptionId, teamId);
-    res.json({ success: true, subscriptionItem });
+    const result = await stripeService.addCQIntelligence(subscriptionId, teamId, billingCycle || 'monthly');
+    res.json({ success: true, result });
   } catch (error) {
     console.error('Error adding CQ Intelligence:', error);
     res.status(500).json({ error: 'Failed to add CQ Intelligence' });
@@ -77,7 +78,7 @@ router.post('/cancel-cq-intelligence', async (req, res) => {
     }
 
     const result = await stripeService.cancelCQIntelligence(subscriptionId, teamId);
-    res.json({ success: true });
+    res.json({ success: true, result });
   } catch (error) {
     console.error('Error canceling CQ Intelligence:', error);
     res.status(500).json({ error: 'Failed to cancel CQ Intelligence' });
@@ -150,6 +151,57 @@ router.post('/create-portal-session', async (req, res) => {
   } catch (error) {
     console.error('Error creating portal session:', error);
     res.status(500).json({ error: 'Failed to create customer portal session' });
+  }
+});
+
+/**
+ * Check checkout session status - used after redirect from Stripe Checkout
+ */
+router.get('/checkout-status', async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    
+    if (!session_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'No session ID provided'
+      });
+    }
+    
+    // Retrieve the session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    
+    // If the payment was successful
+    if (session.payment_status === 'paid') {
+      return res.json({
+        success: true,
+        message: 'Your subscription was successfully activated!',
+        plan: session.metadata.planType,
+        billingCycle: session.metadata.billingCycle || 'monthly'
+      });
+    } else if (session.status === 'complete' && session.payment_status !== 'paid') {
+      // For free trials or similar where no payment is required yet
+      return res.json({
+        success: true,
+        message: 'Your subscription is now active!',
+        plan: session.metadata.planType,
+        billingCycle: session.metadata.billingCycle || 'monthly'
+      });
+    } else {
+      // Something unexpected happened
+      return res.json({
+        success: false,
+        message: 'Your subscription process was not completed. Please try again.',
+        status: session.status,
+        paymentStatus: session.payment_status
+      });
+    }
+  } catch (error) {
+    console.error('Error checking checkout status:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to verify subscription status.' 
+    });
   }
 });
 

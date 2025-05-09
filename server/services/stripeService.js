@@ -44,10 +44,25 @@ const getOrCreateCustomer = async (teamId, email, name) => {
 /**
  * Create a subscription checkout session
  */
-const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl) => {
+const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly') => {
   try {
-    // Get the price ID for the selected plan
-    const priceId = STRIPE_PRICE_IDS[planType];
+    // Get the price ID for the selected plan based on billing cycle
+    let priceId;
+    
+    if (billingCycle === 'annual') {
+      // For annual plans
+      priceId = STRIPE_PRICE_IDS[`${planType}_ANNUAL`];
+      
+      // Fallback to monthly if annual not found
+      if (!priceId) {
+        console.warn(`Annual price ID not found for ${planType}, falling back to monthly`);
+        priceId = STRIPE_PRICE_IDS[planType];
+      }
+    } else {
+      // For monthly plans (default)
+      priceId = STRIPE_PRICE_IDS[planType];
+    }
+    
     if (!priceId) {
       throw new Error(`Invalid plan type: ${planType}`);
     }
@@ -85,6 +100,7 @@ const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl) =>
       metadata: {
         teamId,
         planType,
+        billingCycle
       },
     });
 
@@ -98,9 +114,23 @@ const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl) =>
 /**
  * Add CQ Intelligence add-on to a subscription
  */
-const addCQIntelligence = async (subscriptionId, teamId) => {
+const addCQIntelligence = async (subscriptionId, teamId, billingCycle = 'monthly') => {
   try {
-    const priceId = STRIPE_PRICE_IDS.CQ_INTELLIGENCE;
+    // Get the price ID based on billing cycle
+    let priceId;
+    
+    if (billingCycle === 'annual') {
+      priceId = STRIPE_PRICE_IDS.CQ_INTELLIGENCE_ANNUAL;
+      
+      // Fallback to monthly if annual not found
+      if (!priceId) {
+        console.warn('Annual CQ Intelligence price ID not found, falling back to monthly');
+        priceId = STRIPE_PRICE_IDS.CQ_INTELLIGENCE;
+      }
+    } else {
+      priceId = STRIPE_PRICE_IDS.CQ_INTELLIGENCE;
+    }
+    
     if (!priceId) {
       throw new Error('CQ Intelligence price ID not configured');
     }
@@ -121,6 +151,7 @@ const addCQIntelligence = async (subscriptionId, teamId) => {
             name: 'cq_intelligence',
             stripeSubscriptionItemId: subscriptionItem.id,
             stripePriceId: priceId,
+            billingCycle: billingCycle,
             active: true,
             addedAt: new Date(),
           },

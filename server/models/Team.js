@@ -41,6 +41,11 @@ const TeamSchema = new Schema({
     },
     startDate: Date,
     endDate: Date,
+    billingCycle: {
+      type: String,
+      enum: ['monthly', 'annual'],
+      default: 'monthly'
+    },
     cqIntelligence: {
       type: Boolean,
       default: false

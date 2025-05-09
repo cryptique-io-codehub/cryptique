@@ -81,37 +81,56 @@ router.post('/', async (req, res) => {
  */
 async function handleCheckoutSessionCompleted(session) {
   try {
-    // Extract data from the session
+    // Get metadata from the checkout session
     const { teamId, planType } = session.metadata;
-    const subscriptionId = session.subscription;
+    const billingCycle = session.metadata.billingCycle || 'monthly';
+
+    if (!teamId || !planType) {
+      console.log('Missing teamId or planType in checkout session metadata');
+      return;
+    }
+
+    // Get or create the subscription
     const customerId = session.customer;
+    const subscriptionId = session.subscription;
 
-    // Retrieve the full subscription data from Stripe
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-    // Create a new subscription record in our database
-    const newSubscription = new Subscription({
-      teamId,
-      stripeCustomerId: customerId,
-      stripeSubscriptionId: subscriptionId,
-      plan: planType.toLowerCase(),
-      status: subscription.status,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      paymentMethod: 'card', // Default for Stripe
+    // Check if the subscription already exists
+    let subscription = await Subscription.findOne({
+      stripeSubscriptionId: subscriptionId
     });
 
-    await newSubscription.save();
+    if (!subscription) {
+      // Get the subscription details from Stripe
+      const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    // Update the team with subscription details
+      // Create a new subscription record
+      subscription = new Subscription({
+        teamId,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        plan: planType.toLowerCase(),
+        status: stripeSubscription.status,
+        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+        billingCycle: billingCycle,
+        paymentMethod: 'card'
+      });
+
+      await subscription.save();
+    }
+
+    // Get the plan type capitalized for lookup
     const planTypeKey = planType.toUpperCase();
+
+    // Update the team with the subscription details
     await Team.findByIdAndUpdate(teamId, {
       stripeCustomerId: customerId,
       'subscription.plan': planType.toLowerCase(),
       'subscription.status': subscription.status === 'active' ? 'active' : 'inactive',
       'subscription.startDate': new Date(subscription.current_period_start * 1000),
       'subscription.endDate': new Date(subscription.current_period_end * 1000),
+      'subscription.billingCycle': billingCycle,
       'subscription.limits': {
         // Set the limits based on the plan
         websites: planTypeKey !== 'ENTERPRISE' ? require('../../config/stripe').SUBSCRIPTION_PLANS[planTypeKey].limits.websites : null,
@@ -130,7 +149,7 @@ async function handleCheckoutSessionCompleted(session) {
       status: 'completed',
       paymentMethod: 'card',
       planType: planType.toLowerCase(),
-      billingPeriod: 'monthly', // Default to monthly
+      billingPeriod: billingCycle,
       stripeData: {
         customerId,
         subscriptionId,
