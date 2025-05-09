@@ -43,7 +43,7 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white rounded-md shadow-lg w-full max-w-md">
         <div className="flex justify-between items-center p-4">
-          <h2 className="text-lg font-medium">Provide Billing Details</h2>
+          <h2 className="text-lg font-medium">Provide Billing Detail</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={20} />
           </button>
