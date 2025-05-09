@@ -33,6 +33,14 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique
 const analyticsRoutes = require('./routes/analytics');
 app.use('/api/analytics', analyticsRoutes);
 
+// Stripe routes
+const stripeRoutes = require('./routes/stripe');
+app.use('/api/stripe', stripeRoutes);
+
+// Special route handling for Stripe webhooks (needs raw body)
+const stripeWebhookRoutes = require('./routes/webhooks/stripe');
+app.use('/api/webhooks/stripe', stripeWebhookRoutes);
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
@@ -44,10 +52,12 @@ app.get('/', (req, res) => {
     message: 'Cryptique Analytics API Server',
     endpoints: {
       analytics: '/api/analytics/*',
+      stripe: '/api/stripe/*',
+      webhooks: '/api/webhooks/*',
       health: '/api/health'
     },
     env: {
-      backend_url: process.env.BACKEND_API_URL || 'Not configured'
+      backend_url: process.env.REACT_APP_API_SERVER_URL || 'Not configured'
     }
   });
 });

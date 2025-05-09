@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { X } from "lucide-react";
+import StripeSubscription from "./StripeSubscription";
+import { TeamContext } from "../../../contexts/TeamContext";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -181,10 +183,11 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
   );
 };
 
-// Main BillingSection Component
+// Main Billing Component
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
+  const { currentTeam } = useContext(TeamContext);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -202,13 +205,13 @@ const Billing = () => {
           <span className="whitespace-nowrap">Plan management</span>
           <div className="bg-indigo-900 text-white p-4 rounded-md w-full sm:w-auto flex justify-center items-center text-center break-words">
             <p className="text-sm md:text-base break-words">
-              KQL Intelligence + Growth Cryptique + Active
+              {currentTeam?.subscription?.plan || 'Free'} - {currentTeam?.subscription?.status || 'Inactive'}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Left card */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Billing details</h2>
@@ -243,19 +246,38 @@ const Billing = () => {
           
           <div className="flex justify-between border-b pb-2 mb-2">
             <span className="text-sm text-gray-600">Subscription end date</span>
-            <span className="text-sm">23/05/2025</span>
+            <span className="text-sm">
+              {currentTeam?.subscription?.endDate 
+                ? new Date(currentTeam.subscription.endDate).toLocaleDateString() 
+                : 'N/A'}
+            </span>
+          </div>
+          <div className="flex justify-between border-b pb-2 mb-2">
+            <span className="text-sm text-gray-600">Current Plan</span>
+            <span className="text-sm">
+              {currentTeam?.subscription?.plan 
+                ? currentTeam.subscription.plan.charAt(0).toUpperCase() + currentTeam.subscription.plan.slice(1)
+                : 'Free'}
+            </span>
           </div>
         </div>
       </div>
       
+      {/* Stripe Subscription Management */}
+      <div className="bg-white rounded-lg shadow overflow-hidden p-6">
+        {currentTeam && (
+          <StripeSubscription teamId={currentTeam._id} currentTeam={currentTeam} />
+        )}
+      </div>
+      
       {/* Billing Details Modal */}
-      <BillingDetailsModal 
-        isOpen={isModalOpen} 
-        onClose={closeModal} 
-        onSave={handleSaveBillingDetails} 
+      <BillingDetailsModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onSave={handleSaveBillingDetails}
       />
     </div>
   );
-}; 
+};
 
 export default Billing;

@@ -23,7 +23,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { Check, Close, InfoOutlined } from '@mui/icons-material';
+import { Check } from '@mui/icons-material';
 import { 
   getSubscriptionPlans, 
   getSubscription, 
@@ -34,7 +34,7 @@ import {
   cancelCQIntelligence
 } from '../../../services/stripeService';
 
-const BillingSection = ({ teamId, currentTeam }) => {
+const StripeSubscription = ({ teamId, currentTeam }) => {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
   const [addons, setAddons] = useState([]);
@@ -487,4 +487,4 @@ const BillingSection = ({ teamId, currentTeam }) => {
   );
 };
 
-export default BillingSection;
+export default StripeSubscription; 

@@ -67,6 +67,9 @@ const TeamSchema = new Schema({
       type: Schema.Types.Mixed
     }
   },
+  stripeCustomerId: {
+    type: String
+  },
   zohoDetails: {
     accountId: String,
     contactId: String
