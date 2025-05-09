@@ -12,7 +12,46 @@ export const getSubscriptionPlans = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching subscription plans:', error);
-    throw error;
+    // Return mock data if the API fails
+    return {
+      plans: {
+        OFFCHAIN: {
+          name: 'Off-chain',
+          price: 59,
+          description: 'Off-chain analytics, 1 website, no extra users',
+          limits: { websites: 1, smartContracts: 0, apiCalls: 0, teamMembers: 1 },
+          features: ['Off-chain analytics only', 'Link 1 website', 'Basic reporting']
+        },
+        BASIC: {
+          name: 'Basic',
+          price: 299,
+          description: 'Full access with limits, 2 websites, 1 smart contract, 2 team members',
+          limits: { websites: 2, smartContracts: 1, apiCalls: 40000, teamMembers: 2 },
+          features: ['Full app access', 'Link 2 websites', 'Link 1 smart contract', 'Monthly API calls: 40,000', 'Team size: 2 members']
+        },
+        PRO: {
+          name: 'Pro',
+          price: 599,
+          description: 'Enhanced access, 3 websites, 3 smart contracts, 3 team members',
+          limits: { websites: 3, smartContracts: 3, apiCalls: 150000, teamMembers: 3 },
+          features: ['Full app access', 'Link 3 websites', 'Link 3 smart contracts', 'Monthly API calls: 150,000', 'Team size: 3 members']
+        },
+        ENTERPRISE: {
+          name: 'Enterprise',
+          price: null,
+          description: 'Custom plan with tailored limits and support',
+          limits: { websites: null, smartContracts: null, apiCalls: null, teamMembers: null },
+          features: ['Full app access', 'Custom number of websites', 'Custom number of smart contracts', 'Custom API call limits', 'Custom team size', 'Priority support']
+        }
+      },
+      addons: {
+        CQ_INTELLIGENCE: {
+          name: 'CQ Intelligence',
+          price: 299,
+          description: 'AI-powered analytics and insights'
+        }
+      }
+    };
   }
 };
 

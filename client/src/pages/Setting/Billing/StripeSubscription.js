@@ -48,7 +48,7 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch plans
+        // Always fetch plans regardless of team ID
         const plansData = await getSubscriptionPlans();
         
         // Format plans into an array
@@ -60,8 +60,9 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         setPlans(formattedPlans);
         setAddons(plansData.addons);
         
-        // Fetch current subscription if team ID is available
-        if (teamId) {
+        // Fetch current subscription if team ID is available and looks valid
+        // In production, we'd check for a valid MongoDB ID format
+        if (teamId && teamId !== "temp-id") {
           const subscriptionData = await getSubscription(teamId);
           setSubscription(subscriptionData);
         }
@@ -96,6 +97,11 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
   };
 
   const handleSubscribe = async (planId) => {
+    if (teamId === "temp-id") {
+      setError("Please select a team with a valid ID to subscribe to a plan.");
+      return;
+    }
+    
     setSelectedPlan(planId);
     setUpgradeDialogOpen(true);
   };
@@ -253,7 +259,13 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         </Alert>
       )}
       
-      {/* Current Subscription Information */}
+      {teamId === "temp-id" && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          This is a preview mode. To subscribe to a plan, please use a team with a valid ID.
+        </Alert>
+      )}
+      
+      {/* Current Subscription Information - Only show if we have an active subscription */}
       {subscription ? (
         <Paper sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
@@ -335,7 +347,9 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
       ) : (
         <Paper sx={{ p: 3, mb: 4 }}>
           <Typography variant="body1" gutterBottom>
-            You don't have an active subscription.
+            {teamId === "temp-id" ? 
+              "This is a preview of available plans. Select a valid team to subscribe." :
+              "You don't have an active subscription."}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Choose a plan below to get started.

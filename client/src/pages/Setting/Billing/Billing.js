@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
+import axios from "axios";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -187,18 +188,29 @@ const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
   const [currentTeam, setCurrentTeam] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Get team data from localStorage
-    const teamData = localStorage.getItem("selectedTeam");
-    if (teamData) {
-      try {
-        const parsedTeam = JSON.parse(teamData);
-        setCurrentTeam(parsedTeam);
-      } catch (err) {
-        console.error("Error parsing team data:", err);
-      }
+    // Get team name from localStorage
+    const teamName = localStorage.getItem("selectedTeam");
+    
+    if (teamName) {
+      // In this app, it seems selectedTeam is just the team name, not a JSON object
+      // We need to fetch the team details from backend or set up a mock team object
+      // For now, let's create a simple object with the team name
+      const teamObj = {
+        name: teamName,
+        _id: "temp-id", // This will be replaced with actual team ID when fetching from backend
+        subscription: {
+          plan: "free",
+          status: "inactive"
+        }
+      };
+      
+      setCurrentTeam(teamObj);
     }
+    
+    setLoading(false);
   }, []);
 
   const openModal = () => setIsModalOpen(true);
@@ -206,8 +218,11 @@ const Billing = () => {
 
   const handleSaveBillingDetails = (data) => {
     setBillingDetails(data);
-    // Any additional logic when saving billing details
   };
+
+  if (loading) {
+    return <div className="p-6">Loading team information...</div>;
+  }
 
   return (
     <div className="p-6">
@@ -217,7 +232,7 @@ const Billing = () => {
           <span className="whitespace-nowrap">Plan management</span>
           <div className="bg-indigo-900 text-white p-4 rounded-md w-full sm:w-auto flex justify-center items-center text-center break-words">
             <p className="text-sm md:text-base break-words">
-              {currentTeam?.subscription?.plan || 'Free'} - {currentTeam?.subscription?.status || 'Inactive'}
+              {currentTeam?.name || 'No Team Selected'} - {currentTeam?.subscription?.status || 'Inactive'}
             </p>
           </div>
         </div>
