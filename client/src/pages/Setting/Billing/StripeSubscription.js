@@ -137,6 +137,7 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
       
       // Redirect to Stripe Checkout
       window.location.href = session.url;
+      
     } catch (err) {
       console.error('Error creating subscription:', err);
       setError('Failed to create subscription checkout. Please try again later.');

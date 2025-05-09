@@ -205,8 +205,7 @@ const Billing = () => {
     const checkStripeSession = async () => {
       if (success && sessionId) {
         try {
-          const API_URL = process.env.REACT_APP_API_URL || 
-            (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://cryptique-backend.vercel.app');
+          const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
           
           const response = await axios.get(`${API_URL}/api/stripe/checkout-status?session_id=${sessionId}`);
           
@@ -216,6 +215,7 @@ const Billing = () => {
             setError(response.data.message);
           }
         } catch (err) {
+          console.error("Error checking session:", err);
           setError("Could not verify subscription status. Please contact support if your subscription is not active.");
         }
       } else if (canceled) {
@@ -264,16 +264,16 @@ const Billing = () => {
         };
         
         setCurrentTeam(finalTeamObj);
+        setLoading(false);
       } catch (err) {
         console.error("Error loading team:", err);
         setError("Failed to load team information.");
-      } finally {
         setLoading(false);
       }
     };
     
     loadTeam();
-  }, [success]); // Reload team data after successful subscription
+  }, [success, sessionId]); // Reload team data after successful subscription
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
