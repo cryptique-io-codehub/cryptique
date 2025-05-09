@@ -19,44 +19,46 @@ const PaymentSuccessPage = () => {
   }, [navigate]);
   
   return (
-    <Container maxWidth="md" sx={{ mt: 8, mb: 8, textAlign: 'center' }}>
-      <Paper elevation={3} sx={{ p: 5, borderRadius: 2 }}>
-        <Box sx={{ mb: 3 }}>
-          <CheckCircle size={60} color="#4CAF50" />
-        </Box>
-        
-        <Typography variant="h4" gutterBottom>
-          Payment Successful!
-        </Typography>
-        
-        <Typography variant="body1" paragraph sx={{ maxWidth: '80%', mx: 'auto', mb: 4 }}>
-          Thank you for your subscription. Your payment has been processed successfully, and your subscription is now active.
-          {chargeId && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Transaction ID: {chargeId}
-            </Typography>
-          )}
-        </Typography>
-        
-        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            You will be automatically redirected to the billing page in 5 seconds...
+    <div className="container mx-auto py-8">
+      <Container maxWidth="md" sx={{ mt: 4, mb: 8, textAlign: 'center' }}>
+        <Paper elevation={3} sx={{ p: 5, borderRadius: 2 }}>
+          <Box sx={{ mb: 3 }}>
+            <CheckCircle size={60} color="#4CAF50" />
+          </Box>
+          
+          <Typography variant="h4" gutterBottom>
+            Payment Successful!
           </Typography>
           
-          <CircularProgress size={20} sx={{ mb: 2 }} />
+          <Typography variant="body1" paragraph sx={{ maxWidth: '80%', mx: 'auto', mb: 4 }}>
+            Thank you for your subscription. Your payment has been processed successfully, and your subscription is now active.
+            {chargeId && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Transaction ID: {chargeId}
+              </Typography>
+            )}
+          </Typography>
           
-          <Button
-            variant="contained"
-            color="primary"
-            component={Link}
-            to="/settings/billing"
-            sx={{ mt: 2 }}
-          >
-            Return to Billing
-          </Button>
-        </Box>
-      </Paper>
-    </Container>
+          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You will be automatically redirected to the billing page in 5 seconds...
+            </Typography>
+            
+            <CircularProgress size={20} sx={{ mb: 2 }} />
+            
+            <Button
+              variant="contained"
+              color="primary"
+              component={Link}
+              to="/settings/billing"
+              sx={{ mt: 2 }}
+            >
+              Return to Billing
+            </Button>
+          </Box>
+        </Paper>
+      </Container>
+    </div>
   );
 };
 

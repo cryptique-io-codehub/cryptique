@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuthToken } from './authService';
+import { getToken } from '../utils/auth';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
@@ -8,7 +8,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
  */
 export const getSubscription = async (teamId) => {
   try {
-    const token = getAuthToken();
+    const token = getToken();
     const response = await axios.get(`${API_URL}/api/coinbase/subscription/${teamId}`, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -26,7 +26,7 @@ export const getSubscription = async (teamId) => {
  */
 export const createCheckout = async (checkoutData) => {
   try {
-    const token = getAuthToken();
+    const token = getToken();
     const response = await axios.post(`${API_URL}/api/coinbase/checkout`, checkoutData, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -44,7 +44,7 @@ export const createCheckout = async (checkoutData) => {
  */
 export const getSubscriptionPlans = async () => {
   try {
-    const token = getAuthToken();
+    const token = getToken();
     const response = await axios.get(`${API_URL}/api/plans`, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -144,7 +144,7 @@ export const getSubscriptionPlans = async () => {
  */
 export const syncTeamWithZoho = async (teamId) => {
   try {
-    const token = getAuthToken();
+    const token = getToken();
     const response = await axios.post(`${API_URL}/api/zoho/sync/team`, { teamId }, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -162,7 +162,7 @@ export const syncTeamWithZoho = async (teamId) => {
  */
 export const syncUserWithZoho = async (userId) => {
   try {
-    const token = getAuthToken();
+    const token = getToken();
     const response = await axios.post(`${API_URL}/api/zoho/sync/user`, { userId }, {
       headers: {
         Authorization: `Bearer ${token}`

@@ -92,27 +92,9 @@ function App() {
   
           <Route path="/test-analytics" element={<TestAnalytics />} />
   
-          <Route path="/settings/billing" element={
-            <PrivateRoute>
-              <MainLayout>
-                <BillingPage />
-              </MainLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/settings/billing/success" element={
-            <PrivateRoute>
-              <MainLayout>
-                <PaymentSuccessPage />
-              </MainLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/settings/billing/cancel" element={
-            <PrivateRoute>
-              <MainLayout>
-                <PaymentCancelPage />
-              </MainLayout>
-            </PrivateRoute>
-          } />
+          <Route path="/settings/billing" element={<Dashboard><BillingPage /></Dashboard>} />
+          <Route path="/settings/billing/success" element={<Dashboard><PaymentSuccessPage /></Dashboard>} />
+          <Route path="/settings/billing/cancel" element={<Dashboard><PaymentCancelPage /></Dashboard>} />
   
         </Routes>
       </BrowserRouter>
