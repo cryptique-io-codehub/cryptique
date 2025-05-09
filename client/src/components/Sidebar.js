@@ -1,4 +1,4 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
@@ -175,6 +175,13 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
             onClick={() => onNavigate && onNavigate("settings")}
           >
             <Settings size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Settings</span>}
+          </Link>
+          <Link
+            to="/settings/billing"
+            className={`${path.includes("/settings/billing") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("billing")}
+          >
+            <CreditCard size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Billing</span>}
           </Link>
         </ul>
       </nav>

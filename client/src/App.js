@@ -21,6 +21,9 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
+import BillingPage from './pages/Billing';
+import PaymentSuccessPage from './pages/PaymentSuccess';
+import PaymentCancelPage from './pages/PaymentCancel';
 
 const RouteListener = () => {
   const location = useLocation();
@@ -88,6 +91,28 @@ function App() {
           </Route>
   
           <Route path="/test-analytics" element={<TestAnalytics />} />
+  
+          <Route path="/settings/billing" element={
+            <PrivateRoute>
+              <MainLayout>
+                <BillingPage />
+              </MainLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/settings/billing/success" element={
+            <PrivateRoute>
+              <MainLayout>
+                <PaymentSuccessPage />
+              </MainLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/settings/billing/cancel" element={
+            <PrivateRoute>
+              <MainLayout>
+                <PaymentCancelPage />
+              </MainLayout>
+            </PrivateRoute>
+          } />
   
         </Routes>
       </BrowserRouter>

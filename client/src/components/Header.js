@@ -76,7 +76,7 @@ const TeamSelector = () => {
     const fetchTeamsIfNeeded = async () => {
       if (dropdownOpen && curTeams.length === 0 && !isLoadingTeams) {
         const now = Date.now();
-        // Only fetch if not recently fetched (30 seconds)
+        // Only fetch if not recently fetched (30 seconds) 
         if (now - lastFetchTimeRef.current > 30000) {
           try {
             setIsLoadingTeams(true);
