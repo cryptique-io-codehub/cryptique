@@ -220,6 +220,19 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     return hasAddon || currentTeam?.subscription?.cqIntelligence;
   };
 
+  if (!teamId) {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Subscription Management
+        </Typography>
+        <Alert severity="warning">
+          No team selected. Please select a team to manage subscriptions.
+        </Alert>
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>

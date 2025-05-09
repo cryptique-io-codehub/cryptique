@@ -1,7 +1,6 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
-import { useTeam } from "../../../context/teamContext";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -187,7 +186,20 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
-  const { currentTeam } = useTeam();
+  const [currentTeam, setCurrentTeam] = useState(null);
+  
+  useEffect(() => {
+    // Get team data from localStorage
+    const teamData = localStorage.getItem("selectedTeam");
+    if (teamData) {
+      try {
+        const parsedTeam = JSON.parse(teamData);
+        setCurrentTeam(parsedTeam);
+      } catch (err) {
+        console.error("Error parsing team data:", err);
+      }
+    }
+  }, []);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
