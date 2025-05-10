@@ -26,7 +26,8 @@ const styles = {
 };
 
 const BillingAddressForm = ({ billingAddress, setBillingAddress, errors = {} }) => {
-  const [formData, setFormData] = useState(billingAddress || {
+  // Use local state for form data to prevent direct parent state updates
+  const [formData, setFormData] = useState({
     name: "",
     line1: "",
     line2: "",
@@ -59,12 +60,21 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors = {} }) 
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const newFormData = {
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
-    };
-    setFormData(newFormData);
-    setBillingAddress(newFormData);
+    const newValue = type === "checkbox" ? checked : value;
+    
+    // Update local state
+    setFormData(prev => ({
+      ...prev,
+      [name]: newValue
+    }));
+    
+    // Then update parent state in a controlled way
+    if (setBillingAddress) {
+      setBillingAddress(prev => ({
+        ...(prev || {}), // Handle case when prev is null/undefined
+        [name]: newValue
+      }));
+    }
   };
 
   return (
@@ -354,40 +364,95 @@ const PricingSection = () => {
     }
   }, [showAddressForm, billingAddress]);
 
-  const handleSelectPlan = (plan) => {
-    if (!selectedTeamId) {
-      setError("Please select a team before choosing a plan.");
-      return;
-    }
-    
-    console.log("handleSelectPlan called with plan:", plan);
-    
-    // Store selected plan ID and plan object
-    setSelectedPlanId(plan.type);
+  // New function to handle plan selection
+  const handlePlanSelect = (plan) => {
+    console.log("Plan selected:", plan);
     setSelectedPlan(plan);
+    // Store ID for checkout
+    setSelectedPlanId(plan.type);
+  };
+  
+  // New function to toggle addon selection
+  const toggleAddon = () => {
+    setAddonSelected(!addonSelected);
+  };
+  
+  // Calculate total price based on selections
+  const calculateTotal = () => {
+    if (!selectedPlan) return 0;
     
-    // Check if we have billing address
-    if (!billingAddress) {
-      setShowAddressForm(true);
-    } else {
-      // We have billing address, show it in the confirmation
-      setShowAddressForm(false);
+    let total = activePlan === 'annual' ? selectedPlan.annualPrice : selectedPlan.monthlyPrice;
+    
+    if (addonSelected) {
+      total += activePlan === 'annual' ? intelligenceAddOn.annualPrice : intelligenceAddOn.monthlyPrice;
     }
     
-    console.log("Setting confirmDialogOpen to true");
-    // Open confirmation dialog
-    setConfirmDialogOpen(true);
+    return total;
+  };
+  
+  // Format price for display
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
   };
 
-  const handleCancelPlan = () => {
-    console.log("Canceling plan selection, closing dialog");
-    setConfirmDialogOpen(false);
-    setSelectedPlan(null);
-    setShowAddressForm(false);
+  // Add a function to get plan features for display in order summary
+  const getPlanFeatures = (planType) => {
+    const plan = plans.find(p => p.type === planType);
+    return plan ? plan.features : [];
   };
 
+  // Add a function to get addon features
+  const getAddonFeatures = () => {
+    return intelligenceAddOn.features;
+  };
+
+  // Log when dialog state changes
+  useEffect(() => {
+    console.log("Dialog open state changed:", confirmDialogOpen);
+  }, [confirmDialogOpen]);
+
+  // Clear error when dialog state changes
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      setError('');
+    }
+  }, [confirmDialogOpen]);
+
+  // Button verification before checkout
+  const verifyCheckoutPlan = () => {
+    // Make sure we have both a selected plan and its ID
+    if (!selectedPlan || !selectedPlanId) {
+      console.error("Missing plan data:", { selectedPlan, selectedPlanId });
+      setError("Please select a plan before proceeding");
+      return false;
+    }
+    
+    // Verify the plan type is not enterprise
+    if (selectedPlanId === 'ENTERPRISE') {
+      setError("Enterprise plans require contacting sales directly");
+      return false;
+    }
+    
+    return true;
+  };
+  
   const handleConfirmPlan = async () => {
     try {
+      // Verify we have proper plan data
+      if (!verifyCheckoutPlan()) {
+        return;
+      }
+      
+      // First, validate the billing address
+      if (showAddressForm && !validateBillingAddress()) {
+        return; // Don't proceed if validation fails
+      }
+      
       // Save billing address to team if needed
       if (billingAddress) {
         try {
@@ -411,6 +476,15 @@ const PricingSection = () => {
       
       const successUrl = `${hostUrl}/${teamName}/settings/billing?success=true`;
       const cancelUrl = `${hostUrl}/${teamName}/settings/billing?canceled=true`;
+      
+      // Make sure selectedPlanId is valid
+      if (!selectedPlanId || selectedPlanId === 'ENTERPRISE') {
+        setError("Invalid plan selection. Please choose a valid plan.");
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Creating checkout with plan:", selectedPlanId, "billing cycle:", activePlan);
       
       // Create checkout session with the selected plan ID
       const { url } = await createCheckoutSession(
@@ -531,56 +605,44 @@ const PricingSection = () => {
     type: "CQ_INTELLIGENCE_ADDON"
   };
 
-  // New function to handle plan selection
-  const handlePlanSelect = (plan) => {
-    setSelectedPlan(plan);
-    // Store ID for checkout
-    setSelectedPlanId(plan.type);
-  };
-  
-  // New function to toggle addon selection
-  const toggleAddon = () => {
-    setAddonSelected(!addonSelected);
-  };
-  
-  // Calculate total price based on selections
-  const calculateTotal = () => {
-    if (!selectedPlan) return 0;
-    
-    let total = activePlan === 'annual' ? selectedPlan.annualPrice : selectedPlan.monthlyPrice;
-    
-    if (addonSelected) {
-      total += activePlan === 'annual' ? intelligenceAddOn.annualPrice : intelligenceAddOn.monthlyPrice;
+  // Handle plan selection for opening the dialog
+  const handleSelectPlan = (plan) => {
+    if (!selectedTeamId) {
+      setError("Please select a team before choosing a plan.");
+      return;
     }
     
-    return total;
+    console.log("handleSelectPlan called with plan:", plan);
+    
+    // Store selected plan ID and plan object
+    setSelectedPlanId(plan.type);
+    setSelectedPlan(plan);
+    
+    // Check if we have billing address
+    if (!billingAddress) {
+      setShowAddressForm(true);
+    } else {
+      // We have billing address, show it in the confirmation
+      setShowAddressForm(false);
+    }
+    
+    console.log("Setting confirmDialogOpen to true");
+    // Open confirmation dialog
+    setConfirmDialogOpen(true);
   };
   
-  // Format price for display
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price);
+  const handleCancelPlan = () => {
+    console.log("Canceling plan selection, closing dialog");
+    setConfirmDialogOpen(false);
+    setSelectedPlan(null);
+    setShowAddressForm(false);
   };
-
-  // Add a function to get plan features for display in order summary
-  const getPlanFeatures = (planType) => {
-    const plan = plans.find(p => p.type === planType);
-    return plan ? plan.features : [];
+  
+  // Add a function to handle billing form toggling
+  const toggleBillingForm = () => {
+    // This is a separate function to avoid React rendering issues
+    setShowAddressForm(prev => !prev);
   };
-
-  // Add a function to get addon features
-  const getAddonFeatures = () => {
-    return intelligenceAddOn.features;
-  };
-
-  // Log when dialog state changes
-  useEffect(() => {
-    console.log("Dialog open state changed:", confirmDialogOpen);
-  }, [confirmDialogOpen]);
 
   return (
     <div className="space-y-8">
@@ -729,7 +791,7 @@ const PricingSection = () => {
                         border: `1px solid ${selectedPlan?.type === plan.type ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
                         "&:hover": plan.type !== 'ENTERPRISE' ? styles.cardHover : {}
                       }}
-                      onClick={() => plan.type !== 'ENTERPRISE' && handlePlanSelect(plan)}
+                      onClick={() => plan.type !== 'ENTERPRISE' && handleSelectPlan(plan)}
                     >
                       <div>
                         <Typography variant="h6" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
@@ -931,14 +993,27 @@ const PricingSection = () => {
                       disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
                       onClick={() => {
                         console.log("Subscribe Now button clicked", selectedPlan);
+                        
+                        // Ensure selectedPlanId is set properly
+                        if (selectedPlan && selectedPlan.type) {
+                          setSelectedPlanId(selectedPlan.type);
+                        } else {
+                          console.error("No plan selected or invalid plan type");
+                          setError("Please select a valid plan");
+                          return;
+                        }
+                        
                         // First check if we have a billing address
                         if (!billingAddress) {
                           setShowAddressForm(true);
                         } else {
                           setShowAddressForm(false);
                         }
-                        // Then open the dialog
-                        setConfirmDialogOpen(true);
+                        
+                        // Then open the dialog - with a slight delay to ensure state updates
+                        setTimeout(() => {
+                          setConfirmDialogOpen(true);
+                        }, 0);
                       }}
                       sx={{
                         py: 1.5,
@@ -1161,9 +1236,18 @@ const PricingSection = () => {
         onClose={handleCancelPlan}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: { overflow: 'visible' }  // Prevent overflow issues
+        }}
       >
         <DialogTitle>Confirm Subscription</DialogTitle>
         <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          
           <DialogContentText sx={{ mb: 2 }}>
             You are about to subscribe to the {selectedPlan?.title} plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'}) 
             {addonSelected ? ' with CQ Intelligence add-on' : ''}.
@@ -1217,16 +1301,16 @@ const PricingSection = () => {
                 You can update your billing information before confirming.
               </Typography>
               <Button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Fix: use setTimeout to avoid updating state during render
-                  setTimeout(() => {
-                    setShowAddressForm(true);
-                  }, 0);
-                }}
+                sx={{ mb: 2 }}
                 variant="outlined" 
                 size="small"
-                sx={{ mb: 2 }}
+                component="div"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  window.requestAnimationFrame(() => {
+                    toggleBillingForm();
+                  });
+                }}
               >
                 Edit Billing Information
               </Button>
