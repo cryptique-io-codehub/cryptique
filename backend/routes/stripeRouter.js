@@ -107,7 +107,36 @@ router.get('/plans', async (req, res) => {
 // Create a checkout session
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const { teamId, priceId, successUrl, cancelUrl, billingCycle } = req.body;
+    const { teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly' } = req.body;
+
+    // Get the appropriate price ID based on plan type and billing cycle
+    let priceId;
+    switch (planType) {
+      case 'offchain':
+        priceId = billingCycle === 'annual' 
+          ? process.env.STRIPE_PRICE_ID_OFFCHAIN_ANNUAL 
+          : process.env.STRIPE_PRICE_ID_OFFCHAIN;
+        break;
+      case 'basic':
+        priceId = billingCycle === 'annual'
+          ? process.env.STRIPE_PRICE_ID_BASIC_ANNUAL
+          : process.env.STRIPE_PRICE_ID_BASIC;
+        break;
+      case 'pro':
+        priceId = billingCycle === 'annual'
+          ? process.env.STRIPE_PRICE_ID_PRO_ANNUAL
+          : process.env.STRIPE_PRICE_ID_PRO;
+        break;
+      case 'enterprise':
+        priceId = process.env.STRIPE_PRICE_ID_ENTERPRISE;
+        break;
+      default:
+        throw new Error('Invalid plan type');
+    }
+
+    if (!priceId) {
+      throw new Error('Price ID not found for the selected plan');
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -124,12 +153,13 @@ router.post('/create-checkout-session', async (req, res) => {
       subscription_data: {
         metadata: {
           teamId,
-          billingCycle
+          billingCycle,
+          planType
         }
       }
     });
 
-    res.json({ sessionId: session.id });
+    res.json({ url: session.url });
   } catch (error) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: 'Failed to create checkout session' });
