@@ -208,7 +208,7 @@ const Dashboard = () => {
     
     if (screenSize.isDesktop) {
       // Both settings and other pages should have consistent behavior
-      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
     }
     
     return baseClasses;

@@ -560,12 +560,37 @@ const PricingSection = () => {
   return (
     <div className="space-y-8">
       <div className="max-w-6xl mx-auto">
-        <Typography variant="h5" style={{color: styles.accentColor, fontWeight: 600, ...styles.headingFont}} className="mb-1">
-          Pricing
-        </Typography>
-        <h1 className="text-3xl font-bold mb-4" style={{...styles.headingFont, color: styles.primaryColor}}>
-          Unlock the full potential of Web3 analytics
-        </h1>
+        <Paper 
+          elevation={3}
+          sx={{
+            p: 3,
+            mb: 4,
+            background: styles.futuristicGradient,
+            borderRadius: 2,
+            boxShadow: '0 4px 20px rgba(29, 12, 70, 0.2)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Typography variant="h5" style={{color: 'white', fontWeight: 600, ...styles.headingFont}} className="mb-1">
+              Pricing
+            </Typography>
+            <h1 className="text-3xl font-bold" style={{...styles.headingFont, color: 'white'}}>
+              Unlock the full potential of Web3 analytics
+            </h1>
+          </Box>
+          <Box sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '30%', 
+            background: 'linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%)',
+            borderLeft: '1px solid rgba(255,255,255,0.1)',
+            zIndex: 0
+          }}/>
+        </Paper>
       </div>
       
       {/* Main pricing content with Order Summary sidebar */}
@@ -781,9 +806,9 @@ const PricingSection = () => {
           {/* Right Side - Order Summary - Fixed position alongside all selections */}
           <Box sx={{ 
             width: { xs: '100%', md: '35%' },
-            alignSelf: 'flex-start',
-            position: { md: 'sticky' },
-            top: '20px'
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%'
           }}>
             <Paper 
               elevation={3}
@@ -791,7 +816,10 @@ const PricingSection = () => {
                 p: 3,
                 background: 'linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)',
                 border: `1px solid ${styles.accentColor}`,
-                borderRadius: 2
+                borderRadius: 2,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
               <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', ...styles.headingFont, color: styles.primaryColor }}>
@@ -799,8 +827,8 @@ const PricingSection = () => {
               </Typography>
               
               {selectedPlan ? (
-                <>
-                  <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <Box sx={{ mb: 2, flex: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                         {selectedPlan.title} Plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'})
@@ -893,22 +921,36 @@ const PricingSection = () => {
                   <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}>
                     Secure payment via Stripe
                   </Typography>
-                </>
+                </Box>
               ) : (
-                <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
-                  Select a plan to see your order summary
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                  <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+                    Select a plan to see your order summary
+                  </Typography>
+                </Box>
               )}
             </Paper>
           </Box>
         </Box>
       </div>
       
-      {/* Feature Comparison Table - Enhanced */}
+      {/* Feature Comparison Table - Enhanced with banner-style header */}
       <div className="max-w-6xl mx-auto mt-12 mb-12">
-        <Typography variant="h6" sx={{ mb: 4, ...styles.headingFont, color: styles.primaryColor, textAlign: 'center' }}>
-          Feature Comparison
-        </Typography>
+        <Paper 
+          elevation={3}
+          sx={{
+            p: 3,
+            mb: 4,
+            background: styles.futuristicGradient,
+            borderRadius: 2,
+            boxShadow: '0 4px 20px rgba(29, 12, 70, 0.2)',
+            textAlign: 'center'
+          }}
+        >
+          <Typography variant="h5" style={{color: 'white', fontWeight: 600, ...styles.headingFont}}>
+            Feature Comparison
+          </Typography>
+        </Paper>
         
         <Box sx={{ overflowX: 'auto' }}>
           <Paper 

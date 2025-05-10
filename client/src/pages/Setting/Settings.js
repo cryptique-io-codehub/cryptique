@@ -139,9 +139,6 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
               </div>
               
               <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
-                <div className="text-xs text-gray-500 uppercase mt-1 mb-2 font-semibold">
-                  SETTINGS
-                </div>
                 {/* General button */}
                 <div 
                   onClick={() => handleSectionChange("general")}
