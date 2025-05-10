@@ -251,7 +251,7 @@ const fetchContracts = async (teamId) => {
 const fetchMembers = async (teamName) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/team/members?teams=${teamName}`);
+    const res = await axios.get(`${API_URL}/api/team/${teamName}/members`);
     return res.data || [];
   } catch (error) {
     console.error("Error fetching members:", error);

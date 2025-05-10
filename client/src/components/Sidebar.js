@@ -170,13 +170,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
             <Globe size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Manage websites</span>}
           </Link>
           <Link
-            to={`/${selectedTeam}/pricing`}
-            className={`${isActive("pricing") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
-            onClick={() => onNavigate && onNavigate("pricing")}
-          >
-            <CreditCard size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Pricing</span>}
-          </Link>
-          <Link
             to={`/${selectedTeam}/settings`}
             className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("settings")}

@@ -15,6 +15,8 @@ const Settings = ({ onMenuClick }) => {
   const location = useLocation();
   const { team } = useParams();
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
+  const [isCompactMode, setIsCompactMode] = useState(true); // Start in compact mode
+  const [isHovering, setIsHovering] = useState(false);
 
   // Determine active section based on current path
   const determineActiveSection = () => {
@@ -54,6 +56,14 @@ const Settings = ({ onMenuClick }) => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+  };
   
   const handleSectionChange = (section) => {
     setActiveSection(section);
@@ -84,6 +94,9 @@ const Settings = ({ onMenuClick }) => {
       setSidebarOpen(false);
     }
   };
+
+  // Determine if we should show expanded content
+  const showExpanded = !isCompactMode || isHovering;
   
   return (
     <div className="flex flex-col lg:flex-row w-full h-screen overflow-hidden">
@@ -97,87 +110,108 @@ const Settings = ({ onMenuClick }) => {
       )}
       
       {/* Settings sidebar - responsive */}
-      <div className={`${
-        sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden'
-      } lg:relative lg:flex w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}>
-        <div className="p-4 border-b flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-semibold">Settings</h2>
-            <p className="text-xs text-gray-500">Manage your analytics</p>
-          </div>
-          <button 
-            className="lg:hidden" 
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X size={20} />
-          </button>
+      <div 
+        className={`${
+          sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden'
+        } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-16' : 'lg:w-64'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className={`p-4 border-b flex justify-between items-center ${!showExpanded ? 'justify-center' : ''}`}>
+          {showExpanded ? (
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">Settings</h2>
+                <p className="text-xs text-gray-500">Manage your analytics</p>
+              </div>
+              <button 
+                className="lg:hidden" 
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </>
+          ) : (
+            <SettingsIcon size={24} className="text-gray-700" />
+          )}
         </div>
         
         <nav className="py-4 flex-1">
-          <ul className="space-y-1 px-2">
+          <ul className={`space-y-1 ${isCompactMode && !isHovering ? 'px-0' : 'px-2'}`}>
             <li>
               <button 
                 onClick={() => handleSectionChange("general")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                General
+                <SettingsIcon size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>General</span>}
               </button>
             </li>
             <li>
               <button 
                 onClick={() => handleSectionChange("billing")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                Billing
+                <CreditCard size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>Billing</span>}
               </button>
             </li>
             <li>
               <button 
                 onClick={() => handleSectionChange("pricing")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                <Tag size={16} className="mr-1" />
-                Pricing Plans
+                <Tag size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>Pricing Plans</span>}
               </button>
             </li>
             <li>
               <button 
                 onClick={() => handleSectionChange("members")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                Members
+                <Users size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>Members</span>}
               </button>
             </li>
             <li>
               <button 
                 onClick={() => handleSectionChange("personal")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                Personal Info
+                <User size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>Personal Info</span>}
               </button>
             </li>
             <li>
               <button 
                 onClick={() => handleSectionChange("teams")}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                  activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                Manage your teams
+                <Users size={isCompactMode && !isHovering ? 18 : 16} />
+                {showExpanded && <span>Manage Teams</span>}
               </button>
             </li>
           </ul>
         </nav>
+        
+        {showExpanded && (
+          <div className="p-3 border-t text-xs text-gray-500">
+            Settings for {seteam}
+          </div>
+        )}
       </div>
       
       {/* Right content area with its own header and scrollable content */}

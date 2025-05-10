@@ -6,7 +6,7 @@ import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
 import { Menu, Home, BarChart, Activity } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
 import ManageWebsites from './ManageWebsites.js'
@@ -29,6 +29,7 @@ const Dashboard = () => {
     isDesktop: false
   });
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
 
   // Screen size detection with multiple breakpoints
@@ -66,6 +67,15 @@ const Dashboard = () => {
     // Extract the current route from the path
     const pathSegments = path.split('/').filter(Boolean);
     const currentRoute = pathSegments.length > 1 ? pathSegments[1] : '';
+    
+    // Redirect old pricing route to settings/pricing
+    if (currentRoute === 'pricing') {
+      const team = pathSegments[0] || localStorage.getItem("selectedTeam") || '';
+      if (team) {
+        navigate(`/${team}/settings/pricing`, { replace: true });
+        return;
+      }
+    }
     
     // Map route names to page identifiers
     const routeToPageMap = {
@@ -111,7 +121,7 @@ const Dashboard = () => {
       setSelectedPage(newPage);
     }
     
-  }, [location, selectedPage, selectedTeam]);
+  }, [location, selectedPage, selectedTeam, navigate]);
 
   // Update isCompactMode based on the selected page
   useEffect(() => {
