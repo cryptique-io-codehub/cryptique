@@ -208,36 +208,46 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                     {/* API Keys Section */}
                     <div className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
                       <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">API Keys</h2>
-                        <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors">
+                        <div>
+                          <h2 className="text-xl font-semibold">API Keys</h2>
+                          <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200">Coming Soon</span>
+                        </div>
+                        <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors opacity-50 cursor-not-allowed">
                           Generate New Key
                         </button>
                       </div>
                       <p className="text-sm text-gray-600 mb-4">
-                        Use these API keys to access Cryptique data programmatically. Keep your keys secure - anyone with your key can access your account data.
+                        Use API keys to access Cryptique data programmatically. This feature is currently in development and will be available soon.
                       </p>
 
-                      <div className="overflow-hidden bg-white border border-gray-200 rounded-lg mb-4">
+                      <div className="overflow-hidden bg-white border border-gray-200 rounded-lg mb-4 opacity-70">
                         <div className="px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
                           <div>
-                            <span className="font-medium text-sm">Main API Key</span>
-                            <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">Active</span>
+                            <span className="font-medium text-sm">Example API Key</span>
+                            <span className="ml-2 text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full">Preview</span>
                           </div>
-                          <span className="text-xs text-gray-500">Created: May 15, 2023</span>
+                          <span className="text-xs text-gray-500">Coming Soon</span>
                         </div>
                         <div className="p-4 flex justify-between items-center">
                           <div className="flex-1 font-mono text-sm bg-gray-50 p-2 rounded mr-4 overflow-hidden">
-                            ••••••••••••••••••••••••••••••cq_k1a2b3c4
+                            cq_k••••••••••••••••••••••••
                           </div>
                           <div className="flex space-x-2">
-                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50">Copy</button>
-                            <button className="px-2 py-1 border border-red-300 text-red-600 text-xs rounded hover:bg-red-50">Revoke</button>
+                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50 opacity-50 cursor-not-allowed">Copy</button>
+                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50 opacity-50 cursor-not-allowed">Revoke</button>
                           </div>
                         </div>
                       </div>
 
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
-                        <strong>Documentation:</strong> Find our API documentation at <a href="#" className="underline">docs.cryptique.io/api</a>
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <span>
+                            <strong>Coming Soon:</strong> API access will allow integration with your existing tools and custom dashboards. Subscribe to our updates to be notified when this feature launches.
+                          </span>
+                        </div>
                       </div>
                     </div>
 
