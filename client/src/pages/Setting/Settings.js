@@ -9,7 +9,7 @@ import PricingSection from "./PricingSection";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
 
-const Settings = ({ onMenuClick, screenSize }) => {
+const Settings = ({ onMenuClick, screenSize = {} }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { team } = useParams();
@@ -43,7 +43,8 @@ const Settings = ({ onMenuClick, screenSize }) => {
   // Close sidebar when resizing to larger screens but keep it visible on desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      const width = window.innerWidth;
+      if (width >= 1024) {
         // On desktop, settings sidebar should be open by default
         setSettingsSidebarOpen(true);
       } else {
@@ -104,12 +105,15 @@ const Settings = ({ onMenuClick, screenSize }) => {
   // Determine if we should show expanded content
   const showExpanded = !isCompactMode || isHovering;
   
+  // Initialize a local isMobile variable with fallback
+  const isMobile = screenSize && screenSize.isMobile;
+  
   return (
     <>
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       <div className="flex flex-col lg:flex-row w-full overflow-hidden">
         {/* Mobile overlay for sidebar */}
-        {settingsSidebarOpen && screenSize.isMobile && (
+        {settingsSidebarOpen && isMobile && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
             onClick={() => setSettingsSidebarOpen(false)}
