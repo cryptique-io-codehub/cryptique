@@ -546,8 +546,19 @@ const PricingSection = () => {
     }).format(price);
   };
 
+  // Add a function to get plan features for display in order summary
+  const getPlanFeatures = (planType) => {
+    const plan = plans.find(p => p.type === planType);
+    return plan ? plan.features : [];
+  };
+
+  // Add a function to get addon features
+  const getAddonFeatures = () => {
+    return intelligenceAddOn.features;
+  };
+
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <div className="max-w-6xl mx-auto">
         <Typography variant="h5" style={{color: styles.accentColor, fontWeight: 600, ...styles.headingFont}} className="mb-1">
           Pricing
@@ -559,29 +570,33 @@ const PricingSection = () => {
       
       {/* Main pricing content with Order Summary sidebar */}
       <div className="max-w-6xl mx-auto">
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           {/* Left side - Pricing Options - All stacked vertically */}
           <Box sx={{ flexGrow: 1, width: { xs: '100%', md: '65%' } }}>
             {/* Billing Cycle Section */}
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, ...styles.headingFont, color: styles.primaryColor }}>
                 Select Billing Cycle
               </Typography>
               
-              <Box sx={{ display: 'flex', justifyContent: 'flex-start', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
                 {/* Annual Option */}
                 <Paper 
                   elevation={activePlan === 'annual' ? 8 : 2}
                   sx={{
-                    p: 3,
-                    width: { xs: '100%', sm: '280px' },
+                    p: 2,
+                    width: { xs: '100%', sm: 'calc(50% - 8px)' },
                     cursor: 'pointer',
                     background: activePlan === 'annual' ? styles.futuristicGradient : 'white',
                     color: activePlan === 'annual' ? 'white' : 'inherit',
                     boxShadow: activePlan === 'annual' ? styles.activeGlow : 'inherit',
                     transition: 'all 0.3s ease',
                     border: `1px solid ${activePlan === 'annual' ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
-                    "&:hover": styles.cardHover
+                    "&:hover": styles.cardHover,
+                    height: '120px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                   onClick={() => handleBillingCycleToggle(null, 'annual')}
                 >
@@ -592,7 +607,7 @@ const PricingSection = () => {
                     <Chip 
                       label="Save up to 10%" 
                       size="small" 
-                      sx={{ mb: 2, backgroundColor: styles.accentColor, color: 'white' }}
+                      sx={{ mb: 1, backgroundColor: styles.accentColor, color: 'white' }}
                     />
                     <Typography variant="body2" sx={{ textAlign: 'center', ...styles.bodyFont }}>
                       Pay once per year and save
@@ -604,15 +619,19 @@ const PricingSection = () => {
                 <Paper 
                   elevation={activePlan === 'monthly' ? 8 : 2}
                   sx={{
-                    p: 3,
-                    width: { xs: '100%', sm: '280px' },
+                    p: 2,
+                    width: { xs: '100%', sm: 'calc(50% - 8px)' },
                     cursor: 'pointer',
                     background: activePlan === 'monthly' ? styles.futuristicGradient : 'white',
                     color: activePlan === 'monthly' ? 'white' : 'inherit',
                     boxShadow: activePlan === 'monthly' ? styles.activeGlow : 'inherit',
                     transition: 'all 0.3s ease',
                     border: `1px solid ${activePlan === 'monthly' ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
-                    "&:hover": styles.cardHover
+                    "&:hover": styles.cardHover,
+                    height: '120px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                   onClick={() => handleBillingCycleToggle(null, 'monthly')}
                 >
@@ -620,7 +639,7 @@ const PricingSection = () => {
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center', ...styles.headingFont }}>
                       Monthly Billing
                     </Typography>
-                    <Typography variant="body2" sx={{ textAlign: 'center', ...styles.bodyFont, mb: 2 }}>
+                    <Typography variant="body2" sx={{ textAlign: 'center', ...styles.bodyFont }}>
                       Pay month-to-month with flexibility
                     </Typography>
                   </Box>
@@ -629,8 +648,8 @@ const PricingSection = () => {
             </Box>
 
             {/* Plans Selection */}
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, ...styles.headingFont, color: styles.primaryColor }}>
                 Select Plan
               </Typography>
               
@@ -640,14 +659,14 @@ const PricingSection = () => {
                     key={plan.type} 
                     sx={{ 
                       width: { xs: '100%', sm: 'calc(50% - 8px)' },
-                      height: '100%', 
+                      height: '180px', 
                       display: 'flex' 
                     }}
                   >
                     <Paper
                       elevation={selectedPlan?.type === plan.type ? 8 : 2}
                       sx={{
-                        p: 3,
+                        p: 2,
                         width: '100%',
                         display: 'flex',
                         flexDirection: 'column',
@@ -667,11 +686,11 @@ const PricingSection = () => {
                           {plan.title}
                         </Typography>
                         
-                        <Typography variant="body2" sx={{ mb: 2, ...styles.bodyFont }}>
+                        <Typography variant="body2" sx={{ mb: 1, ...styles.bodyFont }}>
                           {plan.description}
                         </Typography>
                         
-                        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, ...styles.headingFont }}>
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
                           {plan.type === 'ENTERPRISE' ? 'Custom' : 
                             activePlan === 'annual' ? formatPrice(plan.annualPrice) : formatPrice(plan.monthlyPrice)
                           }
@@ -687,7 +706,6 @@ const PricingSection = () => {
                           size="small"
                           fullWidth
                           sx={{ 
-                            mt: 2,
                             borderColor: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor,
                             color: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor
                           }}
@@ -706,15 +724,15 @@ const PricingSection = () => {
             </Box>
             
             {/* Add-ons section */}
-            <Box sx={{ mb: 6 }}>
-              <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, ...styles.headingFont, color: styles.primaryColor }}>
                 Add-ons
               </Typography>
               
               <Paper
                 elevation={addonSelected ? 8 : 2}
                 sx={{
-                  p: 3,
+                  p: 2,
                   cursor: 'pointer',
                   background: addonSelected ? styles.futuristicGradient : 'white',
                   color: addonSelected ? 'white' : 'inherit',
@@ -724,7 +742,8 @@ const PricingSection = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  "&:hover": styles.cardHover
+                  "&:hover": styles.cardHover,
+                  height: '100px'
                 }}
                 onClick={toggleAddon}
               >
@@ -781,7 +800,7 @@ const PricingSection = () => {
               
               {selectedPlan ? (
                 <>
-                  <Box sx={{ mb: 4 }}>
+                  <Box sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                         {selectedPlan.title} Plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'})
@@ -791,15 +810,47 @@ const PricingSection = () => {
                       </Typography>
                     </Box>
                     
+                    <Box sx={{ my: 2, backgroundColor: 'rgba(29, 12, 70, 0.04)', p: 2, borderRadius: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: styles.primaryColor }}>
+                        {selectedPlan.title} Plan Features:
+                      </Typography>
+                      <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                        {getPlanFeatures(selectedPlan.type).map((feature, index) => (
+                          <li key={index}>
+                            <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                              {feature}
+                            </Typography>
+                          </li>
+                        ))}
+                      </ul>
+                    </Box>
+                    
                     {addonSelected && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body1">
-                          {intelligenceAddOn.title}
-                        </Typography>
-                        <Typography variant="body1">
-                          {activePlan === 'annual' ? formatPrice(intelligenceAddOn.annualPrice) : formatPrice(intelligenceAddOn.monthlyPrice)}
-                        </Typography>
-                      </Box>
+                      <>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, mt: 2 }}>
+                          <Typography variant="body1">
+                            {intelligenceAddOn.title}
+                          </Typography>
+                          <Typography variant="body1">
+                            {activePlan === 'annual' ? formatPrice(intelligenceAddOn.annualPrice) : formatPrice(intelligenceAddOn.monthlyPrice)}
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ my: 2, backgroundColor: 'rgba(202, 169, 104, 0.1)', p: 2, borderRadius: 1, borderLeft: `4px solid ${styles.accentColor}` }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: styles.accentColor }}>
+                            {intelligenceAddOn.title} Features:
+                          </Typography>
+                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                            {getAddonFeatures().map((feature, index) => (
+                              <li key={index}>
+                                <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                                  {feature}
+                                </Typography>
+                              </li>
+                            ))}
+                          </ul>
+                        </Box>
+                      </>
                     )}
                     
                     <Divider sx={{ my: 2 }} />
@@ -817,7 +868,7 @@ const PricingSection = () => {
                     </Box>
                   </Box>
                   
-                  <Typography variant="subtitle2" sx={{ mb: 3, ...styles.bodyFont }}>
+                  <Typography variant="subtitle2" sx={{ mb: 2, ...styles.bodyFont }}>
                     Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
                   </Typography>
                   
@@ -854,7 +905,7 @@ const PricingSection = () => {
       </div>
       
       {/* Feature Comparison Table - Enhanced */}
-      <div className="max-w-6xl mx-auto mt-16 mb-12">
+      <div className="max-w-6xl mx-auto mt-12 mb-12">
         <Typography variant="h6" sx={{ mb: 4, ...styles.headingFont, color: styles.primaryColor, textAlign: 'center' }}>
           Feature Comparison
         </Typography>
@@ -1021,7 +1072,7 @@ const PricingSection = () => {
       </div>
       
       {/* Add some extra space at the end */}
-      <Box sx={{ height: 80 }} />
+      <Box sx={{ height: 60 }} />
       
       {/* Confirmation Dialog - Keep existing code */}
     </div>
