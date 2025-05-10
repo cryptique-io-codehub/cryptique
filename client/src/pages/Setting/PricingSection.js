@@ -647,7 +647,7 @@ const PricingSection = () => {
               </Box>
             </Box>
 
-            {/* Plans Selection */}
+            {/* Plans Selection - Reducing height and fixing Enterprise plan layout */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" sx={{ mb: 2, ...styles.headingFont, color: styles.primaryColor }}>
                 Select Plan
@@ -659,7 +659,7 @@ const PricingSection = () => {
                     key={plan.type} 
                     sx={{ 
                       width: { xs: '100%', sm: 'calc(50% - 8px)' },
-                      height: '180px', 
+                      height: '140px', 
                       display: 'flex' 
                     }}
                   >
@@ -689,34 +689,34 @@ const PricingSection = () => {
                         <Typography variant="body2" sx={{ mb: 1, ...styles.bodyFont }}>
                           {plan.description}
                         </Typography>
-                        
-                        <Typography variant="h5" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
-                          {plan.type === 'ENTERPRISE' ? 'Custom' : 
-                            activePlan === 'annual' ? formatPrice(plan.annualPrice) : formatPrice(plan.monthlyPrice)
-                          }
-                          <Typography component="span" variant="body2" sx={{ ml: 1 }}>
-                            /{activePlan === 'annual' ? 'year' : 'month'}
-                          </Typography>
-                        </Typography>
                       </div>
                       
-                      {plan.type === 'ENTERPRISE' ? (
-                        <Button 
-                          variant="outlined" 
-                          size="small"
-                          fullWidth
-                          sx={{ 
-                            borderColor: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor,
-                            color: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open('mailto:sales@cryptique.io');
-                          }}
-                        >
-                          Contact Sales
-                        </Button>
-                      ) : null}
+                      <div>
+                        {plan.type === 'ENTERPRISE' ? (
+                          <Button 
+                            variant="outlined" 
+                            size="small"
+                            fullWidth
+                            sx={{ 
+                              borderColor: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor,
+                              color: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open('mailto:sales@cryptique.io');
+                            }}
+                          >
+                            Contact Sales
+                          </Button>
+                        ) : (
+                          <Typography variant="h5" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
+                            {activePlan === 'annual' ? formatPrice(plan.annualPrice) : formatPrice(plan.monthlyPrice)}
+                            <Typography component="span" variant="body2" sx={{ ml: 1 }}>
+                              /{activePlan === 'annual' ? 'year' : 'month'}
+                            </Typography>
+                          </Typography>
+                        )}
+                      </div>
                     </Paper>
                   </Box>
                 ))}
