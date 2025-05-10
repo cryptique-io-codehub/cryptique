@@ -275,4 +275,57 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   }
 });
 
+// Get subscription for a team
+router.get('/subscription/:teamId', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+
+    // Find the team
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // If no subscription exists, return null
+    if (!team.subscription.stripeSubscriptionId) {
+      return res.json(null);
+    }
+
+    // Get subscription details from Stripe
+    const subscription = await stripe.subscriptions.retrieve(
+      team.subscription.stripeSubscriptionId,
+      {
+        expand: ['customer', 'items.data.price.product']
+      }
+    );
+
+    // Get the current plan details
+    const currentPlan = subscription.items.data[0].price.product;
+    const hasCQIntelligence = subscription.items.data.some(item => 
+      item.price.id === process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE || 
+      item.price.id === process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE_ANNUAL
+    );
+
+    res.json({
+      subscription: {
+        id: subscription.id,
+        status: subscription.status,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        plan: team.subscription.plan,
+        hasCQIntelligence,
+        billingCycle: team.subscription.billingCycle,
+        currentPlan: {
+          id: currentPlan.id,
+          name: currentPlan.name,
+          description: currentPlan.description
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription details' });
+  }
+});
+
 module.exports = router; 

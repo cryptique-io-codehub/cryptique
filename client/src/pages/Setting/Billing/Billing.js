@@ -230,50 +230,27 @@ const Billing = () => {
     const loadTeam = async () => {
       try {
         setLoading(true);
-        
-        // Get team from localStorage - could be name or object depending on your app's implementation
-        const storedTeam = localStorage.getItem("selectedTeam");
-        
-        if (!storedTeam) {
-          setError("No team selected. Please select a team first.");
-          setLoading(false);
+        // Get the current team from localStorage or your auth context
+        const teamId = localStorage.getItem('currentTeamId');
+        if (!teamId) {
+          setError('No team selected. Please select a team first.');
           return;
         }
-        
-        // Try to parse the stored team in case it's a JSON object
-        let teamData;
-        try {
-          teamData = JSON.parse(storedTeam);
-        } catch (e) {
-          // If parsing fails, it's probably just a string (team name)
-          teamData = { name: storedTeam };
-        }
-        
-        // Check if we have a team ID stored separately
-        const teamId = localStorage.getItem("selectedTeamId") || teamData._id;
-        
-        // For this app, we'll use any valid-looking ID - remove the temp-id check
-        const finalTeamObj = {
-          ...teamData,
-          name: teamData.name || storedTeam,
-          _id: teamId || storedTeam, // Use the team name as ID if nothing else available
-          subscription: teamData.subscription || {
-            plan: "free",
-            status: "inactive"
-          }
-        };
-        
-        setCurrentTeam(finalTeamObj);
-        setLoading(false);
+
+        // Fetch team details
+        const response = await axios.get(`${process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app'}/api/team/${teamId}`);
+        setCurrentTeam(response.data);
+        setError(null);
       } catch (err) {
-        console.error("Error loading team:", err);
-        setError("Failed to load team information.");
+        console.error('Error loading team:', err);
+        setError('Failed to load team information. Please try again later.');
+      } finally {
         setLoading(false);
       }
     };
-    
+
     loadTeam();
-  }, [success, sessionId]); // Reload team data after successful subscription
+  }, []);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -301,128 +278,77 @@ const Billing = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Success notification if present */}
-      {successMessage && (
-        <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex justify-between w-full">
-              <p className="text-sm text-green-700">
-                {successMessage}
-              </p>
-              <button onClick={handleDismissMessage} className="text-green-700">
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Billing & Subscription</h1>
       
-      {/* Error notification if present */}
       {error && (
-        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex justify-between w-full">
-              <p className="text-sm text-yellow-700">
-                {error}
-                {error.includes("No team selected") && (
-                  <span className="ml-2">
-                    <Link to="/teams" className="font-medium underline text-yellow-700 hover:text-yellow-600">
-                      Go to Teams
-                    </Link>
-                  </span>
-                )}
-              </p>
-              <button onClick={handleDismissMessage} className="text-yellow-700">
-                <X size={16} />
-              </button>
-            </div>
-          </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
         </div>
       )}
 
-      {/* Plan management section */}
-      <div className="mt-6 mb-10">
-        <div className="text-lg font-semibold flex flex-wrap items-center gap-4 md:gap-6 px-4 text-center">
-          <span className="whitespace-nowrap">Plan management</span>
-          <div className="bg-indigo-900 text-white p-4 rounded-md w-full sm:w-auto flex justify-center items-center text-center break-words">
-            <p className="text-sm md:text-base break-words">
-              {currentTeam?.name || 'No Team Selected'} - {currentTeam?.subscription?.status || 'Inactive'}
-            </p>
-          </div>
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+          {successMessage}
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Left card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Billing details</h2>
-          
-          <p className="text-sm text-gray-600 mb-4">
-            To receive a VAT invoice, you must provide your company's details.
-          </p>
-          
-          <button 
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-            onClick={openModal}
-          >
-            Add company details
-          </button>
-          
-          {/* Display billing details if available */}
-          {billingDetails && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm font-medium">{billingDetails.companyName}</p>
-              <p className="text-sm text-gray-600">{billingDetails.address}</p>
-              <p className="text-sm text-gray-600">
-                {billingDetails.city}, {billingDetails.zipCode}
-              </p>
-              <p className="text-sm text-gray-600">{billingDetails.country}</p>
-            </div>
-          )}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
-        
-        {/* Right card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Billing & Payment</h2>
+      ) : (
+        <>
+          <StripeSubscription 
+            teamId={currentTeam?._id} 
+            currentTeam={currentTeam}
+          />
           
-          <div className="flex justify-between border-b pb-2 mb-2">
-            <span className="text-sm text-gray-600">Subscription end date</span>
-            <span className="text-sm">
-              {currentTeam?.subscription?.endDate 
-                ? new Date(currentTeam.subscription.endDate).toLocaleDateString() 
-                : 'N/A'}
-            </span>
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
+            {billingDetails ? (
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Company Name</p>
+                    <p className="font-medium">{billingDetails.companyName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Address</p>
+                    <p className="font-medium">{billingDetails.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">City</p>
+                    <p className="font-medium">{billingDetails.city}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Zip/Postal Code</p>
+                    <p className="font-medium">{billingDetails.zipCode}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Country</p>
+                    <p className="font-medium">{billingDetails.country}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={openModal}
+                  className="mt-4 text-blue-600 hover:text-blue-800"
+                >
+                  Edit Details
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={openModal}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Add Billing Details
+              </button>
+            )}
           </div>
-          <div className="flex justify-between border-b pb-2 mb-2">
-            <span className="text-sm text-gray-600">Current Plan</span>
-            <span className="text-sm">
-              {currentTeam?.subscription?.plan 
-                ? currentTeam.subscription.plan.charAt(0).toUpperCase() + currentTeam.subscription.plan.slice(1)
-                : 'Free'}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Stripe Subscription Management */}
-      <div className="bg-white rounded-lg shadow overflow-hidden p-6">
-        {currentTeam && (
-          <StripeSubscription teamId={currentTeam._id} currentTeam={currentTeam} />
-        )}
-      </div>
-      
-      {/* Billing Details Modal */}
+        </>
+      )}
+
       <BillingDetailsModal
         isOpen={isModalOpen}
         onClose={closeModal}
