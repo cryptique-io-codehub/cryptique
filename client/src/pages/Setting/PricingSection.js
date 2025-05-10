@@ -118,6 +118,27 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
   );
 };
 
+// Add these functions to handle billing details
+const fetchBillingDetails = async (teamId, axiosInstance) => {
+  try {
+    const response = await axiosInstance.get(`/team/${teamId}/billing-address`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching billing details:", error);
+    return null;
+  }
+};
+
+const saveBillingDetails = async (teamId, billingData, axiosInstance) => {
+  try {
+    const response = await axiosInstance.post(`/team/${teamId}/billing-address`, billingData);
+    return response.data;
+  } catch (error) {
+    console.error("Error saving billing details:", error);
+    throw error;
+  }
+};
+
 const PricingSection = () => {
   // States for handling plans and UI
   const [activePlan, setActivePlan] = useState('monthly');
@@ -145,8 +166,13 @@ const PricingSection = () => {
           setTeams([selectedTeam]);
           
           // Try to load saved billing address for team
-          if (selectedTeam.billingAddress) {
-            setBillingAddress(selectedTeam.billingAddress);
+          try {
+            const billingData = await fetchBillingDetails(selectedTeam._id, axiosInstance);
+            if (billingData) {
+              setBillingAddress(billingData);
+            }
+          } catch (err) {
+            console.error("Error loading billing address:", err);
           }
           
           setLoading(false);
@@ -176,9 +202,9 @@ const PricingSection = () => {
               
               // Try to load saved billing address for team
               try {
-                const billingRes = await axiosInstance.get(`/team/${teamId}/billing-address`);
-                if (billingRes.data) {
-                  setBillingAddress(billingRes.data);
+                const billingData = await fetchBillingDetails(teamId, axiosInstance);
+                if (billingData) {
+                  setBillingAddress(billingData);
                 }
               } catch (err) {
                 console.log("No saved billing address found");
@@ -243,7 +269,7 @@ const PricingSection = () => {
       // Save billing address to team if needed
       if (billingAddress) {
         try {
-          await axiosInstance.post(`/team/${selectedTeamId}/billing-address`, billingAddress);
+          await saveBillingDetails(selectedTeamId, billingAddress, axiosInstance);
         } catch (err) {
           console.error("Error saving billing address:", err);
           // Continue even if saving address fails

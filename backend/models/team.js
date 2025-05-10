@@ -53,6 +53,10 @@ const teamsSchema=new mongoose.Schema({
             enum: ['monthly', 'annual'],
             default: 'monthly'
         }
+    },
+    billingAddress: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
     }
 }, { timestamps: true });
 

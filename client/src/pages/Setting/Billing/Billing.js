@@ -269,6 +269,28 @@ const fetchSubscription = async (teamId) => {
   }
 };
 
+const fetchBillingDetails = async (teamId) => {
+  try {
+    const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+    const res = await axios.get(`${API_URL}/team/${teamId}/billing-address`);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching billing details:", error);
+    return null;
+  }
+};
+
+const saveBillingDetails = async (teamId, billingData) => {
+  try {
+    const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+    const res = await axios.post(`${API_URL}/team/${teamId}/billing-address`, billingData);
+    return res.data;
+  } catch (error) {
+    console.error("Error saving billing details:", error);
+    throw error;
+  }
+};
+
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
@@ -323,11 +345,12 @@ const Billing = () => {
         }
         setLoading(true);
         // Fetch usage
-        const [websites, contracts, members, sub] = await Promise.all([
+        const [websites, contracts, members, sub, billingData] = await Promise.all([
           fetchWebsites(selectedTeam._id),
           fetchContracts(selectedTeam._id),
           fetchMembers(selectedTeam),
-          fetchSubscription(selectedTeam._id)
+          fetchSubscription(selectedTeam._id),
+          fetchBillingDetails(selectedTeam._id)
         ]);
         setUsage({
           websites: websites.length,
@@ -336,6 +359,11 @@ const Billing = () => {
         });
         setSubscription(sub);
         setPlanKey(getPlanKey(sub?.subscription?.plan));
+        
+        // Set billing details if available
+        if (billingData) {
+          setBillingDetails(billingData);
+        }
       } catch (e) {
         setError('Failed to load usage or subscription info.');
       } finally {
@@ -348,8 +376,30 @@ const Billing = () => {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  const handleSaveBillingDetails = (data) => {
-    setBillingDetails(data);
+  const handleSaveBillingDetails = async (data) => {
+    try {
+      if (!selectedTeam || !selectedTeam._id) {
+        setError('No team selected. Cannot save billing details.');
+        return;
+      }
+      
+      // Save to state
+      setBillingDetails(data);
+      
+      // Save to database
+      await saveBillingDetails(selectedTeam._id, data);
+      
+      // Show success message
+      setSuccessMessage('Billing details saved successfully');
+      
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (error) {
+      setError('Failed to save billing details to the database.');
+      console.error('Error saving billing details:', error);
+    }
   };
 
   const handleDismissMessage = () => {
