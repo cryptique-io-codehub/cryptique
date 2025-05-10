@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress } from "@mui/material";
+import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, FormControlLabel, Checkbox } from "@mui/material";
 import { Check, Close, Psychology } from '@mui/icons-material';
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
@@ -35,23 +35,56 @@ const styles = {
   }
 };
 
-const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
+const BillingAddressForm = ({ billingAddress, setBillingAddress, errors = {} }) => {
+  const [formData, setFormData] = useState(billingAddress || {
+    name: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "US",
+    email: "",
+    tax_number: "",
+    isRegisteredCompany: false
+  });
+
+  // Update formData when billingAddress changes
+  useEffect(() => {
+    if (billingAddress) {
+      setFormData({
+        name: billingAddress.name || "",
+        line1: billingAddress.line1 || "",
+        line2: billingAddress.line2 || "",
+        city: billingAddress.city || "",
+        state: billingAddress.state || "",
+        postal_code: billingAddress.postal_code || "",
+        country: billingAddress.country || "US",
+        email: billingAddress.email || "",
+        tax_number: billingAddress.tax_number || "",
+        isRegisteredCompany: billingAddress.isRegisteredCompany || false
+      });
+    }
+  }, [billingAddress]);
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setBillingAddress({
-      ...billingAddress,
-      [name]: value
-    });
+    const { name, value, type, checked } = e.target;
+    const newFormData = {
+      ...formData,
+      [name]: type === "checkbox" ? checked : value
+    };
+    setFormData(newFormData);
+    setBillingAddress(newFormData);
   };
 
   return (
     <div className="space-y-4">
       <div>
         <TextField
-          label="Full Name"
+          label="Company Name"
           name="name"
           fullWidth
-          value={billingAddress?.name || ''}
+          value={formData.name || ''}
           onChange={handleInputChange}
           error={!!errors.name}
           helperText={errors.name || ''}
@@ -60,14 +93,49 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
       </div>
       <div>
         <TextField
-          label="Street Address"
+          label="Email Address"
+          name="email"
+          type="email"
+          fullWidth
+          value={formData.email || ''}
+          onChange={handleInputChange}
+          error={!!errors.email}
+          helperText={errors.email || ''}
+          required
+        />
+      </div>
+      <div>
+        <TextField
+          label="Company Tax Number"
+          name="tax_number"
+          fullWidth
+          value={formData.tax_number || ''}
+          onChange={handleInputChange}
+          error={!!errors.tax_number}
+          helperText={errors.tax_number || ''}
+        />
+      </div>
+      <div>
+        <TextField
+          label="Address Line 1"
           name="line1"
           fullWidth
-          value={billingAddress?.line1 || ''}
+          value={formData.line1 || ''}
           onChange={handleInputChange}
           error={!!errors.line1}
           helperText={errors.line1 || ''}
           required
+        />
+      </div>
+      <div>
+        <TextField
+          label="Address Line 2"
+          name="line2"
+          fullWidth
+          value={formData.line2 || ''}
+          onChange={handleInputChange}
+          error={!!errors.line2}
+          helperText={errors.line2 || ''}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -75,7 +143,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
           label="City"
           name="city"
           fullWidth
-          value={billingAddress?.city || ''}
+          value={formData.city || ''}
           onChange={handleInputChange}
           error={!!errors.city}
           helperText={errors.city || ''}
@@ -85,7 +153,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
           label="State/Province"
           name="state"
           fullWidth
-          value={billingAddress?.state || ''}
+          value={formData.state || ''}
           onChange={handleInputChange}
           error={!!errors.state}
           helperText={errors.state || ''}
@@ -97,7 +165,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
           label="Postal Code"
           name="postal_code"
           fullWidth
-          value={billingAddress?.postal_code || ''}
+          value={formData.postal_code || ''}
           onChange={handleInputChange}
           error={!!errors.postal_code}
           helperText={errors.postal_code || ''}
@@ -107,11 +175,35 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
           label="Country"
           name="country"
           fullWidth
-          value={billingAddress?.country || ''}
+          select
+          value={formData.country || ''}
           onChange={handleInputChange}
           error={!!errors.country}
           helperText={errors.country || ''}
           required
+        >
+          <MenuItem value="US">United States</MenuItem>
+          <MenuItem value="UK">United Kingdom</MenuItem>
+          <MenuItem value="CA">Canada</MenuItem>
+          <MenuItem value="IN">India</MenuItem>
+          <MenuItem value="AU">Australia</MenuItem>
+          <MenuItem value="DE">Germany</MenuItem>
+          <MenuItem value="FR">France</MenuItem>
+          <MenuItem value="JP">Japan</MenuItem>
+          <MenuItem value="BR">Brazil</MenuItem>
+          <MenuItem value="IT">Italy</MenuItem>
+        </TextField>
+      </div>
+      <div>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={formData.isRegisteredCompany || false}
+              onChange={handleInputChange}
+              name="isRegisteredCompany"
+            />
+          }
+          label="I confirm this is being purchased on behalf of a registered company"
         />
       </div>
     </div>
@@ -238,13 +330,18 @@ const PricingSection = () => {
 
   const validateBillingAddress = () => {
     const errors = {};
-    const requiredFields = ['name', 'line1', 'city', 'state', 'postal_code', 'country'];
+    const requiredFields = ['name', 'email', 'line1', 'city', 'state', 'postal_code', 'country'];
     
     requiredFields.forEach(field => {
       if (!billingAddress || !billingAddress[field]) {
         errors[field] = 'This field is required';
       }
     });
+    
+    // Validate email format
+    if (billingAddress?.email && !/\S+@\S+\.\S+/.test(billingAddress.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
     
     setAddressErrors(errors);
     return Object.keys(errors).length === 0;
@@ -711,10 +808,16 @@ const PricingSection = () => {
           ) : billingAddress ? (
             <Box sx={{ mb: 2, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
               {billingAddress.name && <Typography variant="body2">{billingAddress.name}</Typography>}
+              {billingAddress.email && <Typography variant="body2">{billingAddress.email}</Typography>}
+              {billingAddress.tax_number && (
+                <Typography variant="body2">
+                  <strong>Tax ID:</strong> {billingAddress.tax_number}
+                </Typography>
+              )}
               {billingAddress.line1 && <Typography variant="body2">{billingAddress.line1}</Typography>}
               {billingAddress.line2 && <Typography variant="body2">{billingAddress.line2}</Typography>}
               {billingAddress.city && <Typography variant="body2">
-                {billingAddress.city}, {billingAddress.state} {billingAddress.postalCode || billingAddress.postal_code}
+                {billingAddress.city}, {billingAddress.state} {billingAddress.postal_code}
               </Typography>}
               {billingAddress.country && <Typography variant="body2">{billingAddress.country}</Typography>}
               

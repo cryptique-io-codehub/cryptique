@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress } from "@mui/material";
+import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, FormControlLabel, Checkbox } from "@mui/material";
 import { Check, Close, Psychology, Teams } from '@mui/icons-material';
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "../context/teamContext";
@@ -161,36 +161,77 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress }) => {
     line2: "",
     city: "",
     state: "",
-    postalCode: "",
-    country: "US"
+    postal_code: "",
+    country: "US",
+    email: "",
+    tax_number: "",
+    isRegisteredCompany: false
   });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  // Update formData when billingAddress changes
+  useEffect(() => {
+    if (billingAddress) {
+      setFormData({
+        name: billingAddress.name || "",
+        line1: billingAddress.line1 || "",
+        line2: billingAddress.line2 || "",
+        city: billingAddress.city || "",
+        state: billingAddress.state || "",
+        postal_code: billingAddress.postal_code || "",
+        country: billingAddress.country || "US",
+        email: billingAddress.email || "",
+        tax_number: billingAddress.tax_number || "",
+        isRegisteredCompany: billingAddress.isRegisteredCompany || false
+      });
+    }
+  }, [billingAddress]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setBillingAddress(formData);
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const newFormData = {
+      ...formData,
+      [name]: type === "checkbox" ? checked : value
+    };
+    setFormData(newFormData);
+    setBillingAddress(newFormData);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form>
       <Grid container spacing={2}>
         <Grid item xs={12}>
           <TextField
             required
             fullWidth
             name="name"
-            label="Full Name / Company Name"
+            label="Company Name"
             value={formData.name}
             onChange={handleChange}
           />
         </Grid>
+        
+        <Grid item xs={12}>
+          <TextField
+            required
+            fullWidth
+            name="email"
+            label="Email Address"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+          />
+        </Grid>
+        
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            name="tax_number"
+            label="Company Tax Number"
+            value={formData.tax_number || ""}
+            onChange={handleChange}
+          />
+        </Grid>
+        
         <Grid item xs={12}>
           <TextField
             required
@@ -201,6 +242,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress }) => {
             onChange={handleChange}
           />
         </Grid>
+        
         <Grid item xs={12}>
           <TextField
             fullWidth
@@ -210,6 +252,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress }) => {
             onChange={handleChange}
           />
         </Grid>
+        
         <Grid item xs={12} sm={6}>
           <TextField
             required
@@ -220,6 +263,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress }) => {
             onChange={handleChange}
           />
         </Grid>
+        
         <Grid item xs={12} sm={6}>
           <TextField
             required
@@ -230,24 +274,51 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress }) => {
             onChange={handleChange}
           />
         </Grid>
+        
         <Grid item xs={12} sm={6}>
           <TextField
             required
             fullWidth
-            name="postalCode"
+            name="postal_code"
             label="Postal Code"
-            value={formData.postalCode}
+            value={formData.postal_code}
             onChange={handleChange}
           />
         </Grid>
+        
         <Grid item xs={12} sm={6}>
           <TextField
             required
             fullWidth
+            select
             name="country"
             label="Country"
             value={formData.country}
             onChange={handleChange}
+          >
+            <MenuItem value="US">United States</MenuItem>
+            <MenuItem value="UK">United Kingdom</MenuItem>
+            <MenuItem value="CA">Canada</MenuItem>
+            <MenuItem value="IN">India</MenuItem>
+            <MenuItem value="AU">Australia</MenuItem>
+            <MenuItem value="DE">Germany</MenuItem>
+            <MenuItem value="FR">France</MenuItem>
+            <MenuItem value="JP">Japan</MenuItem>
+            <MenuItem value="BR">Brazil</MenuItem>
+            <MenuItem value="IT">Italy</MenuItem>
+          </TextField>
+        </Grid>
+        
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={formData.isRegisteredCompany} 
+                onChange={handleChange}
+                name="isRegisteredCompany"
+              />
+            }
+            label="I confirm this is being purchased on behalf of a registered company"
           />
         </Grid>
       </Grid>
@@ -848,10 +919,16 @@ const Pricing = () => {
               </Typography>
               <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(29, 12, 70, 0.04)', borderRadius: 1 }}>
                 {billingAddress.name && <Typography variant="body2">{billingAddress.name}</Typography>}
+                {billingAddress.email && <Typography variant="body2">{billingAddress.email}</Typography>}
+                {billingAddress.tax_number && (
+                  <Typography variant="body2">
+                    <strong>Tax ID:</strong> {billingAddress.tax_number}
+                  </Typography>
+                )}
                 {billingAddress.line1 && <Typography variant="body2">{billingAddress.line1}</Typography>}
                 {billingAddress.line2 && <Typography variant="body2">{billingAddress.line2}</Typography>}
                 {billingAddress.city && <Typography variant="body2">
-                  {billingAddress.city}, {billingAddress.state} {billingAddress.postalCode || billingAddress.postal_code}
+                  {billingAddress.city}, {billingAddress.state} {billingAddress.postal_code}
                 </Typography>}
                 {billingAddress.country && <Typography variant="body2">{billingAddress.country}</Typography>}
               </Box>

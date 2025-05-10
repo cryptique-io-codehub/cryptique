@@ -7,15 +7,37 @@ import { useTeam } from "../../../context/teamContext";
 import { CircularProgress, Alert, Button, Paper } from '@mui/material';
 
 // Billing Details Modal Component
-const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
+const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
-    companyName: "",
-    address: "",
+    name: "",
+    line1: "",
+    line2: "",
     city: "",
-    zipCode: "",
+    state: "",
+    postal_code: "",
     country: "",
+    email: "",
+    tax_number: "",
     isRegisteredCompany: false
   });
+
+  // Load initial data when the modal opens or initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        line1: initialData.line1 || initialData.address || "",
+        line2: initialData.line2 || "",
+        city: initialData.city || "",
+        state: initialData.state || "",
+        postal_code: initialData.postal_code || initialData.zipCode || "",
+        country: initialData.country || "",
+        email: initialData.email || "",
+        tax_number: initialData.tax_number || "",
+        isRegisteredCompany: initialData.isRegisteredCompany || false
+      });
+    }
+  }, [initialData, isOpen]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -33,11 +55,15 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
 
   const handleClear = () => {
     setFormData({
-      companyName: "",
-      address: "",
+      name: "",
+      line1: "",
+      line2: "",
       city: "",
-      zipCode: "",
+      state: "",
+      postal_code: "",
       country: "",
+      email: "",
+      tax_number: "",
       isRegisteredCompany: false
     });
   };
@@ -56,14 +82,14 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
 
         <form onSubmit={handleSubmit} className="p-4">
           <div className="mb-4">
-            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
-              Company name
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Company name*
             </label>
             <input
               type="text"
-              id="companyName"
-              name="companyName"
-              value={formData.companyName}
+              id="name"
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
@@ -71,17 +97,60 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
           </div>
 
           <div className="mb-4">
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-              Address
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email address*
             </label>
             <input
-              type="text"
-              id="address"
-              name="address"
-              value={formData.address}
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="tax_number" className="block text-sm font-medium text-gray-700 mb-1">
+              Company tax number
+            </label>
+            <input
+              type="text"
+              id="tax_number"
+              name="tax_number"
+              value={formData.tax_number}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="line1" className="block text-sm font-medium text-gray-700 mb-1">
+              Address line 1*
+            </label>
+            <input
+              type="text"
+              id="line1"
+              name="line1"
+              value={formData.line1}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="line2" className="block text-sm font-medium text-gray-700 mb-1">
+              Address line 2
+            </label>
+            <input
+              type="text"
+              id="line2"
+              name="line2"
+              value={formData.line2}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
 
@@ -101,14 +170,14 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
               />
             </div>
             <div className="w-1/2">
-              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                Zip/Postal Code*
+              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                State/Province*
               </label>
               <input
                 type="text"
-                id="zipCode"
-                name="zipCode"
-                value={formData.zipCode}
+                id="state"
+                name="state"
+                value={formData.state}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 required
@@ -116,35 +185,51 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
             </div>
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-              Country
-            </label>
-            <div className="relative">
-              <select
-                id="country"
-                name="country"
-                value={formData.country}
+          <div className="flex gap-4 mb-4">
+            <div className="w-1/2">
+              <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">
+                Zip/Postal Code*
+              </label>
+              <input
+                type="text"
+                id="postal_code"
+                name="postal_code"
+                value={formData.postal_code}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md appearance-none pr-8"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 required
-              >
-                <option value="">Select a country</option>
-                <option value="US">United States</option>
-                <option value="UK">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="IN">India</option>
-                <option value="AU">Australia</option>
-                <option value="DE">Germany</option>
-                <option value="FR">France</option>
-                <option value="JP">Japan</option>
-                <option value="BR">Brazil</option>
-                <option value="IT">Italy</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 20 20" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
-                </svg>
+              />
+            </div>
+            <div className="w-1/2">
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                Country*
+              </label>
+              <div className="relative">
+                <select
+                  id="country"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md appearance-none pr-8"
+                  required
+                >
+                  <option value="">Select a country</option>
+                  <option value="US">United States</option>
+                  <option value="UK">United Kingdom</option>
+                  <option value="CA">Canada</option>
+                  <option value="IN">India</option>
+                  <option value="AU">Australia</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="JP">Japan</option>
+                  <option value="BR">Brazil</option>
+                  <option value="IT">Italy</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -557,19 +642,31 @@ const Billing = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Company Name</p>
-                <p className="font-medium">{billingDetails.companyName}</p>
+                <p className="font-medium">{billingDetails.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{billingDetails.email}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tax Number</p>
+                <p className="font-medium">{billingDetails.tax_number}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Address</p>
-                <p className="font-medium">{billingDetails.address}</p>
+                <p className="font-medium">{billingDetails.line1} {billingDetails.line2}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">City</p>
                 <p className="font-medium">{billingDetails.city}</p>
               </div>
               <div>
+                <p className="text-sm text-gray-500">State</p>
+                <p className="font-medium">{billingDetails.state}</p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-500">Zip/Postal Code</p>
-                <p className="font-medium">{billingDetails.zipCode}</p>
+                <p className="font-medium">{billingDetails.postal_code}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Country</p>
@@ -592,6 +689,7 @@ const Billing = () => {
         isOpen={isModalOpen}
         onClose={closeModal}
         onSave={handleSaveBillingDetails}
+        initialData={billingDetails}
       />
     </div>
   );
