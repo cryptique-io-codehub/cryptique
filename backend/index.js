@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
+const stripeRouter = require("./routes/stripeRouter");
 const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
 const { connectToDatabase } = require("./config/database");
@@ -196,6 +197,9 @@ console.log('Loading routes...');
 
 // Health check routes - minimal CORS and no rate limiting
 app.use("/health", healthRouter);
+
+// Stripe routes
+app.use("/api/stripe", stripeRouter);
 
 // Apply specific CORS for SDK routes
 app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings

@@ -27,7 +27,7 @@ import {
   Tooltip,
   Stack
 } from '@mui/material';
-import { Check, Info, Star, StarBorder, Bolt, Lock, Shield, CheckCircle } from '@mui/icons-material';
+import { Check, Info, Star, StarBorder } from '@mui/icons-material';
 import { 
   getSubscriptionPlans, 
   getSubscription, 
@@ -49,7 +49,6 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [selectedPlanType, setSelectedPlanType] = useState(null);
-  const [isHovering, setIsHovering] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,15 +66,11 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         setPlans(formattedPlans);
         setAddons(plansData.addons);
         
-        // Fetch current subscription if team ID is available
-        if (teamId) {
+        // Fetch current subscription if team ID is available and looks valid
+        // In production, we'd check for a valid MongoDB ID format
+        if (teamId && teamId !== "temp-id") {
           const subscriptionData = await getSubscription(teamId);
           setSubscription(subscriptionData);
-          
-          // Set billing cycle based on current subscription
-          if (subscriptionData?.subscription?.billingCycle) {
-            setBillingCycle(subscriptionData.subscription.billingCycle);
-          }
         }
         
         setError(null);
@@ -89,12 +84,6 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     
     fetchData();
   }, [teamId]);
-
-  const handleBillingCycleChange = (event, newBillingCycle) => {
-    if (newBillingCycle !== null) {
-      setBillingCycle(newBillingCycle);
-    }
-  };
 
   const getStatusChipColor = (status) => {
     switch(status) {
@@ -110,6 +99,12 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         return 'info';
       default:
         return 'default';
+    }
+  };
+
+  const handleBillingCycleChange = (event, newBillingCycle) => {
+    if (newBillingCycle !== null) {
+      setBillingCycle(newBillingCycle);
     }
   };
 
@@ -202,7 +197,7 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
         await cancelCQIntelligence(teamId, subscription.subscription.stripeSubscriptionId);
       } else {
         // Turn on CQ Intelligence
-        await addCQIntelligence(teamId, subscription.subscription.stripeSubscriptionId, billingCycle);
+        await addCQIntelligence(teamId, subscription.subscription.stripeSubscriptionId);
       }
       
       // Refetch subscription data
@@ -218,6 +213,23 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getCurrentPlanDetails = () => {
+    if (!subscription) return null;
+    
+    const planId = subscription.subscription.plan.toUpperCase();
+    const plan = plans.find(p => p.id === planId);
+    return plan;
+  };
+
   const hasCQIntelligence = () => {
     if (!subscription) return false;
     
@@ -230,12 +242,18 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     return hasAddon || currentTeam?.subscription?.cqIntelligence;
   };
 
-  const getFeatureIcon = (feature) => {
-    if (feature.includes('analytics')) return <Bolt color="primary" fontSize="small" />;
-    if (feature.includes('team')) return <Shield color="secondary" fontSize="small" />;
-    if (feature.includes('API') || feature.includes('api')) return <Lock color="warning" fontSize="small" />;
-    return <Check color="success" fontSize="small" />;
-  };
+  if (!teamId) {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Subscription Management
+        </Typography>
+        <Alert severity="warning">
+          No team selected. Please select a team to manage subscriptions.
+        </Alert>
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
@@ -245,159 +263,126 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
     );
   }
 
-  if (!teamId) {
-    return (
-      <Box my={6} id="subscription-management">
-        <Alert severity="warning" variant="outlined">
-          Please select a team to view and manage subscription plans.
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box id="subscription-management">
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h5" sx={{ mb: 2 }}>
+        Subscription Management
+      </Typography>
+      
       {error && (
-        <Alert severity="error" sx={{ mb: 4 }} variant="filled">
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
       
+      {!teamId && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          No team selected. Please select a team to subscribe to a plan.
+        </Alert>
+      )}
+      
       {/* Current Subscription Information - Only show if we have an active subscription */}
-      {subscription && (
-        <Paper elevation={0} sx={{ p: 4, mb: 6, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: 'rgba(25, 118, 210, 0.02)' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Current Subscription
-              </Typography>
-              
-              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body1" sx={{ mr: 1, fontWeight: 500 }}>
-                  Status:
-                </Typography>
-                <Chip 
-                  label={subscription.subscription.status.toUpperCase()} 
-                  color={getStatusChipColor(subscription.subscription.status)}
-                  size="small"
-                  sx={{ fontWeight: 'bold' }}
-                />
-              </Box>
-            </Box>
-            
-            <Box>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={handleManagePaymentMethod}
-                startIcon={<Shield />}
-                sx={{ mr: 1 }}
-              >
-                Manage Payment Methods
-              </Button>
-              
-              {subscription.subscription.status !== 'canceled' && (
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={handleCancelSubscription}
-                  sx={{ mt: { xs: 1, sm: 0 } }}
-                >
-                  Cancel Subscription
-                </Button>
-              )}
-            </Box>
+      {subscription ? (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Current Subscription
+          </Typography>
+          
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body1" sx={{ mr: 1 }}>
+              Status:
+            </Typography>
+            <Chip 
+              label={subscription.subscription.status.toUpperCase()} 
+              color={getStatusChipColor(subscription.subscription.status)}
+              size="small"
+            />
           </Box>
           
-          <Divider sx={{ my: 2 }} />
-          
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6} lg={3}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Plan
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {subscription.subscription.plan.toUpperCase()}
-                </Typography>
-              </Box>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary">
+                Plan: <strong>{getCurrentPlanDetails()?.name || subscription.subscription.plan}</strong>
+              </Typography>
             </Grid>
-            
-            <Grid item xs={12} md={6} lg={3}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Billing Cycle
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {subscription.subscription.billingCycle === 'annual' ? 'Annual' : 'Monthly'}
-                </Typography>
-              </Box>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary">
+                Billing Period: <strong>{billingCycle === 'monthly' ? 'Monthly' : 'Annual'}</strong>
+              </Typography>
             </Grid>
-            
-            <Grid item xs={12} md={6} lg={3}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Current Period Start
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {new Date(subscription.subscription.currentPeriodStart).toLocaleDateString()}
-                </Typography>
-              </Box>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary">
+                Current Period Start: <strong>{formatDate(subscription.subscription.currentPeriodStart)}</strong>
+              </Typography>
             </Grid>
-            
-            <Grid item xs={12} md={6} lg={3}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Next Billing Date
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
-                </Typography>
-              </Box>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary">
+                Current Period End: <strong>{formatDate(subscription.subscription.currentPeriodEnd)}</strong>
+              </Typography>
             </Grid>
           </Grid>
-          
-          <Divider sx={{ my: 2 }} />
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Info color="primary" sx={{ mr: 1 }} />
-              <Typography variant="body1" fontWeight="medium">
-                CQ Intelligence Add-on
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Switch 
-                checked={hasCQIntelligence()} 
-                onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
-                disabled={loading}
-                color="primary"
-              />
-              <Typography variant="body2" fontWeight="medium" sx={{ ml: 1 }}>
-                {hasCQIntelligence() ? 'Enabled' : 'Disabled'} 
-                <Box component="span" sx={{ ml: 1, color: 'text.secondary' }}>
-                  (+${billingCycle === 'monthly' ? addons?.CQ_INTELLIGENCE?.price : (addons?.CQ_INTELLIGENCE?.annualPrice / 12).toFixed(0)}/mo)
-                </Box>
-              </Typography>
-            </Box>
+
+          <Typography variant="subtitle1" gutterBottom>
+            Add-ons:
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <Typography variant="body2">
+              CQ Intelligence
+            </Typography>
+            <Switch 
+              checked={hasCQIntelligence()} 
+              onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
+              disabled={loading}
+            />
+            <Typography variant="body2" color="text.secondary">
+              {hasCQIntelligence() ? 'Enabled' : 'Disabled'} 
+              (+${addons?.CQ_INTELLIGENCE?.price || 299}/month)
+            </Typography>
           </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="primary"
+              onClick={handleManagePaymentMethod}
+              disabled={loading}
+            >
+              Manage Payment Methods
+            </Button>
+            <Button 
+              variant="outlined" 
+              color="error"
+              onClick={handleCancelSubscription}
+              disabled={loading || subscription.subscription.status === 'canceled' || subscription.subscription.status === 'cancelled'}
+            >
+              Cancel Subscription
+            </Button>
+          </Box>
+        </Paper>
+      ) : (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="body1" gutterBottom>
+            {teamId === "temp-id" ? 
+              "This is a preview of available plans. Select a valid team to subscribe." :
+              "You don't have an active subscription."}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Choose a plan below to get started.
+          </Typography>
         </Paper>
       )}
       
       {/* Billing cycle toggle */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
-        <Paper elevation={0} sx={{ p: 1, border: '1px solid #e0e0e0', borderRadius: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4, mt: 4 }}>
+        <Paper elevation={0} sx={{ p: 1, border: '1px solid #e0e0e0', borderRadius: 2 }}>
           <ToggleButtonGroup
             color="primary"
             value={billingCycle}
             exclusive
             onChange={handleBillingCycleChange}
             aria-label="billing cycle"
-            size="medium"
-            sx={{ '& .MuiToggleButton-root': { px: 3, py: 1 } }}
+            size="small"
           >
             <ToggleButton value="monthly">Monthly</ToggleButton>
             <ToggleButton value="annual">
@@ -414,27 +399,30 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
       </Box>
       
       {/* Subscription Plans */}
-      <Grid container spacing={3} sx={{ mb: 8 }}>
+      <Typography variant="h6" gutterBottom>
+        Available Plans
+      </Typography>
+      
+      <Grid container spacing={3}>
         {plans.map((plan) => {
           const isCurrentPlan = subscription?.subscription?.plan?.toUpperCase() === plan.id;
           const isPopularPlan = plan.id === 'PRO';
-          const price = billingCycle === 'monthly' ? plan.price : (plan.annualPrice / 12).toFixed(0);
           
           return (
             <Grid item xs={12} md={6} lg={3} key={plan.id}>
               <Card 
-                elevation={isHovering === plan.id ? 8 : (isPopularPlan ? 4 : 1)}
-                onMouseEnter={() => setIsHovering(plan.id)}
-                onMouseLeave={() => setIsHovering(null)}
+                elevation={isPopularPlan ? 3 : 1}
                 sx={{ 
                   height: '100%', 
                   display: 'flex', 
                   flexDirection: 'column',
                   position: 'relative',
-                  transform: isPopularPlan ? 'scale(1.03)' : 'scale(1)',
-                  transition: 'all 0.3s ease',
-                  borderRadius: 2,
-                  overflow: 'visible',
+                  transform: isPopularPlan ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: isPopularPlan ? 'scale(1.04)' : 'scale(1.02)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                  },
                   ...(isCurrentPlan ? {
                     borderColor: 'primary.main',
                     borderWidth: 2,
@@ -446,117 +434,91 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
                   <Box 
                     sx={{ 
                       position: 'absolute', 
-                      top: -12, 
-                      left: '50%',
-                      transform: 'translateX(-50%)',
+                      top: 0, 
+                      right: 20, 
+                      transform: 'translateY(-50%)',
                       bgcolor: 'secondary.main',
                       color: 'white',
                       px: 2,
                       py: 0.5,
-                      borderRadius: '20px',
+                      borderRadius: '16px',
                       fontWeight: 'bold',
                       fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: 1,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.5,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      zIndex: 2
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }}
                   >
                     <Star fontSize="small" />
-                    Most Popular
+                    MOST POPULAR
                   </Box>
                 )}
                 
-                <CardContent sx={{ px: 3, py: 4, flexGrow: 1 }}>
-                  <Typography 
-                    variant="h5" 
-                    component="h2" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      textAlign: 'center', 
-                      mb: 1,
-                      color: isPopularPlan ? 'secondary.main' : 'text.primary'
-                    }}
-                  >
-                    {plan.name}
+                <CardContent sx={{ flexGrow: 1, pt: 3 }}>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>{plan.name}</span>
+                    {isCurrentPlan && (
+                      <Chip 
+                        label="Current" 
+                        color="primary" 
+                        size="small"
+                      />
+                    )}
                   </Typography>
                   
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
-                      textAlign: 'center', 
-                      minHeight: '40px',
-                      mb: 3
-                    }}
-                  >
-                    {plan.description}
-                  </Typography>
-                  
-                  <Box sx={{ textAlign: 'center', mb: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
-                      <Typography 
-                        variant="h3" 
-                        component="span" 
-                        sx={{ 
-                          fontWeight: 700,
-                          color: isPopularPlan ? 'secondary.main' : 'primary.main'
-                        }}
-                      >
-                        {plan.price === null ? '' : `$${price}`}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h4" color="primary" component="div" sx={{ display: 'flex', alignItems: 'baseline' }}>
+                      ${billingCycle === 'monthly' ? plan.price : (plan.annualPrice / 12).toFixed(0)}
+                      <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
+                        /mo
                       </Typography>
-                      
-                      <Typography variant="body1" color="text.secondary" component="span" sx={{ ml: 1 }}>
-                        {plan.price === null ? 'Custom' : '/mo'}
-                      </Typography>
-                    </Box>
+                    </Typography>
                     
                     {billingCycle === 'annual' && plan.annualPrice && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        ${plan.annualPrice} billed annually
+                      <Typography variant="body2" color="text.secondary">
+                        ${plan.annualPrice}/year (billed annually)
                       </Typography>
                     )}
                   </Box>
                   
+                  <Typography variant="body2" color="text.secondary" paragraph sx={{ minHeight: '40px' }}>
+                    {plan.description}
+                  </Typography>
+                  
                   <Divider sx={{ my: 2 }} />
                   
-                  <List sx={{ py: 0 }}>
+                  <List dense>
                     {plan.features.map((feature, index) => (
-                      <ListItem key={index} disableGutters sx={{ py: 1 }}>
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          {getFeatureIcon(feature)}
+                      <ListItem key={index} disableGutters>
+                        <ListItemIcon sx={{ minWidth: 30 }}>
+                          <Check color="success" fontSize="small" />
                         </ListItemIcon>
-                        <ListItemText primary={feature} primaryTypographyProps={{ variant: 'body2' }} />
+                        <ListItemText primary={feature} />
                       </ListItem>
                     ))}
                   </List>
                 </CardContent>
                 
-                <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                <CardActions sx={{ p: 2, pt: 0 }}>
                   <Button 
                     variant={isPopularPlan ? "contained" : "outlined"} 
                     fullWidth
                     size="large"
                     color={isPopularPlan ? "secondary" : "primary"}
-                    disabled={loading || isCurrentPlan}
+                    disabled={
+                      loading || 
+                      isCurrentPlan ||
+                      plan.id === 'ENTERPRISE'
+                    }
                     onClick={() => handleSubscribe(plan.id, billingCycle)}
-                    sx={{ 
-                      py: 1.5,
-                      borderRadius: 6,
-                      textTransform: 'none',
-                      fontSize: '1rem',
-                      fontWeight: 500
-                    }}
-                    startIcon={plan.id === 'ENTERPRISE' ? <Lock /> : (isCurrentPlan ? <CheckCircle /> : null)}
+                    sx={{ py: 1.5 }}
                   >
                     {isCurrentPlan
                       ? 'Current Plan'
                       : plan.id === 'ENTERPRISE'
                         ? 'Contact Sales'
-                        : `Subscribe${billingCycle === 'annual' ? ' Annually' : ''}`}
+                        : 'Subscribe'}
                   </Button>
                 </CardActions>
               </Card>
@@ -566,239 +528,153 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
       </Grid>
       
       {/* CQ Intelligence Add-on Card */}
-      <Typography variant="h6" sx={{ mt: 8, mb: 3, fontWeight: 700 }}>
+      <Typography variant="h6" sx={{ mt: 6, mb: 3 }}>
         Powerful Add-ons
       </Typography>
       
       <Card 
-        elevation={isHovering === 'cq_addon' ? 8 : 2}
-        onMouseEnter={() => setIsHovering('cq_addon')}
-        onMouseLeave={() => setIsHovering(null)}
+        variant="outlined" 
         sx={{ 
-          maxWidth: 500,
+          maxWidth: 400,
           borderRadius: 2,
-          bgcolor: 'white',
-          transition: 'all 0.3s ease',
-          border: '1px solid #e0e0e0',
-          mb: 6,
-          overflow: 'hidden'
+          bgcolor: 'rgba(25, 118, 210, 0.03)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+          }
         }}
       >
-        <Box sx={{ bgcolor: 'primary.dark', color: 'white', p: 2, position: 'relative', overflow: 'hidden' }}>
-          <Box 
-            sx={{ 
-              position: 'absolute', 
-              top: -20, 
-              right: -20, 
-              width: 140, 
-              height: 140, 
-              borderRadius: '50%', 
-              bgcolor: 'rgba(255,255,255,0.1)' 
-            }} 
-          />
-          <Box 
-            sx={{ 
-              position: 'absolute', 
-              bottom: -30, 
-              left: -30, 
-              width: 100, 
-              height: 100, 
-              borderRadius: '50%', 
-              bgcolor: 'rgba(255,255,255,0.05)' 
-            }} 
-          />
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box 
+              sx={{ 
+                bgcolor: 'primary.main', 
+                color: 'white', 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 2
+              }}
+            >
+              <Info />
+            </Box>
+            <Typography variant="h6">
+              CQ Intelligence
+            </Typography>
+          </Box>
           
-          <Typography variant="h5" fontWeight="bold" sx={{ position: 'relative', zIndex: 1 }}>
-            CQ Intelligence
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, position: 'relative', zIndex: 1 }}>
-            Power up your analytics with AI
-          </Typography>
-        </Box>
-        
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-              <Typography variant="h4" component="span" fontWeight="bold" color="primary.main">
-                ${billingCycle === 'monthly' ? 
-                  addons?.CQ_INTELLIGENCE?.price : 
-                  (addons?.CQ_INTELLIGENCE?.annualPrice / 12).toFixed(0)
-                }
-              </Typography>
-              <Typography variant="body1" color="text.secondary" component="span" sx={{ ml: 1 }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h5" color="primary" component="div" sx={{ display: 'flex', alignItems: 'baseline' }}>
+              ${billingCycle === 'monthly' ? 
+                addons?.CQ_INTELLIGENCE?.price : 
+                (addons?.CQ_INTELLIGENCE?.annualPrice / 12).toFixed(0)
+              }
+              <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
                 /mo
               </Typography>
-            </Box>
+            </Typography>
             
             {billingCycle === 'annual' && addons?.CQ_INTELLIGENCE?.annualPrice && (
               <Typography variant="body2" color="text.secondary">
-                ${addons?.CQ_INTELLIGENCE?.annualPrice} billed annually
+                ${addons?.CQ_INTELLIGENCE?.annualPrice}/year (billed annually)
               </Typography>
             )}
           </Box>
           
-          <Typography variant="body1" sx={{ mb: 3 }}>
-            {addons?.CQ_INTELLIGENCE?.description || 'AI-powered analytics and insights to supercharge your decision making with advanced predictive models and real-time data analysis.'}
+          <Typography variant="body2" color="text.secondary" paragraph>
+            {addons?.CQ_INTELLIGENCE?.description || 'AI-powered analytics and insights to supercharge your decision making'}
           </Typography>
           
-          <List>
+          <Divider sx={{ my: 2 }} />
+          
+          <List dense>
             <ListItem disableGutters>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Bolt color="primary" />
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Advanced AI analytics" />
             </ListItem>
             <ListItem disableGutters>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Check color="success" />
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary="Predictive insights dashboard" />
+              <ListItemText primary="Predictive insights" />
             </ListItem>
             <ListItem disableGutters>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Check color="success" />
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <Check color="success" fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary="Custom report generation" />
-            </ListItem>
-            <ListItem disableGutters>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Check color="success" />
-              </ListItemIcon>
-              <ListItemText primary="Priority data processing" />
+              <ListItemText primary="Automated reporting" />
             </ListItem>
           </List>
         </CardContent>
         
-        <Divider />
-        
-        <CardActions sx={{ p: 3 }}>
-          <Stack direction="row" spacing={2} alignItems="center" width="100%">
-            {subscription ? (
-              <>
-                <Typography variant="body2" fontWeight="medium">
-                  {hasCQIntelligence() ? 'Enabled' : 'Disabled'}
-                </Typography>
-                <Switch 
-                  checked={hasCQIntelligence()} 
-                  onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
-                  disabled={loading || !subscription}
-                  color="primary"
-                />
-                <Box sx={{ flexGrow: 1 }} />
-                <Chip 
-                  label={hasCQIntelligence() ? "Active" : "Inactive"} 
-                  color={hasCQIntelligence() ? "success" : "default"}
-                  size="small"
-                />
-              </>
-            ) : (
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                disabled
-                size="large"
-              >
-                Subscribe to a plan first
-              </Button>
+        <CardActions sx={{ p: 2, pt: 0 }}>
+          <Stack direction="row" spacing={1} alignItems="center" width="100%">
+            <Switch 
+              checked={hasCQIntelligence()} 
+              onChange={(e) => handleToggleCQIntelligence(e.target.checked)}
+              disabled={loading || !subscription}
+            />
+            <Typography variant="body2" fontWeight="500">
+              {hasCQIntelligence() ? 'Enabled' : 'Disabled'}
+            </Typography>
+            
+            {!subscription && (
+              <Tooltip title="Subscribe to a plan first to enable add-ons">
+                <Box sx={{ ml: 'auto' }}>
+                  <Info color="info" fontSize="small" />
+                </Box>
+              </Tooltip>
             )}
           </Stack>
         </CardActions>
       </Card>
       
-      {/* Dialogs */}
+      {/* Cancel Subscription Dialog */}
       <Dialog
         open={cancelDialogOpen}
         onClose={() => setCancelDialogOpen(false)}
-        maxWidth="sm"
-        PaperProps={{
-          elevation: 8,
-          sx: { borderRadius: 2 }
-        }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="div" fontWeight="bold">
-            Cancel Subscription
-          </Typography>
-        </DialogTitle>
+        <DialogTitle>Cancel Subscription</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+          <DialogContentText>
             Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.
           </DialogContentText>
-          <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
-            Your subscription will remain active until {subscription && new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}.
-          </Alert>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setCancelDialogOpen(false)} 
-            variant="outlined"
-            sx={{ borderRadius: 6 }}
-          >
-            Keep Subscription
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)} color="primary">
+            No, Keep Subscription
           </Button>
-          <Button 
-            onClick={confirmCancelSubscription} 
-            color="error" 
-            variant="contained"
-            sx={{ borderRadius: 6 }}
-          >
-            Cancel Subscription
+          <Button onClick={confirmCancelSubscription} color="error">
+            Yes, Cancel Subscription
           </Button>
         </DialogActions>
       </Dialog>
       
+      {/* Upgrade/Change Plan Dialog */}
       <Dialog
         open={upgradeDialogOpen}
         onClose={() => setUpgradeDialogOpen(false)}
-        maxWidth="sm"
-        PaperProps={{
-          elevation: 8,
-          sx: { borderRadius: 2 }
-        }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="div" fontWeight="bold">
-            Confirm Subscription
-          </Typography>
-        </DialogTitle>
+        <DialogTitle>Confirm Subscription Change</DialogTitle>
         <DialogContent>
           <DialogContentText>
             {subscription
               ? "You are about to change your subscription plan. Your new plan will take effect immediately and you'll be charged a prorated amount for the current billing period."
               : "You are about to subscribe to a new plan. You will be redirected to our payment processor to complete the subscription."}
           </DialogContentText>
-          
-          {selectedPlan && (
-            <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold">
-                Plan: {plans.find(p => p.id === selectedPlan)?.name}
-              </Typography>
-              <Typography variant="body2">
-                Billing Cycle: {selectedPlanType === 'annual' ? 'Annual' : 'Monthly'}
-              </Typography>
-              <Typography variant="body2">
-                Price: ${selectedPlanType === 'annual' 
-                  ? plans.find(p => p.id === selectedPlan)?.annualPrice + '/year'
-                  : plans.find(p => p.id === selectedPlan)?.price + '/month'}
-              </Typography>
-            </Box>
-          )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setUpgradeDialogOpen(false)} 
-            sx={{ borderRadius: 6 }}
-          >
+        <DialogActions>
+          <Button onClick={() => setUpgradeDialogOpen(false)} color="primary">
             Cancel
           </Button>
-          <Button 
-            onClick={confirmSubscribe} 
-            color="primary" 
-            variant="contained"
-            sx={{ borderRadius: 6 }}
-          >
-            Proceed to Checkout
+          <Button onClick={confirmSubscribe} color="primary" variant="contained">
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>

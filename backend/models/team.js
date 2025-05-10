@@ -25,8 +25,36 @@ const teamsSchema=new mongoose.Schema({
     websites:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Website"
-    }]
-})
+    }],
+    subscription: {
+        status: {
+            type: String,
+            enum: ['active', 'past_due', 'canceled', 'incomplete', 'incomplete_expired', 'trialing', 'unpaid'],
+            default: 'incomplete'
+        },
+        plan: {
+            type: String,
+            enum: ['offchain', 'basic', 'pro', 'enterprise'],
+            default: 'offchain'
+        },
+        stripeCustomerId: String,
+        stripeSubscriptionId: String,
+        currentPeriodEnd: Date,
+        cancelAtPeriodEnd: {
+            type: Boolean,
+            default: false
+        },
+        hasCQIntelligence: {
+            type: Boolean,
+            default: false
+        },
+        billingCycle: {
+            type: String,
+            enum: ['monthly', 'annual'],
+            default: 'monthly'
+        }
+    }
+}, { timestamps: true });
 
 const Team=mongoose.model('Team',teamsSchema);
 
