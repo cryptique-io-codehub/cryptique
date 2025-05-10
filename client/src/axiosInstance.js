@@ -51,13 +51,7 @@ axiosInstance.interceptors.request.use(
       // Ensure content type is always set correctly for all team routes
       config.headers['Content-Type'] = 'application/json';
       
-      // Ensure origin is correctly set
-      const origin = window.location.origin;
-      if (origin) {
-        config.headers['Origin'] = origin;
-      }
-      
-      // Force the Authorization header for team routes
+      // Ensure Authorization header is set for team routes
       if (token && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }

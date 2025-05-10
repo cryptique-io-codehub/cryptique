@@ -134,7 +134,7 @@ const comparisonRows = [
 const fetchBillingDetails = async (teamId, axiosInstance) => {
   try {
     // Use the provided axiosInstance which should already have the token in its configuration
-    const response = await axiosInstance.get(`/api/team/${teamId}/billing-address`);
+    const response = await axiosInstance.get(`/team/${teamId}/billing-address`);
     return response.data;
   } catch (error) {
     console.error("Error fetching billing details:", error);
@@ -145,7 +145,7 @@ const fetchBillingDetails = async (teamId, axiosInstance) => {
 const saveBillingDetails = async (teamId, billingData, axiosInstance) => {
   try {
     // Use the provided axiosInstance which should already have the token in its configuration
-    const response = await axiosInstance.post(`/api/team/${teamId}/billing-address`, billingData);
+    const response = await axiosInstance.post(`/team/${teamId}/billing-address`, billingData);
     return response.data;
   } catch (error) {
     console.error("Error saving billing details:", error);
@@ -264,7 +264,7 @@ const Pricing = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // New state variables for confirmation dialog
+  // New state variables for confirmation
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [billingAddress, setBillingAddress] = useState(null);
@@ -382,7 +382,12 @@ const Pricing = () => {
     // Check if we have billing address
     if (!billingAddress) {
       setShowAddressForm(true);
+    } else {
+      // We have billing address, show it in the confirmation
+      setShowAddressForm(false);
     }
+    
+    console.log("Opening plan confirmation dialog with billing address:", billingAddress);
     
     // Open confirmation dialog
     setConfirmDialogOpen(true);
@@ -392,6 +397,13 @@ const Pricing = () => {
     try {
       if (!selectedTeamId) {
         setError("Please select a team before proceeding to payment.");
+        return;
+      }
+      
+      // Validate the billing address
+      if (!billingAddress || !billingAddress.name || !billingAddress.line1 || !billingAddress.city) {
+        setError("Please provide a complete billing address.");
+        setShowAddressForm(true);
         return;
       }
       
@@ -835,11 +847,13 @@ const Pricing = () => {
                 Billing Address:
               </Typography>
               <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(29, 12, 70, 0.04)', borderRadius: 1 }}>
-                <Typography variant="body2">{billingAddress.name}</Typography>
-                <Typography variant="body2">{billingAddress.line1}</Typography>
+                {billingAddress.name && <Typography variant="body2">{billingAddress.name}</Typography>}
+                {billingAddress.line1 && <Typography variant="body2">{billingAddress.line1}</Typography>}
                 {billingAddress.line2 && <Typography variant="body2">{billingAddress.line2}</Typography>}
-                <Typography variant="body2">{billingAddress.city}, {billingAddress.state} {billingAddress.postalCode}</Typography>
-                <Typography variant="body2">{billingAddress.country}</Typography>
+                {billingAddress.city && <Typography variant="body2">
+                  {billingAddress.city}, {billingAddress.state} {billingAddress.postalCode || billingAddress.postal_code}
+                </Typography>}
+                {billingAddress.country && <Typography variant="body2">{billingAddress.country}</Typography>}
               </Box>
               <Button 
                 size="small" 

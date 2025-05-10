@@ -122,7 +122,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
 const fetchBillingDetails = async (teamId, axiosInstance) => {
   try {
     // Use the provided axiosInstance which should already have the token in its configuration
-    const response = await axiosInstance.get(`/api/team/${teamId}/billing-address`);
+    const response = await axiosInstance.get(`/team/${teamId}/billing-address`);
     return response.data;
   } catch (error) {
     console.error("Error fetching billing details:", error);
@@ -133,7 +133,7 @@ const fetchBillingDetails = async (teamId, axiosInstance) => {
 const saveBillingDetails = async (teamId, billingData, axiosInstance) => {
   try {
     // Use the provided axiosInstance which should already have the token in its configuration
-    const response = await axiosInstance.post(`/api/team/${teamId}/billing-address`, billingData);
+    const response = await axiosInstance.post(`/team/${teamId}/billing-address`, billingData);
     return response.data;
   } catch (error) {
     console.error("Error saving billing details:", error);
@@ -156,6 +156,8 @@ const PricingSection = () => {
   const [addressErrors, setAddressErrors] = useState({});
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -248,16 +250,26 @@ const PricingSection = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSelectPlan = (planType) => {
+  const handleSelectPlan = (planId) => {
     if (!selectedTeamId) {
-      setError("Please select a team first.");
+      setError("Please select a team before choosing a plan.");
       return;
     }
     
-    setSelectedPlan({
-      planType,
-      billingCycle: activePlan
-    });
+    // Store selected plan ID
+    setSelectedPlanId(planId);
+    
+    // Check if we have billing address
+    if (!billingAddress) {
+      setShowAddressForm(true);
+    } else {
+      // We have billing address, show it in the confirmation
+      setShowAddressForm(false);
+    }
+    
+    console.log("Opening plan confirmation dialog with billing address:", billingAddress);
+    
+    // Open confirmation dialog
     setConfirmDialogOpen(true);
   };
 
@@ -292,13 +304,13 @@ const PricingSection = () => {
       const successUrl = `${hostUrl}/${teamName}/settings/billing?success=true`;
       const cancelUrl = `${hostUrl}/${teamName}/settings/billing?canceled=true`;
       
-      // Create checkout session
+      // Create checkout session with the selected plan ID
       const { url } = await createCheckoutSession(
         selectedTeamId, 
-        selectedPlan.planType, 
+        selectedPlanId, // Use the selected plan ID
         successUrl, 
         cancelUrl, 
-        selectedPlan.billingCycle,
+        activePlan, // Use activePlan (monthly/annual) instead of billingCycle
         billingAddress
       );
       
@@ -665,38 +677,67 @@ const PricingSection = () => {
             Please confirm your subscription details:
           </DialogContentText>
           
-          {selectedPlan && (
-            <Box sx={{ mb: 3, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Plan: {plans.find(p => p.type === selectedPlan.planType)?.title || intelligenceAddOn.title}
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                Billing cycle: {selectedPlan.billingCycle === 'annual' ? 'Annual' : 'Monthly'}
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                Team: {teams.find(team => team._id === selectedTeamId)?.name}
-              </Typography>
-              <Typography variant="body2" color="primary" fontWeight="bold">
-                {selectedPlan.billingCycle === 'annual' ? 
-                  `$${selectedPlan.planType === intelligenceAddOn.type ? 
-                    intelligenceAddOn.annualPrice : 
-                    plans.find(p => p.type === selectedPlan.planType)?.annualPrice}/year` : 
-                  `$${selectedPlan.planType === intelligenceAddOn.type ? 
-                    intelligenceAddOn.monthlyPrice : 
-                    plans.find(p => p.type === selectedPlan.planType)?.monthlyPrice}/month`}
-              </Typography>
-            </Box>
-          )}
+          <Box sx={{ mb: 3, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Plan: {plans.find(p => p.type === selectedPlanId)?.title || intelligenceAddOn.title}
+            </Typography>
+            <Typography variant="body2" gutterBottom>
+              Billing cycle: {activePlan === 'annual' ? 'Annual' : 'Monthly'}
+            </Typography>
+            <Typography variant="body2" gutterBottom>
+              Team: {teams.find(team => team._id === selectedTeamId)?.name}
+            </Typography>
+            <Typography variant="body2" color="primary" fontWeight="bold">
+              {activePlan === 'annual' ? 
+                `$${selectedPlanId === intelligenceAddOn.type ? 
+                  intelligenceAddOn.annualPrice : 
+                  plans.find(p => p.type === selectedPlanId)?.annualPrice}/year` : 
+                `$${selectedPlanId === intelligenceAddOn.type ? 
+                  intelligenceAddOn.monthlyPrice : 
+                  plans.find(p => p.type === selectedPlanId)?.monthlyPrice}/month`}
+            </Typography>
+          </Box>
           
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
             Billing Address
           </Typography>
           
-          <BillingAddressForm 
-            billingAddress={billingAddress} 
-            setBillingAddress={setBillingAddress} 
-            errors={addressErrors}
-          />
+          {showAddressForm ? (
+            <BillingAddressForm 
+              billingAddress={billingAddress} 
+              setBillingAddress={setBillingAddress} 
+              errors={addressErrors}
+            />
+          ) : billingAddress ? (
+            <Box sx={{ mb: 2, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
+              {billingAddress.name && <Typography variant="body2">{billingAddress.name}</Typography>}
+              {billingAddress.line1 && <Typography variant="body2">{billingAddress.line1}</Typography>}
+              {billingAddress.line2 && <Typography variant="body2">{billingAddress.line2}</Typography>}
+              {billingAddress.city && <Typography variant="body2">
+                {billingAddress.city}, {billingAddress.state} {billingAddress.postalCode || billingAddress.postal_code}
+              </Typography>}
+              {billingAddress.country && <Typography variant="body2">{billingAddress.country}</Typography>}
+              
+              <Button 
+                size="small" 
+                onClick={() => setShowAddressForm(true)}
+                sx={{ mt: 2 }}
+              >
+                Edit Address
+              </Button>
+            </Box>
+          ) : (
+            <>
+              <Typography variant="subtitle2" color="error" sx={{ mb: 2 }}>
+                Please provide a billing address
+              </Typography>
+              <BillingAddressForm 
+                billingAddress={billingAddress} 
+                setBillingAddress={setBillingAddress} 
+                errors={addressErrors}
+              />
+            </>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={handleCancelPlan} variant="outlined" disabled={loading}>
