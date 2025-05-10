@@ -129,13 +129,11 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // Make sure sidebar is VISIBLE but COLLAPSED when in Settings page
+  // Make sure sidebar is in compact mode when in Settings page
   useEffect(() => {
     if (selectedPage === "settings" && !screenSize.isMobile) {
-      // Instead of hiding the sidebar, just ensure it's in compact mode
+      // Just ensure it's in compact mode, but don't force visibility
       setIsCompactMode(true);
-      // Ensure it's visible (but will be compact)
-      setIsSidebarOpen(true);
     }
   }, [selectedPage, screenSize.isMobile]);
 
