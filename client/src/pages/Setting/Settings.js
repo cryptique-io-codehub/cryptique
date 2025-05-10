@@ -14,7 +14,7 @@ const Settings = ({ onMenuClick, screenSize }) => {
   const location = useLocation();
   const { team } = useParams();
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
-  const [isCompactMode, setIsCompactMode] = useState(false); // Start in expanded mode for settings sidebar
+  const [isCompactMode, setIsCompactMode] = useState(false); // Start in expanded mode
   const [isHovering, setIsHovering] = useState(false);
 
   // Determine active section based on current path
@@ -54,8 +54,11 @@ const Settings = ({ onMenuClick, screenSize }) => {
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
-    // We no longer toggle the main menu to avoid both sidebars reacting
-    // This allows the main sidebar to stay collapsed while settings sidebar is open
+    // Only toggle the main menu on mobile devices, where we need to ensure
+    // only one sidebar is open at a time
+    if (onMenuClick && (screenSize?.isMobile || screenSize?.isTablet)) {
+      onMenuClick();
+    }
   };
 
   const handleMouseEnter = () => {
@@ -115,7 +118,7 @@ const Settings = ({ onMenuClick, screenSize }) => {
         <div 
           className={`${
             sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden lg:flex'
-          } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-20' : 'lg:w-72'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+          } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-16' : 'lg:w-72'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >

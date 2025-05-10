@@ -129,18 +129,15 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // When in Settings page, ensure main sidebar is collapsed but still visible
+  // Make sure sidebar is VISIBLE but COLLAPSED when in Settings page
   useEffect(() => {
     if (selectedPage === "settings" && !screenSize.isMobile) {
-      // Instead of hiding sidebar, make sure it's in compact mode
+      // Instead of hiding the sidebar, just ensure it's in compact mode
       setIsCompactMode(true);
-      
-      // For desktop: ensure sidebar is still visible (not closed)
-      if (screenSize.isDesktop) {
-        setIsSidebarOpen(true);
-      }
+      // Ensure it's visible (but will be compact)
+      setIsSidebarOpen(true);
     }
-  }, [selectedPage, screenSize.isMobile, screenSize.isDesktop]);
+  }, [selectedPage, screenSize.isMobile]);
 
   // Add team change detection
   useEffect(() => {
