@@ -807,8 +807,7 @@ const PricingSection = () => {
           <Box sx={{ 
             width: { xs: '100%', md: '35%' },
             display: 'flex',
-            flexDirection: 'column',
-            height: '100%'
+            flexDirection: 'column'
           }}>
             <Paper 
               elevation={3}
@@ -817,9 +816,10 @@ const PricingSection = () => {
                 background: 'linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)',
                 border: `1px solid ${styles.accentColor}`,
                 borderRadius: 2,
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
+                position: 'sticky',
+                top: '20px',
+                maxHeight: 'calc(100vh - 40px)',
+                overflowY: 'auto'
               }}
             >
               <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', ...styles.headingFont, color: styles.primaryColor }}>
@@ -827,8 +827,8 @@ const PricingSection = () => {
               </Typography>
               
               {selectedPlan ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <Box sx={{ mb: 2, flex: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                         {selectedPlan.title} Plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'})
@@ -845,7 +845,7 @@ const PricingSection = () => {
                       <ul style={{ paddingLeft: '20px', margin: 0 }}>
                         {getPlanFeatures(selectedPlan.type).map((feature, index) => (
                           <li key={index}>
-                            <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
                               {feature}
                             </Typography>
                           </li>
@@ -871,7 +871,7 @@ const PricingSection = () => {
                           <ul style={{ paddingLeft: '20px', margin: 0 }}>
                             {getAddonFeatures().map((feature, index) => (
                               <li key={index}>
-                                <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                                <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
                                   {feature}
                                 </Typography>
                               </li>
@@ -883,7 +883,7 @@ const PricingSection = () => {
                     
                     <Divider sx={{ my: 2 }} />
                     
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
                       <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                         Total
                       </Typography>
@@ -894,33 +894,34 @@ const PricingSection = () => {
                         </Typography>
                       </Typography>
                     </Box>
+                    
+                    <Typography variant="subtitle2" sx={{ mb: 2, ...styles.bodyFont, fontSize: '0.75rem' }}>
+                      Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
+                    </Typography>
+                    
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                      disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
+                      onClick={() => handleSelectPlan(selectedPlan.type)}
+                      sx={{
+                        py: 1.5,
+                        background: styles.futuristicGradient,
+                        boxShadow: '0 4px 15px rgba(29, 12, 70, 0.3)',
+                        '&:hover': {
+                          boxShadow: '0 6px 20px rgba(29, 12, 70, 0.4)',
+                        },
+                        mb: 1
+                      }}
+                    >
+                      Subscribe Now
+                    </Button>
+                    
+                    <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', fontSize: '0.75rem' }}>
+                      Secure payment via Stripe
+                    </Typography>
                   </Box>
-                  
-                  <Typography variant="subtitle2" sx={{ mb: 2, ...styles.bodyFont }}>
-                    Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
-                  </Typography>
-                  
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
-                    onClick={() => handleSelectPlan(selectedPlan.type)}
-                    sx={{
-                      py: 1.5,
-                      background: styles.futuristicGradient,
-                      boxShadow: '0 4px 15px rgba(29, 12, 70, 0.3)',
-                      '&:hover': {
-                        boxShadow: '0 6px 20px rgba(29, 12, 70, 0.4)',
-                      }
-                    }}
-                  >
-                    Subscribe Now
-                  </Button>
-                  
-                  <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}>
-                    Secure payment via Stripe
-                  </Typography>
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
