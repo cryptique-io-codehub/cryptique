@@ -136,14 +136,10 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // Make sure sidebar is visible and in compact mode when in Settings page
+  // Make sure sidebar is visible when in Settings page, matching behavior of other pages
   useEffect(() => {
-    // Always ensure sidebar is open on desktop for Settings page
-    // This is crucial because the sidebar should not be hidden, just compacted
     if (selectedPage === "settings" && !screenSize.isMobile) {
       setIsSidebarOpen(true);
-      // Ensure compact mode for settings page
-      setIsCompactMode(true);
     }
   }, [selectedPage, screenSize.isMobile]);
 
@@ -298,7 +294,7 @@ const Dashboard = () => {
           onClose={() => setIsSidebarOpen(false)} 
           onNavigate={handleNavigation}
           currentPage={selectedPage}
-          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen) || selectedPage === "settings"}
+          isCompact={selectedPage === "settings" ? true : (isCompactMode || (screenSize.isTablet && !isSidebarOpen))}
           screenSize={screenSize}
         />
       </div>

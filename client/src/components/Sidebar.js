@@ -10,7 +10,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
-  // Force compact mode when on settings page but don't force hidden
+  // Force compact mode when on settings page
   const effectiveIsCompact = currentPage === "settings" ? true : isCompact;
   
   // Control sidebar expansion state
@@ -81,10 +81,10 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
     <aside
       className={`fixed md:relative bg-white ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r transform transition-all duration-300 ease-in-out z-50 ${
         isOpen || forceVisible
-          ? "translate-x-0 sm:w-64 md:w-56 top-0 left-0 md:relative md:top-auto md:left-auto" 
+          ? "translate-x-0 top-0 left-0 md:relative md:top-auto md:left-auto" 
           : "-translate-x-full md:translate-x-0"
       } ${
-        effectiveIsCompact && !isHovering ? "md:w-[60px] w-[60px]" : "md:w-56 lg:w-64 w-full"
+        effectiveIsCompact && !isHovering ? "md:w-[60px] w-[60px]" : "w-full sm:w-64 md:w-56 lg:w-64"
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
