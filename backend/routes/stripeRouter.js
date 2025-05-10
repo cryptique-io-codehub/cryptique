@@ -253,18 +253,20 @@ router.post('/create-portal-session', async (req, res) => {
   try {
     const { teamId, returnUrl } = req.body;
 
-    // Get the customer ID for the team
-    const customers = await stripe.customers.list({
-      limit: 1,
-      metadata: { teamId }
-    });
+    // Find the team first
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
 
-    if (!customers.data.length) {
+    // Check if team has a Stripe customer ID
+    if (!team.stripeCustomerId) {
       return res.status(404).json({ error: 'No customer found for this team' });
     }
 
+    // Create the portal session with the customer ID
     const session = await stripe.billingPortal.sessions.create({
-      customer: customers.data[0].id,
+      customer: team.stripeCustomerId,
       return_url: returnUrl,
     });
 
