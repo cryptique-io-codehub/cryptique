@@ -120,10 +120,10 @@ const Settings = ({ onMenuClick, screenSize = {} }) => {
           ></div>
         )}
         
-        {/* Settings sidebar - responsive */}
+        {/* Settings sidebar - responsive - using sidebar width calculation */}
         <div 
           className={`${
-            settingsSidebarOpen ? 'fixed inset-y-0 left-0 z-20 lg:relative lg:flex' : 'hidden lg:hidden'
+            settingsSidebarOpen ? 'fixed inset-y-0 left-[60px] z-20 lg:relative lg:flex' : 'hidden lg:hidden'
           } lg:w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

@@ -140,10 +140,12 @@ const Dashboard = () => {
   useEffect(() => {
     // Always ensure sidebar is open on desktop for Settings page
     // This is crucial because the sidebar should not be hidden, just compacted
-    if (selectedPage === "settings") {
+    if (selectedPage === "settings" && !screenSize.isMobile) {
       setIsSidebarOpen(true);
+      // Ensure compact mode for settings page
+      setIsCompactMode(true);
     }
-  }, [selectedPage]);
+  }, [selectedPage, screenSize.isMobile]);
 
   // Add team change detection
   useEffect(() => {
@@ -210,12 +212,8 @@ const Dashboard = () => {
     let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
     
     if (screenSize.isDesktop) {
-      // When in settings page, main content should account for both sidebars
-      if (selectedPage === "settings") {
-        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
-      } else {
-        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
-      }
+      // Use the same margin logic for all pages, including settings
+      baseClasses += isSidebarOpen ? (isCompactMode ? "ml-[60px]" : "ml-56 lg:ml-64") : "ml-0";
     }
     
     return baseClasses;
