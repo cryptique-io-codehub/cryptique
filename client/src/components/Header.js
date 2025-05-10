@@ -114,6 +114,14 @@ const TeamSelector = () => {
       localStorage.setItem('selectedTeam', teamss.name);
       setSelectedTeam(teamss.name);
       
+      // Save complete team data
+      localStorage.setItem('selectedTeamData', JSON.stringify({
+        _id: teamss._id,
+        name: teamss.name,
+        role: teamss.role || 'user',
+        isOwner: teamss.isOwner || false
+      }));
+      
       // Clear website selection since it's team-specific
       localStorage.removeItem("selectedWebsite");
       localStorage.removeItem("idy");

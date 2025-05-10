@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
 import { Link, useLocation } from "react-router-dom";
+import { useTeam } from "../../../context/teamContext";
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -192,6 +193,7 @@ const Billing = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const { selectedTeam } = useTeam();
   
   // Get query parameters (for Stripe redirect handling)
   const location = useLocation();
@@ -230,16 +232,15 @@ const Billing = () => {
     const loadTeam = async () => {
       try {
         setLoading(true);
-        // Get the current team from localStorage or your auth context
-        const teamId = localStorage.getItem('currentTeamId');
-        if (!teamId) {
+        // Get the current team from localStorage
+        const teamData = localStorage.getItem('selectedTeamData');
+        if (!teamData) {
           setError('No team selected. Please select a team first.');
           return;
         }
 
-        // Fetch team details
-        const response = await axios.get(`${process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app'}/api/team/${teamId}`);
-        setCurrentTeam(response.data);
+        const parsedTeamData = JSON.parse(teamData);
+        setCurrentTeam(parsedTeamData);
         setError(null);
       } catch (err) {
         console.error('Error loading team:', err);
@@ -250,7 +251,7 @@ const Billing = () => {
     };
 
     loadTeam();
-  }, []);
+  }, [selectedTeam]); // Add selectedTeam as a dependency
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
