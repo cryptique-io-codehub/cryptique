@@ -44,7 +44,7 @@ const getOrCreateCustomer = async (teamId, email, name) => {
 /**
  * Create a subscription checkout session
  */
-const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly') => {
+const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly', billingAddress = null) => {
   try {
     // Get the price ID for the selected plan based on billing cycle
     let priceId;
@@ -84,8 +84,13 @@ const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, bi
       customerId = customer.id;
     }
 
-    // Create the checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Save billing address to team if provided
+    if (billingAddress) {
+      await Team.findByIdAndUpdate(teamId, { billingAddress });
+    }
+
+    // Create checkout session options
+    const sessionOptions = {
       payment_method_types: ['card'],
       mode: 'subscription',
       customer: customerId,
@@ -102,7 +107,35 @@ const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, bi
         planType,
         billingCycle
       },
-    });
+    };
+
+    // Add billing address if provided
+    if (billingAddress) {
+      sessionOptions.billing_address_collection = 'auto';
+      
+      // If we have a complete address, prefill it
+      if (billingAddress.line1 && billingAddress.city && billingAddress.state && billingAddress.postalCode) {
+        sessionOptions.customer_update = {
+          address: 'auto'
+        };
+        
+        // Update customer with address
+        await stripe.customers.update(customerId, {
+          address: {
+            line1: billingAddress.line1,
+            line2: billingAddress.line2 || '',
+            city: billingAddress.city,
+            state: billingAddress.state,
+            postal_code: billingAddress.postalCode,
+            country: billingAddress.country || 'US',
+          },
+          name: billingAddress.name
+        });
+      }
+    }
+
+    // Create the checkout session
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     return session;
   } catch (error) {

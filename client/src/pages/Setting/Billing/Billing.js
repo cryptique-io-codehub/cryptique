@@ -465,27 +465,27 @@ const Billing = () => {
       <Paper elevation={2} className="p-6">
         <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
         {billingDetails ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Company Name</p>
-              <p className="font-medium">{billingDetails.companyName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Address</p>
-              <p className="font-medium">{billingDetails.address}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">City</p>
-              <p className="font-medium">{billingDetails.city}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Zip/Postal Code</p>
-              <p className="font-medium">{billingDetails.zipCode}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Country</p>
-              <p className="font-medium">{billingDetails.country}</p>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Company Name</p>
+                <p className="font-medium">{billingDetails.companyName}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Address</p>
+                <p className="font-medium">{billingDetails.address}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">City</p>
+                <p className="font-medium">{billingDetails.city}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Zip/Postal Code</p>
+                <p className="font-medium">{billingDetails.zipCode}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Country</p>
+                <p className="font-medium">{billingDetails.country}</p>
+              </div>
           </div>
         ) : (
           <Button variant="contained" color="primary" onClick={() => setIsModalOpen(true)}>

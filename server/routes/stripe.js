@@ -26,7 +26,7 @@ router.get('/plans', (req, res) => {
  */
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const { teamId, planType, successUrl, cancelUrl, billingCycle } = req.body;
+    const { teamId, planType, successUrl, cancelUrl, billingCycle, billingAddress } = req.body;
 
     if (!teamId || !planType || !successUrl || !cancelUrl) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -37,7 +37,8 @@ router.post('/create-checkout-session', async (req, res) => {
       planType,
       successUrl,
       cancelUrl,
-      billingCycle || 'monthly'
+      billingCycle || 'monthly',
+      billingAddress
     );
 
     res.json({ sessionId: session.id, url: session.url });

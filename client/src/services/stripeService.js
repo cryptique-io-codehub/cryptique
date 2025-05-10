@@ -27,14 +27,15 @@ export const getSubscriptionPlans = async () => {
 /**
  * Create checkout session for a subscription
  */
-export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly') => {
+export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly', billingAddress = null) => {
   try {
     const response = await apiClient.post('/api/stripe/create-checkout-session', {
       teamId,
       planType,
       successUrl,
       cancelUrl,
-      billingCycle
+      billingCycle,
+      billingAddress
     });
     
     return response.data;
