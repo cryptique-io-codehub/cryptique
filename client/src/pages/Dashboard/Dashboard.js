@@ -129,6 +129,13 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
+  // Make sure sidebar is collapsed when in Settings page
+  useEffect(() => {
+    if (selectedPage === "settings" && !screenSize.isMobile) {
+      setIsSidebarOpen(false);
+    }
+  }, [selectedPage, screenSize.isMobile]);
+
   // Add team change detection
   useEffect(() => {
     let currentTeam = localStorage.getItem("selectedTeam");

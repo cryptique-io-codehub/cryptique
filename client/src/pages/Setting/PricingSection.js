@@ -138,17 +138,9 @@ const PricingSection = () => {
     const fetchTeams = async () => {
       try {
         setLoading(true);
-        // Get user token from localStorage
-        const token = localStorage.getItem("token");
         
-        if (!token) {
-          setError("You must be logged in to view pricing for your teams.");
-          setLoading(false);
-          return;
-        }
-
-        // Use the selectedTeam from context if available
-        if (selectedTeam) {
+        // Use the selectedTeam from context if available - this is more reliable
+        if (selectedTeam && selectedTeam._id) {
           setSelectedTeamId(selectedTeam._id);
           setTeams([selectedTeam]);
           
@@ -160,31 +152,47 @@ const PricingSection = () => {
           setLoading(false);
           return;
         }
+        
+        // If we don't have selectedTeam, try getting from localStorage
+        const token = localStorage.getItem("token");
+        const teamFromStorage = localStorage.getItem("selectedTeam");
+        
+        if (!token) {
+          setError("You must be logged in to view pricing for your teams.");
+          setLoading(false);
+          return;
+        }
 
         // Fallback to fetching teams if context is not available
-        const response = await axiosInstance.get('/teams');
-        setTeams(response.data);
-        
-        // Set the first team as default if no team is selected
-        if (response.data.length > 0) {
-          const teamId = response.data[0]._id;
-          setSelectedTeamId(teamId);
-          
-          // Try to load saved billing address for team
-          try {
-            const billingRes = await axiosInstance.get(`/team/${teamId}/billing-address`);
-            if (billingRes.data) {
-              setBillingAddress(billingRes.data);
+        try {
+          const response = await axiosInstance.get('/team/myteams');
+          if (response.data && Array.isArray(response.data)) {
+            setTeams(response.data);
+            
+            // Set the first team as default if no team is selected
+            if (response.data.length > 0) {
+              const teamId = response.data[0]._id;
+              setSelectedTeamId(teamId);
+              
+              // Try to load saved billing address for team
+              try {
+                const billingRes = await axiosInstance.get(`/team/${teamId}/billing-address`);
+                if (billingRes.data) {
+                  setBillingAddress(billingRes.data);
+                }
+              } catch (err) {
+                console.log("No saved billing address found");
+              }
             }
-          } catch (err) {
-            console.log("No saved billing address found");
           }
+        } catch (error) {
+          console.error("Error fetching teams:", error);
+          setError("Failed to load teams. Please try again later.");
         }
         
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching teams:", error);
-        setError("Failed to load teams. Please try again later.");
+        console.error("Error in team loading process:", error);
         setLoading(false);
       }
     };

@@ -6,11 +6,10 @@ import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
 import PricingSection from "./PricingSection";
-import Sidebar from "../../components/Sidebar";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
 
-const Settings = ({ onMenuClick }) => {
+const Settings = ({ onMenuClick, screenSize }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { team } = useParams();
@@ -55,6 +54,10 @@ const Settings = ({ onMenuClick }) => {
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+    // Also toggle the main menu if onMenuClick is provided
+    if (onMenuClick) {
+      onMenuClick();
+    }
   };
 
   const handleMouseEnter = () => {
@@ -99,127 +102,121 @@ const Settings = ({ onMenuClick }) => {
   const showExpanded = !isCompactMode || isHovering;
   
   return (
-    <div className="flex flex-col lg:flex-row w-full h-screen overflow-hidden">
-      <Sidebar />
-      {/* Mobile overlay for sidebar */}
-      {sidebarOpen && (
+    <>
+      <Header onMenuClick={onMenuClick} screenSize={screenSize} />
+      <div className="flex flex-col lg:flex-row w-full overflow-hidden">
+        {/* Mobile overlay for sidebar */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+        )}
+        
+        {/* Settings sidebar - responsive */}
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
-      
-      {/* Settings sidebar - responsive */}
-      <div 
-        className={`${
-          sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden'
-        } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-16' : 'lg:w-64'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div className={`p-4 border-b flex justify-between items-center ${!showExpanded ? 'justify-center' : ''}`}>
-          {showExpanded ? (
-            <>
-              <div>
-                <h2 className="text-lg font-semibold">Settings</h2>
-                <p className="text-xs text-gray-500">Manage your analytics</p>
-              </div>
-              <button 
-                className="lg:hidden" 
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </>
-          ) : (
-            <SettingsIcon size={24} className="text-gray-700" />
+          className={`${
+            sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden lg:flex'
+          } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-16' : 'lg:w-64'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className={`p-4 border-b flex justify-between items-center ${!showExpanded ? 'justify-center' : ''}`}>
+            {showExpanded ? (
+              <>
+                <div>
+                  <h2 className="text-lg font-semibold">Settings</h2>
+                  <p className="text-xs text-gray-500">Manage your analytics</p>
+                </div>
+                <button 
+                  className="lg:hidden" 
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </>
+            ) : (
+              <SettingsIcon size={24} className="text-gray-700" />
+            )}
+          </div>
+          
+          <nav className="py-4 flex-1">
+            <ul className={`space-y-1 ${isCompactMode && !isHovering ? 'px-0' : 'px-2'}`}>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("general")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <SettingsIcon size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>General</span>}
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("billing")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <CreditCard size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>Billing</span>}
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("pricing")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <Tag size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>Pricing Plans</span>}
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("members")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <Users size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>Members</span>}
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("personal")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <User size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>Personal Info</span>}
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleSectionChange("teams")}
+                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                    activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <Users size={isCompactMode && !isHovering ? 18 : 16} />
+                  {showExpanded && <span>Manage Teams</span>}
+                </button>
+              </li>
+            </ul>
+          </nav>
+          
+          {showExpanded && (
+            <div className="p-3 border-t text-xs text-gray-500">
+              Settings for {seteam}
+            </div>
           )}
         </div>
-        
-        <nav className="py-4 flex-1">
-          <ul className={`space-y-1 ${isCompactMode && !isHovering ? 'px-0' : 'px-2'}`}>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("general")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <SettingsIcon size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>General</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("billing")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <CreditCard size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>Billing</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("pricing")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <Tag size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>Pricing Plans</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("members")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <Users size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>Members</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("personal")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <User size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>Personal Info</span>}
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => handleSectionChange("teams")}
-                className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
-                  activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                <Users size={isCompactMode && !isHovering ? 18 : 16} />
-                {showExpanded && <span>Manage Teams</span>}
-              </button>
-            </li>
-          </ul>
-        </nav>
-        
-        {showExpanded && (
-          <div className="p-3 border-t text-xs text-gray-500">
-            Settings for {seteam}
-          </div>
-        )}
-      </div>
-      
-      {/* Right content area with its own header and scrollable content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => {
-          // Use toggle sidebar for the menu button in header
-          toggleSidebar();
-        }} />
         
         {/* Button to open sidebar on mobile */}
         <div className="lg:hidden px-4 py-2 border-b flex items-center">
@@ -235,7 +232,8 @@ const Settings = ({ onMenuClick }) => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto bg-gray-50">
+        {/* Right content area */}
+        <div className="flex-1 overflow-y-auto bg-gray-50 h-full">
           {activeSection === "general" && (
             <div className="p-4 sm:p-6 bg-white">
               <div className="max-w-2xl">
@@ -328,7 +326,7 @@ const Settings = ({ onMenuClick }) => {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
