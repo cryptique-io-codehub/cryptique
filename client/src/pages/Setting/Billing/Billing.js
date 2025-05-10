@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTeam } from "../../../context/teamContext";
-import { CircularProgress, Alert } from '@mui/material';
+import { CircularProgress, Alert, Button, Paper } from '@mui/material';
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -186,7 +186,87 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
   );
 };
 
-// Main Billing Component
+const PLAN_LIMITS = {
+  OFFCHAIN: {
+    name: "Off-chain",
+    websites: 1,
+    contracts: 0,
+    apiCalls: 0,
+    members: 1,
+    description: "Off-chain analytics only. 1 website, no smart contracts, 1 team member."
+  },
+  BASIC: {
+    name: "Basic",
+    websites: 2,
+    contracts: 1,
+    apiCalls: 40000,
+    members: 2,
+    description: "Full app, 2 websites, 1 smart contract, 40,000 API calls/month, 2 team members."
+  },
+  PRO: {
+    name: "Pro",
+    websites: 3,
+    contracts: 3,
+    apiCalls: 150000,
+    members: 3,
+    description: "Full app, 3 websites, 3 smart contracts, 150,000 API calls/month, 3 team members."
+  },
+  ENTERPRISE: {
+    name: "Enterprise",
+    websites: "Custom",
+    contracts: "Custom",
+    apiCalls: "Custom",
+    members: "Custom",
+    description: "Custom plan. Contact us for details."
+  }
+};
+
+const getPlanKey = (plan) => {
+  if (!plan) return "OFFCHAIN";
+  const key = plan.toUpperCase();
+  if (PLAN_LIMITS[key]) return key;
+  return "OFFCHAIN";
+};
+
+const fetchWebsites = async (teamId) => {
+  try {
+    const cached = sessionStorage.getItem("preloadedWebsites");
+    if (cached) return JSON.parse(cached);
+    const res = await axios.get(`/website/team/${teamId}`);
+    return res.data.websites || [];
+  } catch {
+    return [];
+  }
+};
+const fetchContracts = async (teamId) => {
+  try {
+    const cached = sessionStorage.getItem("preloadedContracts");
+    if (cached) return JSON.parse(cached);
+    const res = await axios.get(`/contracts/team/${teamId}`);
+    return res.data.contracts || [];
+  } catch {
+    return [];
+  }
+};
+const fetchMembers = async (teamName) => {
+  try {
+    const res = await axios.post('/team/members', { teams: teamName });
+    return res.data || [];
+  } catch {
+    return [];
+  }
+};
+
+const fetchSubscription = async (teamId) => {
+  try {
+    const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+    const res = await axios.get(`${API_URL}/api/stripe/subscription/${teamId}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+};
+
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
@@ -194,6 +274,10 @@ const Billing = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [usage, setUsage] = useState({ websites: 0, contracts: 0, members: 0 });
+  const [planKey, setPlanKey] = useState("OFFCHAIN");
+  const [subscription, setSubscription] = useState(null);
+  const navigate = useNavigate();
   
   // Get query parameters (for Stripe redirect handling)
   const location = useLocation();
@@ -229,45 +313,34 @@ const Billing = () => {
   }, [success, sessionId, canceled]);
   
   useEffect(() => {
-    const loadTeamData = () => {
+    const loadData = async () => {
       try {
-        // First try to get team data from context
-        if (selectedTeam) {
+        if (!selectedTeam || !selectedTeam._id) {
           setLoading(false);
           return;
         }
-
-        // Fallback to localStorage if context is not ready
-        const teamData = localStorage.getItem('selectedTeamData');
-        if (teamData) {
-          const parsedTeam = JSON.parse(teamData);
-          if (!parsedTeam || !parsedTeam._id) {
-            setError('Invalid team data. Please select a team first.');
-          }
-        } else {
-          setError('No team selected. Please select a team first.');
-        }
-      } catch (error) {
-        console.error('Error loading team data:', error);
-        setError('Error loading team data. Please try again.');
+        setLoading(true);
+        // Fetch usage
+        const [websites, contracts, members, sub] = await Promise.all([
+          fetchWebsites(selectedTeam._id),
+          fetchContracts(selectedTeam._id),
+          fetchMembers(selectedTeam.name),
+          fetchSubscription(selectedTeam._id)
+        ]);
+        setUsage({
+          websites: websites.length,
+          contracts: contracts.length,
+          members: members.length
+        });
+        setSubscription(sub);
+        setPlanKey(getPlanKey(sub?.subscription?.plan));
+      } catch (e) {
+        setError('Failed to load usage or subscription info.');
       } finally {
         setLoading(false);
       }
     };
-
-    loadTeamData();
-
-    // Listen for team changes
-    const handleStorageChange = (e) => {
-      if (e.key === 'selectedTeamData') {
-        loadTeamData();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    loadData();
   }, [selectedTeam]);
 
   const openModal = () => setIsModalOpen(true);
@@ -308,9 +381,16 @@ const Billing = () => {
     );
   }
 
+  const planLimits = PLAN_LIMITS[planKey];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Billing & Subscription</h1>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <h1 className="text-2xl font-bold">Billing & Subscription</h1>
+        <Button variant="contained" color="primary" onClick={() => navigate('/pricing')}>
+          View all pricing plans
+        </Button>
+      </div>
       
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -324,53 +404,100 @@ const Billing = () => {
         </div>
       )}
 
-      <StripeSubscription 
-        teamId={selectedTeam._id} 
-        currentTeam={selectedTeam}
-      />
-      
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
-        {billingDetails ? (
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Company Name</p>
-                <p className="font-medium">{billingDetails.companyName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Address</p>
-                <p className="font-medium">{billingDetails.address}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">City</p>
-                <p className="font-medium">{billingDetails.city}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Zip/Postal Code</p>
-                <p className="font-medium">{billingDetails.zipCode}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Country</p>
-                <p className="font-medium">{billingDetails.country}</p>
+      {/* Active Subscription */}
+      <Paper elevation={2} className="mb-8 p-6">
+        <h2 className="text-xl font-semibold mb-2">Active Subscription</h2>
+        {subscription ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-gray-500">Plan</div>
+              <div className="font-medium">{planLimits.name}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Status</div>
+              <div className="font-medium">{subscription.subscription.status}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Billing Period</div>
+              <div className="font-medium">{subscription.subscription.billingCycle || 'Monthly'}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Current Period</div>
+              <div className="font-medium">
+                {new Date(subscription.subscription.currentPeriodStart).toLocaleDateString()} - {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
               </div>
             </div>
-            <button
-              onClick={openModal}
-              className="mt-4 text-blue-600 hover:text-blue-800"
-            >
-              Edit Details
-            </button>
+            <div className="col-span-2">
+              <div className="text-sm text-gray-500">Add-ons</div>
+              <div className="font-medium">{subscription.subscription.addons?.some(a => a.name === 'cq_intelligence' && a.active) ? 'CQ Intelligence' : 'None'}</div>
+            </div>
           </div>
         ) : (
-          <button
-            onClick={openModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Add Billing Details
-          </button>
+          <div className="text-gray-500">No active subscription found.</div>
         )}
-      </div>
+      </Paper>
+
+      {/* Usage & Limits */}
+      <Paper elevation={2} className="mb-8 p-6">
+        <h2 className="text-xl font-semibold mb-2">Usage & Limits</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm text-gray-500">Websites</div>
+            <div className="font-medium">{usage.websites} / {planLimits.websites}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500">Smart Contracts</div>
+            <div className="font-medium">{planLimits.contracts === 0 ? 'N/A' : `${usage.contracts} / ${planLimits.contracts}`}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500">Team Members</div>
+            <div className="font-medium">{usage.members} / {planLimits.members}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500">Explorer API Calls</div>
+            <div className="font-medium">{planLimits.apiCalls === 0 ? 'N/A' : `${planLimits.apiCalls} / mo`}</div>
+          </div>
+        </div>
+        <div className="text-xs text-gray-400 mt-2">Plan: {planLimits.description}</div>
+      </Paper>
+
+      {/* Billing Details */}
+      <Paper elevation={2} className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
+        {billingDetails ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Company Name</p>
+              <p className="font-medium">{billingDetails.companyName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Address</p>
+              <p className="font-medium">{billingDetails.address}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">City</p>
+              <p className="font-medium">{billingDetails.city}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Zip/Postal Code</p>
+              <p className="font-medium">{billingDetails.zipCode}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Country</p>
+              <p className="font-medium">{billingDetails.country}</p>
+            </div>
+          </div>
+        ) : (
+          <Button variant="contained" color="primary" onClick={() => setIsModalOpen(true)}>
+            Add Billing Details
+          </Button>
+        )}
+        {billingDetails && (
+          <Button onClick={() => setIsModalOpen(true)} className="mt-4 text-blue-600 hover:text-blue-800">
+            Edit Details
+          </Button>
+        )}
+      </Paper>
 
       <BillingDetailsModal
         isOpen={isModalOpen}

@@ -21,6 +21,7 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
+import Pricing from './pages/Pricing';
 
 const RouteListener = () => {
   const location = useLocation();
@@ -88,6 +89,7 @@ function App() {
             </Route>
     
             <Route path="/test-analytics" element={<TestAnalytics />} />
+            <Route path="/pricing" element={<Pricing />} />
           </Routes>
         </BrowserRouter>
       </ContractDataProvider>
