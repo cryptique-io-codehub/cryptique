@@ -4,6 +4,7 @@ import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
 import { Link, useLocation } from "react-router-dom";
 import { useTeam } from "../../../context/teamContext";
+import { CircularProgress, Alert } from '@mui/material';
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
@@ -189,11 +190,10 @@ const BillingDetailsModal = ({ isOpen, onClose, onSave }) => {
 const Billing = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [billingDetails, setBillingDetails] = useState(null);
-  const [currentTeam, setCurrentTeam] = useState(null);
+  const { selectedTeam, isLoading: teamLoading } = useTeam();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const { selectedTeam } = useTeam();
   
   // Get query parameters (for Stripe redirect handling)
   const location = useLocation();
@@ -229,29 +229,46 @@ const Billing = () => {
   }, [success, sessionId, canceled]);
   
   useEffect(() => {
-    const loadTeam = async () => {
+    const loadTeamData = () => {
       try {
-        setLoading(true);
-        // Get the current team from localStorage
-        const teamData = localStorage.getItem('selectedTeamData');
-        if (!teamData) {
-          setError('No team selected. Please select a team first.');
+        // First try to get team data from context
+        if (selectedTeam) {
+          setLoading(false);
           return;
         }
 
-        const parsedTeamData = JSON.parse(teamData);
-        setCurrentTeam(parsedTeamData);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading team:', err);
-        setError('Failed to load team information. Please try again later.');
+        // Fallback to localStorage if context is not ready
+        const teamData = localStorage.getItem('selectedTeamData');
+        if (teamData) {
+          const parsedTeam = JSON.parse(teamData);
+          if (!parsedTeam || !parsedTeam._id) {
+            setError('Invalid team data. Please select a team first.');
+          }
+        } else {
+          setError('No team selected. Please select a team first.');
+        }
+      } catch (error) {
+        console.error('Error loading team data:', error);
+        setError('Error loading team data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadTeam();
-  }, [selectedTeam]); // Add selectedTeam as a dependency
+    loadTeamData();
+
+    // Listen for team changes
+    const handleStorageChange = (e) => {
+      if (e.key === 'selectedTeamData') {
+        loadTeamData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [selectedTeam]);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -267,13 +284,26 @@ const Billing = () => {
     window.history.replaceState({}, document.title, window.location.pathname);
   };
 
-  if (loading) {
+  if (loading || teamLoading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-700"></div>
-        </div>
-        <div className="text-center mt-2">Loading team information...</div>
+      <div className="flex justify-center items-center h-64">
+        <CircularProgress />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <Alert severity="error">{error}</Alert>
+      </div>
+    );
+  }
+
+  if (!selectedTeam || !selectedTeam._id) {
+    return (
+      <div className="p-4">
+        <Alert severity="warning">Please select a team to view billing information.</Alert>
       </div>
     );
   }
@@ -294,61 +324,53 @@ const Billing = () => {
         </div>
       )}
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <>
-          <StripeSubscription 
-            teamId={currentTeam?._id} 
-            currentTeam={currentTeam}
-          />
-          
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
-            {billingDetails ? (
-              <div className="bg-white shadow rounded-lg p-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Company Name</p>
-                    <p className="font-medium">{billingDetails.companyName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Address</p>
-                    <p className="font-medium">{billingDetails.address}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">City</p>
-                    <p className="font-medium">{billingDetails.city}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Zip/Postal Code</p>
-                    <p className="font-medium">{billingDetails.zipCode}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Country</p>
-                    <p className="font-medium">{billingDetails.country}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={openModal}
-                  className="mt-4 text-blue-600 hover:text-blue-800"
-                >
-                  Edit Details
-                </button>
+      <StripeSubscription 
+        teamId={selectedTeam._id} 
+        currentTeam={selectedTeam}
+      />
+      
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
+        {billingDetails ? (
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Company Name</p>
+                <p className="font-medium">{billingDetails.companyName}</p>
               </div>
-            ) : (
-              <button
-                onClick={openModal}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                Add Billing Details
-              </button>
-            )}
+              <div>
+                <p className="text-sm text-gray-500">Address</p>
+                <p className="font-medium">{billingDetails.address}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">City</p>
+                <p className="font-medium">{billingDetails.city}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Zip/Postal Code</p>
+                <p className="font-medium">{billingDetails.zipCode}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Country</p>
+                <p className="font-medium">{billingDetails.country}</p>
+              </div>
+            </div>
+            <button
+              onClick={openModal}
+              className="mt-4 text-blue-600 hover:text-blue-800"
+            >
+              Edit Details
+            </button>
           </div>
-        </>
-      )}
+        ) : (
+          <button
+            onClick={openModal}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Add Billing Details
+          </button>
+        )}
+      </div>
 
       <BillingDetailsModal
         isOpen={isModalOpen}
