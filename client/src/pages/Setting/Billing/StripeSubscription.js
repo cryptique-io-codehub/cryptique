@@ -28,6 +28,8 @@ import {
   Stack
 } from '@mui/material';
 import { Check, Info, Star, StarBorder } from '@mui/icons-material';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { 
   getSubscriptionPlans, 
   getSubscription, 
@@ -355,24 +357,39 @@ const StripeSubscription = ({ teamId, currentTeam }) => {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Divider sx={{ my: 3 }} />
+          
+          <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+            Subscription Management Options:
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: {xs: 'column', md: 'row'}, gap: 2, mt: 2 }}>
             <Button 
-              variant="outlined" 
+              variant="contained" 
               color="primary"
               onClick={handleManagePaymentMethod}
               disabled={loading}
+              startIcon={<CreditCardIcon />}
+              fullWidth
+              sx={{ py: 1.5 }}
             >
-              Manage Payment Methods
+              Manage Subscription in Stripe Portal
             </Button>
             <Button 
               variant="outlined" 
               color="error"
               onClick={handleCancelSubscription}
               disabled={loading || subscription.subscription.status === 'canceled' || subscription.subscription.status === 'cancelled'}
+              startIcon={<CancelIcon />}
+              fullWidth
+              sx={{ py: 1.5 }}
             >
               Cancel Subscription
             </Button>
           </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            The Stripe Portal allows you to update payment methods, view invoices, and manage your subscription details.
+          </Typography>
         </Paper>
       ) : (
         <Paper sx={{ p: 3, mb: 4 }}>

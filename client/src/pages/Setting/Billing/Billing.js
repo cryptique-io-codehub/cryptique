@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, CreditCard, Cancel } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTeam } from "../../../context/teamContext";
-import { CircularProgress, Alert, Button, Paper } from '@mui/material';
+import { CircularProgress, Alert, Button, Paper, Typography } from '@mui/material';
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData }) => {
@@ -290,11 +290,11 @@ const PLAN_LIMITS = {
   },
   PRO: {
     name: "Pro",
-    websites: 3,
-    contracts: 3,
+    websites: 5,
+    contracts: 5,
     apiCalls: 150000,
-    members: 3,
-    description: "Full app, 3 websites, 3 smart contracts, 150,000 API calls/month, 3 team members."
+    members: 5,
+    description: "Full app, 5 websites, 5 smart contracts, 150,000 API calls/month, 5 team members."
   },
   ENTERPRISE: {
     name: "Enterprise",
@@ -624,6 +624,77 @@ const Billing = () => {
             <div className="col-span-2">
               <div className="text-sm text-gray-500">Add-ons</div>
               <div className="font-medium">{subscription.subscription.addons?.some(a => a.name === 'cq_intelligence' && a.active) ? 'CQ Intelligence' : 'None'}</div>
+            </div>
+            
+            <div className="col-span-2 mt-4 pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-700 font-medium mb-2">Subscription Management</div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  variant="contained" 
+                  color="primary"
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+                      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+                      const hostUrl = window.location.origin;
+                      
+                      const res = await axios.post(`${API_URL}/api/stripe/create-portal-session`, {
+                        teamId: selectedTeam._id,
+                        returnUrl: `${hostUrl}/${selectedTeam.name}/settings/billing`
+                      }, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      });
+                      
+                      window.location.href = res.data.url;
+                    } catch (err) {
+                      console.error('Error opening Stripe portal:', err);
+                      setError('Failed to open billing portal. Please try again later.');
+                      setLoading(false);
+                    }
+                  }}
+                  startIcon={<CreditCard />}
+                  disabled={loading}
+                >
+                  Manage Subscription in Stripe Portal
+                </Button>
+                
+                <Button 
+                  variant="outlined" 
+                  color="error"
+                  onClick={() => {
+                    // Show a confirmation dialog before cancellation
+                    if (window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.')) {
+                      setLoading(true);
+                      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+                      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+                      
+                      axios.post(`${API_URL}/api/stripe/cancel-subscription`, {
+                        subscriptionId: subscription.subscription.id
+                      }, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      })
+                      .then(() => {
+                        // Refetch data after cancellation
+                        loadData();
+                        setSuccessMessage('Your subscription has been cancelled and will end at the current billing period.');
+                      })
+                      .catch(err => {
+                        console.error('Error cancelling subscription:', err);
+                        setError('Failed to cancel subscription. Please try again later.');
+                        setLoading(false);
+                      });
+                    }
+                  }}
+                  startIcon={<Cancel />}
+                  disabled={loading || subscription.subscription.status === 'canceled' || subscription.subscription.status === 'cancelled'}
+                >
+                  Cancel Subscription
+                </Button>
+              </div>
+              <Typography variant="caption" color="text.secondary" className="block mt-2">
+                The Stripe Portal allows you to update payment methods, view invoices, and manage your subscription details.
+              </Typography>
             </div>
           </div>
         ) : (
