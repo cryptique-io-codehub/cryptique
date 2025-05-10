@@ -115,11 +115,32 @@ router.post('/create-checkout-session', async (req, res) => {
       planType, 
       billingCycle,
       hasSuccessUrl: !!successUrl,
-      hasCancelUrl: !!cancelUrl
+      hasCancelUrl: !!cancelUrl,
+      successUrlSample: successUrl ? successUrl.substring(0, 40) + '...' : 'none',
+      cancelUrlSample: cancelUrl ? cancelUrl.substring(0, 40) + '...' : 'none'
     });
 
-    if (!teamId || !planType || !successUrl || !cancelUrl) {
-      return res.status(400).json({ error: 'Missing required parameters' });
+    // Validate required parameters
+    if (!teamId || !planType) {
+      return res.status(400).json({ error: 'Missing required parameters: teamId and planType are required' });
+    }
+    
+    // Validate URLs - must be valid and properly encoded
+    if (!successUrl || !cancelUrl) {
+      return res.status(400).json({ error: 'Missing required parameters: successUrl and cancelUrl are required' });
+    }
+    
+    // Validate URL format
+    try {
+      // Test if URLs are valid by trying to construct URL objects
+      new URL(successUrl);
+      new URL(cancelUrl);
+    } catch (urlError) {
+      console.error('Invalid URL format:', urlError.message);
+      return res.status(400).json({ 
+        error: 'Invalid URL format. URLs must be properly encoded.',
+        details: urlError.message 
+      });
     }
 
     // Normalize the plan type to lowercase for case-insensitive comparison

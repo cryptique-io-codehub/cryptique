@@ -38,12 +38,47 @@ export const getSubscriptionPlans = async () => {
 export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly', billingAddress = null) => {
   try {
     const apiClient = createApiClient();
+    
+    // Validate and ensure URLs are properly encoded
+    let validatedSuccessUrl = successUrl;
+    let validatedCancelUrl = cancelUrl;
+    
+    try {
+      // Check if URLs are already valid
+      new URL(successUrl);
+      new URL(cancelUrl);
+    } catch (error) {
+      // If not valid, try to fix common issues like spaces
+      console.warn("URL validation failed, attempting to fix URLs:", error.message);
+      
+      // Try to encode parts of the URL that might contain spaces
+      if (successUrl && typeof successUrl === 'string') {
+        const [baseUrl, ...rest] = successUrl.split('/');
+        validatedSuccessUrl = baseUrl + '/' + rest.map(part => encodeURIComponent(decodeURIComponent(part))).join('/');
+      }
+      
+      if (cancelUrl && typeof cancelUrl === 'string') {
+        const [baseUrl, ...rest] = cancelUrl.split('/');
+        validatedCancelUrl = baseUrl + '/' + rest.map(part => encodeURIComponent(decodeURIComponent(part))).join('/');
+      }
+      
+      // Verify the fixed URLs are now valid
+      try {
+        new URL(validatedSuccessUrl);
+        new URL(validatedCancelUrl);
+        console.log("URLs fixed successfully");
+      } catch (validationError) {
+        console.error("Failed to fix URLs:", validationError.message);
+        throw new Error(`Invalid URL format: ${validationError.message}`);
+      }
+    }
+    
     console.log('Creating checkout session with params:', {
       teamId,
       planType,
       billingCycle,
-      successUrl: successUrl ? successUrl.substring(0, 50) + '...' : undefined,
-      cancelUrl: cancelUrl ? cancelUrl.substring(0, 50) + '...' : undefined,
+      successUrl: validatedSuccessUrl ? validatedSuccessUrl.substring(0, 50) + '...' : undefined,
+      cancelUrl: validatedCancelUrl ? validatedCancelUrl.substring(0, 50) + '...' : undefined,
       hasAddress: !!billingAddress,
       addressFields: billingAddress ? Object.keys(billingAddress) : []
     });
@@ -54,8 +89,8 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
     const response = await apiClient.post('/api/stripe/create-checkout-session', {
       teamId,
       planType: normalizedPlanType,
-      successUrl,
-      cancelUrl,
+      successUrl: validatedSuccessUrl,
+      cancelUrl: validatedCancelUrl,
       billingCycle,
       billingAddress
     });
@@ -75,6 +110,8 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
           console.error('Plan type error. Make sure plan type is one of: offchain, basic, pro, enterprise');
         } else if (error.response.data.error.includes('Price ID not found')) {
           console.error('Price ID error. Check that Stripe price IDs are correctly configured in server environment');
+        } else if (error.response.data.error.includes('Invalid URL')) {
+          console.error('URL error. Check that success and cancel URLs are properly formatted and encoded');
         }
       }
     }

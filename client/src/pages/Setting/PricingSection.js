@@ -435,8 +435,16 @@ const PricingSection = () => {
       // Get host URL for success/cancel redirects
       const hostUrl = window.location.origin;
       
-      const successUrl = `${hostUrl}/${teamName}/settings/billing?success=true`;
-      const cancelUrl = `${hostUrl}/${teamName}/settings/billing?canceled=true`;
+      // Properly encode the team name for URL usage
+      const encodedTeamName = encodeURIComponent(teamName);
+      
+      const successUrl = `${hostUrl}/${encodedTeamName}/settings/billing?success=true`;
+      const cancelUrl = `${hostUrl}/${encodedTeamName}/settings/billing?canceled=true`;
+      
+      console.log("Using properly encoded URLs:", {
+        success: successUrl,
+        cancel: cancelUrl
+      });
       
       // Get the combined plan type string
       const fullPlanType = getFullPlanType();
@@ -471,6 +479,8 @@ const PricingSection = () => {
       let errorMessage = "Failed to create checkout session. Please try again.";
       if (err.response && err.response.data && err.response.data.message) {
         errorMessage += ` Error: ${err.response.data.message}`;
+      } else if (err.response && err.response.data && err.response.data.error) {
+        errorMessage += ` Error: ${err.response.data.error}`;
       }
       setError(errorMessage);
       setLoading(false);
