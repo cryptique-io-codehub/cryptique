@@ -252,15 +252,53 @@ router.post('/create-checkout-session', async (req, res) => {
 router.post('/create-portal-session', async (req, res) => {
   try {
     const { teamId, returnUrl } = req.body;
+    
+    console.log('Creating portal session for teamId:', teamId);
 
     // Find the team first
     const team = await Team.findById(teamId);
     if (!team) {
+      console.log('Team not found with ID:', teamId);
       return res.status(404).json({ error: 'Team not found' });
     }
+    
+    console.log('Found team:', { 
+      id: team._id, 
+      name: team.name, 
+      hasCustomerId: !!team.stripeCustomerId,
+      customerId: team.stripeCustomerId || 'none'
+    });
 
     // Check if team has a Stripe customer ID
     if (!team.stripeCustomerId) {
+      console.log('Team has no Stripe customer ID:', teamId);
+      
+      // Try to retrieve Stripe customer ID through alternative methods
+      const subscription = team.subscription || {};
+      if (subscription.stripeSubscriptionId) {
+        try {
+          // Try to get customer ID from the subscription
+          const subscriptionData = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+          if (subscriptionData && subscriptionData.customer) {
+            console.log('Found customer ID from subscription:', subscriptionData.customer);
+            
+            // Update the team with the customer ID for future use
+            team.stripeCustomerId = subscriptionData.customer;
+            await team.save();
+            
+            // Now create the session with this customer ID
+            const session = await stripe.billingPortal.sessions.create({
+              customer: subscriptionData.customer,
+              return_url: returnUrl,
+            });
+            
+            return res.json({ url: session.url });
+          }
+        } catch (subscriptionError) {
+          console.error('Error retrieving subscription:', subscriptionError);
+        }
+      }
+      
       return res.status(404).json({ error: 'No customer found for this team' });
     }
 
@@ -273,6 +311,40 @@ router.post('/create-portal-session', async (req, res) => {
     res.json({ url: session.url });
   } catch (error) {
     console.error('Error creating portal session:', error);
+    res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// Create a customer portal session using a subscription ID
+router.post('/create-portal-session-by-subscription', async (req, res) => {
+  try {
+    const { subscriptionId, returnUrl } = req.body;
+    
+    console.log('Creating portal session using subscription ID:', subscriptionId);
+
+    if (!subscriptionId) {
+      return res.status(400).json({ error: 'Subscription ID is required' });
+    }
+
+    // Get the subscription to find the customer
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    if (!subscription) {
+      console.log('Subscription not found:', subscriptionId);
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    const customerId = subscription.customer;
+    console.log('Found customer ID from subscription:', customerId);
+
+    // Create the portal session with this customer ID
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('Error creating portal session from subscription:', error);
     res.status(500).json({ error: 'Failed to create portal session' });
   }
 });

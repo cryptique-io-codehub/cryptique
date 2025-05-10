@@ -639,12 +639,34 @@ const Billing = () => {
                       setLoading(true);
                       const hostUrl = window.location.origin;
                       
-                      const session = await createPortalSession(
-                        selectedTeam._id,
-                        `${hostUrl}/${selectedTeam.name}/settings/billing`
-                      );
-                      
-                      window.location.href = session.url;
+                      try {
+                        // First attempt: Try using the createPortalSession via teamId
+                        const session = await createPortalSession(
+                          selectedTeam._id,
+                          `${hostUrl}/${selectedTeam.name}/settings/billing`
+                        );
+                        
+                        window.location.href = session.url;
+                      } catch (teamErr) {
+                        console.error('Error with team-based portal session, trying subscription-based approach:', teamErr);
+                        
+                        // Second attempt: Try using the subscription ID directly
+                        if (subscription && subscription.subscription && subscription.subscription.id) {
+                          const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+                          const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+                          
+                          const response = await axios.post(`${API_URL}/api/stripe/create-portal-session-by-subscription`, {
+                            subscriptionId: subscription.subscription.id,
+                            returnUrl: `${hostUrl}/${selectedTeam.name}/settings/billing`
+                          }, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          
+                          window.location.href = response.data.url;
+                        } else {
+                          throw new Error('No subscription ID available for fallback');
+                        }
+                      }
                     } catch (err) {
                       console.error('Error opening Stripe portal:', err);
                       setError('Failed to open billing portal. Please try again later.');
