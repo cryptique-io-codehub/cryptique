@@ -140,10 +140,12 @@ const Dashboard = () => {
   useEffect(() => {
     // Always ensure sidebar is open on desktop for Settings page
     // This is crucial because the sidebar should not be hidden, just compacted
-    if (selectedPage === "settings") {
+    if (selectedPage === "settings" && !screenSize.isMobile) {
       setIsSidebarOpen(true);
+      // Force compact mode for settings page
+      setIsCompactMode(true);
     }
-  }, [selectedPage]);
+  }, [selectedPage, screenSize.isMobile]);
 
   // Add team change detection
   useEffect(() => {
@@ -193,6 +195,10 @@ const Dashboard = () => {
 
   // Get sidebar classes based on screen size and state
   const getSidebarClasses = () => {
+    // For settings page, ensure the sidebar is always visible on desktop
+    if (selectedPage === "settings" && screenSize.isDesktop) {
+      return "h-screen sticky top-0 flex-shrink-0 visible";
+    }
     return "h-screen sticky top-0 flex-shrink-0";
   };
 
@@ -229,7 +235,8 @@ const Dashboard = () => {
         () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
       screenSize: screenSize,
-      selectedPage: {selectedPage}
+      selectedPage: {selectedPage},
+      isSidebarOpen: isSidebarOpen
     };
 
     switch (selectedPage) {
@@ -263,7 +270,7 @@ const Dashboard = () => {
       case "cq-intelligence":
         return <CQIntelligence {...commonProps} />;
       case "settings":
-        return <Settings {...commonProps} />;
+        return <Settings {...commonProps} isSidebarVisible={true} />;
       default:
         return (
           <>

@@ -16,6 +16,9 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   // Control sidebar expansion state
   const showExpanded = !effectiveIsCompact || (effectiveIsCompact && isHovering);
   
+  // Force sidebar to be visible on desktop for settings page
+  const forceVisible = currentPage === "settings" && windowWidth >= 768;
+  
   // Extract the current page from the URL path
   const path = location.pathname;
   const pathSegments = path.split('/').filter(segment => segment);
@@ -76,8 +79,8 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
 
   return (
     <aside
-      className={`fixed md:relative bg-white ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r transform transition-all duration-300 ease-in-out z-50 ${
-        isOpen 
+      className={`fixed md:relative bg-white ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r transform transition-all duration-300 ease-in-out ${currentPage === "settings" ? "z-10" : "z-50"} ${
+        isOpen || forceVisible
           ? "translate-x-0 w-full sm:w-64 md:w-56 top-0 left-0 md:relative md:top-auto md:left-auto" 
           : "-translate-x-full md:translate-x-0 md:w-auto"
       } ${
