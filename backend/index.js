@@ -10,6 +10,8 @@ const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
 const { connectToDatabase } = require("./config/database");
 const healthRouter = require("./routes/healthRouter");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const Team = require("./models/team");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -203,6 +205,77 @@ app.use("/health", healthRouter);
 
 // Stripe routes
 app.use("/api/stripe", stripeRouter);
+
+// Special route handling for Stripe webhooks (needs raw body)
+// Webhook events MUST be received on this endpoint
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    // Verify webhook signature using the Stripe webhook secret
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle different event types
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        handleCheckoutSessionCompleted(session);
+        break;
+      }
+
+      // Add other event handlers as needed
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error(`Error processing webhook: ${error.message}`);
+    res.status(500).send(`Webhook Error: ${error.message}`);
+  }
+});
+
+// Add the checkout session completed handler function
+async function handleCheckoutSessionCompleted(session) {
+  try {
+    // Get metadata from the checkout session
+    const { teamId, planType } = session.metadata;
+    const billingCycle = session.metadata.billingCycle || 'monthly';
+
+    if (!teamId || !planType) {
+      console.log('Missing teamId or planType in checkout session metadata');
+      return;
+    }
+
+    // Get or create the subscription
+    const customerId = session.customer;
+    const subscriptionId = session.subscription;
+
+    // Update the team with the subscription details
+    await Team.findByIdAndUpdate(teamId, {
+      stripeCustomerId: customerId,
+      'subscription.stripeSubscriptionId': subscriptionId,
+      'subscription.plan': planType.toLowerCase(),
+      'subscription.status': 'active',
+      'subscription.billingCycle': billingCycle
+    });
+
+    console.log(`Team ${teamId} subscription updated successfully with subscription ID ${subscriptionId}`);
+  } catch (error) {
+    console.error('Error handling checkout.session.completed:', error);
+  }
+}
 
 // Apply specific CORS for SDK routes
 app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
