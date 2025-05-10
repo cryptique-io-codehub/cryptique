@@ -22,7 +22,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   // Extract the current page from the URL path
   const path = location.pathname;
   const pathSegments = path.split('/').filter(segment => segment);
-  const currentPage = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || 'dashboard';
+  const pathCurrentPage = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || 'dashboard';
   
   // Handle hover state with a small delay for better UX
   const handleMouseEnter = () => {
@@ -62,7 +62,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   
   // Helper function to determine if a menu item is active
   const isActive = (page) => {
-    return currentPage === page;
+    return pathCurrentPage === page;
   };
   
   // Add window resize listener
