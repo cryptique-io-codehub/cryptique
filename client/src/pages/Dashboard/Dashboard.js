@@ -129,11 +129,10 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // Make sure sidebar is in compact mode when in Settings page
+  // Make sure sidebar is collapsed when in Settings page
   useEffect(() => {
     if (selectedPage === "settings" && !screenSize.isMobile) {
-      // Just ensure it's in compact mode, but don't force visibility
-      setIsCompactMode(true);
+      setIsSidebarOpen(true); // Keep sidebar visible but we'll ensure it's in compact mode
     }
   }, [selectedPage, screenSize.isMobile]);
 
@@ -202,7 +201,12 @@ const Dashboard = () => {
     let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
     
     if (screenSize.isDesktop) {
-      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+      // When in settings page, main content should account for both sidebars
+      if (selectedPage === "settings") {
+        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+      } else {
+        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+      }
     }
     
     return baseClasses;
@@ -283,7 +287,7 @@ const Dashboard = () => {
           onClose={() => setIsSidebarOpen(false)} 
           onNavigate={handleNavigation}
           currentPage={selectedPage}
-          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen)}
+          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen) || selectedPage === "settings"}
           screenSize={screenSize}
         />
       </div>
