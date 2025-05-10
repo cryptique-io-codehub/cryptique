@@ -674,7 +674,7 @@ const TeamsSection = () => {
     // Separate function to fetch team members so it can be reused
     const fetchTeamMembers = async (team) => {
         try {
-            const response = await axiosInstance.post('/team/members', { teams: team.name });
+            const response = await axiosInstance.get(`/team/${team.name}/members`);
             console.log("Team members response:", response.data);
             
             // Normalize roles to ensure we only have 'admin' or 'user'
