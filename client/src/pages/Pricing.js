@@ -133,7 +133,7 @@ const comparisonRows = [
 // Add these functions to handle billing details
 const fetchBillingDetails = async (teamId, axiosInstance) => {
   try {
-    const response = await axiosInstance.get(`/team/${teamId}/billing-address`);
+    const response = await axiosInstance.get(`/api/team/${teamId}/billing-address`);
     return response.data;
   } catch (error) {
     console.error("Error fetching billing details:", error);
@@ -143,7 +143,7 @@ const fetchBillingDetails = async (teamId, axiosInstance) => {
 
 const saveBillingDetails = async (teamId, billingData, axiosInstance) => {
   try {
-    const response = await axiosInstance.post(`/team/${teamId}/billing-address`, billingData);
+    const response = await axiosInstance.post(`/api/team/${teamId}/billing-address`, billingData);
     return response.data;
   } catch (error) {
     console.error("Error saving billing details:", error);

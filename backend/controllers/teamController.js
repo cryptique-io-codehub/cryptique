@@ -21,9 +21,9 @@ exports.getAdminTeamDetails=async (req,res)=>{
 exports.getMembers=async (req,res)=>{
     
     try {
-        const team_name=req.body.teams;
-        // Fetch teams where the logged-in user is the creator
-        const this_team = await Team.findOne({name:team_name});
+        const teamId = req.params.teamId;
+        // Find team by ID
+        const this_team = await Team.findById(teamId);
         
         if (!this_team) {
             return res.status(404).json({ message: "Team not found" });
@@ -33,7 +33,7 @@ exports.getMembers=async (req,res)=>{
         if (this_team.user && this_team.user.length > 0 && this_team.user[0].role !== 'admin') {
             this_team.user[0].role = 'admin';
             await this_team.save();
-            console.log(`Updated team ${team_name} to ensure owner has admin role`);
+            console.log(`Updated team ${this_team.name} to ensure owner has admin role`);
         }
         
         // Normalize all member roles to either 'admin' or 'user'
@@ -54,7 +54,7 @@ exports.getMembers=async (req,res)=>{
             // Save the team if any roles were changed
             if (needsSave) {
                 await this_team.save();
-                console.log(`Updated team ${team_name} to normalize member roles`);
+                console.log(`Updated team ${this_team.name} to normalize member roles`);
             }
         }
         

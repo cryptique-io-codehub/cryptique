@@ -232,7 +232,8 @@ const fetchWebsites = async (teamId) => {
   try {
     const cached = sessionStorage.getItem("preloadedWebsites");
     if (cached) return JSON.parse(cached);
-    const res = await axios.get(`/website/team/${teamId}`);
+    const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+    const res = await axios.get(`${API_URL}/api/website/team/${teamId}`);
     return res.data.websites || [];
   } catch {
     return [];
@@ -242,7 +243,8 @@ const fetchContracts = async (teamId) => {
   try {
     const cached = sessionStorage.getItem("preloadedContracts");
     if (cached) return JSON.parse(cached);
-    const res = await axios.get(`/contracts/team/${teamId}`);
+    const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+    const res = await axios.get(`${API_URL}/api/contracts/team/${teamId}`);
     return res.data.contracts || [];
   } catch {
     return [];
@@ -251,7 +253,7 @@ const fetchContracts = async (teamId) => {
 const fetchMembers = async (teamName) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/team/${teamName._id || teamName}/members`);
+    const res = await axios.get(`${API_URL}/api/team/${teamName._id || teamName}/members`);
     return res.data || [];
   } catch (error) {
     console.error("Error fetching members:", error);
@@ -272,7 +274,7 @@ const fetchSubscription = async (teamId) => {
 const fetchBillingDetails = async (teamId) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/team/${teamId}/billing-address`);
+    const res = await axios.get(`${API_URL}/api/team/${teamId}/billing-address`);
     return res.data;
   } catch (error) {
     console.error("Error fetching billing details:", error);
@@ -283,7 +285,7 @@ const fetchBillingDetails = async (teamId) => {
 const saveBillingDetails = async (teamId, billingData) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.post(`${API_URL}/team/${teamId}/billing-address`, billingData);
+    const res = await axios.post(`${API_URL}/api/team/${teamId}/billing-address`, billingData);
     return res.data;
   } catch (error) {
     console.error("Error saving billing details:", error);

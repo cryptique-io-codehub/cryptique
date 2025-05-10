@@ -30,7 +30,8 @@ axiosInstance.interceptors.request.use(
     // Check if this is an analytics endpoint that's causing CORS issues
     if (config.url && (
       config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/')
+      config.url.includes('/intelligence/') ||
+      config.url.includes('/team/')  // Add team endpoints to this list
     )) {
       // For these endpoints, explicitly set withCredentials to false
       config.withCredentials = false;

@@ -6,7 +6,7 @@ const router = express.Router();
 
 
 router.post('/create',verifyToken,addMember);
-router.post('/members',verifyToken,getMembers);
+router.get('/:teamId/members',verifyToken,getMembers);
 router.get('/details',verifyToken,getTeamDetails);
 router.get('/admin-team-details',verifyToken,getAdminTeamDetails);
 router.post('/createNewTeam',verifyToken,createNewTeam);
