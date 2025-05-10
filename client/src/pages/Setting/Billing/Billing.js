@@ -557,6 +557,26 @@ const Billing = () => {
 
   const planLimits = PLAN_LIMITS[planKey];
 
+  // Helper function to safely format dates or return N/A for invalid dates
+  const formatSubscriptionDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date value:', dateString);
+        return 'N/A';
+      }
+      
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -598,7 +618,7 @@ const Billing = () => {
             <div>
               <div className="text-sm text-gray-500">Current Period</div>
               <div className="font-medium">
-                {new Date(subscription.subscription.currentPeriodStart).toLocaleDateString()} - {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
+                {formatSubscriptionDate(subscription.subscription.currentPeriodStart)} - {formatSubscriptionDate(subscription.subscription.currentPeriodEnd)}
               </div>
             </div>
             <div className="col-span-2">

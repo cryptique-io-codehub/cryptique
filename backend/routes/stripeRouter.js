@@ -313,11 +313,29 @@ router.get('/subscription/:teamId', async (req, res) => {
       item.price.id === process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE_ANNUAL
     );
 
+    // Ensure dates are properly formatted
+    const currentPeriodStart = subscription.current_period_start 
+      ? new Date(subscription.current_period_start * 1000) 
+      : new Date();
+      
+    const currentPeriodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
+
+    // Log date information for debugging
+    console.log('Subscription dates:', { 
+      rawStart: subscription.current_period_start,
+      rawEnd: subscription.current_period_end,
+      formattedStart: currentPeriodStart.toISOString(),
+      formattedEnd: currentPeriodEnd.toISOString()
+    });
+
     res.json({
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: currentPeriodStart,
+        currentPeriodEnd: currentPeriodEnd,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         plan: team.subscription.plan,
         hasCQIntelligence,
