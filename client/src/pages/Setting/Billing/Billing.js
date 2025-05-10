@@ -5,6 +5,7 @@ import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTeam } from "../../../context/teamContext";
 import { CircularProgress, Alert, Button, Paper, Typography } from '@mui/material';
+import { createPortalSession, cancelSubscription } from '../../../services/stripeService';
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData }) => {
@@ -636,18 +637,14 @@ const Billing = () => {
                   onClick={async () => {
                     try {
                       setLoading(true);
-                      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-                      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
                       const hostUrl = window.location.origin;
                       
-                      const res = await axios.post(`${API_URL}/api/stripe/create-portal-session`, {
-                        teamId: selectedTeam._id,
-                        returnUrl: `${hostUrl}/${selectedTeam.name}/settings/billing`
-                      }, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                      });
+                      const session = await createPortalSession(
+                        selectedTeam._id,
+                        `${hostUrl}/${selectedTeam.name}/settings/billing`
+                      );
                       
-                      window.location.href = res.data.url;
+                      window.location.href = session.url;
                     } catch (err) {
                       console.error('Error opening Stripe portal:', err);
                       setError('Failed to open billing portal. Please try again later.');
@@ -667,24 +664,18 @@ const Billing = () => {
                     // Show a confirmation dialog before cancellation
                     if (window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.')) {
                       setLoading(true);
-                      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-                      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
                       
-                      axios.post(`${API_URL}/api/stripe/cancel-subscription`, {
-                        subscriptionId: subscription.subscription.id
-                      }, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                      })
-                      .then(() => {
-                        // Refetch data after cancellation
-                        loadData();
-                        setSuccessMessage('Your subscription has been cancelled and will end at the current billing period.');
-                      })
-                      .catch(err => {
-                        console.error('Error cancelling subscription:', err);
-                        setError('Failed to cancel subscription. Please try again later.');
-                        setLoading(false);
-                      });
+                      cancelSubscription(subscription.subscription.id)
+                        .then(() => {
+                          // Refetch data after cancellation
+                          loadData();
+                          setSuccessMessage('Your subscription has been cancelled and will end at the current billing period.');
+                        })
+                        .catch(err => {
+                          console.error('Error cancelling subscription:', err);
+                          setError('Failed to cancel subscription. Please try again later.');
+                          setLoading(false);
+                        });
                     }
                   }}
                   startIcon={<XCircle />}
