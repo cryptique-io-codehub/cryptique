@@ -328,4 +328,118 @@ router.get('/subscription/:teamId', async (req, res) => {
   }
 });
 
+// Add this route to retroactively sync subscriptions
+router.post('/sync-subscriptions', async (req, res) => {
+  try {
+    // This is an admin-only route, so add authentication as needed
+    // For example: if (req.user.role !== 'admin') return res.status(403).json({error: 'Unauthorized'});
+    
+    // Get all teams that might have subscription issues
+    const teams = await Team.find({
+      $or: [
+        { stripeCustomerId: { $exists: true, $ne: null } },
+        { 'subscription.stripeSubscriptionId': { $exists: true, $ne: null } }
+      ]
+    });
+    
+    console.log(`Found ${teams.length} teams with potential subscription data`);
+    
+    const results = {
+      success: [],
+      noCustomer: [],
+      noSubscription: [],
+      errors: []
+    };
+    
+    // Process each team
+    for (const team of teams) {
+      try {
+        // Skip teams with no Stripe customer ID
+        if (!team.stripeCustomerId) {
+          results.noCustomer.push(team._id.toString());
+          continue;
+        }
+        
+        console.log(`Processing team ${team._id} with Stripe customer ${team.stripeCustomerId}`);
+        
+        // Get all subscriptions for the customer
+        const subscriptions = await stripe.subscriptions.list({
+          customer: team.stripeCustomerId,
+          status: 'all' // Include active, past_due, canceled, etc.
+        });
+        
+        if (!subscriptions.data.length) {
+          results.noSubscription.push(team._id.toString());
+          continue;
+        }
+        
+        // Use the most recent active or past_due subscription
+        const activeSubscription = subscriptions.data.find(sub => 
+          ['active', 'past_due', 'trialing'].includes(sub.status)
+        ) || subscriptions.data[0];
+        
+        // Get details for logging and debugging
+        const subDetails = {
+          id: activeSubscription.id,
+          status: activeSubscription.status,
+          product: activeSubscription.items.data[0]?.price?.product,
+          priceId: activeSubscription.items.data[0]?.price?.id,
+          interval: activeSubscription.items.data[0]?.plan?.interval
+        };
+        
+        console.log(`Found subscription for team ${team._id}:`, subDetails);
+        
+        // Determine plan type from subscription items
+        let planType = team.subscription.plan || 'basic'; // Default to current or basic
+        const billingCycle = activeSubscription.items.data[0]?.plan?.interval === 'year' ? 'annual' : 'monthly';
+        
+        // Try to determine the plan from price id or product
+        const priceId = activeSubscription.items.data[0]?.price?.id;
+        if (priceId) {
+          if (priceId.includes('pro')) planType = 'pro';
+          else if (priceId.includes('enterprise')) planType = 'enterprise';
+          else if (priceId.includes('offchain')) planType = 'offchain';
+        }
+        
+        // Update the team with the subscription details
+        await Team.findByIdAndUpdate(team._id, {
+          stripeCustomerId: team.stripeCustomerId,
+          'subscription.stripeSubscriptionId': activeSubscription.id,
+          'subscription.plan': planType.toLowerCase(),
+          'subscription.status': activeSubscription.status === 'active' ? 'active' : 
+                                activeSubscription.status === 'past_due' ? 'pastdue' : 
+                                activeSubscription.status === 'canceled' ? 'cancelled' : 'inactive',
+          'subscription.billingCycle': billingCycle
+        });
+        
+        console.log(`Updated team ${team._id} with subscription ${activeSubscription.id}`);
+        
+        results.success.push({
+          teamId: team._id.toString(),
+          subscriptionId: activeSubscription.id,
+          status: activeSubscription.status,
+          planType
+        });
+      } catch (teamError) {
+        console.error(`Error processing team ${team._id}:`, teamError);
+        results.errors.push({
+          teamId: team._id.toString(),
+          error: teamError.message
+        });
+      }
+    }
+    
+    res.json({
+      message: `Processed ${teams.length} teams`,
+      results
+    });
+  } catch (error) {
+    console.error('Error syncing subscriptions:', error);
+    res.status(500).json({ 
+      error: 'Failed to sync subscriptions', 
+      message: error.message 
+    });
+  }
+});
+
 module.exports = router; 

@@ -18,6 +18,100 @@ const PORT = process.env.PORT || 3001;
 // Set trust proxy to true for Vercel/AWS Lambda environments
 app.set('trust proxy', 1);
 
+// Special route handling for Stripe webhooks (needs raw body)
+// IMPORTANT: This must be defined BEFORE any body parsers
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['stripe-signature'];
+  
+  // Log webhook request headers for troubleshooting (but exclude sensitive data)
+  console.log('Stripe webhook received:', {
+    method: req.method,
+    path: req.path,
+    contentType: req.headers['content-type'],
+    signatureExists: !!signature,
+    bodySize: req.body ? req.body.length : 0
+  });
+  
+  let event;
+
+  try {
+    // Verify webhook signature using the Stripe webhook secret
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+    
+    console.log(`✓ Webhook signature verified for event type: ${event.type}`);
+  } catch (err) {
+    console.error(`✗ Webhook signature verification failed:`, err);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle different event types
+  try {
+    console.log(`Processing webhook event: ${event.type}`, {
+      id: event.id,
+      created: new Date(event.created * 1000).toISOString()
+    });
+    
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        console.log('→ Processing checkout.session.completed', {
+          id: session.id,
+          customer: session.customer,
+          subscription: session.subscription,
+          metadata: session.metadata
+        });
+        handleCheckoutSessionCompleted(session);
+        break;
+      }
+
+      case 'customer.subscription.created': {
+        const subscription = event.data.object;
+        console.log('→ Processing customer.subscription.created', {
+          id: subscription.id,
+          customer: subscription.customer,
+          status: subscription.status
+        });
+        handleSubscriptionEvent(subscription, 'created');
+        break;
+      }
+      
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        console.log('→ Processing customer.subscription.updated', {
+          id: subscription.id,
+          customer: subscription.customer,
+          status: subscription.status
+        });
+        handleSubscriptionEvent(subscription, 'updated');
+        break;
+      }
+      
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        console.log('→ Processing customer.subscription.deleted', {
+          id: subscription.id,
+          customer: subscription.customer,
+          status: subscription.status
+        });
+        handleSubscriptionEvent(subscription, 'deleted');
+        break;
+      }
+
+      default:
+        console.log(`⚠ Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error(`✗ Error processing webhook:`, error);
+    res.status(500).send(`Webhook Error: ${error.message}`);
+  }
+});
+
 // Debug environment variables
 console.log('Main app environment check:', {
   hasGeminiApi: !!process.env.GEMINI_API,
@@ -206,77 +300,6 @@ app.use("/health", healthRouter);
 // Stripe routes
 app.use("/api/stripe", stripeRouter);
 
-// Special route handling for Stripe webhooks (needs raw body)
-// Webhook events MUST be received on this endpoint
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
-  const signature = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    // Verify webhook signature using the Stripe webhook secret
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle different event types
-  try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        handleCheckoutSessionCompleted(session);
-        break;
-      }
-
-      // Add other event handlers as needed
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error(`Error processing webhook: ${error.message}`);
-    res.status(500).send(`Webhook Error: ${error.message}`);
-  }
-});
-
-// Add the checkout session completed handler function
-async function handleCheckoutSessionCompleted(session) {
-  try {
-    // Get metadata from the checkout session
-    const { teamId, planType } = session.metadata;
-    const billingCycle = session.metadata.billingCycle || 'monthly';
-
-    if (!teamId || !planType) {
-      console.log('Missing teamId or planType in checkout session metadata');
-      return;
-    }
-
-    // Get or create the subscription
-    const customerId = session.customer;
-    const subscriptionId = session.subscription;
-
-    // Update the team with the subscription details
-    await Team.findByIdAndUpdate(teamId, {
-      stripeCustomerId: customerId,
-      'subscription.stripeSubscriptionId': subscriptionId,
-      'subscription.plan': planType.toLowerCase(),
-      'subscription.status': 'active',
-      'subscription.billingCycle': billingCycle
-    });
-
-    console.log(`Team ${teamId} subscription updated successfully with subscription ID ${subscriptionId}`);
-  } catch (error) {
-    console.error('Error handling checkout.session.completed:', error);
-  }
-}
-
 // Apply specific CORS for SDK routes
 app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
 
@@ -338,6 +361,116 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Add the checkout session completed handler function
+async function handleCheckoutSessionCompleted(session) {
+  try {
+    // Get metadata from the checkout session
+    const { teamId, planType } = session.metadata;
+    console.log('Processing checkout session:', { 
+      teamId, 
+      planType, 
+      subscription: session.subscription,
+      customer: session.customer 
+    });
+    
+    const billingCycle = session.metadata.billingCycle || 'monthly';
+
+    if (!teamId || !planType) {
+      console.log('Missing teamId or planType in checkout session metadata');
+      return;
+    }
+
+    // Get or create the subscription
+    const customerId = session.customer;
+    const subscriptionId = session.subscription;
+
+    // Update the team with the subscription details
+    await Team.findByIdAndUpdate(teamId, {
+      stripeCustomerId: customerId,
+      'subscription.stripeSubscriptionId': subscriptionId,
+      'subscription.plan': planType.toLowerCase(),
+      'subscription.status': 'active',
+      'subscription.billingCycle': billingCycle
+    });
+
+    console.log(`Team ${teamId} subscription updated successfully with subscription ID ${subscriptionId}`);
+  } catch (error) {
+    console.error('Error handling checkout.session.completed:', error);
+  }
+}
+
+// Handle subscription events (created, updated, deleted)
+async function handleSubscriptionEvent(subscription, eventType) {
+  try {
+    const customerId = subscription.customer;
+    const subscriptionId = subscription.id;
+    
+    // Find the team associated with this customer
+    const team = await Team.findOne({ stripeCustomerId: customerId });
+    
+    if (!team) {
+      console.error(`No team found for Stripe customer ${customerId}`);
+      return;
+    }
+    
+    console.log(`Found team ${team._id} for customer ${customerId}`);
+    
+    // Handle different event types
+    switch (eventType) {
+      case 'created':
+        // This might be redundant if we already handled checkout.session.completed
+        // but it's a good fallback for subscriptions created directly via API
+        if (!team.subscription.stripeSubscriptionId) {
+          // Only update if we don't already have a subscription ID
+          // Determine the plan from the first item in the subscription
+          let planType = 'basic'; // Default fallback
+          if (subscription.items && subscription.items.data && subscription.items.data.length > 0) {
+            const priceId = subscription.items.data[0].price.id;
+            // Try to determine the plan from price id
+            if (priceId.includes('pro')) planType = 'pro';
+            else if (priceId.includes('enterprise')) planType = 'enterprise';
+            else if (priceId.includes('offchain')) planType = 'offchain';
+          }
+          
+          const billingCycle = subscription.items.data[0].plan.interval === 'year' ? 'annual' : 'monthly';
+          
+          await Team.findByIdAndUpdate(team._id, {
+            'subscription.stripeSubscriptionId': subscriptionId,
+            'subscription.plan': planType,
+            'subscription.status': subscription.status === 'active' ? 'active' : 'inactive',
+            'subscription.billingCycle': billingCycle
+          });
+          
+          console.log(`Created subscription for team ${team._id} with plan ${planType}`);
+        }
+        break;
+        
+      case 'updated':
+        // Update subscription status
+        await Team.findByIdAndUpdate(team._id, {
+          'subscription.status': subscription.status === 'active' ? 'active' : 'inactive',
+          // Include other fields that might have changed
+          'subscription.billingCycle': subscription.items.data[0].plan.interval === 'year' ? 'annual' : 'monthly'
+        });
+        
+        console.log(`Updated subscription status for team ${team._id} to ${subscription.status}`);
+        break;
+        
+      case 'deleted':
+        // Mark subscription as cancelled
+        await Team.findByIdAndUpdate(team._id, {
+          'subscription.status': 'cancelled',
+          'subscription.plan': 'free' // Downgrade to free plan
+        });
+        
+        console.log(`Marked subscription as cancelled for team ${team._id}`);
+        break;
+    }
+  } catch (error) {
+    console.error(`Error handling subscription ${eventType} event:`, error);
+  }
+}
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
