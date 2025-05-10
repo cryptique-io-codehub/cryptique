@@ -81,12 +81,62 @@ router.post('/', async (req, res) => {
  */
 async function handleCheckoutSessionCompleted(session) {
   try {
-    // Get metadata from the checkout session
-    const { teamId, planType } = session.metadata;
-    const billingCycle = session.metadata.billingCycle || 'monthly';
+    // Try to get metadata from both possible locations
+    let teamId = session.metadata?.teamId;
+    let planType = session.metadata?.planType;
+    let billingCycle = session.metadata?.billingCycle || 'monthly';
+    
+    // If metadata not found at session level, try to get it from other sources
+    if (!teamId || !planType) {
+      console.log('Session-level metadata missing, checking alternative sources');
+      
+      // Check client_reference_id as an alternative source for teamId
+      if (!teamId && session.client_reference_id) {
+        teamId = session.client_reference_id;
+        console.log(`Using client_reference_id as teamId: ${teamId}`);
+      }
+      
+      // If we still don't have what we need and there's a subscription ID
+      if ((!teamId || !planType) && session.subscription) {
+        try {
+          // Fetch the subscription to get metadata from there
+          const subscription = await stripe.subscriptions.retrieve(session.subscription);
+          if (subscription.metadata) {
+            teamId = teamId || subscription.metadata.teamId;
+            planType = planType || subscription.metadata.planType;
+            billingCycle = billingCycle || subscription.metadata.billingCycle || 'monthly';
+            console.log('Retrieved metadata from subscription:', { teamId, planType, billingCycle });
+          }
+          
+          // If still no plan type, try to determine from the price
+          if (!planType && subscription.items && subscription.items.data && subscription.items.data.length > 0) {
+            const price = subscription.items.data[0].price;
+            // Compare with known price IDs to determine plan
+            const stripePriceIds = require('../../config/stripe').STRIPE_PRICE_IDS;
+            for (const [key, value] of Object.entries(stripePriceIds)) {
+              if (value === price.id) {
+                planType = key.toLowerCase();
+                console.log(`Determined plan type from price ID: ${planType}`);
+                break;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching subscription metadata:', err);
+        }
+      }
+    }
+
+    console.log('Processing checkout session with metadata:', { 
+      teamId, 
+      planType, 
+      billingCycle,
+      subscription: session.subscription,
+      customer: session.customer
+    });
 
     if (!teamId || !planType) {
-      console.log('Missing teamId or planType in checkout session metadata');
+      console.log('Missing teamId or planType in all available metadata sources');
       return;
     }
 

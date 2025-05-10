@@ -225,6 +225,13 @@ router.post('/create-checkout-session', async (req, res) => {
       cancel_url: cancelUrl,
       client_reference_id: teamId,
       allow_promotion_codes: true,
+      // Add metadata at the session level
+      metadata: {
+        teamId,
+        planType: normalizedPlanType,
+        billingCycle
+      },
+      // Keep subscription data metadata for backwards compatibility
       subscription_data: {
         metadata: {
           teamId,

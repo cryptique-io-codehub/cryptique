@@ -366,18 +366,51 @@ app.use((req, res, next) => {
 async function handleCheckoutSessionCompleted(session) {
   try {
     // Get metadata from the checkout session
-    const { teamId, planType } = session.metadata;
+    // Try to get metadata from both possible locations
+    let teamId = session.metadata?.teamId;
+    let planType = session.metadata?.planType;
+    let billingCycle = session.metadata?.billingCycle || 'monthly';
+    
+    // If metadata not found at session level, try to get it from subscription data
+    // This handles legacy sessions and ensures both formats work
+    if (!teamId || !planType) {
+      console.log('Session-level metadata missing, checking subscription_data.metadata');
+      
+      // Also check client_reference_id as an alternative source for teamId
+      if (!teamId && session.client_reference_id) {
+        teamId = session.client_reference_id;
+        console.log(`Using client_reference_id as teamId: ${teamId}`);
+      }
+      
+      // If we still don't have what we need and there's a subscription ID
+      if ((!teamId || !planType) && session.subscription) {
+        try {
+          // Fetch the subscription to get metadata from there
+          const subscription = await stripe.subscriptions.retrieve(session.subscription);
+          if (subscription.metadata) {
+            teamId = teamId || subscription.metadata.teamId;
+            planType = planType || subscription.metadata.planType;
+            billingCycle = billingCycle || subscription.metadata.billingCycle || 'monthly';
+            console.log('Retrieved metadata from subscription:', { teamId, planType, billingCycle });
+          }
+        } catch (err) {
+          console.error('Error fetching subscription metadata:', err);
+        }
+      }
+    }
+    
     console.log('Processing checkout session:', { 
       teamId, 
       planType, 
       subscription: session.subscription,
-      customer: session.customer 
+      customer: session.customer,
+      metadataSource: session.metadata?.teamId ? 'session' : 
+                     session.client_reference_id ? 'client_reference_id' : 
+                     'subscription'
     });
-    
-    const billingCycle = session.metadata.billingCycle || 'monthly';
 
     if (!teamId || !planType) {
-      console.log('Missing teamId or planType in checkout session metadata');
+      console.log('Missing teamId or planType in all available metadata sources');
       return;
     }
 
