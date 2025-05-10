@@ -377,9 +377,9 @@ const Pricing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-16" style={{...styles.bodyFont}}>
+    <div className="bg-white pb-16">
       {/* Header */}
-      <div className="max-w-4xl mx-auto pt-10 pb-4 px-4">
+      <div className="max-w-4xl mx-auto pt-4 pb-4 px-4">
         <Typography variant="h5" style={{color: styles.accentColor, fontWeight: 600, ...styles.headingFont}} className="mb-1">Pricing</Typography>
         <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{...styles.headingFont, color: styles.primaryColor}}>
           Unlock the full potential of Web3 analytics

@@ -89,7 +89,7 @@ function App() {
             </Route>
     
             <Route path="/test-analytics" element={<TestAnalytics />} />
-            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/pricing" element={<Dashboard />} />
           </Routes>
         </BrowserRouter>
       </ContractDataProvider>

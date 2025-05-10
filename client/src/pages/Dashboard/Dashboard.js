@@ -17,6 +17,7 @@ import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
+import Pricing from '../Pricing';
 
 const Dashboard = () => {
   // State management
@@ -242,6 +243,8 @@ const Dashboard = () => {
         return <CQIntelligence {...commonProps} />;
       case "settings":
         return <Settings {...commonProps} />;
+      case "pricing":
+        return <Pricing {...commonProps} />;
       default:
         return (
           <>
