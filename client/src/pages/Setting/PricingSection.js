@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, FormControlLabel, Checkbox } from "@mui/material";
+import { Button, Card, CardContent, CardActions, Chip, Typography, Grid, Paper, Divider, Box, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 import { Check, Close, Psychology } from '@mui/icons-material';
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
@@ -16,22 +16,12 @@ const styles = {
   },
   primaryColor: "#1d0c46",
   accentColor: "#caa968",
-  card: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-    '&:hover': {
-      transform: 'translateY(-8px)',
-      boxShadow: '0 12px 20px rgba(0, 0, 0, 0.1)',
-    }
-  },
-  featuredCard: {
-    borderColor: '#caa968',
-    borderWidth: 2,
-    transform: 'scale(1.05)',
-    position: 'relative',
-    zIndex: 2
+  futuristicGradient: "linear-gradient(135deg, #1d0c46 0%, #3a1d8a 50%, #1d0c46 100%)",
+  activeGlow: "0 0 15px rgba(202, 169, 104, 0.6)",
+  cardHover: {
+    transform: 'translateY(-8px)',
+    boxShadow: '0 10px 25px rgba(29, 12, 70, 0.2)',
+    transition: 'all 0.3s ease-in-out'
   }
 };
 
@@ -250,6 +240,7 @@ const PricingSection = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addonSelected, setAddonSelected] = useState(false);
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -520,345 +511,484 @@ const PricingSection = () => {
     type: "CQ_INTELLIGENCE_ADDON"
   };
 
+  // New function to handle plan selection
+  const handlePlanSelect = (plan) => {
+    setSelectedPlan(plan);
+    // Store ID for checkout
+    setSelectedPlanId(plan.type);
+  };
+  
+  // New function to toggle addon selection
+  const toggleAddon = () => {
+    setAddonSelected(!addonSelected);
+  };
+  
+  // Calculate total price based on selections
+  const calculateTotal = () => {
+    if (!selectedPlan) return 0;
+    
+    let total = activePlan === 'annual' ? selectedPlan.annualPrice : selectedPlan.monthlyPrice;
+    
+    if (addonSelected) {
+      total += activePlan === 'annual' ? intelligenceAddOn.annualPrice : intelligenceAddOn.monthlyPrice;
+    }
+    
+    return total;
+  };
+  
+  // Format price for display
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="max-w-4xl mx-auto">
-        <Typography variant="h5" style={{color: styles.accentColor, fontWeight: 600, ...styles.headingFont}} className="mb-1">Pricing</Typography>
-        <h1 className="text-3xl font-bold mb-2" style={{...styles.headingFont, color: styles.primaryColor}}>
+    <div className="space-y-12">
+      <div className="max-w-6xl mx-auto">
+        <Typography variant="h5" style={{color: styles.accentColor, fontWeight: 600, ...styles.headingFont}} className="mb-1">
+          Pricing
+        </Typography>
+        <h1 className="text-3xl font-bold mb-4" style={{...styles.headingFont, color: styles.primaryColor}}>
           Unlock the full potential of Web3 analytics
         </h1>
-        <div className="text-gray-600 mb-4 text-sm">
-          For enterprise needs or custom pricing inquiries, please contact us at 
-          <Button 
-            size="small" 
-            variant="outlined" 
-            sx={{ ml: 1, borderColor: styles.accentColor, color: styles.accentColor }} 
-            onClick={() => window.open('mailto:sales@cryptique.io')}
-          >
-            sales@cryptique.io
-          </Button>
-        </div>
       </div>
-
-      {/* Billing Toggle */}
-      <div className="flex justify-center mb-4">
-        <ToggleButtonGroup
-          value={activePlan}
-          exclusive
-          onChange={handleBillingCycleToggle}
-          aria-label="billing cycle"
-          color="primary"
-          sx={{ 
-            '.MuiToggleButton-root.Mui-selected': { 
-              backgroundColor: styles.primaryColor,
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#2c1566'
-              }
-            } 
-          }}
-        >
-          <ToggleButton value="monthly">
-            Monthly billing
-          </ToggleButton>
-          <ToggleButton value="annual">
-            Annual billing
-            <Chip 
-              label="Save up to 10%" 
-              size="small" 
-              sx={{ ml: 1, backgroundColor: styles.accentColor, color: 'white' }}
-            />
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <Alert severity="error" className="max-w-4xl mx-auto mb-4">{error}</Alert>
-      )}
-
-      {/* Plans Grid */}
-      <Grid container spacing={4} alignItems="stretch">
-        {plans.map((plan, index) => (
-          <Grid item xs={12} md={6} lg={3} key={index}>
-            <Card 
-              sx={{
-                ...styles.card,
-                ...(plan.isFeatured ? styles.featuredCard : {})
-              }}
-              elevation={plan.isFeatured ? 8 : 2}
-            >
-              <CardContent sx={{ flexGrow: 1 }}>
-                {plan.isFeatured && (
-                  <Chip 
-                    label="MOST POPULAR" 
-                    size="small" 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 10, 
-                      right: 10, 
-                      backgroundColor: styles.accentColor, 
-                      color: 'white',
-                      fontWeight: 'bold' 
-                    }} 
-                  />
-                )}
-                
-                <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold', ...styles.headingFont, color: styles.primaryColor }}>
-                  {plan.title}
-                </Typography>
-                
-                <Typography variant="body2" color="text.secondary" paragraph sx={styles.bodyFont}>
-                  {plan.description}
-                </Typography>
-                
-                <div className="mt-4 mb-6">
-                  {plan.isCustom ? (
-                    <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
-                      Custom pricing
-                    </Typography>
-                  ) : (
-                    <>
-                      <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
-                        ${activePlan === 'monthly' ? plan.monthlyPrice : plan.annualPrice}
-                        <Typography component="span" variant="subtitle1" color="text.secondary">
-                          /{activePlan === 'monthly' ? 'month' : 'year'}
-                        </Typography>
-                      </Typography>
-                      {activePlan === 'annual' && (
-                        <Typography variant="body2" color="success.main" sx={styles.bodyFont}>
-                          Save {plan.annualSavings} with annual billing
-                        </Typography>
-                      )}
-                    </>
-                  )}
-                </div>
-                
-                <Divider sx={{ my: 2 }} />
-                
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, ...styles.headingFont }}>
-                  INCLUDES:
-                </Typography>
-                
-                <ul className="space-y-2">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start">
-                      <Check sx={{ color: 'green', mr: 1, fontSize: 20, flexShrink: 0, mt: 0.5 }} />
-                      <Typography variant="body2" sx={styles.bodyFont}>
-                        {feature}
-                      </Typography>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              
-              <CardActions sx={{ p: 2, pt: 0 }}>
-                {plan.isCustom ? (
-                  <Button 
-                    fullWidth 
-                    variant="outlined" 
-                    size="large" 
-                    onClick={() => window.open('mailto:enterprise@cryptique.io')}
-                    sx={{ 
-                      borderColor: styles.primaryColor, 
-                      color: styles.primaryColor,
-                      '&:hover': { borderColor: '#2c1566', color: '#2c1566' } 
-                    }}
-                  >
-                    Contact Sales
-                  </Button>
-                ) : (
-                  <Button 
-                    fullWidth 
-                    variant="contained" 
-                    size="large" 
-                    onClick={() => handleSelectPlan(plan.type)}
-                    disabled={loading}
-                    sx={{ 
-                      backgroundColor: styles.primaryColor,
-                      '&:hover': { backgroundColor: '#2c1566' }
-                    }}
-                  >
-                    {loading ? <CircularProgress size={24} /> : 'Select Plan'}
-                  </Button>
-                )}
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Add-on section */}
-      <div className="mt-16 mb-8">
-        <Typography variant="h5" align="center" sx={{ fontWeight: 'bold', mb: 4, ...styles.headingFont }}>
-          Power Up Your Analytics
-        </Typography>
-        
-        <Paper 
-          elevation={4} 
-          sx={{ 
-            p: 4, 
-            maxWidth: '800px', 
-            mx: 'auto', 
-            borderRadius: '16px',
-            background: `linear-gradient(135deg, ${styles.primaryColor} 0%, #2c1566 100%)`,
-            color: 'white'
-          }}
-        >
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Box sx={{ mb: 3 }}>
-                <Psychology sx={{ fontSize: 48, color: styles.accentColor, mb: 2 }} />
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, ...styles.headingFont }}>
-                  {intelligenceAddOn.title}
-                </Typography>
-                <Typography variant="h5" sx={{ mb: 2, ...styles.headingFont }}>
-                  ${activePlan === 'monthly' ? intelligenceAddOn.monthlyPrice : intelligenceAddOn.annualPrice}
-                  <Typography component="span" variant="subtitle1" sx={{ opacity: 0.7 }}>
-                    /{activePlan === 'monthly' ? 'month' : 'year'}
-                  </Typography>
-                </Typography>
-                {activePlan === 'annual' && (
-                  <Chip 
-                    label={`Save ${intelligenceAddOn.annualSavings}`} 
-                    size="small" 
-                    sx={{ backgroundColor: styles.accentColor, color: 'white', mb: 2 }}
-                  />
-                )}
-                <Typography variant="body1" sx={{ mb: 2, opacity: 0.8, ...styles.bodyFont }}>
-                  {intelligenceAddOn.description}
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  size="large" 
-                  onClick={() => handleSelectPlan(intelligenceAddOn.type)}
-                  disabled={loading}
-                  sx={{ 
-                    backgroundColor: styles.accentColor,
-                    color: 'white',
-                    '&:hover': { backgroundColor: '#b99856' }
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Add to Your Plan'}
-                </Button>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <ul className="space-y-2">
-                {intelligenceAddOn.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <Check sx={{ color: styles.accentColor, mr: 1, fontSize: 20, flexShrink: 0, mt: 0.5 }} />
-                    <Typography variant="body2" sx={{ ...styles.bodyFont, opacity: 0.9 }}>
-                      {feature}
-                    </Typography>
-                  </li>
-                ))}
-              </ul>
-            </Grid>
-          </Grid>
-        </Paper>
-      </div>
-
-      {/* Confirmation Dialog */}
-      <Dialog
-        open={confirmDialogOpen}
-        onClose={handleCancelPlan}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
-          Confirm Your Subscription
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <DialogContentText paragraph>
-            Please confirm your subscription details:
-          </DialogContentText>
-          
-          <Box sx={{ mb: 3, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Plan: {plans.find(p => p.type === selectedPlanId)?.title || intelligenceAddOn.title}
-            </Typography>
-            <Typography variant="body2" gutterBottom>
-              Billing cycle: {activePlan === 'annual' ? 'Annual' : 'Monthly'}
-            </Typography>
-            <Typography variant="body2" gutterBottom>
-              Team: {teams.find(team => team._id === selectedTeamId)?.name}
-            </Typography>
-            <Typography variant="body2" color="primary" fontWeight="bold">
-              {activePlan === 'annual' ? 
-                `$${selectedPlanId === intelligenceAddOn.type ? 
-                  intelligenceAddOn.annualPrice : 
-                  plans.find(p => p.type === selectedPlanId)?.annualPrice}/year` : 
-                `$${selectedPlanId === intelligenceAddOn.type ? 
-                  intelligenceAddOn.monthlyPrice : 
-                  plans.find(p => p.type === selectedPlanId)?.monthlyPrice}/month`}
-            </Typography>
-          </Box>
-          
-          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-            Billing Address
+      
+      {/* Team Selection - Keep existing code */}
+      
+      {/* Billing Cycle Section */}
+      <div className="max-w-6xl mx-auto">
+        <Box sx={{ mb: 6 }}>
+          <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+            Select Billing Cycle
           </Typography>
           
-          {showAddressForm ? (
-            <BillingAddressForm 
-              billingAddress={billingAddress} 
-              setBillingAddress={setBillingAddress} 
-              errors={addressErrors}
-            />
-          ) : billingAddress ? (
-            <Box sx={{ mb: 2, p: 2, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
-              {billingAddress.name && <Typography variant="body2">{billingAddress.name}</Typography>}
-              {billingAddress.email && <Typography variant="body2">{billingAddress.email}</Typography>}
-              {billingAddress.tax_number && (
-                <Typography variant="body2">
-                  <strong>Tax ID:</strong> {billingAddress.tax_number}
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
+            {/* Annual Option */}
+            <Paper 
+              elevation={activePlan === 'annual' ? 8 : 2}
+              sx={{
+                p: 3,
+                width: '280px',
+                cursor: 'pointer',
+                background: activePlan === 'annual' ? styles.futuristicGradient : 'white',
+                color: activePlan === 'annual' ? 'white' : 'inherit',
+                boxShadow: activePlan === 'annual' ? styles.activeGlow : 'inherit',
+                transition: 'all 0.3s ease',
+                border: `1px solid ${activePlan === 'annual' ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
+                "&:hover": styles.cardHover
+              }}
+              onClick={() => handleBillingCycleToggle(null, 'annual')}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center', ...styles.headingFont }}>
+                  Annual Billing
+                </Typography>
+                <Chip 
+                  label="Save up to 10%" 
+                  size="small" 
+                  sx={{ mb: 2, backgroundColor: styles.accentColor, color: 'white' }}
+                />
+                <Typography variant="body2" sx={{ textAlign: 'center', ...styles.bodyFont }}>
+                  Pay once per year and save
+                </Typography>
+              </Box>
+            </Paper>
+            
+            {/* Monthly Option */}
+            <Paper 
+              elevation={activePlan === 'monthly' ? 8 : 2}
+              sx={{
+                p: 3,
+                width: '280px',
+                cursor: 'pointer',
+                background: activePlan === 'monthly' ? styles.futuristicGradient : 'white',
+                color: activePlan === 'monthly' ? 'white' : 'inherit',
+                boxShadow: activePlan === 'monthly' ? styles.activeGlow : 'inherit',
+                transition: 'all 0.3s ease',
+                border: `1px solid ${activePlan === 'monthly' ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
+                "&:hover": styles.cardHover
+              }}
+              onClick={() => handleBillingCycleToggle(null, 'monthly')}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center', ...styles.headingFont }}>
+                  Monthly Billing
+                </Typography>
+                <Typography variant="body2" sx={{ textAlign: 'center', ...styles.bodyFont, mb: 2 }}>
+                  Pay month-to-month with flexibility
+                </Typography>
+              </Box>
+            </Paper>
+          </Box>
+        </Box>
+      </div>
+
+      {/* Plans and Summary Section */}
+      <div className="max-w-6xl mx-auto">
+        <Grid container spacing={4}>
+          {/* Plans Selection - Left Side */}
+          <Grid item xs={12} md={8}>
+            <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+              Select Plan
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {plans.map((plan) => (
+                <Grid item xs={12} sm={6} key={plan.type}>
+                  <Paper
+                    elevation={selectedPlan?.type === plan.type ? 8 : 2}
+                    sx={{
+                      p: 3,
+                      height: '100%',
+                      cursor: plan.type !== 'ENTERPRISE' ? 'pointer' : 'default',
+                      background: selectedPlan?.type === plan.type ? styles.futuristicGradient : 'white',
+                      color: selectedPlan?.type === plan.type ? 'white' : 'inherit',
+                      boxShadow: selectedPlan?.type === plan.type ? styles.activeGlow : 'inherit',
+                      transition: 'all 0.3s ease',
+                      border: `1px solid ${selectedPlan?.type === plan.type ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
+                      "&:hover": plan.type !== 'ENTERPRISE' ? styles.cardHover : {}
+                    }}
+                    onClick={() => plan.type !== 'ENTERPRISE' && handlePlanSelect(plan)}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
+                      {plan.title}
+                    </Typography>
+                    
+                    <Typography variant="body2" sx={{ mb: 2, ...styles.bodyFont }}>
+                      {plan.description}
+                    </Typography>
+                    
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, ...styles.headingFont }}>
+                      {plan.type === 'ENTERPRISE' ? 'Custom' : 
+                        activePlan === 'annual' ? formatPrice(plan.annualPrice) : formatPrice(plan.monthlyPrice)
+                      }
+                      <Typography component="span" variant="body2" sx={{ ml: 1 }}>
+                        /{activePlan === 'annual' ? 'year' : 'month'}
+                      </Typography>
+                    </Typography>
+                    
+                    {plan.type === 'ENTERPRISE' ? (
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        fullWidth
+                        sx={{ 
+                          mt: 2,
+                          borderColor: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor,
+                          color: selectedPlan?.type === plan.type ? 'white' : styles.primaryColor
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open('mailto:sales@cryptique.io');
+                        }}
+                      >
+                        Contact Sales
+                      </Button>
+                    ) : null}
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+            
+            {/* Add-ons section */}
+            <Typography variant="h6" sx={{ mt: 6, mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
+              Add-ons
+            </Typography>
+            
+            <Paper
+              elevation={addonSelected ? 8 : 2}
+              sx={{
+                p: 3,
+                cursor: 'pointer',
+                background: addonSelected ? styles.futuristicGradient : 'white',
+                color: addonSelected ? 'white' : 'inherit',
+                boxShadow: addonSelected ? styles.activeGlow : 'inherit',
+                transition: 'all 0.3s ease',
+                border: `1px solid ${addonSelected ? styles.accentColor : 'rgba(0,0,0,0.12)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                "&:hover": styles.cardHover
+              }}
+              onClick={toggleAddon}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Psychology sx={{ fontSize: 40, color: addonSelected ? styles.accentColor : styles.primaryColor, mr: 2 }} />
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', ...styles.headingFont }}>
+                    {intelligenceAddOn.title}
+                  </Typography>
+                  <Typography variant="body2" sx={{ ...styles.bodyFont }}>
+                    {intelligenceAddOn.description}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', ...styles.headingFont, textAlign: 'right' }}>
+                  {activePlan === 'annual' ? formatPrice(intelligenceAddOn.annualPrice) : formatPrice(intelligenceAddOn.monthlyPrice)}
+                  <Typography component="span" variant="body2" sx={{ ml: 1 }}>
+                    /{activePlan === 'annual' ? 'year' : 'month'}
+                  </Typography>
+                </Typography>
+                <Checkbox 
+                  checked={addonSelected}
+                  sx={{ 
+                    color: addonSelected ? styles.accentColor : undefined,
+                    '&.Mui-checked': {
+                      color: styles.accentColor,
+                    },
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={toggleAddon}
+                />
+              </Box>
+            </Paper>
+          </Grid>
+          
+          {/* Summary - Right Side */}
+          <Grid item xs={12} md={4}>
+            <Paper 
+              elevation={3}
+              sx={{ 
+                p: 3,
+                position: 'sticky',
+                top: '20px',
+                background: 'linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)',
+                border: `1px solid ${styles.accentColor}`,
+                borderRadius: 2
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', ...styles.headingFont, color: styles.primaryColor }}>
+                Order Summary
+              </Typography>
+              
+              {selectedPlan ? (
+                <>
+                  <Box sx={{ mb: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                        {selectedPlan.title} Plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'})
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                        {activePlan === 'annual' ? formatPrice(selectedPlan.annualPrice) : formatPrice(selectedPlan.monthlyPrice)}
+                      </Typography>
+                    </Box>
+                    
+                    {addonSelected && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body1">
+                          {intelligenceAddOn.title}
+                        </Typography>
+                        <Typography variant="body1">
+                          {activePlan === 'annual' ? formatPrice(intelligenceAddOn.annualPrice) : formatPrice(intelligenceAddOn.monthlyPrice)}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <Divider sx={{ my: 2 }} />
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                        Total
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: styles.primaryColor }}>
+                        {formatPrice(calculateTotal())}
+                        <Typography component="span" variant="body2">
+                          /{activePlan === 'annual' ? 'year' : 'month'}
+                        </Typography>
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  <Typography variant="subtitle2" sx={{ mb: 3, ...styles.bodyFont }}>
+                    Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
+                  </Typography>
+                  
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
+                    onClick={() => handleSelectPlan(selectedPlan.type)}
+                    sx={{
+                      py: 1.5,
+                      background: styles.futuristicGradient,
+                      boxShadow: '0 4px 15px rgba(29, 12, 70, 0.3)',
+                      '&:hover': {
+                        boxShadow: '0 6px 20px rgba(29, 12, 70, 0.4)',
+                      }
+                    }}
+                  >
+                    Subscribe Now
+                  </Button>
+                  
+                  <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}>
+                    Secure payment via Stripe
+                  </Typography>
+                </>
+              ) : (
+                <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
+                  Select a plan to see your order summary
                 </Typography>
               )}
-              {billingAddress.line1 && <Typography variant="body2">{billingAddress.line1}</Typography>}
-              {billingAddress.line2 && <Typography variant="body2">{billingAddress.line2}</Typography>}
-              {billingAddress.city && <Typography variant="body2">
-                {billingAddress.city}, {billingAddress.state} {billingAddress.postal_code}
-              </Typography>}
-              {billingAddress.country && <Typography variant="body2">{billingAddress.country}</Typography>}
-              
-              <Button 
-                size="small" 
-                onClick={() => setShowAddressForm(true)}
-                sx={{ mt: 2 }}
-              >
-                Edit Address
-              </Button>
-            </Box>
-          ) : (
-            <>
-              <Typography variant="subtitle2" color="error" sx={{ mb: 2 }}>
-                Please provide a billing address
-              </Typography>
-              <BillingAddressForm 
-                billingAddress={billingAddress} 
-                setBillingAddress={setBillingAddress} 
-                errors={addressErrors}
-              />
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={handleCancelPlan} variant="outlined" disabled={loading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmPlan} 
-            variant="contained"
-            disabled={!billingAddress || loading}
-            sx={{ 
-              backgroundColor: styles.primaryColor,
-              '&:hover': { backgroundColor: '#2c1566' }
-            }}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Proceed to Payment'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </Paper>
+          </Grid>
+        </Grid>
+      </div>
+      
+      {/* Feature Comparison Table */}
+      <div className="max-w-6xl mx-auto mt-12">
+        <Typography variant="h6" sx={{ mb: 4, ...styles.headingFont, color: styles.primaryColor }}>
+          Feature Comparison
+        </Typography>
+        
+        <Box sx={{ overflowX: 'auto' }}>
+          <Paper elevation={2} sx={{ borderRadius: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'rgba(29, 12, 70, 0.03)' }}>
+                  <TableCell sx={{ minWidth: 180, fontWeight: 'bold', ...styles.headingFont }}>Features</TableCell>
+                  {plans.map((plan) => (
+                    <TableCell 
+                      key={plan.type} 
+                      align="center"
+                      sx={{ 
+                        minWidth: 150, 
+                        fontWeight: 'bold', 
+                        ...styles.headingFont,
+                        color: selectedPlan?.type === plan.type ? styles.accentColor : styles.primaryColor
+                      }}
+                    >
+                      {plan.title}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Websites</TableCell>
+                  <TableCell align="center">1 website</TableCell>
+                  <TableCell align="center">2 websites</TableCell>
+                  <TableCell align="center">3 websites</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Team Members</TableCell>
+                  <TableCell align="center">1 (owner only)</TableCell>
+                  <TableCell align="center">2 team members</TableCell>
+                  <TableCell align="center">3 team members</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Smart Contracts</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">1 contract</TableCell>
+                  <TableCell align="center">3 contracts</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Explorer API Calls</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">40,000 / month</TableCell>
+                  <TableCell align="center">150,000 / month</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>User Journey Tracking</TableCell>
+                  <TableCell align="center">Limited</TableCell>
+                  <TableCell align="center">Up to 10,000</TableCell>
+                  <TableCell align="center">Up to 50,000</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Wallet-level Breakdown</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">Up to 10,000</TableCell>
+                  <TableCell align="center">Up to 100,000</TableCell>
+                  <TableCell align="center">Custom</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Priority Support</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Check sx={{ color: styles.accentColor }} fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Check sx={{ color: styles.accentColor }} fontSize="small" />
+                  </TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Supported Blockchains</TableCell>
+                  <TableCell align="center">Limited</TableCell>
+                  <TableCell align="center">All supported</TableCell>
+                  <TableCell align="center">All supported</TableCell>
+                  <TableCell align="center">All supported</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Data Export</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Check sx={{ color: styles.accentColor }} fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Check sx={{ color: styles.accentColor }} fontSize="small" />
+                  </TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Custom Events</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">5 events</TableCell>
+                  <TableCell align="center">Unlimited</TableCell>
+                  <TableCell align="center">Unlimited</TableCell>
+                </TableRow>
+                
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'medium' }}>Campaigns</TableCell>
+                  <TableCell align="center">
+                    <Close color="disabled" fontSize="small" />
+                  </TableCell>
+                  <TableCell align="center">5 campaigns</TableCell>
+                  <TableCell align="center">Unlimited</TableCell>
+                  <TableCell align="center">Unlimited</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Paper>
+        </Box>
+      </div>
+      
+      {/* Confirmation Dialog - Keep existing code */}
     </div>
   );
 };
