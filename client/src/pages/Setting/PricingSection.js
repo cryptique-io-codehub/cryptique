@@ -121,6 +121,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors }) => {
 // Add these functions to handle billing details
 const fetchBillingDetails = async (teamId, axiosInstance) => {
   try {
+    // Use the provided axiosInstance which should already have the token in its configuration
     const response = await axiosInstance.get(`/api/team/${teamId}/billing-address`);
     return response.data;
   } catch (error) {
@@ -131,6 +132,7 @@ const fetchBillingDetails = async (teamId, axiosInstance) => {
 
 const saveBillingDetails = async (teamId, billingData, axiosInstance) => {
   try {
+    // Use the provided axiosInstance which should already have the token in its configuration
     const response = await axiosInstance.post(`/api/team/${teamId}/billing-address`, billingData);
     return response.data;
   } catch (error) {

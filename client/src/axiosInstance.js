@@ -30,21 +30,39 @@ axiosInstance.interceptors.request.use(
     // Check if this is an analytics endpoint that's causing CORS issues
     if (config.url && (
       config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/') ||
-      config.url.includes('/team/')  // Add team endpoints to this list
+      config.url.includes('/intelligence/')
     )) {
       // For these endpoints, explicitly set withCredentials to false
       config.withCredentials = false;
     } else {
-      // For all other endpoints, use credentials
+      // For all other endpoints, including team routes, use credentials
       config.withCredentials = true;
     }
     
     // Get token dynamically on each request - not from closure
-    const token = localStorage.getItem("accessToken");
+    // Try both accessToken and token, as different parts of the app might use different keys
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Special handling for team routes
+    if (config.url && config.url.includes('/team/')) {
+      // Ensure content type is always set correctly for all team routes
+      config.headers['Content-Type'] = 'application/json';
+      
+      // Ensure origin is correctly set
+      const origin = window.location.origin;
+      if (origin) {
+        config.headers['Origin'] = origin;
+      }
+      
+      // Force the Authorization header for team routes
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    
     return config;
   },
   error => {

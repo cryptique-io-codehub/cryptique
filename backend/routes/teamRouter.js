@@ -2,11 +2,20 @@ const express = require('express');
 const {addMember,getTeamDetails,createNewTeam,getAdminTeamDetails,getMembers,deleteTeam,updateTeam,removeMember,updateMemberRole}=require ('../controllers/teamController')
 const {verifyToken}=require('../middleware/auth')
 const Team = require('../models/team');
+const cors = require('cors');
 const router = express.Router();
 
+// Define CORS options
+const corsOptions = {
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  maxAge: 86400
+};
 
 router.post('/create',verifyToken,addMember);
-router.get('/:teamId/members',verifyToken,getMembers);
+router.get('/:teamId/members',cors(corsOptions),verifyToken,getMembers);
 router.get('/details',verifyToken,getTeamDetails);
 router.get('/admin-team-details',verifyToken,getAdminTeamDetails);
 router.post('/createNewTeam',verifyToken,createNewTeam);
@@ -16,7 +25,7 @@ router.post('/remove-member',verifyToken,removeMember);
 router.post('/update-member-role',verifyToken,updateMemberRole);
 
 // Save billing details for a team
-router.post('/:teamId/billing-address', verifyToken, async (req, res) => {
+router.post('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {
     try {
         const { teamId } = req.params;
         const billingAddress = req.body;
@@ -46,7 +55,7 @@ router.post('/:teamId/billing-address', verifyToken, async (req, res) => {
 });
 
 // Get billing address for a team
-router.get('/:teamId/billing-address', verifyToken, async (req, res) => {
+router.get('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {
     try {
         const { teamId } = req.params;
         

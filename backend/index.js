@@ -13,6 +13,9 @@ const healthRouter = require("./routes/healthRouter");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Set trust proxy to true for Vercel/AWS Lambda environments
+app.set('trust proxy', 1);
+
 // Debug environment variables
 console.log('Main app environment check:', {
   hasGeminiApi: !!process.env.GEMINI_API,

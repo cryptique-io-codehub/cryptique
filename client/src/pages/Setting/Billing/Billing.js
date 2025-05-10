@@ -233,7 +233,12 @@ const fetchWebsites = async (teamId) => {
     const cached = sessionStorage.getItem("preloadedWebsites");
     if (cached) return JSON.parse(cached);
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/api/website/team/${teamId}`);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/api/website/team/${teamId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data.websites || [];
   } catch {
     return [];
@@ -244,7 +249,12 @@ const fetchContracts = async (teamId) => {
     const cached = sessionStorage.getItem("preloadedContracts");
     if (cached) return JSON.parse(cached);
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/api/contracts/team/${teamId}`);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/api/contracts/team/${teamId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data.contracts || [];
   } catch {
     return [];
@@ -253,7 +263,12 @@ const fetchContracts = async (teamId) => {
 const fetchMembers = async (teamName) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/api/team/${teamName._id || teamName}/members`);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/api/team/${teamName._id || teamName}/members`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data || [];
   } catch (error) {
     console.error("Error fetching members:", error);
@@ -264,7 +279,12 @@ const fetchMembers = async (teamName) => {
 const fetchSubscription = async (teamId) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/api/stripe/subscription/${teamId}`);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/api/stripe/subscription/${teamId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data;
   } catch {
     return null;
@@ -274,7 +294,12 @@ const fetchSubscription = async (teamId) => {
 const fetchBillingDetails = async (teamId) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.get(`${API_URL}/api/team/${teamId}/billing-address`);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/api/team/${teamId}/billing-address`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data;
   } catch (error) {
     console.error("Error fetching billing details:", error);
@@ -285,7 +310,12 @@ const fetchBillingDetails = async (teamId) => {
 const saveBillingDetails = async (teamId, billingData) => {
   try {
     const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-    const res = await axios.post(`${API_URL}/api/team/${teamId}/billing-address`, billingData);
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    const res = await axios.post(`${API_URL}/api/team/${teamId}/billing-address`, billingData, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return res.data;
   } catch (error) {
     console.error("Error saving billing details:", error);
@@ -318,8 +348,13 @@ const Billing = () => {
       if (success && sessionId) {
         try {
           const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+          const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
           
-          const response = await axios.get(`${API_URL}/api/stripe/checkout-status?session_id=${sessionId}`);
+          const response = await axios.get(`${API_URL}/api/stripe/checkout-status?session_id=${sessionId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           
           if (response.data.success) {
             setSuccessMessage(response.data.message);
