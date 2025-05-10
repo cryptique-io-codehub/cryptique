@@ -1231,8 +1231,49 @@ const PricingSection = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Confirm Subscription</DialogTitle>
+        <DialogTitle>
+          Confirm Subscription
+          {teams.find(team => team._id === selectedTeamId) && (
+            <Box 
+              sx={{ 
+                display: 'inline-block', 
+                ml: 1,
+                px: 2,
+                py: 0.5,
+                borderRadius: 1,
+                backgroundColor: styles.accentColor,
+                color: '#000',
+                fontWeight: 'bold'
+              }}
+            >
+              {teams.find(team => team._id === selectedTeamId)?.name}
+            </Box>
+          )}
+        </DialogTitle>
         <DialogContent>
+          <Box 
+            sx={{ 
+              mb: 3, 
+              p: 2, 
+              backgroundColor: 'rgba(202, 169, 104, 0.1)', 
+              borderRadius: 1,
+              borderLeft: `4px solid ${styles.accentColor}`,
+              fontWeight: 'medium'
+            }}
+          >
+            <Typography variant="h6" sx={{ color: styles.primaryColor, mb: 1 }}>
+              Team Information
+            </Typography>
+            <Typography variant="body1">
+              <strong>Purchasing for:</strong> {teams.find(team => team._id === selectedTeamId)?.name || "Unknown team"}
+            </Typography>
+            {teams.find(team => team._id === selectedTeamId)?.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {teams.find(team => team._id === selectedTeamId)?.description}
+              </Typography>
+            )}
+          </Box>
+
           <DialogContentText sx={{ mb: 2 }}>
             You are about to subscribe to the {selectedPlan?.title} plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'}) 
             {addonSelected ? ' with CQ Intelligence add-on' : ''}.
