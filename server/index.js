@@ -53,6 +53,10 @@ app.use('/api/websites', websiteRoutes);
 const smartContractRoutes = require('./routes/smartContracts');
 app.use('/api/smart-contracts', smartContractRoutes);
 
+// Data retention routes
+const retentionRoutes = require('./routes/retention');
+app.use('/api/retention', retentionRoutes);
+
 // Admin routes for managing enterprise configurations
 const enterpriseConfigRoutes = require('./routes/admin/enterpriseConfig');
 app.use('/api/admin/enterprise', enterpriseConfigRoutes);
@@ -80,6 +84,7 @@ app.get('/', (req, res) => {
       teams: '/api/teams/*',
       websites: '/api/websites/*',
       smartContracts: '/api/smart-contracts/*',
+      retention: '/api/retention/*',
       admin: '/api/admin/*',
       webhooks: '/api/webhooks/*',
       health: '/api/health'
@@ -89,6 +94,11 @@ app.get('/', (req, res) => {
     }
   });
 });
+
+// Initialize scheduled tasks
+// In production, this would be handled by a separate process or cron job
+// For development, we'll just log that it needs to be set up
+console.log('Note: Data retention scheduled tasks should be set up with a cron job running tasks/scheduledTasks.js');
 
 // Error handling middleware
 app.use((err, req, res, next) => {

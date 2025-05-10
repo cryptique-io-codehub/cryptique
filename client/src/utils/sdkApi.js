@@ -23,7 +23,7 @@ const sdkAxiosInstance = axios.create({
 /**
  * Get analytics data for a site
  * @param {string} siteId - The site ID to fetch analytics for
- * @returns {Promise} - API response with analytics data
+ * @returns {Promise} - API response with analytics data or subscription error
  */
 export const getAnalytics = async (siteId) => {
   try {
@@ -31,6 +31,22 @@ export const getAnalytics = async (siteId) => {
     return response.data;
   } catch (error) {
     console.error('SDK API Error - getAnalytics:', error);
+    
+    // Check if this is a subscription/grace period error
+    if (error.response && error.response.status === 403) {
+      const errorData = error.response.data;
+      
+      // Format and return the subscription error information
+      if (errorData.error === 'Subscription required') {
+        return {
+          subscriptionError: true,
+          message: errorData.message,
+          status: errorData.subscriptionStatus,
+          gracePeriod: errorData.gracePeriod || null
+        };
+      }
+    }
+    
     throw error;
   }
 };

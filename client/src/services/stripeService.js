@@ -9,8 +9,8 @@ const createApiClient = () => {
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   
   return axios.create({
-    baseURL: API_URL,
-    headers: {
+  baseURL: API_URL,
+  headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },

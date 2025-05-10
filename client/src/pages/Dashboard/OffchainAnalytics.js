@@ -12,6 +12,7 @@ import FunnelDashboard from '../Offchainpart/FunnelDashboard';
 import { useNavigate } from 'react-router-dom';
 import sdkApi from '../../utils/sdkApi';
 import { calculateAverageDuration, formatDuration, calculateWeb3Stats } from '../../utils/analyticsHelpers';
+import GracePeriodWarning from '../../components/GracePeriodWarning';
 
 const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
@@ -30,6 +31,10 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [selectedCountry, setSelectedCountry] = useState();
   const [verifyload,setverifyload]=useState(false);
   const [web3UsersCount, setWeb3UsersCount] = useState(0);
+  
+  // State for subscription grace period
+  const [inGracePeriod, setInGracePeriod] = useState(false);
+  const [gracePeriodInfo, setGracePeriodInfo] = useState(null);
 
   // State for analytics cards
   // console.log(analytics);
@@ -41,7 +46,16 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
         try {
           // Use the SDK API utility instead of the axios instance
           const response = await sdkApi.getAnalytics(idt);
-          if (response && response.analytics) {
+          
+          // Check if we received a subscription error
+          if (response.subscriptionError) {
+            setInGracePeriod(true);
+            setGracePeriodInfo(response.gracePeriod);
+            setanalytics({});  // Clear analytics data
+            setError(response.message);
+          } else if (response && response.analytics) {
+            setInGracePeriod(false);
+            setGracePeriodInfo(null);
             setanalytics(response.analytics);
             // Initialize chart data if not already set
             if (!chartData) {
@@ -482,8 +496,16 @@ return (
                   </div>
                 ) : (
                   <>
+                    {/* Display grace period warning if subscription is in grace period */}
+                    {inGracePeriod && gracePeriodInfo && (
+                      <GracePeriodWarning 
+                        daysLeft={gracePeriodInfo.daysLeft} 
+                        gracePeriodEndDate={gracePeriodInfo.endDate} 
+                      />
+                    )}
+                    
                     {/* MODIFICATION: Analytics cards in full width single row */}
-                    {websitearray.length > 0 && analytics && Object.keys(analytics).length > 0 ? (
+                    {!inGracePeriod && websitearray.length > 0 && analytics && Object.keys(analytics).length > 0 ? (
                       <div className="h-full flex flex-col">
                         <div className="flex flex-col space-y-6">
                           {/* Analytics Cards */}
@@ -641,8 +663,15 @@ return (
                         <div className="flex-1 flex items-center justify-center bg-gray-50">
                           <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                             <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                              Please Add atleast one website <br/> or verify your current website to get analytics
+                              {inGracePeriod 
+                                ? "Analytics viewing is disabled during grace period" 
+                                : "Please Add at least one website or verify your current website to get analytics"}
                             </h1>
+                            {inGracePeriod && (
+                              <p className="text-xl text-blue-600">
+                                Please renew your subscription to access analytics data.
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -672,7 +701,15 @@ return (
                   selectedPage={selectedPage}
                   onMenuClick={onMenuClick}
                 />
-                {analytics && Object.keys(analytics).length > 0 ? (
+                {/* Display grace period warning if subscription is in grace period */}
+                {inGracePeriod && gracePeriodInfo && (
+                  <GracePeriodWarning 
+                    daysLeft={gracePeriodInfo.daysLeft} 
+                    gracePeriodEndDate={gracePeriodInfo.endDate} 
+                  />
+                )}
+                
+                {!inGracePeriod && analytics && Object.keys(analytics).length > 0 ? (
                   <TrafficAnalytics 
                     analytics={analytics}
                     setanalytics={setanalytics}
@@ -684,8 +721,15 @@ return (
                     <div className="flex-1 flex items-center justify-center bg-gray-50">
                       <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                         <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
+                          {inGracePeriod 
+                            ? "Analytics viewing is disabled during grace period" 
+                            : "Please Add at least one website or verify your current website to get analytics"}
                         </h1>
+                        {inGracePeriod && (
+                          <p className="text-xl text-blue-600">
+                            Please renew your subscription to access analytics data.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -720,8 +764,15 @@ return (
                     <div className="flex-1 flex items-center justify-center bg-gray-50">
                       <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                         <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
+                          {inGracePeriod 
+                            ? "Analytics viewing is disabled during grace period" 
+                            : "Please Add at least one website or verify your current website to get analytics"}
                         </h1>
+                        {inGracePeriod && (
+                          <p className="text-xl text-blue-600">
+                            Please renew your subscription to access analytics data.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -756,8 +807,15 @@ return (
                     <div className="flex-1 flex items-center justify-center bg-gray-50">
                       <div className="text-center p-8 bg-blue-100 rounded-xl shadow-lg">
                         <h1 className="text-4xl font-bold text-blue-800 mb-4">
-                          Please Add atleast one website <br/> or verify your current website to get analytics
+                          {inGracePeriod 
+                            ? "Analytics viewing is disabled during grace period" 
+                            : "Please Add at least one website or verify your current website to get analytics"}
                         </h1>
+                        {inGracePeriod && (
+                          <p className="text-xl text-blue-600">
+                            Please renew your subscription to access analytics data.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

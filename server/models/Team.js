@@ -97,6 +97,22 @@ const TeamSchema = new Schema({
       default: Date.now
     }
   },
+  // Data retention fields
+  dataDeletionScheduled: {
+    type: Boolean,
+    default: false
+  },
+  dataDeletionDate: Date,
+  dataDeleted: {
+    type: Boolean,
+    default: false
+  },
+  dataDeletionExecutedDate: Date,
+  dataBackupRetentionDate: Date,
+  dataRetentionNotificationSent: {
+    type: Boolean,
+    default: false
+  },
   stripeCustomerId: {
     type: String
   },

@@ -67,7 +67,7 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors = {} }) 
     
     // Use setTimeout to avoid React state update during render
     setTimeout(() => {
-      setBillingAddress(newFormData);
+    setBillingAddress(newFormData);
     }, 0);
   };
 
@@ -330,7 +330,7 @@ const PricingSection = () => {
     
     if (!billingAddress) {
       // Set errors for all required fields if billingAddress is null/undefined
-      requiredFields.forEach(field => {
+    requiredFields.forEach(field => {
         errors[field] = 'This field is required';
       });
       setAddressErrors(errors);
@@ -678,11 +678,11 @@ const PricingSection = () => {
         >
           <Box sx={{ position: 'relative', zIndex: 1 }}>
             <Typography variant="h5" style={{color: 'white', fontWeight: 600, ...styles.headingFont}} className="mb-1">
-              Pricing
-            </Typography>
+          Pricing
+        </Typography>
             <h1 className="text-3xl font-bold" style={{...styles.headingFont, color: 'white'}}>
-              Unlock the full potential of Web3 analytics
-            </h1>
+          Unlock the full potential of Web3 analytics
+        </h1>
           </Box>
           <Box sx={{ 
             position: 'absolute', 
@@ -997,44 +997,44 @@ const PricingSection = () => {
                           /{activePlan === 'annual' ? 'year' : 'month'}
                         </Typography>
                       </Typography>
-                    </Box>
-                    
+                  </Box>
+                  
                     <Typography variant="subtitle2" sx={{ mb: 2, ...styles.bodyFont, fontSize: '0.75rem' }}>
-                      Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
-                    </Typography>
-                    
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      size="large"
-                      disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
+                    Selected for: {teams.find(team => team._id === selectedTeamId)?.name || 'Unknown team'}
+                  </Typography>
+                  
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
                       onClick={handleSubscribeClick}
-                      sx={{
-                        py: 1.5,
+                    sx={{
+                      py: 1.5,
                         background: `linear-gradient(135deg, ${styles.accentColor} 0%, #e6c688 50%, ${styles.accentColor} 100%)`,
                         color: '#000',
                         fontWeight: 'bold',
                         boxShadow: '0 4px 15px rgba(202, 169, 104, 0.3)',
-                        '&:hover': {
+                      '&:hover': {
                           boxShadow: '0 6px 20px rgba(202, 169, 104, 0.4)',
                           background: `linear-gradient(135deg, #d9b87e 0%, ${styles.accentColor} 50%, #d9b87e 100%)`,
                         },
                         mb: 1
-                      }}
-                    >
-                      Subscribe Now
-                    </Button>
-                    
+                    }}
+                  >
+                    Subscribe Now
+                  </Button>
+                  
                     <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', fontSize: '0.75rem' }}>
-                      Secure payment via Stripe
-                    </Typography>
+                    Secure payment via Stripe
+                  </Typography>
                   </Box>
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
                   <Typography variant="body1" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                    Select a plan to see your order summary
-                  </Typography>
+                  Select a plan to see your order summary
+                </Typography>
                 </Box>
               )}
             </Paper>
@@ -1056,8 +1056,8 @@ const PricingSection = () => {
           }}
         >
           <Typography variant="h5" style={{color: 'white', fontWeight: 600, ...styles.headingFont}}>
-            Feature Comparison
-          </Typography>
+          Feature Comparison
+        </Typography>
         </Paper>
         
         <Box sx={{ overflowX: 'auto' }}>
