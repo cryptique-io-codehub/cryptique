@@ -4,18 +4,26 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
 
 // Create axios instance with proper headers
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+const createApiClient = () => {
+  // Get token dynamically on each request
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+  
+  return axios.create({
+    baseURL: API_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    withCredentials: true
+  });
+};
 
 /**
  * Get all subscription plans
  */
 export const getSubscriptionPlans = async () => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.get('/api/stripe/plans');
     return response.data;
   } catch (error) {
@@ -29,6 +37,16 @@ export const getSubscriptionPlans = async () => {
  */
 export const createCheckoutSession = async (teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly', billingAddress = null) => {
   try {
+    const apiClient = createApiClient();
+    console.log('Creating checkout session with params:', {
+      teamId,
+      planType,
+      billingCycle,
+      successUrl,
+      cancelUrl,
+      hasAddress: !!billingAddress
+    });
+    
     const response = await apiClient.post('/api/stripe/create-checkout-session', {
       teamId,
       planType,
@@ -38,9 +56,15 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
       billingAddress
     });
     
+    console.log('Checkout session created:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error creating checkout session:', error);
+    // Log more details about the error
+    if (error.response) {
+      console.error('Response error data:', error.response.data);
+      console.error('Response error status:', error.response.status);
+    }
     throw error;
   }
 };
@@ -50,6 +74,7 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
  */
 export const addCQIntelligence = async (teamId, subscriptionId, billingCycle = 'monthly') => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.post('/api/stripe/add-cq-intelligence', {
       teamId,
       subscriptionId,
@@ -67,6 +92,7 @@ export const addCQIntelligence = async (teamId, subscriptionId, billingCycle = '
  */
 export const cancelCQIntelligence = async (teamId, subscriptionId) => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.post('/api/stripe/cancel-cq-intelligence', {
       teamId,
       subscriptionId
@@ -83,6 +109,7 @@ export const cancelCQIntelligence = async (teamId, subscriptionId) => {
  */
 export const getSubscription = async (teamId) => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.get(`/api/stripe/subscription/${teamId}`);
     return response.data;
   } catch (error) {
@@ -100,6 +127,7 @@ export const getSubscription = async (teamId) => {
  */
 export const cancelSubscription = async (subscriptionId) => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.post('/api/stripe/cancel-subscription', {
       subscriptionId
     });
@@ -115,6 +143,7 @@ export const cancelSubscription = async (subscriptionId) => {
  */
 export const createPortalSession = async (teamId, returnUrl) => {
   try {
+    const apiClient = createApiClient();
     const response = await apiClient.post('/api/stripe/create-portal-session', {
       teamId,
       returnUrl

@@ -64,7 +64,11 @@ const BillingAddressForm = ({ billingAddress, setBillingAddress, errors = {} }) 
       [name]: type === "checkbox" ? checked : value
     };
     setFormData(newFormData);
-    setBillingAddress(newFormData);
+    
+    // Use setTimeout to avoid React state update during render
+    setTimeout(() => {
+      setBillingAddress(newFormData);
+    }, 0);
   };
 
   return (
@@ -413,6 +417,7 @@ const PricingSection = () => {
       if (billingAddress) {
         try {
           await saveBillingDetails(selectedTeamId, billingAddress, axiosInstance);
+          console.log("Successfully saved billing details");
         } catch (err) {
           console.error("Error saving billing address:", err);
           // Continue even if saving address fails
@@ -423,7 +428,7 @@ const PricingSection = () => {
       setConfirmDialogOpen(false);
       
       // Create checkout session directly instead of navigating
-      const teamName = teams.find(team => team._id === selectedTeamId)?.name;
+      const teamName = teams.find(team => team._id === selectedTeamId)?.name || "team";
       
       setLoading(true);
       
@@ -433,22 +438,41 @@ const PricingSection = () => {
       const successUrl = `${hostUrl}/${teamName}/settings/billing?success=true`;
       const cancelUrl = `${hostUrl}/${teamName}/settings/billing?canceled=true`;
       
+      // Get the combined plan type string
+      const fullPlanType = getFullPlanType();
+      
+      console.log("Creating checkout session with params:", {
+        teamId: selectedTeamId,
+        planType: fullPlanType,
+        successUrl,
+        cancelUrl,
+        billingCycle: activePlan,
+        addonSelected
+      });
+      
       // Create checkout session with the selected plan ID
       const { url } = await createCheckoutSession(
         selectedTeamId, 
-        selectedPlanId, // Use the selected plan ID
+        fullPlanType, // Use combined plan type from the helper function
         successUrl, 
         cancelUrl, 
         activePlan, // Use activePlan (monthly/annual) instead of billingCycle
         billingAddress
       );
       
+      console.log("Checkout session created, redirecting to:", url);
+      
       // Redirect to checkout
       window.location.href = url;
       
     } catch (err) {
       console.error("Error creating checkout session:", err);
-      setError("Failed to create checkout session. Please try again.");
+      // Display more detailed error information
+      let errorMessage = "Failed to create checkout session. Please try again.";
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMessage += ` Error: ${err.response.data.message}`;
+      }
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -597,6 +621,21 @@ const PricingSection = () => {
   const getAddonFeatures = () => {
     return intelligenceAddOn.features;
   };
+
+  // Create a plan type string that includes add-on information
+  const getFullPlanType = useCallback(() => {
+    if (!selectedPlan) return '';
+    
+    // Base plan type
+    let planType = selectedPlan.type;
+    
+    // If addon is selected, we'll indicate that
+    if (addonSelected) {
+      planType = `${planType}_WITH_CQ_INTELLIGENCE`;
+    }
+    
+    return planType;
+  }, [selectedPlan, addonSelected]);
 
   // Reset form validation when dialog closes
   useEffect(() => {
