@@ -78,13 +78,13 @@ function App() {
             <Route path="/:team/managewebsites" element={<Dashboard />} />
             <Route path="/:team/cq-intelligence" element={<Dashboard />} />
             
-            {/* Parent Route for Settings */}
-            <Route path="/:team/settings" element={<Settings />} />
-            <Route path="/:team/settings/billing" element={<Settings />} />
-            <Route path="/:team/settings/members" element={<Settings />} />
-            <Route path="/:team/settings/personal" element={<Settings />} />
-            <Route path="/:team/settings/teamsSection" element={<Settings />} />
-            <Route path="/:team/settings/pricing" element={<Settings />} />
+            {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
+            <Route path="/:team/settings" element={<Dashboard />} />
+            <Route path="/:team/settings/billing" element={<Dashboard />} />
+            <Route path="/:team/settings/members" element={<Dashboard />} />
+            <Route path="/:team/settings/personal" element={<Dashboard />} />
+            <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
+            <Route path="/:team/settings/pricing" element={<Dashboard />} />
             
             <Route path="/test-analytics" element={<TestAnalytics />} />
           </Routes>
