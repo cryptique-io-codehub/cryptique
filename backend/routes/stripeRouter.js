@@ -224,6 +224,7 @@ router.post('/create-checkout-session', async (req, res) => {
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: teamId,
+      allow_promotion_codes: true,
       subscription_data: {
         metadata: {
           teamId,
