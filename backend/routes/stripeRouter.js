@@ -109,9 +109,41 @@ router.post('/create-checkout-session', async (req, res) => {
   try {
     const { teamId, planType, successUrl, cancelUrl, billingCycle = 'monthly' } = req.body;
 
+    // Log the incoming request for debugging
+    console.log('Checkout session request:', { 
+      teamId, 
+      planType, 
+      billingCycle,
+      hasSuccessUrl: !!successUrl,
+      hasCancelUrl: !!cancelUrl
+    });
+
+    if (!teamId || !planType || !successUrl || !cancelUrl) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Normalize the plan type to lowercase for case-insensitive comparison
+    const normalizedPlanType = planType.toLowerCase();
+    
+    // Check if this plan type includes CQ Intelligence add-on
+    const includesCQIntelligence = normalizedPlanType.includes('with_cq_intelligence');
+    
+    // Extract the base plan type by removing the add-on part if present
+    let basePlanType = normalizedPlanType;
+    if (includesCQIntelligence) {
+      basePlanType = normalizedPlanType.replace('_with_cq_intelligence', '');
+    }
+
+    console.log('Normalized plan type:', { 
+      original: planType,
+      normalized: normalizedPlanType,
+      base: basePlanType,
+      includesAddon: includesCQIntelligence
+    });
+
     // Get the appropriate price ID based on plan type and billing cycle
     let priceId;
-    switch (planType) {
+    switch (basePlanType) {
       case 'offchain':
         priceId = billingCycle === 'annual' 
           ? process.env.STRIPE_PRICE_ID_OFFCHAIN_ANNUAL 
@@ -131,22 +163,43 @@ router.post('/create-checkout-session', async (req, res) => {
         priceId = process.env.STRIPE_PRICE_ID_ENTERPRISE;
         break;
       default:
-        throw new Error('Invalid plan type');
+        console.error(`Invalid plan type: ${planType} (normalized: ${basePlanType})`);
+        throw new Error(`Invalid plan type: ${planType}`);
     }
 
     if (!priceId) {
       throw new Error('Price ID not found for the selected plan');
     }
 
+    // Create a line items array starting with the base plan
+    const lineItems = [
+      {
+        price: priceId,
+        quantity: 1,
+      }
+    ];
+
+    // Add CQ Intelligence add-on if requested
+    if (includesCQIntelligence) {
+      const addonPriceId = billingCycle === 'annual'
+        ? process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE_ANNUAL
+        : process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE;
+        
+      if (addonPriceId) {
+        lineItems.push({
+          price: addonPriceId,
+          quantity: 1
+        });
+      }
+    }
+
+    // Log the line items for debugging
+    console.log('Creating checkout with line items:', lineItems);
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: teamId,
@@ -154,7 +207,7 @@ router.post('/create-checkout-session', async (req, res) => {
         metadata: {
           teamId,
           billingCycle,
-          planType
+          planType: normalizedPlanType
         }
       }
     });

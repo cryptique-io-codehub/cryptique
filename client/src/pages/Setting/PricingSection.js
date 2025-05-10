@@ -626,14 +626,15 @@ const PricingSection = () => {
   const getFullPlanType = useCallback(() => {
     if (!selectedPlan) return '';
     
-    // Base plan type
-    let planType = selectedPlan.type;
+    // Base plan type - make sure this is lowercase to match backend expectations
+    let planType = selectedPlan.type.toLowerCase();
     
     // If addon is selected, we'll indicate that
     if (addonSelected) {
-      planType = `${planType}_WITH_CQ_INTELLIGENCE`;
+      planType = `${planType}_with_cq_intelligence`;
     }
     
+    console.log("Using plan type for checkout:", planType);
     return planType;
   }, [selectedPlan, addonSelected]);
 

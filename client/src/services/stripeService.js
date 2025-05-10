@@ -42,14 +42,18 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
       teamId,
       planType,
       billingCycle,
-      successUrl,
-      cancelUrl,
-      hasAddress: !!billingAddress
+      successUrl: successUrl ? successUrl.substring(0, 50) + '...' : undefined,
+      cancelUrl: cancelUrl ? cancelUrl.substring(0, 50) + '...' : undefined,
+      hasAddress: !!billingAddress,
+      addressFields: billingAddress ? Object.keys(billingAddress) : []
     });
+    
+    // Make sure planType is lowercase for consistency with server expectations
+    const normalizedPlanType = typeof planType === 'string' ? planType.toLowerCase() : planType;
     
     const response = await apiClient.post('/api/stripe/create-checkout-session', {
       teamId,
-      planType,
+      planType: normalizedPlanType,
       successUrl,
       cancelUrl,
       billingCycle,
@@ -64,6 +68,15 @@ export const createCheckoutSession = async (teamId, planType, successUrl, cancel
     if (error.response) {
       console.error('Response error data:', error.response.data);
       console.error('Response error status:', error.response.status);
+      
+      // Check for specific error messages
+      if (error.response.data && error.response.data.error) {
+        if (error.response.data.error.includes('Invalid plan type')) {
+          console.error('Plan type error. Make sure plan type is one of: offchain, basic, pro, enterprise');
+        } else if (error.response.data.error.includes('Price ID not found')) {
+          console.error('Price ID error. Check that Stripe price IDs are correctly configured in server environment');
+        }
+      }
     }
     throw error;
   }
