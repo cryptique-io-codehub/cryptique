@@ -323,14 +323,23 @@ const PricingSection = () => {
     const errors = {};
     const requiredFields = ['name', 'email', 'line1', 'city', 'state', 'postal_code', 'country'];
     
+    if (!billingAddress) {
+      // Set errors for all required fields if billingAddress is null/undefined
+      requiredFields.forEach(field => {
+        errors[field] = 'This field is required';
+      });
+      setAddressErrors(errors);
+      return false;
+    }
+    
     requiredFields.forEach(field => {
-      if (!billingAddress || !billingAddress[field]) {
+      if (!billingAddress[field]) {
         errors[field] = 'This field is required';
       }
     });
     
     // Validate email format
-    if (billingAddress?.email && !/\S+@\S+\.\S+/.test(billingAddress.email)) {
+    if (billingAddress.email && !/\S+@\S+\.\S+/.test(billingAddress.email)) {
       errors.email = 'Please enter a valid email address';
     }
     
@@ -1178,19 +1187,29 @@ const PricingSection = () => {
                 Billing information:
               </Typography>
               <Box sx={{ mb: 3 }}>
-                <Typography variant="body2">
-                  <strong>Company:</strong> {billingAddress?.name}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Email:</strong> {billingAddress?.email}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Address:</strong> {billingAddress?.line1}, {billingAddress?.line2 ? billingAddress.line2 + ', ' : ''}
-                  {billingAddress?.city}, {billingAddress?.state}, {billingAddress?.postal_code}, {billingAddress?.country}
-                </Typography>
-                {billingAddress?.tax_number && (
+                {billingAddress ? (
+                  <>
+                    <Typography variant="body2">
+                      <strong>Company:</strong> {billingAddress.name || "N/A"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Email:</strong> {billingAddress.email || "N/A"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Address:</strong> {billingAddress.line1 || "N/A"}, 
+                      {billingAddress.line2 ? billingAddress.line2 + ', ' : ''} 
+                      {billingAddress.city || "N/A"}, {billingAddress.state || "N/A"}, 
+                      {billingAddress.postal_code || "N/A"}, {billingAddress.country || "N/A"}
+                    </Typography>
+                    {billingAddress.tax_number && (
+                      <Typography variant="body2">
+                        <strong>Tax Number:</strong> {billingAddress.tax_number}
+                      </Typography>
+                    )}
+                  </>
+                ) : (
                   <Typography variant="body2">
-                    <strong>Tax Number:</strong> {billingAddress.tax_number}
+                    No billing information available. Please add your billing details.
                   </Typography>
                 )}
               </Box>
@@ -1198,7 +1217,13 @@ const PricingSection = () => {
                 You can update your billing information before confirming.
               </Typography>
               <Button 
-                onClick={() => setShowAddressForm(true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Fix: use setTimeout to avoid updating state during render
+                  setTimeout(() => {
+                    setShowAddressForm(true);
+                  }, 0);
+                }}
                 variant="outlined" 
                 size="small"
                 sx={{ mb: 2 }}
@@ -1246,7 +1271,7 @@ const PricingSection = () => {
           <Button 
             onClick={handleConfirmPlan} 
             variant="contained" 
-            disabled={showAddressForm && !validateBillingAddress()}
+            disabled={loading || (showAddressForm && !validateBillingAddress())}
             sx={{
               background: `linear-gradient(135deg, ${styles.accentColor} 0%, #e6c688 50%, ${styles.accentColor} 100%)`,
               color: '#000',
