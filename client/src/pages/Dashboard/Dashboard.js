@@ -286,7 +286,7 @@ const Dashboard = () => {
     }
   };
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 overflow-hidden space-x-0">
       {/* Sidebar - conditionally rendered based on screen size and state */}
       <div className={getSidebarClasses()}>
         <Sidebar 

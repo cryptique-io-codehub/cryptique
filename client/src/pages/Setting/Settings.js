@@ -111,219 +111,226 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
   return (
     <>
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
-      <div className="flex flex-col lg:flex-row w-full overflow-hidden">
-        {/* Mobile overlay for sidebar */}
-        {settingsSidebarOpen && isMobile && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-            onClick={() => setSettingsSidebarOpen(false)}
-          ></div>
-        )}
-        
-        {/* Settings sidebar - responsive - positioned based on main sidebar visibility */}
-        <div 
-          style={{ marginLeft: 0, paddingLeft: 0 }}
-          className={`${
-            settingsSidebarOpen ? 'fixed inset-y-0 md:left-[60px] lg:left-[60px] z-30 lg:relative lg:flex lg:ml-0' : 'hidden lg:hidden'
-          } w-56 lg:w-64 bg-white h-full border-l-0 border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out p-0`}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div className="p-4 border-b flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold">Settings</h2>
-              <p className="text-xs text-gray-500">Manage your analytics</p>
-            </div>
-            <button 
-              className="lg:hidden" 
-              onClick={() => setSettingsSidebarOpen(false)}
+      <div className="flex h-screen overflow-hidden bg-gray-50">
+        {/* Content area with header and flexible content */}
+        <div className="flex flex-col w-full h-screen">
+          {/* Content area below header */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Settings sidebar - positioned like the second nav in on-chain/off-chain */}
+            <div 
+              style={{ borderLeft: 0, margin: 0, padding: 0 }}
+              className={`${
+                settingsSidebarOpen ? 'md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 border-r border-gray-200' : 'hidden lg:hidden'
+              }`}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
             >
-              <X size={20} />
-            </button>
-          </div>
-          
-          <nav className="py-4 flex-1">
-            <ul className="space-y-1 px-2">
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("general")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <SettingsIcon size={16} />
-                  <span>General</span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("billing")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <CreditCard size={16} />
-                  <span>Billing</span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("pricing")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <Tag size={16} />
-                  <span>Pricing Plans</span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("members")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <Users size={16} />
-                  <span>Members</span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("personal")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <User size={16} />
-                  <span>Personal Info</span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleSectionChange("teams")}
-                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
-                    activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <Users size={16} />
-                  <span>Manage Teams</span>
-                </button>
-              </li>
-            </ul>
-          </nav>
-          
-          <div className="p-3 border-t text-xs text-gray-500">
-            Settings for {seteam}
-          </div>
-        </div>
-        
-        {/* Button to open sidebar on mobile - positioned based on main sidebar */}
-        <div className={`lg:hidden px-4 py-2 border-b flex items-center ${isSidebarVisible ? 'ml-[60px]' : 'ml-0'}`}>
-          <button 
-            onClick={toggleSettingsSidebar}
-            className="px-2 py-1 bg-gray-100 rounded-md text-sm flex items-center gap-1"
-          >
-            <Menu size={16} />
-            <span>Settings Menu</span>
-          </button>
-          <div className="ml-2 text-sm font-medium">
-            {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
-          </div>
-        </div>
-        
-        {/* Right content area */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 h-full">
-          {activeSection === "general" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <div className="max-w-2xl">
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="User name or email address" />
-                  <p className="text-xs text-gray-500 mt-1">This is the name of your team that will be displayed to your team members.</p>
-                  <div className="mt-2">
-                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
-                  </div>
+              <div className="p-4 border-b flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold">Settings</h2>
+                  <p className="text-xs text-gray-500">Manage your analytics</p>
                 </div>
-                
-                <div className="mb-6 border-t pt-6">
-                  <h2 className="text-xl font-semibold mb-4">Billing details</h2>
-                  <p className="text-xs text-gray-500 mb-4">Company data is required to activate the paid package and for invoicing.</p>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code <span className="text-red-500">*</span></label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Country <span className="text-red-500">*</span></label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option>Select a country</option>
-                    </select>
-                  </div>
-                  
-                  <div className="mt-2 mb-6">
-                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
-                  </div>
-                </div>
-                
-                <div className="mb-6 border-t pt-6">
-                  <h2 className="text-xl font-semibold mb-4">Invoice Email Recipient</h2>
-                  <p className="text-xs text-gray-500 mb-4">By default, all your invoices will be sent to the email address of the creator of your team. If you want to use a custom email address specifically for receiving invoices, enter it here.</p>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                  </div>
-                  
-                  <div className="mt-2">
-                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
-                  </div>
-                </div>
+                <button 
+                  className="lg:hidden" 
+                  onClick={() => setSettingsSidebarOpen(false)}
+                >
+                  <X size={20} />
+                </button>
               </div>
+              
+              <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
+                <div className="text-xs text-gray-500 uppercase mt-1 mb-2 font-semibold">
+                  SETTINGS
+                </div>
+                {/* General button */}
+                <div 
+                  onClick={() => handleSectionChange("general")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <SettingsIcon size={16} />
+                    <span>General</span>
+                  </div>
+                </div>
+                
+                {/* Billing button */}
+                <div 
+                  onClick={() => handleSectionChange("billing")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={16} />
+                    <span>Billing</span>
+                  </div>
+                </div>
+                
+                {/* Pricing button */}
+                <div 
+                  onClick={() => handleSectionChange("pricing")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Tag size={16} />
+                    <span>Pricing Plans</span>
+                  </div>
+                </div>
+                
+                {/* Members button */}
+                <div 
+                  onClick={() => handleSectionChange("members")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Users size={16} />
+                    <span>Members</span>
+                  </div>
+                </div>
+                
+                {/* Personal Info button */}
+                <div 
+                  onClick={() => handleSectionChange("personal")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <User size={16} />
+                    <span>Personal Info</span>
+                  </div>
+                </div>
+                
+                {/* Teams button */}
+                <div 
+                  onClick={() => handleSectionChange("teams")}
+                  className={`px-3 py-2 rounded-md cursor-pointer ${
+                    activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
+                  } text-sm`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Users size={16} />
+                    <span>Manage Teams</span>
+                  </div>
+                </div>
+                
+                <div className="p-2 border-t mt-4 text-xs text-gray-500">
+                  Settings for {seteam}
+                </div>
+              </nav>
             </div>
-          )}
-          {activeSection === "billing" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <Billing />
+            
+            {/* Button to open sidebar on mobile */}
+            <div className="lg:hidden fixed top-4 left-16 z-40 p-2 bg-white rounded-md shadow-md">
+              <button 
+                onClick={toggleSettingsSidebar}
+                className="p-1"
+              >
+                <Menu size={20} />
+              </button>
             </div>
-          )}
-          {activeSection === "pricing" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <PricingSection />
+            
+            {/* Right content area - scrollable */}
+            <div className="flex-grow overflow-y-auto">
+              {/* Settings content based on active section */}
+              {activeSection === "general" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <div className="max-w-2xl">
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
+                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="User name or email address" />
+                      <p className="text-xs text-gray-500 mt-1">This is the name of your team that will be displayed to your team members.</p>
+                      <div className="mt-2">
+                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-6 border-t pt-6">
+                      <h2 className="text-xl font-semibold mb-4">Billing details</h2>
+                      <p className="text-xs text-gray-500 mb-4">Company data is required to activate the paid package and for invoicing.</p>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-red-500">*</span></label>
+                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
+                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
+                          <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code <span className="text-red-500">*</span></label>
+                          <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Country <span className="text-red-500">*</span></label>
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                          <option>Select a country</option>
+                        </select>
+                      </div>
+                      
+                      <div className="mt-2 mb-6">
+                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-6 border-t pt-6">
+                      <h2 className="text-xl font-semibold mb-4">Invoice Email Recipient</h2>
+                      <p className="text-xs text-gray-500 mb-4">By default, all your invoices will be sent to the email address of the creator of your team. If you want to use a custom email address specifically for receiving invoices, enter it here.</p>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      </div>
+                      
+                      <div className="mt-2">
+                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeSection === "billing" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <Billing />
+                </div>
+              )}
+              {activeSection === "pricing" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <PricingSection />
+                </div>
+              )}
+              {activeSection === "members" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <MembersSection />
+                </div>
+              )}
+              {activeSection === "personal" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <PersonalInfoSection />
+                </div>
+              )}
+              {activeSection === "teams" && (
+                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
+                  <TeamsSection />
+                </div>
+              )}
             </div>
-          )}
-          {activeSection === "members" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <MembersSection />
-            </div>
-          )}
-          {activeSection === "personal" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <PersonalInfoSection />
-            </div>
-          )}
-          {activeSection === "teams" && (
-            <div className="p-4 sm:p-6 bg-white">
-              <TeamsSection />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </>

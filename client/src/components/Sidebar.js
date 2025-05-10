@@ -79,6 +79,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
 
   return (
     <aside
+      style={{ boxSizing: 'border-box', paddingRight: 0, marginRight: 0, borderRightWidth: '1px' }}
       className={`fixed md:relative bg-white ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r border-gray-200 transform transition-all duration-300 ease-in-out ${currentPage === "settings" ? "z-10" : "z-50"} ${
         isOpen || forceVisible
           ? "translate-x-0 w-full sm:w-64 md:w-56 top-0 left-0 md:relative md:top-auto md:left-auto" 
