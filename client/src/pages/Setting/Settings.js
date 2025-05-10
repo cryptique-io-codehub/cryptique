@@ -122,9 +122,10 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
         
         {/* Settings sidebar - responsive - positioned based on main sidebar visibility */}
         <div 
+          style={{ marginLeft: 0, paddingLeft: 0 }}
           className={`${
-            settingsSidebarOpen ? 'fixed inset-y-0 md:left-[60px] z-30 lg:relative lg:flex' : 'hidden lg:hidden'
-          } w-56 lg:w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+            settingsSidebarOpen ? 'fixed inset-y-0 md:left-[60px] lg:left-[60px] z-30 lg:relative lg:flex lg:ml-0' : 'hidden lg:hidden'
+          } w-56 lg:w-64 bg-white h-full border-l-0 border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out p-0`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
