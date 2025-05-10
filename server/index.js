@@ -37,6 +37,26 @@ app.use('/api/analytics', analyticsRoutes);
 const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
 
+// Usage routes for tracking and managing subscription limits
+const usageRoutes = require('./routes/usage');
+app.use('/api/usage', usageRoutes);
+
+// Team routes for managing teams and team members
+const teamRoutes = require('./routes/teams');
+app.use('/api/teams', teamRoutes);
+
+// Website routes for managing websites
+const websiteRoutes = require('./routes/websites');
+app.use('/api/websites', websiteRoutes);
+
+// Smart contract routes for managing smart contracts
+const smartContractRoutes = require('./routes/smartContracts');
+app.use('/api/smart-contracts', smartContractRoutes);
+
+// Admin routes for managing enterprise configurations
+const enterpriseConfigRoutes = require('./routes/admin/enterpriseConfig');
+app.use('/api/admin/enterprise', enterpriseConfigRoutes);
+
 // Special route handling for Stripe webhooks (needs raw body)
 // IMPORTANT: This is the STANDARDIZED webhook endpoint for Stripe
 // All Stripe webhook events should be configured to send to this endpoint:
@@ -56,6 +76,11 @@ app.get('/', (req, res) => {
     endpoints: {
       analytics: '/api/analytics/*',
       stripe: '/api/stripe/*',
+      usage: '/api/usage/*',
+      teams: '/api/teams/*',
+      websites: '/api/websites/*',
+      smartContracts: '/api/smart-contracts/*',
+      admin: '/api/admin/*',
       webhooks: '/api/webhooks/*',
       health: '/api/health'
     },

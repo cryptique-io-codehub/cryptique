@@ -72,6 +72,31 @@ const TeamSchema = new Schema({
       type: Schema.Types.Mixed
     }
   },
+  // Track current usage for limits
+  usage: {
+    websites: {
+      type: Number,
+      default: 0
+    },
+    smartContracts: {
+      type: Number,
+      default: 0
+    },
+    apiCalls: {
+      type: Number,
+      default: 0,
+      // Reset at the beginning of each billing cycle
+    },
+    teamMembers: {
+      type: Number,
+      default: 1  // Owner counts as 1
+    },
+    // Track usage reset date to manage monthly API call limits
+    lastResetDate: {
+      type: Date,
+      default: Date.now
+    }
+  },
   stripeCustomerId: {
     type: String
   },

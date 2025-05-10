@@ -43,19 +43,19 @@ const SUBSCRIPTION_PLANS = {
     name: 'Pro',
     price: 599, // Monthly price in USD
     annualPrice: 5990, // Annual price (saving ~2 months)
-    description: 'Enhanced access, 3 websites, 3 smart contracts, 3 team members',
+    description: 'Enhanced access, 5 websites, 5 smart contracts, 5 team members',
     limits: {
-      websites: 3,
-      smartContracts: 3,
+      websites: 5,
+      smartContracts: 5,
       apiCalls: 150000,
-      teamMembers: 3
+      teamMembers: 5
     },
     features: [
       'Full app access',
-      'Link 3 websites',
-      'Link 3 smart contracts',
+      'Link 5 websites',
+      'Link 5 smart contracts',
       'Monthly API calls: 150,000',
-      'Team size: 3 members'
+      'Team size: 5 members'
     ]
   },
   ENTERPRISE: {
