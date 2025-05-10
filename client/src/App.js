@@ -5,8 +5,6 @@ import Dashboard from './pages/Dashboard/Dashboard.js'
 import LandingPage from './pages/LandingPage/LandingPage.js'
 import Settings from './pages/Setting/Settings.js'
 import Billing from './pages/Setting/Billing/Billing.js'
-import MembersSection from './pages/Setting/MembersSection.js'
-import PersonalInfoSection from './pages/Setting/PersonalInfoSection.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
 import { useTeam, TeamProvider } from "./context/teamContext.js";
 import  {Navigate} from "react-router-dom";
@@ -33,8 +31,6 @@ const RouteListener = () => {
       dashboard: 'Dashboard',
       settings: 'Settings',
       billing: 'Billing',
-      members: 'Members',
-      personal: 'Personal Info',
       teamsSection: 'Teams',
       offchain: 'Offchain Analytics',
       onchain: 'Onchain Explorer',
@@ -81,8 +77,6 @@ function App() {
             {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
             <Route path="/:team/settings" element={<Dashboard />} />
             <Route path="/:team/settings/billing" element={<Dashboard />} />
-            <Route path="/:team/settings/members" element={<Dashboard />} />
-            <Route path="/:team/settings/personal" element={<Dashboard />} />
             <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
             <Route path="/:team/settings/pricing" element={<Dashboard />} />
             

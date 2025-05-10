@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X, Tag } from "lucide-react";
+import { CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X, Tag } from "lucide-react";
 import Header from "../../components/Header";
 import Billing from "./Billing/Billing";
-import MembersSection from "./MembersSection";
-import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
 import PricingSection from "./PricingSection";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -21,8 +19,6 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
   const determineActiveSection = () => {
     const path = location.pathname;
     if (path.includes('/billing')) return 'billing';
-    if (path.includes('/members')) return 'members';
-    if (path.includes('/personal')) return 'personal';
     if (path.includes('/teamsSection')) return 'teams';
     if (path.includes('/pricing')) return 'pricing';
     return 'general';
@@ -81,12 +77,6 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
         break;
       case 'billing':
         navigate(`/${seteam}/settings/billing`);
-        break;
-      case 'members':
-        navigate(`/${seteam}/settings/members`);
-        break;
-      case 'personal':
-        navigate(`/${seteam}/settings/personal`);
         break;
       case 'teams':
         navigate(`/${seteam}/settings/teamsSection`);
@@ -175,32 +165,6 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   <div className="flex items-center gap-2">
                     <Tag size={16} />
                     <span>Pricing Plans</span>
-                  </div>
-                </div>
-                
-                {/* Members button */}
-                <div 
-                  onClick={() => handleSectionChange("members")}
-                  className={`px-3 py-2 rounded-md cursor-pointer ${
-                    activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  } text-sm`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Users size={16} />
-                    <span>Members</span>
-                  </div>
-                </div>
-                
-                {/* Personal Info button */}
-                <div 
-                  onClick={() => handleSectionChange("personal")}
-                  className={`px-3 py-2 rounded-md cursor-pointer ${
-                    activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
-                  } text-sm`}
-                >
-                  <div className="flex items-center gap-2">
-                    <User size={16} />
-                    <span>Personal Info</span>
                   </div>
                 </div>
                 
@@ -309,16 +273,6 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
               {activeSection === "pricing" && (
                 <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
                   <PricingSection />
-                </div>
-              )}
-              {activeSection === "members" && (
-                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <MembersSection />
-                </div>
-              )}
-              {activeSection === "personal" && (
-                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <PersonalInfoSection />
                 </div>
               )}
               {activeSection === "teams" && (
