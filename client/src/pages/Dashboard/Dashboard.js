@@ -136,12 +136,14 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // Make sure sidebar is visible when in Settings page, matching behavior of other pages
+  // Make sure sidebar is visible and in compact mode when in Settings page
   useEffect(() => {
-    if (selectedPage === "settings" && !screenSize.isMobile) {
+    // Always ensure sidebar is open on desktop for Settings page
+    // This is crucial because the sidebar should not be hidden, just compacted
+    if (selectedPage === "settings") {
       setIsSidebarOpen(true);
     }
-  }, [selectedPage, screenSize.isMobile]);
+  }, [selectedPage]);
 
   // Add team change detection
   useEffect(() => {
@@ -189,17 +191,8 @@ const Dashboard = () => {
     }
   };
 
-  // Determine sidebar classes based on screen size
+  // Get sidebar classes based on screen size and state
   const getSidebarClasses = () => {
-    if (screenSize.isDesktop) {
-      return "h-screen sticky top-0 flex-shrink-0 transition-all duration-300";
-    }
-    
-    if (screenSize.isMobile || screenSize.isTablet) {
-      return "fixed top-0 left-0 h-full z-50 transition-all duration-300 transform " + 
-             (isSidebarOpen ? "translate-x-0" : "-translate-x-full");
-    }
-    
     return "h-screen sticky top-0 flex-shrink-0";
   };
 
@@ -208,8 +201,8 @@ const Dashboard = () => {
     let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
     
     if (screenSize.isDesktop) {
-      // Use the same margin logic for all pages, including settings
-      baseClasses += isSidebarOpen ? (isCompactMode ? "ml-[60px]" : "ml-56 lg:ml-64") : "ml-0";
+      // Both settings and other pages should have consistent behavior
+      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
     }
     
     return baseClasses;
@@ -294,14 +287,14 @@ const Dashboard = () => {
           onClose={() => setIsSidebarOpen(false)} 
           onNavigate={handleNavigation}
           currentPage={selectedPage}
-          isCompact={selectedPage === "settings" ? true : (isCompactMode || (screenSize.isTablet && !isSidebarOpen))}
+          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen)}
           screenSize={screenSize}
         />
       </div>
 
       {/* Main content area */}
       <div className={getMainContentClasses()}>
-        {/* Mobile menu toggle button */}
+        {/* Mobile menu toggle button - always visible regardless of page */}
         {(screenSize.isMobile || screenSize.isTablet) && (
           <button 
             className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"

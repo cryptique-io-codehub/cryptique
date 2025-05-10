@@ -14,7 +14,7 @@ const Settings = ({ onMenuClick, screenSize = {} }) => {
   const location = useLocation();
   const { team } = useParams();
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
-  const [isCompactMode, setIsCompactMode] = useState(false); // Settings sidebar should be expanded by default
+  const [isCompactMode, setIsCompactMode] = useState(true); // Settings sidebar should be compact by default
   const [isHovering, setIsHovering] = useState(false);
 
   // Determine active section based on current path
@@ -123,8 +123,8 @@ const Settings = ({ onMenuClick, screenSize = {} }) => {
         {/* Settings sidebar - responsive */}
         <div 
           className={`${
-            settingsSidebarOpen ? 'fixed inset-y-0 z-20 lg:relative lg:flex' : 'hidden lg:hidden'
-          } lg:w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+            settingsSidebarOpen ? 'fixed inset-y-0 left-16 md:left-[60px] z-20 lg:relative lg:flex' : 'hidden lg:hidden'
+          } w-56 lg:w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
@@ -218,7 +218,7 @@ const Settings = ({ onMenuClick, screenSize = {} }) => {
         </div>
         
         {/* Button to open sidebar on mobile */}
-        <div className="lg:hidden px-4 py-2 border-b flex items-center">
+        <div className="lg:hidden px-4 py-2 border-b flex items-center ml-[60px]">
           <button 
             onClick={toggleSettingsSidebar}
             className="px-2 py-1 bg-gray-100 rounded-md text-sm flex items-center gap-1"
@@ -232,7 +232,7 @@ const Settings = ({ onMenuClick, screenSize = {} }) => {
         </div>
         
         {/* Right content area */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 h-full">
+        <div className="flex-1 overflow-y-auto bg-gray-50 h-full pl-0 md:pl-0 lg:pl-0">
           {activeSection === "general" && (
             <div className="p-4 sm:p-6 bg-white">
               <div className="max-w-2xl">
