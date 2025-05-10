@@ -26,8 +26,22 @@ const MembersSection = () => {
         throw new Error("No team selected");
       }
 
+      // Try to get the team ID from the cached team data
+      let teamId;
+      try {
+        const selectedTeamData = localStorage.getItem("selectedTeamData");
+        if (selectedTeamData) {
+          const teamData = JSON.parse(selectedTeamData);
+          teamId = teamData._id;
+          console.log("Using team ID from cached data:", teamId);
+        }
+      } catch (err) {
+        console.error("Error parsing selectedTeamData:", err);
+      }
+
       setLoading(true);
-      const response = await axiosInstance.get(`/team/${selectedTeam}/members`);
+      // Use teamId if available, otherwise fall back to team name
+      const response = await axiosInstance.get(`/team/${teamId || selectedTeam}/members`);
       
       // Assuming the response contains an array of members
       setMembers(response.data || []);
