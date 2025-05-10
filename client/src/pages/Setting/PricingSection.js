@@ -338,14 +338,14 @@ const PricingSection = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSelectPlan = (planId) => {
+  const handleSelectPlan = (plan) => {
     if (!selectedTeamId) {
       setError("Please select a team before choosing a plan.");
       return;
     }
     
     // Store selected plan ID
-    setSelectedPlanId(planId);
+    setSelectedPlanId(plan.type);
     
     // Check if we have billing address
     if (!billingAddress) {
@@ -559,22 +559,22 @@ const PricingSection = () => {
       
       {/* Main pricing content with Order Summary sidebar */}
       <div className="max-w-6xl mx-auto">
-        <Grid container spacing={4}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
           {/* Left side - Pricing Options - All stacked vertically */}
-          <Grid item xs={12} md={8}>
+          <Box sx={{ flexGrow: 1, width: { xs: '100%', md: '65%' } }}>
             {/* Billing Cycle Section */}
             <Box sx={{ mb: 6 }}>
               <Typography variant="h6" sx={{ mb: 3, ...styles.headingFont, color: styles.primaryColor }}>
                 Select Billing Cycle
               </Typography>
               
-              <Box sx={{ display: 'flex', justifyContent: 'flex-start', gap: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', gap: 3, flexWrap: 'wrap' }}>
                 {/* Annual Option */}
                 <Paper 
                   elevation={activePlan === 'annual' ? 8 : 2}
                   sx={{
                     p: 3,
-                    width: '280px',
+                    width: { xs: '100%', sm: '280px' },
                     cursor: 'pointer',
                     background: activePlan === 'annual' ? styles.futuristicGradient : 'white',
                     color: activePlan === 'annual' ? 'white' : 'inherit',
@@ -605,7 +605,7 @@ const PricingSection = () => {
                   elevation={activePlan === 'monthly' ? 8 : 2}
                   sx={{
                     p: 3,
-                    width: '280px',
+                    width: { xs: '100%', sm: '280px' },
                     cursor: 'pointer',
                     background: activePlan === 'monthly' ? styles.futuristicGradient : 'white',
                     color: activePlan === 'monthly' ? 'white' : 'inherit',
@@ -634,9 +634,16 @@ const PricingSection = () => {
                 Select Plan
               </Typography>
               
-              <Grid container spacing={2} sx={{ height: '100%' }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                 {plans.map((plan) => (
-                  <Grid item xs={12} sm={6} key={plan.type} sx={{ height: '100%', display: 'flex' }}>
+                  <Box 
+                    key={plan.type} 
+                    sx={{ 
+                      width: { xs: '100%', sm: 'calc(50% - 8px)' },
+                      height: '100%', 
+                      display: 'flex' 
+                    }}
+                  >
                     <Paper
                       elevation={selectedPlan?.type === plan.type ? 8 : 2}
                       sx={{
@@ -693,9 +700,9 @@ const PricingSection = () => {
                         </Button>
                       ) : null}
                     </Paper>
-                  </Grid>
+                  </Box>
                 ))}
-              </Grid>
+              </Box>
             </Box>
             
             {/* Add-ons section */}
@@ -750,16 +757,19 @@ const PricingSection = () => {
                 </Box>
               </Paper>
             </Box>
-          </Grid>
+          </Box>
           
           {/* Right Side - Order Summary - Fixed position alongside all selections */}
-          <Grid item xs={12} md={4}>
+          <Box sx={{ 
+            width: { xs: '100%', md: '35%' },
+            alignSelf: 'flex-start',
+            position: { md: 'sticky' },
+            top: '20px'
+          }}>
             <Paper 
               elevation={3}
               sx={{ 
                 p: 3,
-                position: 'sticky',
-                top: '20px',
                 background: 'linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)',
                 border: `1px solid ${styles.accentColor}`,
                 borderRadius: 2
@@ -839,8 +849,8 @@ const PricingSection = () => {
                 </Typography>
               )}
             </Paper>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </div>
       
       {/* Feature Comparison Table - Enhanced */}
@@ -1014,7 +1024,6 @@ const PricingSection = () => {
       <Box sx={{ height: 80 }} />
       
       {/* Confirmation Dialog - Keep existing code */}
-      {/* ... existing confirmation dialog code ... */}
     </div>
   );
 };
