@@ -338,14 +338,24 @@ const PricingSection = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // Automatically validate when showAddressForm becomes true
+  useEffect(() => {
+    if (showAddressForm) {
+      validateBillingAddress();
+    }
+  }, [showAddressForm, billingAddress]);
+
   const handleSelectPlan = (plan) => {
     if (!selectedTeamId) {
       setError("Please select a team before choosing a plan.");
       return;
     }
     
-    // Store selected plan ID
+    console.log("handleSelectPlan called with plan:", plan);
+    
+    // Store selected plan ID and plan object
     setSelectedPlanId(plan.type);
+    setSelectedPlan(plan);
     
     // Check if we have billing address
     if (!billingAddress) {
@@ -355,15 +365,16 @@ const PricingSection = () => {
       setShowAddressForm(false);
     }
     
-    console.log("Opening plan confirmation dialog with billing address:", billingAddress);
-    
+    console.log("Setting confirmDialogOpen to true");
     // Open confirmation dialog
     setConfirmDialogOpen(true);
   };
 
   const handleCancelPlan = () => {
+    console.log("Canceling plan selection, closing dialog");
     setConfirmDialogOpen(false);
     setSelectedPlan(null);
+    setShowAddressForm(false);
   };
 
   const handleConfirmPlan = async () => {
@@ -556,6 +567,11 @@ const PricingSection = () => {
   const getAddonFeatures = () => {
     return intelligenceAddOn.features;
   };
+
+  // Log when dialog state changes
+  useEffect(() => {
+    console.log("Dialog open state changed:", confirmDialogOpen);
+  }, [confirmDialogOpen]);
 
   return (
     <div className="space-y-8">
@@ -904,13 +920,26 @@ const PricingSection = () => {
                       fullWidth
                       size="large"
                       disabled={!selectedPlan || selectedPlan.type === 'ENTERPRISE' || !selectedTeamId}
-                      onClick={() => handleSelectPlan(selectedPlan.type)}
+                      onClick={() => {
+                        console.log("Subscribe Now button clicked", selectedPlan);
+                        // First check if we have a billing address
+                        if (!billingAddress) {
+                          setShowAddressForm(true);
+                        } else {
+                          setShowAddressForm(false);
+                        }
+                        // Then open the dialog
+                        setConfirmDialogOpen(true);
+                      }}
                       sx={{
                         py: 1.5,
-                        background: styles.futuristicGradient,
-                        boxShadow: '0 4px 15px rgba(29, 12, 70, 0.3)',
+                        background: `linear-gradient(135deg, ${styles.accentColor} 0%, #e6c688 50%, ${styles.accentColor} 100%)`,
+                        color: '#000',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 15px rgba(202, 169, 104, 0.3)',
                         '&:hover': {
-                          boxShadow: '0 6px 20px rgba(29, 12, 70, 0.4)',
+                          boxShadow: '0 6px 20px rgba(202, 169, 104, 0.4)',
+                          background: `linear-gradient(135deg, #d9b87e 0%, ${styles.accentColor} 50%, #d9b87e 100%)`,
                         },
                         mb: 1
                       }}
@@ -1117,7 +1146,119 @@ const PricingSection = () => {
       {/* Add some extra space at the end */}
       <Box sx={{ height: 60 }} />
       
-      {/* Confirmation Dialog - Keep existing code */}
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleCancelPlan}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Confirm Subscription</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            You are about to subscribe to the {selectedPlan?.title} plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'}) 
+            {addonSelected ? ' with CQ Intelligence add-on' : ''}.
+            {activePlan === 'annual' ? ' You will be billed annually.' : ' You will be billed monthly.'}
+          </DialogContentText>
+          
+          {showAddressForm ? (
+            <>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Please provide your billing information:
+              </Typography>
+              <BillingAddressForm 
+                billingAddress={billingAddress} 
+                setBillingAddress={setBillingAddress}
+                errors={addressErrors}
+              />
+            </>
+          ) : (
+            <>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Billing information:
+              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2">
+                  <strong>Company:</strong> {billingAddress?.name}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Email:</strong> {billingAddress?.email}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Address:</strong> {billingAddress?.line1}, {billingAddress?.line2 ? billingAddress.line2 + ', ' : ''}
+                  {billingAddress?.city}, {billingAddress?.state}, {billingAddress?.postal_code}, {billingAddress?.country}
+                </Typography>
+                {billingAddress?.tax_number && (
+                  <Typography variant="body2">
+                    <strong>Tax Number:</strong> {billingAddress.tax_number}
+                  </Typography>
+                )}
+              </Box>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                You can update your billing information before confirming.
+              </Typography>
+              <Button 
+                onClick={() => setShowAddressForm(true)}
+                variant="outlined" 
+                size="small"
+                sx={{ mb: 2 }}
+              >
+                Edit Billing Information
+              </Button>
+            </>
+          )}
+          
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Order Summary</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="body2">{selectedPlan?.title} Plan ({activePlan === 'annual' ? 'Annual' : 'Monthly'})</Typography>
+              <Typography variant="body2">
+                {activePlan === 'annual' ? formatPrice(selectedPlan?.annualPrice || 0) : formatPrice(selectedPlan?.monthlyPrice || 0)}
+              </Typography>
+            </Box>
+            
+            {addonSelected && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2">CQ Intelligence Add-on</Typography>
+                <Typography variant="body2">
+                  {activePlan === 'annual' ? formatPrice(intelligenceAddOn.annualPrice) : formatPrice(intelligenceAddOn.monthlyPrice)}
+                </Typography>
+              </Box>
+            )}
+            
+            <Divider sx={{ my: 1 }} />
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Total</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {formatPrice(calculateTotal())}
+                <Typography component="span" variant="body2">/{activePlan === 'annual' ? 'year' : 'month'}</Typography>
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Alert severity="info" sx={{ mt: 3 }}>
+            You will be redirected to our secure payment processor to complete your subscription.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelPlan}>Cancel</Button>
+          <Button 
+            onClick={handleConfirmPlan} 
+            variant="contained" 
+            disabled={showAddressForm && !validateBillingAddress()}
+            sx={{
+              background: `linear-gradient(135deg, ${styles.accentColor} 0%, #e6c688 50%, ${styles.accentColor} 100%)`,
+              color: '#000',
+              '&:hover': {
+                background: `linear-gradient(135deg, #d9b87e 0%, ${styles.accentColor} 50%, #d9b87e 100%)`,
+              }
+            }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Complete Subscription'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
