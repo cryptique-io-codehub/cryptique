@@ -38,6 +38,9 @@ const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
 
 // Special route handling for Stripe webhooks (needs raw body)
+// IMPORTANT: This is the STANDARDIZED webhook endpoint for Stripe
+// All Stripe webhook events should be configured to send to this endpoint:
+// https://cryptique-backend.vercel.app/api/webhooks/stripe
 const stripeWebhookRoutes = require('./routes/webhooks/stripe');
 app.use('/api/webhooks/stripe', stripeWebhookRoutes);
 

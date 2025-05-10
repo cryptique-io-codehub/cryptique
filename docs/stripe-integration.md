@@ -107,17 +107,21 @@ Replace the placeholders with your actual values.
 
 Stripe webhooks allow your application to receive events like successful payments. Here's how to set them up:
 
-1. **Install Stripe CLI** (for local testing): Follow the [Stripe CLI installation guide](https://stripe.com/docs/stripe-cli)
+1. **Install the Stripe CLI** if you haven't already:
+   ```
+   brew install stripe/stripe-cli/stripe
+   ```
 
-2. **Login to Stripe CLI**:
-   ```bash
+2. **Log in to your Stripe account** via the CLI:
+   ```
    stripe login
    ```
 
-3. **Forward events to your local server**:
-   ```bash
+3. **Forward webhook events to your local server** during development:
+   ```
    stripe listen --forward-to http://localhost:3001/api/webhooks/stripe
    ```
+
    This will output a webhook signing secret. Copy this value.
 
 4. **Add the webhook secret** to your `.env` file:
@@ -127,14 +131,9 @@ Stripe webhooks allow your application to receive events like successful payment
 
 5. **For production**, set up a webhook endpoint in the Stripe Dashboard:
    - Go to Developers > Webhooks > Add endpoint
-   - URL: `https://your-domain.com/api/webhooks/stripe`
-   - Events to send: 
-     - `checkout.session.completed`
-     - `customer.subscription.created`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.payment_succeeded`
-     - `invoice.payment_failed`
+   - URL: `https://cryptique-backend.vercel.app/api/webhooks/stripe`
+   - IMPORTANT: Always use this standardized webhook URL path for all Stripe integrations
+   - Select events to listen for (at minimum: checkout.session.completed, customer.subscription.created/updated/deleted)
 
 ## Testing
 

@@ -195,84 +195,9 @@ router.post('/create-portal-session', async (req, res) => {
 
 // Handle webhook events
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-
-  try {
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-
-    // Handle the event
-    switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object;
-        const teamId = subscription.metadata.teamId;
-        
-        if (!teamId) {
-          console.error('No teamId found in subscription metadata');
-          return res.status(400).json({ error: 'No teamId found in subscription metadata' });
-        }
-
-        // Get the plan type from the price ID
-        const priceId = subscription.items.data[0].price.id;
-        let planType = 'offchain';
-        if (priceId === process.env.STRIPE_PRICE_ID_BASIC || priceId === process.env.STRIPE_PRICE_ID_BASIC_ANNUAL) {
-          planType = 'basic';
-        } else if (priceId === process.env.STRIPE_PRICE_ID_PRO || priceId === process.env.STRIPE_PRICE_ID_PRO_ANNUAL) {
-          planType = 'pro';
-        } else if (priceId === process.env.STRIPE_PRICE_ID_ENTERPRISE) {
-          planType = 'enterprise';
-        }
-
-        // Check if CQ Intelligence is included
-        const hasCQIntelligence = subscription.items.data.some(item => 
-          item.price.id === process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE || 
-          item.price.id === process.env.STRIPE_PRICE_ID_CQ_INTELLIGENCE_ANNUAL
-        );
-
-        // Update team subscription in database
-        await Team.findByIdAndUpdate(teamId, {
-          'subscription.status': subscription.status,
-          'subscription.plan': planType,
-          'subscription.stripeCustomerId': subscription.customer,
-          'subscription.stripeSubscriptionId': subscription.id,
-          'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000),
-          'subscription.cancelAtPeriodEnd': subscription.cancel_at_period_end,
-          'subscription.hasCQIntelligence': hasCQIntelligence,
-          'subscription.billingCycle': subscription.items.data[0].price.recurring.interval
-        });
-
-        break;
-      }
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object;
-        const teamId = subscription.metadata.teamId;
-        
-        if (!teamId) {
-          console.error('No teamId found in subscription metadata');
-          return res.status(400).json({ error: 'No teamId found in subscription metadata' });
-        }
-
-        // Update team subscription status to canceled
-        await Team.findByIdAndUpdate(teamId, {
-          'subscription.status': 'canceled',
-          'subscription.cancelAtPeriodEnd': true
-        });
-
-        break;
-      }
-      default:
-        console.log(`Unhandled event type ${event.type}`);
-    }
-
-    res.json({ received: true });
-  } catch (err) {
-    console.error('Webhook error:', err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  console.log("Warning: Using deprecated webhook path /api/stripe/webhook. Please update to /api/webhooks/stripe");
+  // Forward to the standardized webhook endpoint
+  res.redirect(307, '/api/webhooks/stripe');
 });
 
 // Get subscription for a team
