@@ -29,7 +29,7 @@ const Settings = ({ onMenuClick, screenSize }) => {
   };
 
   const [activeSection, setActiveSection] = useState(determineActiveSection);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsSidebarOpen, setSettingsSidebarOpen] = useState(true); // Start with settings sidebar open on desktop
 
   useEffect(() => {
     setseTeam(localStorage.getItem("selectedTeam"));
@@ -40,24 +40,27 @@ const Settings = ({ onMenuClick, screenSize }) => {
     setActiveSection(determineActiveSection());
   }, [location.pathname]);
   
-  // Close sidebar when resizing to larger screens
+  // Close sidebar when resizing to larger screens but keep it visible on desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
+        // On desktop, settings sidebar should be open by default
+        setSettingsSidebarOpen(true);
+      } else {
+        // On mobile, settings sidebar should be closed by default
+        setSettingsSidebarOpen(false);
       }
     };
+
+    // Set initial state
+    handleResize();
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-    // Also toggle the main menu if onMenuClick is provided
-    if (onMenuClick) {
-      onMenuClick();
-    }
+  const toggleSettingsSidebar = () => {
+    setSettingsSidebarOpen(!settingsSidebarOpen);
   };
 
   const handleMouseEnter = () => {
@@ -94,7 +97,7 @@ const Settings = ({ onMenuClick, screenSize }) => {
 
     // On mobile, close the sidebar after selecting a section
     if (window.innerWidth < 1024) {
-      setSidebarOpen(false);
+      setSettingsSidebarOpen(false);
     }
   };
 
@@ -106,122 +109,114 @@ const Settings = ({ onMenuClick, screenSize }) => {
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       <div className="flex flex-col lg:flex-row w-full overflow-hidden">
         {/* Mobile overlay for sidebar */}
-        {sidebarOpen && (
+        {settingsSidebarOpen && screenSize.isMobile && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setSettingsSidebarOpen(false)}
           ></div>
         )}
         
         {/* Settings sidebar - responsive */}
         <div 
           className={`${
-            sidebarOpen ? 'fixed inset-y-0 left-0 z-20' : 'hidden lg:flex'
-          } lg:relative lg:flex ${isCompactMode && !isHovering ? 'lg:w-16' : 'lg:w-64'} bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
+            settingsSidebarOpen ? 'fixed inset-y-0 left-0 z-20 lg:relative lg:flex' : 'hidden lg:hidden'
+          } lg:w-64 bg-white h-full border-r border-gray-200 flex-col overflow-y-auto transition-all duration-300 ease-in-out`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className={`p-4 border-b flex justify-between items-center ${!showExpanded ? 'justify-center' : ''}`}>
-            {showExpanded ? (
-              <>
-                <div>
-                  <h2 className="text-lg font-semibold">Settings</h2>
-                  <p className="text-xs text-gray-500">Manage your analytics</p>
-                </div>
-                <button 
-                  className="lg:hidden" 
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <X size={20} />
-                </button>
-              </>
-            ) : (
-              <SettingsIcon size={24} className="text-gray-700" />
-            )}
+          <div className="p-4 border-b flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold">Settings</h2>
+              <p className="text-xs text-gray-500">Manage your analytics</p>
+            </div>
+            <button 
+              className="lg:hidden" 
+              onClick={() => setSettingsSidebarOpen(false)}
+            >
+              <X size={20} />
+            </button>
           </div>
           
           <nav className="py-4 flex-1">
-            <ul className={`space-y-1 ${isCompactMode && !isHovering ? 'px-0' : 'px-2'}`}>
+            <ul className="space-y-1 px-2">
               <li>
                 <button 
                   onClick={() => handleSectionChange("general")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "general" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <SettingsIcon size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>General</span>}
+                  <SettingsIcon size={16} />
+                  <span>General</span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => handleSectionChange("billing")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "billing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <CreditCard size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>Billing</span>}
+                  <CreditCard size={16} />
+                  <span>Billing</span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => handleSectionChange("pricing")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <Tag size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>Pricing Plans</span>}
+                  <Tag size={16} />
+                  <span>Pricing Plans</span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => handleSectionChange("members")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <Users size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>Members</span>}
+                  <Users size={16} />
+                  <span>Members</span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => handleSectionChange("personal")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "personal" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <User size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>Personal Info</span>}
+                  <User size={16} />
+                  <span>Personal Info</span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => handleSectionChange("teams")}
-                  className={`w-full px-3 py-2 rounded-md flex ${!showExpanded ? 'justify-center' : ''} items-center gap-2 text-sm ${
+                  className={`w-full px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                     activeSection === "teams" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <Users size={isCompactMode && !isHovering ? 18 : 16} />
-                  {showExpanded && <span>Manage Teams</span>}
+                  <Users size={16} />
+                  <span>Manage Teams</span>
                 </button>
               </li>
             </ul>
           </nav>
           
-          {showExpanded && (
-            <div className="p-3 border-t text-xs text-gray-500">
-              Settings for {seteam}
-            </div>
-          )}
+          <div className="p-3 border-t text-xs text-gray-500">
+            Settings for {seteam}
+          </div>
         </div>
         
         {/* Button to open sidebar on mobile */}
         <div className="lg:hidden px-4 py-2 border-b flex items-center">
           <button 
-            onClick={toggleSidebar}
+            onClick={toggleSettingsSidebar}
             className="px-2 py-1 bg-gray-100 rounded-md text-sm flex items-center gap-1"
           >
             <Menu size={16} />

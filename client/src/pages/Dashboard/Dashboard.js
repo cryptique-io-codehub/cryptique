@@ -129,10 +129,12 @@ const Dashboard = () => {
     setIsCompactMode(selectedPage !== "dashboard");
   }, [selectedPage]);
 
-  // Make sure sidebar is collapsed when in Settings page
+  // Make sure sidebar is visible and in compact mode when in Settings page
   useEffect(() => {
     if (selectedPage === "settings" && !screenSize.isMobile) {
-      setIsSidebarOpen(true); // Keep sidebar visible but we'll ensure it's in compact mode
+      // Keep the sidebar open (visible) when in Settings
+      setIsSidebarOpen(true);
+      // We'll enforce compact mode via the isCompact prop for Sidebar component
     }
   }, [selectedPage, screenSize.isMobile]);
 
@@ -226,10 +228,14 @@ const Dashboard = () => {
   // Render component for current page
   const renderCurrentPage = () => {
     const commonProps = {
-      onMenuClick: () => setIsSidebarOpen(!isSidebarOpen),
+      // Important: When clicking the menu button in Settings page, we should only toggle the settings sidebar
+      // not the main sidebar which should stay visible in compact mode
+      onMenuClick: selectedPage === "settings" ? 
+        () => console.log("Settings sidebar toggle") : // This will be handled in Settings.js
+        () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
       screenSize: screenSize,
-      selectedPage:{selectedPage}
+      selectedPage: {selectedPage}
     };
 
     switch (selectedPage) {
