@@ -95,6 +95,8 @@ const Dashboard = () => {
     // Set the selected page based on the current route
     const newPage = routeToPageMap[currentRoute] || 'dashboard';
     
+    console.log("Current route:", currentRoute, "Selected page:", newPage);
+    
     // If page is changing, preload data
     if (newPage !== selectedPage) {
       // Preload data when navigating to pages that need dropdowns
@@ -119,9 +121,14 @@ const Dashboard = () => {
       }
       
       setSelectedPage(newPage);
+      
+      // Force sidebar to be open but compact when in settings
+      if (newPage === 'settings' && !screenSize.isMobile) {
+        setIsSidebarOpen(true);
+      }
     }
     
-  }, [location, selectedPage, selectedTeam, navigate]);
+  }, [location, selectedPage, selectedTeam, navigate, screenSize]);
 
   // Update isCompactMode based on the selected page
   useEffect(() => {
@@ -131,12 +138,12 @@ const Dashboard = () => {
 
   // Make sure sidebar is visible and in compact mode when in Settings page
   useEffect(() => {
-    if (selectedPage === "settings" && !screenSize.isMobile) {
-      // Keep the sidebar open (visible) when in Settings
+    // Always ensure sidebar is open on desktop for Settings page
+    // This is crucial because the sidebar should not be hidden, just compacted
+    if (selectedPage === "settings") {
       setIsSidebarOpen(true);
-      // We'll enforce compact mode via the isCompact prop for Sidebar component
     }
-  }, [selectedPage, screenSize.isMobile]);
+  }, [selectedPage]);
 
   // Add team change detection
   useEffect(() => {

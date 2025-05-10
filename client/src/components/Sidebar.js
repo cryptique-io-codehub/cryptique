@@ -3,12 +3,21 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
 
-const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
+const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
   const [isHovering, setIsHovering] = useState(false);
   const params = useParams();
   const location = useLocation();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
-  const showExpanded = !isCompact || (isCompact && isHovering);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  // Force compact mode when on settings page
+  const effectiveIsCompact = currentPage === "settings" ? true : isCompact;
+  
+  // Control sidebar expansion state
+  const showExpanded = !effectiveIsCompact || (effectiveIsCompact && isHovering);
+  
+  // Ensure sidebar is visible on desktop for settings page
+  const forceVisible = currentPage === "settings" && windowWidth >= 768;
   
   // Extract the current page from the URL path
   const path = location.pathname;
@@ -17,13 +26,13 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
   
   // Handle hover state with a small delay for better UX
   const handleMouseEnter = () => {
-    if (isCompact) {
+    if (effectiveIsCompact) {
       setIsHovering(true);
     }
   };
 
   const handleMouseLeave = () => {
-    if (isCompact) {
+    if (effectiveIsCompact) {
       setIsHovering(false);
     }
   };
@@ -56,19 +65,31 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
     return currentPage === page;
   };
   
+  // Add window resize listener
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
     <aside
-      className={`fixed md:relative bg-white ${isCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r transform transition-all duration-300 ease-in-out z-50 ${
-        isOpen 
+      className={`fixed md:relative bg-white ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} shadow-lg flex flex-col h-screen border-r transform transition-all duration-300 ease-in-out z-50 ${
+        isOpen || forceVisible
           ? "translate-x-0 w-full sm:w-64 md:w-56 top-0 left-0 md:relative md:top-auto md:left-auto" 
           : "-translate-x-full md:translate-x-0 md:w-auto"
       } ${
-        isCompact && !isHovering ? "md:w-[60px]" : "md:w-56 lg:w-64"
+        effectiveIsCompact && !isHovering ? "md:w-[60px]" : "md:w-56 lg:w-64"
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`flex justify-between items-center ${isCompact && !isHovering ? "mb-2" : "mb-4"} ${isCompact && !isHovering ? "py-1" : "py-2"} ${!showExpanded ? "justify-center" : ""}`}>
+      <div className={`flex justify-between items-center ${effectiveIsCompact && !isHovering ? "mb-2" : "mb-4"} ${effectiveIsCompact && !isHovering ? "py-1" : "py-2"} ${!showExpanded ? "justify-center" : ""}`}>
         {showExpanded ? (
         <h2 className="text-sm font-bold flex items-center gap-3 ml-1">
           <img 
@@ -95,93 +116,93 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact }) => {
         <ul className={`${!showExpanded ? "space-y-3 px-0 mt-2" : "space-y-1"} text-xs font-medium`}>
           <Link
             to={`/dashboard`}
-            className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("dashboard")}
           >
-            <Home size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Dashboard</span>}
+            <Home size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Dashboard</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/offchain`}
-            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("offchain")}
           >
-            <BarChart size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Off-chain analytics</span>}
+            <BarChart size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Off-chain analytics</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/onchain`}
-            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("onchain")}
           >
-            <LineChart size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">On-chain explorer</span>}
+            <LineChart size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">On-chain explorer</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/cq-intelligence`}
-            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("cq-intelligence")}
           >
-            <BrainCircuit size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">CQ Intelligence</span>}
+            <BrainCircuit size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">CQ Intelligence</span>}
           </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
           <Link 
             to={`/${selectedTeam}/campaigns`}
-            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("campaigns")}
           >
-            <Activity size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Campaigns</span>}
+            <Activity size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Campaigns</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/conversion-events`}
-            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("conversion-events")}
           >
-            <List size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Conversion events</span>}
+            <List size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Conversion events</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/advertise`}
-            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("advertise")}
           >
-            <Globe size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Advertise</span>}
+            <Globe size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Advertise</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/history`}
-            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("history")}
           >
-            <Database size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">History</span>}
+            <Database size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">History</span>}
           </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
           <Link 
             to={`/${selectedTeam}/importusers`}
-            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("importusers")}
           >
-            <Upload size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Import users</span>}
+            <Upload size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Import users</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/managewebsites`}
-            className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("managewebsites")}
           >
-            <Globe size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Manage websites</span>}
+            <Globe size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Manage websites</span>}
           </Link>
           <Link
             to={`/${selectedTeam}/settings`}
-            className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${isCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("settings")}
           >
-            <Settings size={isCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Settings</span>}
+            <Settings size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Settings</span>}
           </Link>
         </ul>
       </nav>
       {showExpanded && (
         <div className="border-t pt-2 mt-2">
           <button className="text-gray-500 flex items-center gap-2 justify-center hover:bg-gray-200 p-2 rounded-lg cursor-pointer w-full text-xs transition-all duration-200">
-            <Sun size={isCompact && !isHovering ? 16 : 14} /> <span className="transition-opacity duration-200">Light Mode</span>
+            <Sun size={effectiveIsCompact && !isHovering ? 16 : 14} /> <span className="transition-opacity duration-200">Light Mode</span>
           </button>
         </div>
       )}
