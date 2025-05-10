@@ -27,7 +27,7 @@ const MembersSection = () => {
       }
 
       setLoading(true);
-      const response = await axiosInstance.post('/team/members', { teams: selectedTeam });
+      const response = await axiosInstance.get(`/team/${selectedTeam}/members`);
       
       // Assuming the response contains an array of members
       setMembers(response.data || []);
