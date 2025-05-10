@@ -261,10 +261,16 @@ const Pricing = () => {
           return;
         }
 
-        // Either use the team context or fetch teams from API
+        // Use the selectedTeam from context if available
         if (selectedTeam) {
           setSelectedTeamId(selectedTeam._id);
           setTeams([selectedTeam]);
+          
+          // Try to load saved billing address for team
+          if (selectedTeam.billingAddress) {
+            setBillingAddress(selectedTeam.billingAddress);
+          }
+          
           setLoading(false);
         } else {
           // Try to get teams from local storage first
@@ -274,6 +280,12 @@ const Pricing = () => {
             setTeams(parsedTeams);
             if (parsedTeams.length > 0) {
               setSelectedTeamId(parsedTeams[0]._id);
+              
+              // Try to load saved billing address for the first team
+              const firstTeam = parsedTeams[0];
+              if (firstTeam.billingAddress) {
+                setBillingAddress(firstTeam.billingAddress);
+              }
             }
             setLoading(false);
           } else {
@@ -283,6 +295,12 @@ const Pricing = () => {
               setTeams(response.data);
               if (response.data.length > 0) {
                 setSelectedTeamId(response.data[0]._id);
+                
+                // Try to load saved billing address for the first team
+                const firstTeam = response.data[0];
+                if (firstTeam.billingAddress) {
+                  setBillingAddress(firstTeam.billingAddress);
+                }
               }
             }
             setLoading(false);
@@ -330,6 +348,11 @@ const Pricing = () => {
   
   const handleConfirmPlan = async () => {
     try {
+      if (!selectedTeamId) {
+        setError("Please select a team before proceeding to payment.");
+        return;
+      }
+      
       // Save billing address to team if needed
       if (billingAddress) {
         try {
@@ -345,6 +368,10 @@ const Pricing = () => {
       
       // Create checkout session directly instead of navigating
       const teamName = teams.find(team => team._id === selectedTeamId)?.name;
+      if (!teamName) {
+        setError("Could not determine team name. Please try again.");
+        return;
+      }
       
       setLoading(true);
       

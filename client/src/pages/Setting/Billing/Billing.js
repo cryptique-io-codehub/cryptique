@@ -389,7 +389,7 @@ const Billing = () => {
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <h1 className="text-2xl font-bold">Billing & Subscription</h1>
-        <Button variant="contained" color="primary" onClick={() => navigate('/pricing')}>
+        <Button variant="contained" color="primary" onClick={() => navigate(`/${selectedTeam.name}/pricing`)}>
           View all pricing plans
         </Button>
       </div>

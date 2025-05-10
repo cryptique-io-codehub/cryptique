@@ -90,6 +90,7 @@ function App() {
     
             <Route path="/test-analytics" element={<TestAnalytics />} />
             <Route path="/pricing" element={<Dashboard />} />
+            <Route path="/:team/pricing" element={<Dashboard />} />
           </Routes>
         </BrowserRouter>
       </ContractDataProvider>
