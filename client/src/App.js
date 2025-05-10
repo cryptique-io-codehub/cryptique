@@ -21,7 +21,6 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
-import Pricing from './pages/Pricing';
 
 const RouteListener = () => {
   const location = useLocation();
@@ -80,17 +79,14 @@ function App() {
             <Route path="/:team/cq-intelligence" element={<Dashboard />} />
             
             {/* Parent Route for Settings */}
-            <Route path="/:team/settings" element={<Settings />}>
-              {/* Child Route for Billing */}
-              <Route path="/:team/settings/billing"  element={<Billing />} />
-              <Route path="/:team/settings/members" element={<MembersSection />} />
-              <Route path="/:team/settings/personal" element={<PersonalInfoSection/>} />
-              <Route path="/:team/settings/teamsSection" element={<TeamsSection/>} />
-            </Route>
-    
+            <Route path="/:team/settings" element={<Settings />} />
+            <Route path="/:team/settings/billing" element={<Settings />} />
+            <Route path="/:team/settings/members" element={<Settings />} />
+            <Route path="/:team/settings/personal" element={<Settings />} />
+            <Route path="/:team/settings/teamsSection" element={<Settings />} />
+            <Route path="/:team/settings/pricing" element={<Settings />} />
+            
             <Route path="/test-analytics" element={<TestAnalytics />} />
-            <Route path="/pricing" element={<Dashboard />} />
-            <Route path="/:team/pricing" element={<Dashboard />} />
           </Routes>
         </BrowserRouter>
       </ContractDataProvider>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X } from "lucide-react";
+import { User, CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X, Tag } from "lucide-react";
 import Header from "../../components/Header";
 import Billing from "./Billing/Billing";
 import MembersSection from "./MembersSection";
 import PersonalInfoSection from "./PersonalInfoSection";
 import TeamsSection from "./TeamsSection";
+import PricingSection from "./PricingSection";
 import Sidebar from "../../components/Sidebar";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
@@ -22,6 +23,7 @@ const Settings = ({ onMenuClick }) => {
     if (path.includes('/members')) return 'members';
     if (path.includes('/personal')) return 'personal';
     if (path.includes('/teamsSection')) return 'teams';
+    if (path.includes('/pricing')) return 'pricing';
     return 'general';
   };
 
@@ -71,6 +73,9 @@ const Settings = ({ onMenuClick }) => {
         break;
       case 'teams':
         navigate(`/${seteam}/settings/teamsSection`);
+        break;
+      case 'pricing':
+        navigate(`/${seteam}/settings/pricing`);
         break;
     }
 
@@ -132,6 +137,17 @@ const Settings = ({ onMenuClick }) => {
             </li>
             <li>
               <button 
+                onClick={() => handleSectionChange("pricing")}
+                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
+                  activeSection === "pricing" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
+                }`}
+              >
+                <Tag size={16} className="mr-1" />
+                Pricing Plans
+              </button>
+            </li>
+            <li>
+              <button 
                 onClick={() => handleSectionChange("members")}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 text-sm ${
                   activeSection === "members" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-100"
@@ -188,7 +204,6 @@ const Settings = ({ onMenuClick }) => {
         <div className="flex-1 overflow-y-auto bg-gray-50">
           {activeSection === "general" && (
             <div className="p-4 sm:p-6 bg-white">
-              
               <div className="max-w-2xl">
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
@@ -252,30 +267,29 @@ const Settings = ({ onMenuClick }) => {
               </div>
             </div>
           )}
-           {activeSection === "billing" && (
+          {activeSection === "billing" && (
             <div className="p-4 sm:p-6 bg-white">
-              
-              <Billing/>
+              <Billing />
+            </div>
+          )}
+          {activeSection === "pricing" && (
+            <div className="p-4 sm:p-6 bg-white">
+              <PricingSection />
             </div>
           )}
           {activeSection === "members" && (
             <div className="p-4 sm:p-6 bg-white">
-              
-              <MembersSection/>
+              <MembersSection />
             </div>
           )}
-          
           {activeSection === "personal" && (
             <div className="p-4 sm:p-6 bg-white">
-              
-              <PersonalInfoSection/>
+              <PersonalInfoSection />
             </div>
           )}
-          
           {activeSection === "teams" && (
             <div className="p-4 sm:p-6 bg-white">
-             
-              <TeamsSection/>
+              <TeamsSection />
             </div>
           )}
         </div>
