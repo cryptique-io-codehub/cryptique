@@ -706,8 +706,21 @@ const Billing = () => {
                   Cancel Subscription
                 </Button>
               </div>
-              <Typography variant="caption" color="text.secondary" className="block mt-2">
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                 The Stripe Portal allows you to update payment methods, view invoices, and manage your subscription details.
+                {subscription?.subscription?.id && (
+                  <div className="mt-2">
+                    <strong>Note:</strong> The Stripe Portal settings need to be configured first. 
+                    If you're the administrator, please <a 
+                      href="https://dashboard.stripe.com/settings/billing/portal" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      configure the Customer Portal in Stripe
+                    </a>.
+                  </div>
+                )}
               </Typography>
             </div>
           </div>
