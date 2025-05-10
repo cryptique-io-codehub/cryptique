@@ -202,65 +202,185 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
               {/* Settings content based on active section */}
               {activeSection === "general" && (
                 <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <div className="max-w-2xl">
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
-                      <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="User name or email address" />
-                      <p className="text-xs text-gray-500 mt-1">This is the name of your team that will be displayed to your team members.</p>
-                      <div className="mt-2">
-                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
+                  <div className="max-w-4xl">
+                    <h1 className="text-2xl font-bold mb-6">General Settings</h1>
+
+                    {/* API Keys Section */}
+                    <div className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">API Keys</h2>
+                        <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors">
+                          Generate New Key
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Use these API keys to access Cryptique data programmatically. Keep your keys secure - anyone with your key can access your account data.
+                      </p>
+
+                      <div className="overflow-hidden bg-white border border-gray-200 rounded-lg mb-4">
+                        <div className="px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+                          <div>
+                            <span className="font-medium text-sm">Main API Key</span>
+                            <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">Active</span>
+                          </div>
+                          <span className="text-xs text-gray-500">Created: May 15, 2023</span>
+                        </div>
+                        <div className="p-4 flex justify-between items-center">
+                          <div className="flex-1 font-mono text-sm bg-gray-50 p-2 rounded mr-4 overflow-hidden">
+                            ••••••••••••••••••••••••••••••cq_k1a2b3c4
+                          </div>
+                          <div className="flex space-x-2">
+                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50">Copy</button>
+                            <button className="px-2 py-1 border border-red-300 text-red-600 text-xs rounded hover:bg-red-50">Revoke</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+                        <strong>Documentation:</strong> Find our API documentation at <a href="#" className="underline">docs.cryptique.io/api</a>
+                      </div>
+                    </div>
+
+                    {/* Analytics Preferences */}
+                    <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+                      <h2 className="text-xl font-semibold mb-4">Analytics Preferences</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Configure how analytics data is collected and displayed across your dashboard.
+                      </p>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                          <div>
+                            <h3 className="font-medium text-gray-900">Default Date Range</h3>
+                            <p className="text-xs text-gray-500">Set the default time period for analytics charts</p>
+                          </div>
+                          <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                            <option value="7days">Last 7 days</option>
+                            <option value="30days" selected>Last 30 days</option>
+                            <option value="90days">Last 90 days</option>
+                            <option value="year">Last year</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                          <div>
+                            <h3 className="font-medium text-gray-900">Data Granularity</h3>
+                            <p className="text-xs text-gray-500">Choose the level of detail in your analytics</p>
+                          </div>
+                          <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                            <option value="hourly">Hourly</option>
+                            <option value="daily" selected>Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                          <div>
+                            <h3 className="font-medium text-gray-900">Real-time Analytics</h3>
+                            <p className="text-xs text-gray-500">Enable live updating of dashboard stats</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" checked />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors">
+                        Save Preferences
+                      </button>
+                    </div>
+                    
+                    {/* Data Export */}
+                    <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+                      <h2 className="text-xl font-semibold mb-4">Data Export</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Export your analytics data in various formats for reporting and deeper analysis.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+                          <h3 className="font-medium mb-1">User Analytics Export</h3>
+                          <p className="text-xs text-gray-500 mb-3">Export detailed user behavior and conversion data</p>
+                          <div className="flex space-x-2">
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">CSV</button>
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">JSON</button>
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">Excel</button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+                          <h3 className="font-medium mb-1">Smart Contract Analytics</h3>
+                          <p className="text-xs text-gray-500 mb-3">Export on-chain transaction and interaction data</p>
+                          <div className="flex space-x-2">
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">CSV</button>
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">JSON</button>
+                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">Excel</button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-amber-800">Exports may take a few minutes for larger data sets.</span>
                       </div>
                     </div>
                     
-                    <div className="mb-6 border-t pt-6">
-                      <h2 className="text-xl font-semibold mb-4">Billing details</h2>
-                      <p className="text-xs text-gray-500 mb-4">Company data is required to activate the paid package and for invoicing.</p>
+                    {/* Advanced Settings */}
+                    <div className="p-6 border border-gray-200 rounded-lg">
+                      <h2 className="text-xl font-semibold mb-4">Advanced Settings</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Configure advanced features for your Cryptique analytics account.
+                      </p>
                       
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-red-500">*</span></label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                      </div>
-                      
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
-                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
-                          <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                      <div className="space-y-4">
+                        <div className="flex items-start p-3 bg-gray-50 rounded">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">Data Retention</h3>
+                            <p className="text-xs text-gray-500 mb-2">Control how long your analytics data is stored</p>
+                            <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                              <option value="3months">3 months</option>
+                              <option value="6months">6 months</option>
+                              <option value="1year" selected>1 year</option>
+                              <option value="forever">Indefinitely</option>
+                            </select>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code <span className="text-red-500">*</span></label>
-                          <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        
+                        <div className="flex items-start p-3 bg-gray-50 rounded">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">IP Anonymization</h3>
+                            <p className="text-xs text-gray-500 mb-2">Mask the last octet of user IP addresses for privacy</p>
+                            <div className="flex items-center">
+                              <label className="relative inline-flex items-center cursor-pointer mr-4">
+                                <input type="checkbox" className="sr-only peer" checked />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                              </label>
+                              <span className="text-sm text-gray-600">Enabled</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start p-3 bg-gray-50 rounded">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">Custom Parameters Tracking</h3>
+                            <p className="text-xs text-gray-500 mb-2">Track additional custom parameters for deeper insights</p>
+                            <div className="flex flex-col space-y-2">
+                              <input type="text" placeholder="Parameter name (e.g., utm_campaign)" className="px-3 py-2 border border-gray-300 rounded text-sm" />
+                              <div className="flex space-x-2">
+                                <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">Add Parameter</button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Country <span className="text-red-500">*</span></label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                          <option>Select a country</option>
-                        </select>
-                      </div>
-                      
-                      <div className="mt-2 mb-6">
-                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-6 border-t pt-6">
-                      <h2 className="text-xl font-semibold mb-4">Invoice Email Recipient</h2>
-                      <p className="text-xs text-gray-500 mb-4">By default, all your invoices will be sent to the email address of the creator of your team. If you want to use a custom email address specifically for receiving invoices, enter it here.</p>
-                      
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                      </div>
-                      
-                      <div className="mt-2">
-                        <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md">Save</button>
-                      </div>
+                      <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors">
+                        Save Advanced Settings
+                      </button>
                     </div>
                   </div>
                 </div>
