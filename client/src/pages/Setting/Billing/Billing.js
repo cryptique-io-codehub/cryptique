@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Check, AlertCircle, Info } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
 import { Link, useLocation } from "react-router-dom";
@@ -301,125 +301,252 @@ const Billing = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Success notification if present */}
-      {successMessage && (
-        <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex justify-between w-full">
-              <p className="text-sm text-green-700">
-                {successMessage}
-              </p>
-              <button onClick={handleDismissMessage} className="text-green-700">
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Error notification if present */}
-      {error && (
-        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex justify-between w-full">
-              <p className="text-sm text-yellow-700">
-                {error}
-                {error.includes("No team selected") && (
-                  <span className="ml-2">
-                    <Link to="/teams" className="font-medium underline text-yellow-700 hover:text-yellow-600">
-                      Go to Teams
-                    </Link>
-                  </span>
-                )}
-              </p>
-              <button onClick={handleDismissMessage} className="text-yellow-700">
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plan management section */}
-      <div className="mt-6 mb-10">
-        <div className="text-lg font-semibold flex flex-wrap items-center gap-4 md:gap-6 px-4 text-center">
-          <span className="whitespace-nowrap">Plan management</span>
-          <div className="bg-indigo-900 text-white p-4 rounded-md w-full sm:w-auto flex justify-center items-center text-center break-words">
-            <p className="text-sm md:text-base break-words">
-              {currentTeam?.name || 'No Team Selected'} - {currentTeam?.subscription?.status || 'Inactive'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Left card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Billing details</h2>
-          
-          <p className="text-sm text-gray-600 mb-4">
-            To receive a VAT invoice, you must provide your company's details.
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Page Header */}
+        <div className="max-w-2xl mx-auto text-center mb-16">
+          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+            Pricing Plans
+          </h1>
+          <p className="mt-4 text-xl text-gray-600">
+            Choose the plan that best fits your needs. All plans include a secure dashboard and analytics.
           </p>
-          
-          <button 
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-            onClick={openModal}
-          >
-            Add company details
-          </button>
-          
-          {/* Display billing details if available */}
-          {billingDetails && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm font-medium">{billingDetails.companyName}</p>
-              <p className="text-sm text-gray-600">{billingDetails.address}</p>
-              <p className="text-sm text-gray-600">
-                {billingDetails.city}, {billingDetails.zipCode}
-              </p>
-              <p className="text-sm text-gray-600">{billingDetails.country}</p>
+        </div>
+        
+        {/* Success notification if present */}
+        {successMessage && (
+          <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4 rounded shadow-sm">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex justify-between w-full">
+                <p className="text-sm text-green-700">
+                  {successMessage}
+                </p>
+                <button onClick={handleDismissMessage} className="text-green-700">
+                  <X size={16} />
+                </button>
+              </div>
             </div>
+          </div>
+        )}
+        
+        {/* Error notification if present */}
+        {error && (
+          <div className="mb-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex justify-between w-full">
+                <p className="text-sm text-yellow-700">
+                  {error}
+                  {error.includes("No team selected") && (
+                    <span className="ml-2">
+                      <Link to="/teams" className="font-medium underline text-yellow-700 hover:text-yellow-600">
+                        Go to Teams
+                      </Link>
+                    </span>
+                  )}
+                </p>
+                <button onClick={handleDismissMessage} className="text-yellow-700">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Team Info Badge */}
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex items-center px-4 py-2 bg-indigo-100 border border-indigo-200 rounded-full">
+            <span className="font-medium text-indigo-800 mr-2">Current team:</span> 
+            <span className="px-3 py-1 bg-indigo-800 text-white rounded-full text-sm">
+              {currentTeam?.name || 'No Team Selected'}
+            </span>
+            <span className="mx-2">|</span>
+            <span className="font-medium text-indigo-800 mr-2">Status:</span>
+            <span className={`px-3 py-1 rounded-full text-sm ${
+              currentTeam?.subscription?.status === 'active' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-gray-300 text-gray-800'
+            }`}>
+              {currentTeam?.subscription?.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Plans Grid */}
+        <div className="hidden lg:block">
+          {currentTeam && (
+            <StripeSubscription teamId={currentTeam._id} currentTeam={currentTeam} />
           )}
         </div>
         
-        {/* Right card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Billing & Payment</h2>
-          
-          <div className="flex justify-between border-b pb-2 mb-2">
-            <span className="text-sm text-gray-600">Subscription end date</span>
-            <span className="text-sm">
-              {currentTeam?.subscription?.endDate 
-                ? new Date(currentTeam.subscription.endDate).toLocaleDateString() 
-                : 'N/A'}
-            </span>
+        {/* Details Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+          {/* Billing Details Card */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-blue-100 p-2 rounded-full mr-3">
+                  <svg className="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Billing Details</h3>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                To receive a VAT invoice, please provide your company's details.
+              </p>
+              
+              <button 
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={openModal}
+              >
+                {billingDetails ? 'Update company details' : 'Add company details'}
+              </button>
+              
+              {/* Display billing details if available */}
+              {billingDetails && (
+                <div className="mt-5 bg-gray-50 rounded-lg border border-gray-200 p-4">
+                  <h4 className="font-medium text-gray-900">{billingDetails.companyName}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{billingDetails.address}</p>
+                  <p className="text-sm text-gray-600">
+                    {billingDetails.city}, {billingDetails.zipCode}
+                  </p>
+                  <p className="text-sm text-gray-600">{billingDetails.country}</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex justify-between border-b pb-2 mb-2">
-            <span className="text-sm text-gray-600">Current Plan</span>
-            <span className="text-sm">
-              {currentTeam?.subscription?.plan 
-                ? currentTeam.subscription.plan.charAt(0).toUpperCase() + currentTeam.subscription.plan.slice(1)
-                : 'Free'}
-            </span>
+          
+          {/* Payment Info Card */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-green-100 p-2 rounded-full mr-3">
+                  <svg className="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Subscription Details</h3>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between border-b border-gray-200 pb-2">
+                  <span className="text-sm font-medium text-gray-500">Current Plan</span>
+                  <span className="text-sm text-gray-900 font-semibold">
+                    {currentTeam?.subscription?.plan 
+                      ? currentTeam.subscription.plan.charAt(0).toUpperCase() + currentTeam.subscription.plan.slice(1)
+                      : 'Free'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between border-b border-gray-200 pb-2">
+                  <span className="text-sm font-medium text-gray-500">Billing Cycle</span>
+                  <span className="text-sm text-gray-900 font-semibold">
+                    {currentTeam?.subscription?.billingCycle === 'annual' ? 'Annual' : 'Monthly'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between border-b border-gray-200 pb-2">
+                  <span className="text-sm font-medium text-gray-500">Next Billing Date</span>
+                  <span className="text-sm text-gray-900 font-semibold">
+                    {currentTeam?.subscription?.endDate 
+                      ? new Date(currentTeam.subscription.endDate).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      : 'N/A'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between border-b border-gray-200 pb-2">
+                  <span className="text-sm font-medium text-gray-500">CQ Intelligence</span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    currentTeam?.subscription?.cqIntelligence ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {currentTeam?.subscription?.cqIntelligence ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+              
+              {currentTeam?.subscription?.status === 'active' && (
+                <div className="mt-5">
+                  <button 
+                    onClick={() => window.location.href = '/settings/billing#subscription-management'}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Manage Subscription
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      
-      {/* Stripe Subscription Management */}
-      <div className="bg-white rounded-lg shadow overflow-hidden p-6">
-        {currentTeam && (
-          <StripeSubscription teamId={currentTeam._id} currentTeam={currentTeam} />
-        )}
+        
+        {/* FAQ Section */}
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Frequently Asked Questions</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">How does billing work?</h3>
+              <p className="text-gray-600">
+                You'll be charged immediately upon subscribing, and then on the same day each month or year, depending on your billing cycle.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Can I cancel my subscription?</h3>
+              <p className="text-gray-600">
+                Yes, you can cancel at any time. Your subscription will remain active until the end of your current billing period.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">What's included in the CQ Intelligence add-on?</h3>
+              <p className="text-gray-600">
+                CQ Intelligence provides AI-powered analytics and insights to help you make better decisions and optimize your blockchain activities.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">How do I change my plan?</h3>
+              <p className="text-gray-600">
+                You can upgrade your plan at any time. Downgrades will take effect at the end of your current billing period.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Contact Support */}
+        <div className="mt-16 bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl shadow-xl overflow-hidden">
+          <div className="px-6 py-8 md:p-10 md:flex md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Need help with your subscription?</h2>
+              <p className="mt-2 max-w-3xl text-indigo-100">
+                Our support team is ready to assist you with any questions about plans, billing, or features.
+              </p>
+            </div>
+            <div className="mt-4 md:mt-0 md:ml-6 shrink-0">
+              <a
+                href="mailto:support@cryptique.io"
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-indigo-600 bg-white hover:bg-indigo-50"
+              >
+                Contact Support
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
       
       {/* Billing Details Modal */}
