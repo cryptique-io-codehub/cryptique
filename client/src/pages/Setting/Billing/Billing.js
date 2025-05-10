@@ -1,11 +1,55 @@
 import React, { useState, useEffect } from "react";
-import { X, CreditCard, XCircle } from "lucide-react";
+import { X, CreditCard } from "lucide-react";
 import StripeSubscription from "./StripeSubscription";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTeam } from "../../../context/teamContext";
-import { CircularProgress, Alert, Button, Paper, Typography } from '@mui/material';
-import { createPortalSession, cancelSubscription } from '../../../services/stripeService';
+import { 
+  CircularProgress, 
+  Alert, 
+  Button, 
+  Paper, 
+  Typography, 
+  Box, 
+  Chip, 
+  LinearProgress,
+  Grid
+} from '@mui/material';
+import { createPortalSession } from '../../../services/stripeService';
+
+// Style definitions for futuristic theme
+const styles = {
+  headingFont: { 
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600
+  },
+  bodyFont: { 
+    fontFamily: "'Poppins', sans-serif" 
+  },
+  primaryColor: "#1d0c46", // Deep purple
+  accentColor: "#caa968",  // Gold accent
+  futuristicGradient: "linear-gradient(135deg, #1d0c46 0%, #3a1d8a 50%, #1d0c46 100%)",
+  activeGlow: "0 0 15px rgba(202, 169, 104, 0.6)",
+  cardHover: {
+    transform: 'translateY(-8px)',
+    boxShadow: '0 10px 25px rgba(29, 12, 70, 0.2)',
+    transition: 'all 0.3s ease-in-out'
+  },
+  glassmorphism: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '10px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+  },
+  statusChipColors: {
+    active: '#10B981', // Green
+    pastdue: '#F59E0B', // Amber
+    cancelled: '#EF4444', // Red
+    inactive: '#6B7280', // Gray
+    trial: '#3B82F6' // Blue
+  }
+};
 
 // Billing Details Modal Component
 const BillingDetailsModal = ({ isOpen, onClose, onSave, initialData }) => {
@@ -580,136 +624,241 @@ const Billing = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Billing & Subscription</h1>
-        <Button variant="contained" color="primary" onClick={() => navigate(`/${selectedTeam.name}/settings/pricing`)}>
-          View all pricing plans
+    <Box 
+      className="container mx-auto px-4 py-8"
+      sx={{ 
+        maxWidth: '1100px',
+        background: 'radial-gradient(circle at 50% 50%, rgba(29, 12, 70, 0.03), transparent)',
+        ...styles.bodyFont
+      }}
+    >
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: {xs: 'column', md: 'row'}, 
+          alignItems: {xs: 'flex-start', md: 'center'}, 
+          justifyContent: 'space-between', 
+          mb: 4,
+          gap: 2
+        }}
+      >
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            ...styles.headingFont,
+            background: styles.futuristicGradient,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: {xs: 2, md: 0}
+          }}
+        >
+          Billing & Subscription
+        </Typography>
+        
+        <Button 
+          variant="contained" 
+          onClick={() => navigate(`/${selectedTeam.name}/settings/pricing`)}
+          sx={{
+            background: styles.futuristicGradient,
+            px: 3,
+            py: 1.2,
+            borderRadius: '30px',
+            '&:hover': {
+              boxShadow: styles.activeGlow
+            }
+          }}
+        >
+          View All Pricing Plans
         </Button>
-      </div>
+      </Box>
       
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 3, 
+            borderRadius: '10px', 
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)'
+          }}
+        >
           {error}
-        </div>
+        </Alert>
       )}
 
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+        <Alert 
+          severity="success" 
+          sx={{ 
+            mb: 3, 
+            borderRadius: '10px',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.2)'
+          }}
+        >
           {successMessage}
-        </div>
+        </Alert>
       )}
 
       {/* Active Subscription */}
-      <Paper elevation={2} className="mb-8 p-6">
-        <h2 className="text-xl font-semibold mb-2">Active Subscription</h2>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          mb: 4, 
+          p: 4, 
+          borderRadius: '16px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h5" sx={{ ...styles.headingFont, color: styles.primaryColor }}>
+            Active Subscription
+          </Typography>
+          {subscription && (
+            <Chip 
+              label={subscription.subscription.status.toUpperCase()} 
+              sx={{ 
+                bgcolor: styles.statusChipColors[subscription.subscription.status.toLowerCase()] || styles.statusChipColors.inactive,
+                color: 'white',
+                fontWeight: 600,
+                borderRadius: '20px',
+                px: 1
+              }}
+            />
+          )}
+        </Box>
+        
         {subscription ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-gray-500">Plan</div>
-              <div className="font-medium">{planLimits.name}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Status</div>
-              <div className="font-medium">{subscription.subscription.status}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Billing Period</div>
-              <div className="font-medium">{subscription.subscription.billingCycle || 'Monthly'}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Current Period</div>
-              <div className="font-medium">
-                {formatSubscriptionDate(subscription.subscription.currentPeriodStart)} - {formatSubscriptionDate(subscription.subscription.currentPeriodEnd)}
-              </div>
-            </div>
-            <div className="col-span-2">
-              <div className="text-sm text-gray-500">Add-ons</div>
-              <div className="font-medium">{subscription.subscription.addons?.some(a => a.name === 'cq_intelligence' && a.active) ? 'CQ Intelligence' : 'None'}</div>
-            </div>
+          <Box>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={3}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                    Plan
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: styles.primaryColor }}>
+                    {planLimits.name}
+                  </Typography>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={3}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                    Billing Cycle
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: styles.primaryColor }}>
+                    {subscription.subscription.billingCycle === 'annual' ? 'Annual' : 'Monthly'}
+                  </Typography>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                    Current Period
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: styles.primaryColor }}>
+                    {formatSubscriptionDate(subscription.subscription.currentPeriodStart)} - {formatSubscriptionDate(subscription.subscription.currentPeriodEnd)}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
             
-            <div className="col-span-2 mt-4 pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-700 font-medium mb-2">Subscription Management</div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  onClick={async () => {
+            <Box sx={{ mt: 3, mb: 4 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
+                Add-ons
+              </Typography>
+              {subscription.subscription.addons?.some(a => a.name === 'cq_intelligence' && a.active) ? (
+                <Chip 
+                  label="CQ Intelligence" 
+                  sx={{ 
+                    bgcolor: 'rgba(202, 169, 104, 0.1)', 
+                    color: styles.accentColor,
+                    fontWeight: 600,
+                    borderRadius: '12px',
+                    border: `1px solid ${styles.accentColor}`
+                  }}
+                />
+              ) : (
+                <Typography variant="body1" sx={{ color: 'text.primary' }}>None</Typography>
+              )}
+            </Box>
+            
+            <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid rgba(0, 0, 0, 0.08)' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: styles.primaryColor }}>
+                Subscription Management
+              </Typography>
+              
+              <Button 
+                variant="contained" 
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    const hostUrl = window.location.origin;
+                    
                     try {
-                      setLoading(true);
-                      const hostUrl = window.location.origin;
+                      // First attempt: Try using the createPortalSession via teamId
+                      const session = await createPortalSession(
+                        selectedTeam._id,
+                        `${hostUrl}/${selectedTeam.name}/settings/billing`
+                      );
                       
-                      try {
-                        // First attempt: Try using the createPortalSession via teamId
-                        const session = await createPortalSession(
-                          selectedTeam._id,
-                          `${hostUrl}/${selectedTeam.name}/settings/billing`
-                        );
-                        
-                        window.location.href = session.url;
-                      } catch (teamErr) {
-                        console.error('Error with team-based portal session, trying subscription-based approach:', teamErr);
-                        
-                        // Second attempt: Try using the subscription ID directly
-                        if (subscription && subscription.subscription && subscription.subscription.id) {
-                          const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
-                          const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
-                          
-                          const response = await axios.post(`${API_URL}/api/stripe/create-portal-session-by-subscription`, {
-                            subscriptionId: subscription.subscription.id,
-                            returnUrl: `${hostUrl}/${selectedTeam.name}/settings/billing`
-                          }, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          
-                          window.location.href = response.data.url;
-                        } else {
-                          throw new Error('No subscription ID available for fallback');
-                        }
-                      }
-                    } catch (err) {
-                      console.error('Error opening Stripe portal:', err);
-                      setError('Failed to open billing portal. Please try again later.');
-                      setLoading(false);
-                    }
-                  }}
-                  startIcon={<CreditCard />}
-                  disabled={loading}
-                >
-                  Manage Subscription in Stripe Portal
-                </Button>
-                
-                <Button 
-                  variant="outlined" 
-                  color="error"
-                  onClick={() => {
-                    // Show a confirmation dialog before cancellation
-                    if (window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.')) {
-                      setLoading(true);
+                      window.location.href = session.url;
+                    } catch (teamErr) {
+                      console.error('Error with team-based portal session, trying subscription-based approach:', teamErr);
                       
-                      cancelSubscription(subscription.subscription.id)
-                        .then(() => {
-                          // Refetch data after cancellation
-                          loadData();
-                          setSuccessMessage('Your subscription has been cancelled and will end at the current billing period.');
-                        })
-                        .catch(err => {
-                          console.error('Error cancelling subscription:', err);
-                          setError('Failed to cancel subscription. Please try again later.');
-                          setLoading(false);
+                      // Second attempt: Try using the subscription ID directly
+                      if (subscription && subscription.subscription && subscription.subscription.id) {
+                        const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+                        const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+                        
+                        const response = await axios.post(`${API_URL}/api/stripe/create-portal-session-by-subscription`, {
+                          subscriptionId: subscription.subscription.id,
+                          returnUrl: `${hostUrl}/${selectedTeam.name}/settings/billing`
+                        }, {
+                          headers: { 'Authorization': `Bearer ${token}` }
                         });
+                        
+                        window.location.href = response.data.url;
+                      } else {
+                        throw new Error('No subscription ID available for fallback');
+                      }
                     }
-                  }}
-                  startIcon={<XCircle />}
-                  disabled={loading || subscription.subscription.status === 'canceled' || subscription.subscription.status === 'cancelled'}
-                >
-                  Cancel Subscription
-                </Button>
-              </div>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  } catch (err) {
+                    console.error('Error opening Stripe portal:', err);
+                    setError('Failed to open billing portal. Please try again later.');
+                    setLoading(false);
+                  }
+                }}
+                startIcon={<CreditCard />}
+                disabled={loading}
+                fullWidth
+                sx={{
+                  background: styles.futuristicGradient,
+                  borderRadius: '8px',
+                  py: 1.5,
+                  maxWidth: '500px',
+                  '&:hover': {
+                    boxShadow: styles.activeGlow
+                  }
+                }}
+              >
+                Manage Subscription in Stripe Portal
+              </Button>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', opacity: 0.8 }}>
                 The Stripe Portal allows you to update payment methods, view invoices, and manage your subscription details.
                 {subscription?.subscription?.id && (
-                  <div className="mt-2">
+                  <Box sx={{ mt: 1.5, p: 2, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
                     <strong>Note:</strong> The Stripe Portal settings need to be configured first. 
                     If you're the administrator, please <a 
                       href="https://dashboard.stripe.com/settings/billing/portal" 
@@ -719,87 +868,292 @@ const Billing = () => {
                     >
                       configure the Customer Portal in Stripe
                     </a>.
-                  </div>
+                  </Box>
                 )}
               </Typography>
-            </div>
-          </div>
+            </Box>
+          </Box>
         ) : (
-          <div className="text-gray-500">No active subscription found.</div>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            py: 4 
+          }}>
+            <Typography variant="body1" sx={{ mb: 2, textAlign: 'center', color: 'text.secondary' }}>
+              No active subscription found.
+            </Typography>
+            <Button 
+              variant="contained" 
+              onClick={() => navigate(`/${selectedTeam.name}/settings/pricing`)}
+              sx={{
+                background: styles.futuristicGradient,
+                px: 4,
+                py: 1.2,
+                borderRadius: '30px',
+                '&:hover': {
+                  boxShadow: styles.activeGlow
+                }
+              }}
+            >
+              Subscribe to a Plan
+            </Button>
+          </Box>
         )}
       </Paper>
 
       {/* Usage & Limits */}
-      <Paper elevation={2} className="mb-8 p-6">
-        <h2 className="text-xl font-semibold mb-2">Usage & Limits</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm text-gray-500">Websites</div>
-            <div className="font-medium">{usage.websites} / {planLimits.websites}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Smart Contracts</div>
-            <div className="font-medium">{planLimits.contracts === 0 ? 'N/A' : `${usage.contracts} / ${planLimits.contracts}`}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Team Members</div>
-            <div className="font-medium">{usage.members} / {planLimits.members}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Explorer API Calls</div>
-            <div className="font-medium">{planLimits.apiCalls === 0 ? 'N/A' : `${planLimits.apiCalls} / mo`}</div>
-          </div>
-        </div>
-        <div className="text-xs text-gray-400 mt-2">Plan: {planLimits.description}</div>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          mb: 4, 
+          p: 4, 
+          borderRadius: '16px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <Typography variant="h5" sx={{ ...styles.headingFont, color: styles.primaryColor, mb: 3 }}>
+          Usage & Limits
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Websites</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {usage.websites} / {planLimits.websites}
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={Math.min(100, (usage.websites / planLimits.websites) * 100)}
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: 'rgba(29, 12, 70, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    background: styles.futuristicGradient
+                  }
+                }}
+              />
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Smart Contracts</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {planLimits.contracts === 0 ? 'N/A' : `${usage.contracts} / ${planLimits.contracts}`}
+                </Typography>
+              </Box>
+              {planLimits.contracts > 0 && (
+                <LinearProgress 
+                  variant="determinate" 
+                  value={Math.min(100, (usage.contracts / planLimits.contracts) * 100)}
+                  sx={{ 
+                    height: 8, 
+                    borderRadius: 4,
+                    bgcolor: 'rgba(29, 12, 70, 0.1)',
+                    '& .MuiLinearProgress-bar': {
+                      background: styles.futuristicGradient
+                    }
+                  }}
+                />
+              )}
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Team Members</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {usage.members} / {planLimits.members}
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={Math.min(100, (usage.members / planLimits.members) * 100)}
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: 'rgba(29, 12, 70, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    background: styles.futuristicGradient
+                  }
+                }}
+              />
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Explorer API Calls</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {planLimits.apiCalls === 0 ? 'N/A' : `${planLimits.apiCalls.toLocaleString()} / mo`}
+                </Typography>
+              </Box>
+              {planLimits.apiCalls > 0 && (
+                <LinearProgress 
+                  variant="determinate" 
+                  value={50} // Placeholder for API usage, would need actual data
+                  sx={{ 
+                    height: 8, 
+                    borderRadius: 4,
+                    bgcolor: 'rgba(29, 12, 70, 0.1)',
+                    '& .MuiLinearProgress-bar': {
+                      background: styles.futuristicGradient
+                    }
+                  }}
+                />
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+        
+        <Box sx={{ 
+          mt: 2, 
+          p: 2, 
+          borderRadius: '8px', 
+          bgcolor: 'rgba(29, 12, 70, 0.03)', 
+          border: '1px solid rgba(29, 12, 70, 0.05)' 
+        }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            <strong>Plan Details:</strong> {planLimits.description}
+          </Typography>
+        </Box>
       </Paper>
 
       {/* Billing Details */}
-      <Paper elevation={2} className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Billing Details</h2>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 4, 
+          borderRadius: '16px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <Typography variant="h5" sx={{ ...styles.headingFont, color: styles.primaryColor, mb: 3 }}>
+          Billing Details
+        </Typography>
+        
         {billingDetails ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Company Name</p>
-                <p className="font-medium">{billingDetails.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{billingDetails.email}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Tax Number</p>
-                <p className="font-medium">{billingDetails.tax_number}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Address</p>
-                <p className="font-medium">{billingDetails.line1} {billingDetails.line2}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">City</p>
-                <p className="font-medium">{billingDetails.city}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">State</p>
-                <p className="font-medium">{billingDetails.state}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Zip/Postal Code</p>
-                <p className="font-medium">{billingDetails.postal_code}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Country</p>
-                <p className="font-medium">{billingDetails.country}</p>
-              </div>
-          </div>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Company Name</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>{billingDetails.name}</Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Email</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>{billingDetails.email}</Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Tax Number</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                  {billingDetails.tax_number || 'Not provided'}
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Address</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                  {billingDetails.line1} {billingDetails.line2}
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>City</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>{billingDetails.city}</Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>State</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>{billingDetails.state}</Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Country</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>{billingDetails.country}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: { xs: 'center', md: 'flex-end' },
+                mt: 2 
+              }}>
+                <Button 
+                  onClick={() => setIsModalOpen(true)}
+                  sx={{ 
+                    color: styles.primaryColor,
+                    '&:hover': {
+                      backgroundColor: 'rgba(29, 12, 70, 0.05)'
+                    }
+                  }}
+                >
+                  Edit Billing Details
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
         ) : (
-          <Button variant="contained" color="primary" onClick={() => setIsModalOpen(true)}>
-            Add Billing Details
-          </Button>
-        )}
-        {billingDetails && (
-          <Button onClick={() => setIsModalOpen(true)} className="mt-4 text-blue-600 hover:text-blue-800">
-            Edit Details
-          </Button>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            py: 4 
+          }}>
+            <Typography variant="body1" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary' }}>
+              No billing details have been provided yet.
+            </Typography>
+            <Button 
+              variant="outlined"
+              onClick={() => setIsModalOpen(true)}
+              sx={{
+                borderColor: styles.primaryColor,
+                color: styles.primaryColor,
+                borderRadius: '8px',
+                px: 3,
+                '&:hover': {
+                  borderColor: styles.primaryColor,
+                  backgroundColor: 'rgba(29, 12, 70, 0.05)'
+                }
+              }}
+            >
+              Add Billing Details
+            </Button>
+          </Box>
         )}
       </Paper>
 
@@ -809,7 +1163,7 @@ const Billing = () => {
         onSave={handleSaveBillingDetails}
         initialData={billingDetails}
       />
-    </div>
+    </Box>
   );
 };
 
