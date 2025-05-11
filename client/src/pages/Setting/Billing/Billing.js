@@ -472,39 +472,39 @@ const Billing = () => {
   const sessionId = queryParams.get("session_id");
   const canceled = queryParams.get("canceled");
   
-  const loadData = async () => {
-    try {
-      if (!selectedTeam || !selectedTeam._id) {
+    const loadData = async () => {
+      try {
+        if (!selectedTeam || !selectedTeam._id) {
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        // Fetch usage
+        const [websites, contracts, members, sub, billingData] = await Promise.all([
+          fetchWebsites(selectedTeam._id),
+          fetchContracts(selectedTeam._id),
+          fetchMembers(selectedTeam),
+          fetchSubscription(selectedTeam._id),
+          fetchBillingDetails(selectedTeam._id)
+        ]);
+        setUsage({
+          websites: websites.length,
+          contracts: contracts.length,
+          members: members.length
+        });
+        setSubscription(sub);
+        setPlanKey(getPlanKey(sub?.subscription?.plan));
+        
+        // Set billing details if available
+        if (billingData) {
+          setBillingDetails(billingData);
+        }
+      } catch (e) {
+        setError('Failed to load usage or subscription info.');
+      } finally {
         setLoading(false);
-        return;
       }
-      setLoading(true);
-      // Fetch usage
-      const [websites, contracts, members, sub, billingData] = await Promise.all([
-        fetchWebsites(selectedTeam._id),
-        fetchContracts(selectedTeam._id),
-        fetchMembers(selectedTeam),
-        fetchSubscription(selectedTeam._id),
-        fetchBillingDetails(selectedTeam._id)
-      ]);
-      setUsage({
-        websites: websites.length,
-        contracts: contracts.length,
-        members: members.length
-      });
-      setSubscription(sub);
-      setPlanKey(getPlanKey(sub?.subscription?.plan));
-      
-      // Set billing details if available
-      if (billingData) {
-        setBillingDetails(billingData);
-      }
-    } catch (e) {
-      setError('Failed to load usage or subscription info.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
   
   useEffect(() => {
     // Handle Stripe redirect
@@ -1151,8 +1151,8 @@ const Billing = () => {
                 }
               }}
             >
-              Add Billing Details
-            </Button>
+            Add Billing Details
+          </Button>
           </Box>
         )}
       </Paper>

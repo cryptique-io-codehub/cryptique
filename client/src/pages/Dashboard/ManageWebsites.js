@@ -23,15 +23,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   // Add subscription grace period state
   const [inGracePeriod, setInGracePeriod] = useState(false);
   const [gracePeriodInfo, setGracePeriodInfo] = useState(null);
-  
-  // Add usage tracking state
-  const [usageInfo, setUsageInfo] = useState({
-    current: 0,
-    limit: 1
-  });
-  
-  // Add subscription plan info
-  const [subscriptionPlan, setSubscriptionPlan] = useState('');
 
   // Fetch websites when component mounts
   useEffect(() => {
@@ -52,17 +43,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         setInGracePeriod(false);
         setGracePeriodInfo(null);
       }
-      
-      // Set subscription plan and limits
-      if (response.data.subscription) {
-        setSubscriptionPlan(response.data.subscription.plan || '');
-        
-        // Set usage information
-        setUsageInfo({
-          current: response.data.usage?.websites || websiteArray.length || 0,
-          limit: response.data.limits?.websites || 1
-        });
-      }
     } catch (error) {
       console.error("Error checking subscription status:", error);
       // If we can't determine status, assume not in grace period to avoid blocking unnecessarily
@@ -78,12 +58,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       
       if (response.status === 200) {
         setWebsiteArray(response.data.websites || []);
-        
-        // Update usage count based on website count
-        setUsageInfo(prev => ({
-          ...prev,
-          current: response.data.websites?.length || 0
-        }));
       }
     } catch (error) {
       console.error("Error fetching websites:", error);
@@ -114,12 +88,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const handleAddWebsite = async (e) => {
     e.preventDefault();
     
-    // Check if reached website limit
-    if (usageInfo.limit !== null && usageInfo.current >= usageInfo.limit) {
-      showMessage(`You have reached the maximum number of websites (${usageInfo.limit}) allowed on your ${subscriptionPlan} plan. Please upgrade to add more websites.`, "error");
-      return;
-    }
-    
     // Check if in grace period
     if (inGracePeriod) {
       showMessage("Cannot add new websites during grace period. Please renew your subscription.", "error");
@@ -140,11 +108,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         setNewWebsiteName('');
         fetchWebsites();
         
-        // Update usage information if provided in response
-        if (response.data.usage) {
-          setUsageInfo(response.data.usage);
-        }
-        
         // Select the newly added website
         if (response.data.website) {
           setSelectedWebsite(response.data.website);
@@ -155,24 +118,15 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     } catch (error) {
       console.error("Error adding website:", error);
       
-      // Handle resource limit error
-      if (error.response && error.response.status === 403) {
-        if (error.response.data.error === 'Resource limit reached') {
-          showMessage(error.response.data.message || "You've reached your website limit on this plan.", "error");
-          
-          // Update usage information from error response
-          if (error.response.data.currentUsage !== undefined && error.response.data.limit !== undefined) {
-            setUsageInfo({
-              current: error.response.data.currentUsage,
-              limit: error.response.data.limit
-            });
-          }
-        } else if (error.response.data.error === 'Subscription required') {
-          // Handle grace period error
-          setInGracePeriod(true);
-          setGracePeriodInfo(error.response.data.gracePeriod);
-          showMessage(error.response.data.message || "Failed to add website due to subscription issues", "error");
-        }
+      // Handle specific grace period error message from server
+      if (error.response && error.response.status === 403 && 
+          error.response.data && error.response.data.error === 'Subscription required') {
+        
+        // Update grace period state
+        setInGracePeriod(true);
+        setGracePeriodInfo(error.response.data.gracePeriod);
+        
+        showMessage(error.response.data.message || "Failed to add website due to subscription issues", "error");
       } else {
         showMessage("Failed to add website. Please try again.", "error");
       }
@@ -247,17 +201,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
             localStorage.removeItem("idy");
             localStorage.removeItem("selectedWebsite");
           }
-          
-          // Update usage information if provided in the response
-          if (response.data.usage) {
-            setUsageInfo(response.data.usage);
-          } else {
-            // Decrement usage count manually
-            setUsageInfo(prev => ({
-              ...prev,
-              current: Math.max(0, prev.current - 1)
-            }));
-          }
         }
       } catch (error) {
         console.error("Error deleting website:", error);
@@ -267,12 +210,6 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       }
     }
   };
-  
-  // Calculate the percentage of usage
-  const usagePercentage = usageInfo.limit ? Math.min(100, Math.round((usageInfo.current / usageInfo.limit) * 100)) : 0;
-  
-  // Determine if at limit
-  const isAtLimit = usageInfo.limit !== null && usageInfo.current >= usageInfo.limit;
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
@@ -281,56 +218,20 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         <h1 className="text-2xl font-bold text-gray-800">Manage Websites</h1>
         <button
           onClick={() => {
-            // Check if at limit
-            if (isAtLimit) {
-              showMessage(`You have reached the maximum number of websites (${usageInfo.limit}) allowed on your ${subscriptionPlan} plan. Please upgrade to add more websites.`, "error");
-              return;
-            }
-            
             // Check if in grace period
             if (inGracePeriod) {
               showMessage("Cannot add new websites during grace period. Please renew your subscription.", "error");
               return;
             }
-            
             setShowAddWebsiteModal(true);
           }}
-          className={`px-4 py-2 ${isAtLimit ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-md transition-colors flex items-center`}
-          disabled={isAtLimit}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Add Website
         </button>
-      </div>
-      
-      {/* Usage Indicator */}
-      <div className="mb-6 p-4 bg-white rounded-lg shadow-sm">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-medium text-gray-800">Website Usage</h2>
-          <span className="text-sm font-medium">
-            {usageInfo.limit === null ? (
-              `${usageInfo.current} websites (Unlimited)`
-            ) : (
-              `${usageInfo.current} / ${usageInfo.limit} websites`
-            )}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className={`h-2.5 rounded-full ${isAtLimit ? 'bg-red-600' : 'bg-blue-600'}`} 
-            style={{ width: `${usagePercentage}%` }}
-          ></div>
-        </div>
-        {isAtLimit && (
-          <p className="mt-2 text-sm text-red-600">
-            You've reached your website limit on this plan. 
-            <a href={`/${selectedTeam}/settings/pricing`} className="ml-1 font-medium text-red-600 hover:underline">
-              Upgrade now
-            </a>
-          </p>
-        )}
       </div>
       
       {/* Grace Period Warning */}

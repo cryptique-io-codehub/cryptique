@@ -143,25 +143,25 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
             {/* Settings sidebar - positioned like the second nav in on-chain/off-chain */}
             <div 
               style={{ borderLeft: 0, margin: 0, padding: 0 }}
-              className={`${
+          className={`${
                 settingsSidebarOpen ? 'md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 border-r border-gray-200' : 'hidden lg:hidden'
               }`}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="p-4 border-b flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold">Settings</h2>
+              <p className="text-xs text-gray-500">Manage your analytics</p>
+            </div>
+            <button 
+              className="lg:hidden" 
+              onClick={() => setSettingsSidebarOpen(false)}
             >
-              <div className="p-4 border-b flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-semibold">Settings</h2>
-                  <p className="text-xs text-gray-500">Manage your analytics</p>
-                </div>
-                <button 
-                  className="lg:hidden" 
-                  onClick={() => setSettingsSidebarOpen(false)}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
+              <X size={20} />
+            </button>
+          </div>
+          
               <nav className="p-4 space-y-2 overflow-y-auto max-h-full">
                 {/* General button */}
                 <div 
@@ -171,8 +171,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   } text-sm`}
                 >
                   <div className="flex items-center gap-2">
-                    <SettingsIcon size={16} />
-                    <span>General</span>
+                  <SettingsIcon size={16} />
+                  <span>General</span>
                   </div>
                 </div>
                 
@@ -184,8 +184,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   } text-sm`}
                 >
                   <div className="flex items-center gap-2">
-                    <CreditCard size={16} />
-                    <span>Billing</span>
+                  <CreditCard size={16} />
+                  <span>Billing</span>
                   </div>
                 </div>
                 
@@ -197,8 +197,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   } text-sm`}
                 >
                   <div className="flex items-center gap-2">
-                    <Tag size={16} />
-                    <span>Pricing Plans</span>
+                  <Tag size={16} />
+                  <span>Pricing Plans</span>
                   </div>
                 </div>
                 
@@ -210,21 +210,21 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   } text-sm`}
                 >
                   <div className="flex items-center gap-2">
-                    <Users size={16} />
-                    <span>Manage Teams</span>
+                  <Users size={16} />
+                  <span>Manage Teams</span>
                   </div>
                 </div>
                 
                 <div className="p-2 border-t mt-4 text-xs text-gray-500">
-                  Settings for {seteam}
-                </div>
+            Settings for {seteam}
+          </div>
               </nav>
-            </div>
-            
-            {/* Button to open sidebar on mobile */}
+        </div>
+        
+        {/* Button to open sidebar on mobile */}
             <div className="lg:hidden fixed top-4 left-16 z-40 p-2 bg-white rounded-md shadow-md">
-              <button 
-                onClick={toggleSettingsSidebar}
+          <button 
+            onClick={toggleSettingsSidebar}
                 className="p-1"
               >
                 <Menu size={20} />
@@ -308,7 +308,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                           transition: 'background-color 0.2s'
                         }}>
                           Generate New Key
-                        </button>
+          </button>
                       </div>
                       <p style={{
                         ...styles.bodyFont,
@@ -394,9 +394,9 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                               cursor: 'not-allowed'
                             }}>Revoke</button>
                           </div>
-                        </div>
-                      </div>
-
+          </div>
+        </div>
+        
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -418,9 +418,9 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                         <span>
                           <strong>Coming Soon:</strong> API access will allow integration with your existing tools and custom dashboards. Subscribe to our updates to be notified when this feature launches.
                         </span>
-                      </div>
-                    </div>
-
+                  </div>
+                </div>
+                
                     {/* Analytics Preferences */}
                     <div style={{
                       ...styles.glassmorphism,
@@ -518,8 +518,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
                           </select>
-                        </div>
-
+                  </div>
+                  
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -569,8 +569,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                             </div>
                           </label>
                         </div>
-                      </div>
-                      
+                  </div>
+                  
                       <button style={{
                         marginTop: '1rem',
                         background: styles.futuristicGradient,
@@ -677,9 +677,9 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                                 backgroundColor: 'rgba(249, 250, 251, 0.8)'
                               }
                             }}>Excel</button>
-                          </div>
-                        </div>
-                        
+                    </div>
+                  </div>
+                  
                         <div style={{
                           padding: '1rem',
                           border: '1px solid rgba(209, 213, 219, 0.8)',
@@ -740,8 +740,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                             }}>Excel</button>
                           </div>
                         </div>
-                      </div>
-                      
+                  </div>
+                  
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -761,9 +761,9 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                         <span>Exports may take a few minutes for larger data sets.</span>
-                      </div>
-                    </div>
-                    
+                  </div>
+                </div>
+                
                     {/* Advanced Settings */}
                     <div style={{
                       ...styles.glassmorphism,
@@ -886,8 +886,8 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                               }}>Enabled</span>
                             </div>
                           </div>
-                        </div>
-                        
+                  </div>
+                  
                         <div style={{
                           display: 'flex',
                           alignItems: 'flex-start',
@@ -935,7 +935,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                                   }
                                 }}>Add Parameter</button>
                               </div>
-                            </div>
+                  </div>
                           </div>
                         </div>
                       </div>
@@ -954,27 +954,27 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                       }}>
                         Save Advanced Settings
                       </button>
-                    </div>
-                  </div>
                 </div>
-              )}
-              {activeSection === "billing" && (
+              </div>
+            </div>
+          )}
+          {activeSection === "billing" && (
                 <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <Billing />
-                </div>
-              )}
-              {activeSection === "pricing" && (
+              <Billing />
+            </div>
+          )}
+          {activeSection === "pricing" && (
                 <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <PricingSection />
-                </div>
-              )}
+              <PricingSection />
+            </div>
+          )}
               {activeSection === "teams" && (
                 <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
                   <TeamsSection />
-                </div>
-              )}
             </div>
-          </div>
+          )}
+            </div>
+            </div>
         </div>
       </div>
     </>

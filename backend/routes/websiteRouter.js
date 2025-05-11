@@ -3,11 +3,10 @@ const express = require('express');
 const {addWebsite,deleteWebsite,verify, getWebsitesOfTeam}=require("../controllers/websiteController");
 const Website = require('../models/website');
 const Analytics = require('../models/analytics');
-const { checkWebsiteLimit } = require('../middleware/limitChecker');
 
 const router = express.Router();
 
-router.post('/create', checkWebsiteLimit(), addWebsite);
+router.post('/create',addWebsite);
 router.post('/delete',deleteWebsite);
 router.post('/verify',verify);
 router.get('/team/:teamName',getWebsitesOfTeam);
