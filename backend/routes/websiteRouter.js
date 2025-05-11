@@ -3,11 +3,66 @@ const express = require('express');
 const {addWebsite,deleteWebsite,verify, getWebsitesOfTeam}=require("../controllers/websiteController");
 const Website = require('../models/website');
 const Analytics = require('../models/analytics');
+const {verifyToken}=require('../middleware/auth');
 
 const router = express.Router();
 
+// Apply authentication middleware to all routes
+router.use(verifyToken);
+
 router.post('/create',addWebsite);
 router.post('/delete',deleteWebsite);
+// Add a new DELETE route that accepts siteId as a parameter
+router.delete('/delete/:siteId', async (req, res) => {
+  try {
+    const siteId = req.params.siteId;
+    console.log(`Deleting website with siteId: ${siteId}`);
+    
+    if (!siteId) {
+      return res.status(400).json({ message: "Website ID is required" });
+    }
+    
+    // Find the website by siteId
+    const website = await Website.findOne({ siteId });
+    
+    if (!website) {
+      return res.status(404).json({ message: "Website not found" });
+    }
+    
+    // Find the team that owns this website
+    const Team = require('../models/team');
+    const team = await Team.findOne({ websites: website._id });
+    
+    if (!team) {
+      return res.status(404).json({ message: "Team not found for this website" });
+    }
+    
+    // Delete the website
+    await Website.deleteOne({ _id: website._id });
+    
+    // Remove website reference from team
+    await Team.findByIdAndUpdate(
+      team._id,
+      { $pull: { websites: website._id } },
+      { new: true }
+    );
+    
+    return res.status(200).json({
+      message: "Website deleted successfully",
+      website: {
+        _id: website._id,
+        siteId: website.siteId,
+        Domain: website.Domain
+      }
+    });
+  } catch (error) {
+    console.error("Error deleting website by siteId:", error);
+    return res.status(500).json({
+      message: "Error deleting website",
+      error: error.message
+    });
+  }
+});
 router.post('/verify',verify);
 router.get('/team/:teamName',getWebsitesOfTeam);
 

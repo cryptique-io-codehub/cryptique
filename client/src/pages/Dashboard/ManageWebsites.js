@@ -207,11 +207,15 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   // Function to delete a website
   const handleDelete = async (website) => {
     if (window.confirm(`Are you sure you want to delete ${website.Domain}? This action cannot be undone.`)) {
-    setDeleteLoading(true);
-    try {
+      setDeleteLoading(true);
+      try {
+        console.log(`Attempting to delete website: ${website.Domain} (ID: ${website.siteId})`);
+        
         const response = await axiosInstance.delete(`/website/delete/${website.siteId}`);
+        
+        console.log("Delete response:", response.data);
 
-      if (response.status === 200) {
+        if (response.status === 200) {
           showMessage(`${website.Domain} has been deleted successfully`, "success");
           
           // Remove from local state
@@ -219,7 +223,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         
           // If this was the selected website, clear selection
           if (selectedWebsite && selectedWebsite.siteId === website.siteId) {
-          setSelectedWebsite(null);
+            setSelectedWebsite(null);
           }
           
           // If this was the currently selected website in the app, clear localStorage
@@ -227,13 +231,33 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
             localStorage.removeItem("idy");
             localStorage.removeItem("selectedWebsite");
           }
+        }
+      } catch (error) {
+        console.error("Error deleting website:", error);
+        
+        // More detailed error logging
+        if (error.response) {
+          console.error("Response error data:", error.response.data);
+          console.error("Response error status:", error.response.status);
+          
+          // Show a more specific error message based on the response
+          if (error.response.status === 404) {
+            showMessage(`Website not found. It may have already been deleted.`, "error");
+          } else if (error.response.status === 403) {
+            showMessage(`You don't have permission to delete this website.`, "error");
+          } else {
+            showMessage(`Failed to delete website: ${error.response.data?.message || "Unknown error"}`, "error");
+          }
+        } else if (error.request) {
+          // The request was made but no response was received
+          showMessage("No response received from the server. Please check your internet connection.", "error");
+        } else {
+          // Something happened in setting up the request
+          showMessage(`Failed to delete website: ${error.message}`, "error");
+        }
+      } finally {
+        setDeleteLoading(false);
       }
-    } catch (error) {
-      console.error("Error deleting website:", error);
-      showMessage("Failed to delete website. Please try again.", "error");
-    } finally {
-      setDeleteLoading(false);
-    }
     }
   };
 
