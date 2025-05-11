@@ -779,7 +779,7 @@ const TeamsSection = () => {
                             errorMessage += ` Consider upgrading to ${nextPlan.plan} plan to add up to ${nextPlan.teamMembers} members.`;
                         }
                     } else {
-                        errorMessage += "You don't have permission to invite members to this team.";
+                    errorMessage += "You don't have permission to invite members to this team.";
                     }
                 } else {
                     errorMessage += serverMessage || "Please try again.";

@@ -126,93 +126,102 @@ exports.getTeamDetails = async (req, res) => {
 }
 
 exports.addMember=async (req,res)=>{
-    try {
-       const email=req.body.email;
-       const role=req.body.role;
-       const team_name=req.body.teamss;
-        // Find user by email
-        const this_user = await User.findOne({ email });
-        // console.log(this_user);
-        if (!this_user) {
-            return res.status(404).json({ message: "User not found" });
+    try{
+        const {email,teamId,role}=req.body;
+
+        if(email==='' && teamId==='') return res.status(400).json({ message: "Required field is missing" });
+
+        const userExistscheck=await User.findOne({email});
+
+        if(!userExistscheck) return res.status(404).json({ message: "User not found" });
+
+        const team = await Team.findById(teamId);
+
+        if(!team) return res.status(404).json({ message: "Team not found" });
+
+        // Check if the current user has permission to add members
+        const isAdmin = team.user.some(user => 
+            user.userId.equals(req.userId) && (user.role === 'admin' || user.role === 'owner')
+        ) || team.createdBy.equals(req.userId);
+
+        if (!isAdmin) {
+            return res.status(403).json({ message: "You don't have permission to add members to this team" });
         }
 
-        // Find team created by current user
-        const teamss = await Team.findOne({name:team_name });
-        if (!teamss) {
-            return res.status(404).json({ message: "Team not found" });
+        // Check if user is already a member
+        const existingMember = team.user.find(user => user.userId.equals(userExistscheck._id));
+        if (existingMember) {
+            return res.status(400).json({ message: "User is already a member of this team" });
+        }
+
+        // Check team member limits - either from middleware or directly
+        let canAddMember = true;
+        let memberLimitMessage = '';
+        
+        // Check if middleware has already set limits
+        if (req.subscriptionLimits) {
+            const currentMemberCount = team.user.length;
+            const memberLimit = req.subscriptionLimits.teamMembers;
+            
+            if (memberLimit !== null && currentMemberCount >= memberLimit) {
+                canAddMember = false;
+                memberLimitMessage = `You have reached the maximum number of team members (${memberLimit}) allowed on your plan.`;
+            }
+        } else {
+            // If middleware didn't set limits, check subscription directly
+            const currentMemberCount = team.user.length;
+            const subscriptionPlan = team.subscription?.plan || 'free';
+            
+            // Get default limits for the plan
+            const defaultLimits = {
+                free: 1,
+                offchain: 1,
+                basic: 2,
+                pro: 5,
+                enterprise: 10
+            };
+            
+            const memberLimit = defaultLimits[subscriptionPlan.toLowerCase()] || 1;
+            
+            if (currentMemberCount >= memberLimit) {
+                canAddMember = false;
+                memberLimitMessage = `You have reached the maximum number of team members (${memberLimit}) allowed on your ${subscriptionPlan} plan.`;
+            }
         }
         
-        // Check subscription plan and team member limits
-        const subscriptionPlan = teamss.subscription?.plan || 'offchain';
-        const planLimits = getPlanLimits(subscriptionPlan);
-        
-        // Count existing team members
-        const currentMemberCount = teamss.user?.length || 0;
-        
-        // Check if the team has reached their member limit
-        if (currentMemberCount >= planLimits.teamMembers) {
+        if (!canAddMember) {
             return res.status(403).json({
                 error: 'Resource limit reached',
-                message: `You have reached the maximum number of team members (${planLimits.teamMembers}) allowed on your ${subscriptionPlan} plan.`,
-                resourceType: 'teamMembers',
-                currentUsage: currentMemberCount,
-                limit: planLimits.teamMembers,
-                upgradeOptions: getUpgradeOptions(subscriptionPlan)
+                message: memberLimitMessage,
+                resourceType: 'teamMembers'
             });
         }
+
+        // Add the member
+        team.user.push({
+            userId: userExistscheck._id,
+            role: role || 'viewer'
+        });
         
-        const userIdToCheck=this_user._id;
-        // console.log(teamss);
-        const this_array=teamss.user;
-
-        // Ensure the first user (owner) always has admin role
-        if (this_array.length > 0 && this_array[0].role !== 'admin') {
-            this_array[0].role = 'admin';
-            await teamss.save();
-        }
-
-         // The user ID to check
-
-// Check if the user already exists in the array
-        console.log(this_array);
-        const user = this_array.some(item => item.userId.equals(userIdToCheck));
-        console.log(user);  
-        if (user) {
-        return res.status(400).json({ message: "User already exist" });
+        // Update usage tracking
+        if (!team.usage) {
+            team.usage = {
+                websites: team.websites?.length || 0,
+                smartContracts: 0,
+                apiCalls: 0,
+                teamMembers: team.user.length
+            };
+        } else {
+            team.usage.teamMembers = team.user.length;
         }
         
-        await Team.findOneAndUpdate(
-            { _id: teamss._id },
-            { $push: { user: { userId: this_user._id, role } } },
-            { new: true, runValidators: true }
-        );
-    
-        // Update the user document directly using findOneAndUpdate
-        await User.findOneAndUpdate(
-            { _id: userIdToCheck },
-            { $addToSet: { team: teamss._id } }, // $addToSet prevents duplicates
-            { new: true, runValidators: true }
-        );
-        
+        await team.save();
 
-
-
-    
-        // Instead of modifying the team object and saving it,
-        // use findOneAndUpdate to update the team directly
-        
-    
-        // Fetch the updated team to return in the response
-        const updatedTeam = await Team.findById(teamss._id);
-        
-        return res.status(200).json({ message: "members added successfully", team: updatedTeam });
-    
-    } catch (e) {
-        console.error("Error in team member addition:", e);
-        res.status(500).json({ message: 'Error adding member', error: e.message });
+        return res.status(200).json({ message: "Member added successfully" });
+    } catch(e) {
+        console.error("Error adding team member:", e);
+        res.status(500).json({ message: "Error adding team member", error: e.message });
     }
-
 }
 
 // Helper function to get plan limits
@@ -644,7 +653,7 @@ exports.updateMemberRole = async (req, res) => {
     }
 };
 
-// Function to check subscription status
+// New function to check subscription status
 exports.getSubscriptionStatus = async (req, res) => {
     try {
         const teamName = req.params.teamName;
@@ -659,133 +668,55 @@ exports.getSubscriptionStatus = async (req, res) => {
             return res.status(404).json({ message: "Team not found" });
         }
         
-        // Default response structure
+        // Default response - not in grace period
         const response = {
             inGracePeriod: false,
             gracePeriod: null,
-            status: team.subscription?.status || 'inactive',
-            plan: team.subscription?.plan || 'free',
-            features: {}
+            status: team.subscription?.status || 'incomplete',
+            plan: team.subscription?.plan || 'offchain',
+            billingCycle: team.subscription?.billingCycle || 'monthly'
         };
         
-        // Grace period calculation
-        if (team.subscription && team.subscription.endDate) {
-            const endDate = new Date(team.subscription.endDate);
-            const gracePeriodDays = 30; // 30-day grace period
-            const gracePeriodEndDate = new Date(endDate);
-            gracePeriodEndDate.setDate(gracePeriodEndDate.getDate() + gracePeriodDays);
+        // Check if subscription exists and is in grace period
+        if (team.subscription) {
+            // Get current period end if it exists
+            const currentPeriodEnd = team.subscription.currentPeriodEnd;
             
-            // Check if in grace period
-            if (team.subscription.status !== 'active' && new Date() <= gracePeriodEndDate) {
-                response.inGracePeriod = true;
+            if (currentPeriodEnd) {
+                const now = new Date();
+                const endDate = new Date(currentPeriodEnd);
                 
-                // Calculate days left in grace period
-                const today = new Date();
-                const daysLeft = Math.ceil((gracePeriodEndDate - today) / (1000 * 60 * 60 * 24));
-                
-                response.gracePeriod = {
-                    endDate: gracePeriodEndDate.toISOString(),
-                    daysLeft: Math.max(0, daysLeft)
-                };
-            }
-        }
-        
-        // Map features based on plan
-        const planFeatures = {
-            enterprise: {
-                offchainAnalytics: true,
-                onchainExplorer: true,
-                campaigns: true,
-                conversionEvents: true,
-                cqIntelligence: true,
-                history: true,
-                advertise: true,
-                manageWebsites: true,
-                importUsers: true,
-                maxWebsites: 'Unlimited',
-                maxSmartContracts: 'Unlimited',
-                maxTeamMembers: 'Unlimited',
-                supportLevel: 'Priority'
-            },
-            premium: {
-                offchainAnalytics: true,
-                onchainExplorer: true,
-                campaigns: true,
-                conversionEvents: true,
-                cqIntelligence: false,
-                history: true,
-                advertise: false,
-                manageWebsites: true,
-                importUsers: true,
-                maxWebsites: 50,
-                maxSmartContracts: 50,
-                maxTeamMembers: 25,
-                supportLevel: 'Premium'
-            },
-            pro: {
-                offchainAnalytics: true,
-                onchainExplorer: true,
-                campaigns: false,
-                conversionEvents: false,
-                cqIntelligence: false,
-                history: true,
-                advertise: false,
-                manageWebsites: true,
-                importUsers: false,
-                maxWebsites: 20,
-                maxSmartContracts: 10,
-                maxTeamMembers: 10,
-                supportLevel: 'Standard'
-            },
-            standard: {
-                offchainAnalytics: true,
-                onchainExplorer: false,
-                campaigns: false,
-                conversionEvents: false,
-                cqIntelligence: false,
-                history: true,
-                advertise: false,
-                manageWebsites: true,
-                importUsers: false,
-                maxWebsites: 5,
-                maxSmartContracts: 0,
-                maxTeamMembers: 3,
-                supportLevel: 'Basic'
-            },
-            free: {
-                offchainAnalytics: false,
-                onchainExplorer: false,
-                campaigns: false,
-                conversionEvents: false,
-                cqIntelligence: false,
-                history: false,
-                advertise: false,
-                manageWebsites: true,
-                importUsers: false,
-                maxWebsites: 1,
-                maxSmartContracts: 0,
-                maxTeamMembers: 1,
-                supportLevel: 'Community'
-            }
-        };
-        
-        // Set features based on plan
-        const plan = team.subscription?.plan || 'free';
-        response.features = planFeatures[plan] || planFeatures.free;
-        
-        // If subscription is not active, disable features except for free ones
-        if (team.subscription?.status !== 'active' && !response.inGracePeriod) {
-            // Reset all features to match free plan
-            Object.keys(response.features).forEach(feature => {
-                if (feature !== 'manageWebsites') {
-                    response.features[feature] = planFeatures.free[feature];
+                // If subscription has ended but status is still active or past_due
+                // This is the grace period
+                if (endDate < now && 
+                    (team.subscription.status === 'active' || 
+                     team.subscription.status === 'past_due')) {
+                    
+                    // Calculate days left in grace period (default 7 days)
+                    const gracePeriodDays = 7;
+                    const gracePeriodEnd = new Date(endDate);
+                    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + gracePeriodDays);
+                    
+                    // If still in grace period
+                    if (now < gracePeriodEnd) {
+                        const daysLeft = Math.ceil((gracePeriodEnd - now) / (1000 * 60 * 60 * 24));
+                        
+                        response.inGracePeriod = true;
+                        response.gracePeriod = {
+                            endDate: gracePeriodEnd.toISOString(),
+                            daysLeft: daysLeft
+                        };
+                    }
                 }
-            });
+            }
         }
         
-        res.status(200).json(response);
+        return res.status(200).json(response);
     } catch (error) {
         console.error("Error checking subscription status:", error);
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ 
+            message: "Error checking subscription status", 
+            error: error.message 
+        });
     }
 };

@@ -6,65 +6,72 @@ const { v4: uuidv4 } = require('uuid');
 
 exports.addWebsite=async (req,res)=>{
    try{
-
         const {teamName,Domain,Name}=req.body;
-        // console.log(teamName);
-        // console.log(Domain);
-        // console.log(Name);
-
+        
         if(!teamName && !Domain) return res.status(400).json({message:"Required field is missing"});
 
         const checkTeam=await Team.findOne({name:teamName});
 
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
-        // Check subscription plan and website limits
-        const subscriptionPlan = checkTeam.subscription?.plan || 'offchain';
-        const planLimits = getPlanLimits(subscriptionPlan);
-        
-        // Count existing websites
-        const currentWebsiteCount = checkTeam.websites?.length || 0;
-        
-        // Check if the team has reached their website limit
-        if (currentWebsiteCount >= planLimits.websites) {
-            return res.status(403).json({
-                error: 'Resource limit reached',
-                message: `You have reached the maximum number of websites (${planLimits.websites}) allowed on your ${subscriptionPlan} plan.`,
-                resourceType: 'websites',
-                currentUsage: currentWebsiteCount,
-                limit: planLimits.websites,
-                upgradeOptions: getUpgradeOptions(subscriptionPlan)
-            });
+        // Check subscription limits (if not already checked by middleware)
+        if (!req.subscriptionLimits) {
+            // If middleware didn't set limits, check for any existing usage limits
+            const currentWebsiteCount = checkTeam.websites?.length || 0;
+            const subscriptionPlan = checkTeam.subscription?.plan || 'free';
+            
+            // Get default limits for the plan
+            const defaultLimits = {
+                free: 1,
+                offchain: 1,
+                basic: 2,
+                pro: 5,
+                enterprise: 10
+            };
+            
+            const websiteLimit = defaultLimits[subscriptionPlan.toLowerCase()] || 1;
+            
+            // Check if the team has reached their limit
+            if (currentWebsiteCount >= websiteLimit) {
+                return res.status(403).json({
+                    error: 'Resource limit reached',
+                    message: `You have reached the maximum number of websites (${websiteLimit}) allowed on your ${subscriptionPlan} plan.`,
+                    resourceType: 'websites',
+                    currentUsage: currentWebsiteCount,
+                    limit: websiteLimit
+                });
+            }
         }
 
         const siteId = uuidv4(); 
-        // console.log(siteId);
-        const newWebsite=new Website({
+        
+        const newWebsite = new Website({
             siteId,
             Domain,
-            Name:Name || '',
-            team:checkTeam._id,
-        })
-        // console.log('c');
-        await newWebsite.save();
-        // console.log('b');
+            Name: Name || '',
+            team: checkTeam._id,
+        });
         
+        await newWebsite.save();
+        
+        // Update team with new website and increment usage
         await Team.findOneAndUpdate(
             { name: teamName }, 
-            { $push: { websites: newWebsite._id } },
+            { 
+                $push: { websites: newWebsite._id },
+                $inc: { 'usage.websites': 1 } // Increment website usage count
+            },
             { new: true } 
         );
-        // console.log('ritik');
-        return res.status(200).json({message:"Website added successfully",website:newWebsite});
-
-   }catch(e){
-
+        
+        return res.status(200).json({
+            message: "Website added successfully",
+            website: newWebsite
+        });
+   } catch(e) {
         console.error("Error while adding website",e);
-
         res.status(500).json({ message: 'Error adding website', error: e.message });
-
    }
-
 }
 
 exports.deleteWebsite=async (req,res)=>{

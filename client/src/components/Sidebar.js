@@ -1,8 +1,7 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit, CreditCard, Lock } from "lucide-react";
+import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { useSubscription } from "../context/subscriptionContext";
 
 const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
   const [isHovering, setIsHovering] = useState(false);
@@ -10,7 +9,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
   const location = useLocation();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || 'defaultTeam');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  const { hasAccess, plan } = useSubscription();
   
   // Apply compact mode consistently
   const effectiveIsCompact = isCompact;
@@ -79,41 +77,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
     };
   }, []);
 
-  // Helper function to create menu item with proper styling based on access
-  const NavItem = ({ path, feature, icon, label }) => {
-    const featureAccess = hasAccess(feature);
-    
-    if (featureAccess) {
-      return (
-        <Link 
-          to={path}
-          className={`${isActive(feature.split("Analytics")[0]) ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
-          onClick={() => onNavigate && onNavigate(feature)}
-        >
-          {icon} {showExpanded && <span className="transition-opacity duration-200">{label}</span>}
-        </Link>
-      );
-    } else {
-      return (
-        <div 
-          className={`text-gray-400 flex items-center gap-2 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-not-allowed ${!showExpanded ? "justify-center" : ""}`}
-          title={`Upgrade plan to access ${label}`}
-        >
-          <div className="relative">
-            {icon}
-            {showExpanded && <Lock size={10} className="absolute -top-1 -right-1 text-gray-500" />}
-          </div> 
-          {showExpanded && (
-            <div className="flex justify-between items-center w-full">
-              <span className="transition-opacity duration-200">{label}</span>
-              <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Premium</span>
-            </div>
-          )}
-        </div>
-      );
-    }
-  };
-
   return (
     <aside
       style={{ boxSizing: 'border-box', paddingRight: 0, marginRight: 0, borderRightWidth: '1px' }}
@@ -137,10 +100,11 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           />
           <div className="flex flex-col">
             <span className="text-lg font-bold">Cryptique</span>
-            <span className="text-sm text-gray-500">{plan ? plan.toUpperCase() : 'FREE'}</span>
+            <span className="text-sm text-gray-500">Analytics</span>
           </div>
         </h2>
-        ) : (
+)
+ : (
         <img 
           src="../../logo192.png" 
           alt="Cryptique logo" 
@@ -151,7 +115,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
       </div>
       <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
         <ul className={`${!showExpanded ? "space-y-3 px-0 mt-2" : "space-y-1"} text-xs font-medium`}>
-          {/* Dashboard is always accessible */}
           <Link
             to={`/dashboard`}
             className={`${isActive("dashboard") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
@@ -159,78 +122,68 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           >
             <Home size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Dashboard</span>}
           </Link>
-          
-          {/* Off-chain analytics requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/offchain`} 
-            feature="offchainAnalytics" 
-            icon={<BarChart size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="Off-chain analytics" 
-          />
-          
-          {/* On-chain explorer requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/onchain`} 
-            feature="onchainExplorer" 
-            icon={<LineChart size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="On-chain explorer" 
-          />
-          
-          {/* CQ Intelligence requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/cq-intelligence`} 
-            feature="cqIntelligence" 
-            icon={<BrainCircuit size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="CQ Intelligence" 
-          />
+          <Link 
+            to={`/${selectedTeam}/offchain`}
+            className={`${isActive("offchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("offchain")}
+          >
+            <BarChart size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Off-chain analytics</span>}
+          </Link>
+          <Link 
+            to={`/${selectedTeam}/onchain`}
+            className={`${isActive("onchain") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("onchain")}
+          >
+            <LineChart size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">On-chain explorer</span>}
+          </Link>
+          <Link 
+            to={`/${selectedTeam}/cq-intelligence`}
+            className={`${isActive("cq-intelligence") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("cq-intelligence")}
+          >
+            <BrainCircuit size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">CQ Intelligence</span>}
+          </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">ACTIONS</p>}
-          
-          {/* Campaigns requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/campaigns`} 
-            feature="campaigns" 
-            icon={<Activity size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="Campaigns" 
-          />
-          
-          {/* Conversion events requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/conversion-events`} 
-            feature="conversionEvents" 
-            icon={<List size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="Conversion events" 
-          />
-          
-          {/* Advertise requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/advertise`} 
-            feature="advertise" 
-            icon={<Globe size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="Advertise" 
-          />
-          
-          {/* History requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/history`} 
-            feature="history" 
-            icon={<Database size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="History" 
-          />
+          <Link 
+            to={`/${selectedTeam}/campaigns`}
+            className={`${isActive("campaigns") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("campaigns")}
+          >
+            <Activity size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Campaigns</span>}
+          </Link>
+          <Link 
+            to={`/${selectedTeam}/conversion-events`}
+            className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("conversion-events")}
+          >
+            <List size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Conversion events</span>}
+          </Link>
+          <Link 
+            to={`/${selectedTeam}/advertise`}
+            className={`${isActive("advertise") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("advertise")}
+          >
+            <Globe size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Advertise</span>}
+          </Link>
+          <Link 
+            to={`/${selectedTeam}/history`}
+            className={`${isActive("history") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("history")}
+          >
+            <Database size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">History</span>}
+          </Link>
           
           {showExpanded && <hr className="my-2 border-gray-300" />}
           {showExpanded && <p className="text-gray-600 text-[10px] font-semibold px-2">OTHER</p>}
-          
-          {/* Import users requires access */}
-          <NavItem 
-            path={`/${selectedTeam}/importusers`} 
-            feature="importUsers" 
-            icon={<Upload size={effectiveIsCompact && !isHovering ? 16 : 14} />} 
-            label="Import users" 
-          />
-          
-          {/* Manage websites is always accessible */}
+          <Link 
+            to={`/${selectedTeam}/importusers`}
+            className={`${isActive("importusers") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
+            onClick={() => onNavigate && onNavigate("importusers")}
+          >
+            <Upload size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Import users</span>}
+          </Link>
           <Link 
             to={`/${selectedTeam}/managewebsites`}
             className={`${isActive("managewebsites") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
@@ -238,8 +191,6 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           >
             <Globe size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Manage websites</span>}
           </Link>
-          
-          {/* Settings is always accessible */}
           <Link
             to={`/${selectedTeam}/settings`}
             className={`${isActive("settings") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
