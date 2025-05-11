@@ -5,7 +5,7 @@ const Website = require('../models/website');
 const Analytics = require('../models/analytics');
 const {verifyToken}=require('../middleware/auth');
 // Import the middleware for checking website limits
-const { checkWebsiteLimit } = require('../middleware/limitChecker');
+const { checkWebsiteLimit, checkResourceLimit } = require('../middleware/limitChecker');
 
 const router = express.Router();
 
@@ -67,7 +67,7 @@ router.delete('/delete/:siteId', async (req, res) => {
   }
 });
 router.post('/verify',verify);
-router.get('/team/:teamName',getWebsitesOfTeam);
+router.get('/team/:teamName', checkResourceLimit('websites', 0), getWebsitesOfTeam);
 
 // New route to auto-verify websites with analytics data
 router.post('/auto-verify-all', async (req, res) => {

@@ -50,13 +50,82 @@ const SUBSCRIPTION_PLANS = {
 const checkResourceLimit = (resourceType, increment = 1) => {
   return async (req, res, next) => {
     try {
-      // Get team from request body (for backend implementation)
-      const teamName = req.body.teamName;
-      if (!teamName) {
-        return res.status(400).json({ error: 'Team name is required' });
+      // Get team from request body, URL parameters, or route parameters
+      let teamName = req.body.teamName || req.query.teamName || req.params.teamName;
+      
+      // If no teamName is explicitly provided, try to get teamId and find the team
+      if (!teamName && (req.body.teamId || req.params.teamId)) {
+        const teamId = req.body.teamId || req.params.teamId;
+        try {
+          const team = await Team.findById(teamId);
+          if (team) {
+            // Found the team by ID, no need to query by name
+            req.team = team;
+            
+            // Get current usage
+            const currentUsage = team.usage && team.usage[resourceType] ? team.usage[resourceType] : 0;
+            
+            // Get limit based on subscription plan
+            let limit;
+            
+            // For enterprise plans with custom limits
+            if (team.subscription && team.subscription.plan === 'enterprise' && team.subscription.customPlanDetails) {
+              limit = team.subscription.customPlanDetails[resourceType] || null; // null means unlimited
+            } else {
+              // Get standard limit from plan configuration
+              const planKey = team.subscription && team.subscription.plan ? team.subscription.plan.toUpperCase() : 'OFFCHAIN';
+              const planConfig = SUBSCRIPTION_PLANS[planKey];
+              limit = planConfig?.limits?.[resourceType] || 0;
+            }
+            
+            // If unlimited (null) or under the limit, allow the operation
+            if (limit === null || currentUsage + increment <= limit) {
+              // Only update the usage counter if we're actually using the resource
+              if (increment > 0) {
+                await Team.findByIdAndUpdate(team._id, { 
+                  [`usage.${resourceType}`]: currentUsage + increment 
+                });
+                req.resourceUsageIncremented = true;
+              }
+              
+              return next();
+            } else {
+              // Reached the limit - return an appropriate message
+              const planLimits = {};
+              Object.keys(SUBSCRIPTION_PLANS).forEach(plan => {
+                planLimits[plan.toLowerCase()] = SUBSCRIPTION_PLANS[plan].limits[resourceType];
+              });
+              
+              return res.status(403).json({
+                error: 'Resource limit reached',
+                message: getResourceLimitMessage(resourceType, team.subscription ? team.subscription.plan : 'offchain'),
+                resourceType,
+                currentUsage,
+                limit,
+                planLimits,
+                upgradeOptions: getUpgradeOptions(team.subscription ? team.subscription.plan : 'offchain', resourceType)
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error finding team by ID:', err);
+          // Continue to try finding by name if error occurs
+        }
       }
       
-      // Find the team
+      // If we got here, we need to find the team by name
+      if (!teamName) {
+        // For GET requests or routes that don't specify team information,
+        // we'll skip the limit check rather than failing
+        if (req.method === 'GET' || req.method === 'OPTIONS') {
+          console.log('Skipping limit check for GET/OPTIONS request without team info');
+          return next();
+        }
+        
+        return res.status(400).json({ error: 'Team information is required' });
+      }
+      
+      // Find the team by name
       const team = await Team.findOne({ name: teamName });
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });

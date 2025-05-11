@@ -96,10 +96,32 @@ exports.getWebsitesOfTeam = async (req, res) => {
         
         if (!teamName) return res.status(400).json({ message: "Team name is required" });
 
-        const team = await Team.findOne({ name: teamName }).populate('websites');
-        if (!team) return res.status(404).json({ message: "Team not found" });
-
-        return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
+        // Check if team has been attached by middleware
+        if (req.team) {
+            // If middleware has already attached the team, use it directly
+            const team = req.team;
+            if (!team.websites || team.websites.length === 0) {
+                return res.status(200).json({ message: "No websites found", websites: [] });
+            }
+            
+            try {
+                await team.populate('websites');
+                return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
+            } catch (populateError) {
+                console.error("Error populating websites:", populateError);
+                return res.status(200).json({ message: "Websites found but could not populate details", websites: [] });
+            }
+        } else {
+            // Otherwise, find the team by name
+            const team = await Team.findOne({ name: teamName }).populate('websites');
+            if (!team) return res.status(404).json({ message: "Team not found" });
+            
+            if (!team.websites || team.websites.length === 0) {
+                return res.status(200).json({ message: "No websites found", websites: [] });
+            }
+            
+            return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
+        }
     } catch (e) {
         console.error("Error while fetching websites", e);
         res.status(500).json({ message: 'Error while fetching websites', error: e.message });
