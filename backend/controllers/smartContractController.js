@@ -58,6 +58,25 @@ exports.addSmartContract = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to add contracts to this team" });
     }
 
+    // Check subscription plan and smart contract limits
+    const subscriptionPlan = team.subscription?.plan || 'offchain';
+    const planLimits = getPlanLimits(subscriptionPlan);
+    
+    // Get existing contracts count for this team
+    const existingContractsCount = await SmartContract.countDocuments({ team: team._id });
+    
+    // Check if the team has reached their smart contract limit
+    if (existingContractsCount >= planLimits.smartContracts) {
+        return res.status(403).json({
+            error: 'Resource limit reached',
+            message: `You have reached the maximum number of smart contracts (${planLimits.smartContracts}) allowed on your ${subscriptionPlan} plan.`,
+            resourceType: 'smartContracts',
+            currentUsage: existingContractsCount,
+            limit: planLimits.smartContracts,
+            upgradeOptions: getUpgradeOptions(subscriptionPlan)
+        });
+    }
+
     const normalizedAddress = address.toLowerCase();
     console.log(`Adding contract with address ${normalizedAddress} to team ${team.name} (${team._id})`);
 
@@ -247,4 +266,60 @@ exports.updateSmartContract = async (req, res) => {
     console.error("Error updating smart contract:", error);
     res.status(500).json({ message: "Error updating contract", error: error.message });
   }
-}; 
+};
+
+// Helper function to get plan limits
+function getPlanLimits(plan) {
+    const SUBSCRIPTION_PLANS = {
+        'offchain': {
+            websites: 1,
+            smartContracts: 0,
+            apiCalls: 0,
+            teamMembers: 1
+        },
+        'basic': {
+            websites: 2,
+            smartContracts: 1,
+            apiCalls: 40000,
+            teamMembers: 2
+        },
+        'pro': {
+            websites: 5,
+            smartContracts: 5,
+            apiCalls: 150000,
+            teamMembers: 5
+        },
+        'enterprise': {
+            websites: 100, // High value for enterprise, can be customized
+            smartContracts: 100,
+            apiCalls: 1000000,
+            teamMembers: 100
+        }
+    };
+
+    return SUBSCRIPTION_PLANS[plan] || SUBSCRIPTION_PLANS['offchain'];
+}
+
+// Helper function to get upgrade options
+function getUpgradeOptions(currentPlan) {
+    const planHierarchy = ['offchain', 'basic', 'pro', 'enterprise'];
+    const currentIndex = planHierarchy.indexOf(currentPlan);
+    
+    // If already on enterprise or an invalid plan, no upgrade options
+    if (currentIndex === -1 || currentPlan === 'enterprise') {
+        return [];
+    }
+    
+    // Return next plan up as an upgrade option
+    const nextPlan = planHierarchy[currentIndex + 1];
+    
+    if (nextPlan) {
+        return [{
+            plan: nextPlan,
+            smartContracts: getPlanLimits(nextPlan).smartContracts,
+            message: `Upgrade to ${nextPlan} to add more smart contracts`
+        }];
+    }
+    
+    return [];
+} 

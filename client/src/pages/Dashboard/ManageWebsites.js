@@ -118,15 +118,32 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     } catch (error) {
       console.error("Error adding website:", error);
       
-      // Handle specific grace period error message from server
-      if (error.response && error.response.status === 403 && 
-          error.response.data && error.response.data.error === 'Subscription required') {
-        
-        // Update grace period state
-        setInGracePeriod(true);
-        setGracePeriodInfo(error.response.data.gracePeriod);
-        
-        showMessage(error.response.data.message || "Failed to add website due to subscription issues", "error");
+      // Handle specific error messages from server
+      if (error.response) {
+        if (error.response.status === 403) {
+          if (error.response.data?.error === 'Subscription required') {
+            // Subscription grace period issue
+            setInGracePeriod(true);
+            setGracePeriodInfo(error.response.data.gracePeriod);
+            showMessage(error.response.data.message || "Failed to add website due to subscription issues", "error");
+          } else if (error.response.data?.error === 'Resource limit reached') {
+            // Subscription limit reached
+            const message = error.response.data.message || "You have reached the maximum number of websites for your current plan.";
+            
+            // Add upgrade options if available
+            let fullMessage = message;
+            if (error.response.data?.upgradeOptions?.length > 0) {
+              const nextPlan = error.response.data.upgradeOptions[0];
+              fullMessage += ` Consider upgrading to ${nextPlan.plan} plan to add up to ${nextPlan.websites} websites.`;
+            }
+            
+            showMessage(fullMessage, "error");
+          } else {
+            showMessage(error.response.data.message || "Permission denied.", "error");
+          }
+        } else {
+          showMessage(error.response.data.message || "Failed to add website. Please try again.", "error");
+        }
       } else {
         showMessage("Failed to add website. Please try again.", "error");
       }

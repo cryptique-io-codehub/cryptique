@@ -756,6 +756,7 @@ const TeamsSection = () => {
             if (err.response) {
                 const status = err.response.status;
                 const serverMessage = err.response.data?.message;
+                const errorType = err.response.data?.error;
                 
                 if (status === 404) {
                     if (serverMessage === "User not found") {
@@ -768,7 +769,18 @@ const TeamsSection = () => {
                 } else if (status === 400 && serverMessage === "User already exist") {
                     errorMessage += "This user is already a member of the team.";
                 } else if (status === 403) {
-                    errorMessage += "You don't have permission to invite members to this team.";
+                    if (errorType === 'Resource limit reached') {
+                        // Display the exact limit message from the server
+                        errorMessage = serverMessage || "You have reached the maximum team members limit for your current plan.";
+                        
+                        // Show upgrade information if available
+                        if (err.response.data?.upgradeOptions?.length > 0) {
+                            const nextPlan = err.response.data.upgradeOptions[0];
+                            errorMessage += ` Consider upgrading to ${nextPlan.plan} plan to add up to ${nextPlan.teamMembers} members.`;
+                        }
+                    } else {
+                        errorMessage += "You don't have permission to invite members to this team.";
+                    }
                 } else {
                     errorMessage += serverMessage || "Please try again.";
                 }

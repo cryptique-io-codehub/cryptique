@@ -930,44 +930,78 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
   const saveContractToAPI = async (contract) => {
     try {
-      const currentTeam = localStorage.getItem('selectedTeam');
-      if (!currentTeam) return null;
-
-      console.log(`Saving contract to API: ${contract.address} on ${contract.blockchain}`);
-
-      const response = await axiosInstance.post('/contracts', {
-        teamName: currentTeam,
+      // Get the selected team from localStorage
+      const selectedTeam = localStorage.getItem('selectedTeam');
+      
+      if (!selectedTeam) {
+        console.error("No selected team found");
+        setContractError("No team selected. Please select a team first.");
+        return null;
+      }
+      
+      console.log(`Saving contract ${contract.address} to team ${selectedTeam}`);
+      
+      // Create payload for API
+      const payload = {
+        teamName: selectedTeam,
         address: contract.address,
         name: contract.name,
         blockchain: contract.blockchain,
         tokenSymbol: contract.tokenSymbol
-      });
-
+      };
+      
+      console.log("API payload:", payload);
+      
+      // Make the API request
+      const response = await axiosInstance.post('/smartcontract', payload);
+      
+      console.log("API response:", response.data);
+      
+      // Check if the contract was saved successfully
       if (response.data && response.data.contract) {
-        console.log(`Contract saved successfully with ID: ${response.data.contract.contractId}`);
-        
-        // Check if this was an existing contract that was re-added
-        if (response.data.alreadyExists) {
-          console.log(`Contract existed already, will use existing contract ID: ${response.data.contract.contractId}`);
-        }
-        
-        // Return the contract with API ID
         return {
           ...contract,
-          id: response.data.contract.contractId
+          id: response.data.contract.contractId,
+          contractId: response.data.contract.contractId,
+          _id: response.data.contract._id
         };
       }
+      
       return null;
     } catch (error) {
       console.error("Error saving contract to API:", error);
-      // Check if the error response contains a contract (happens if it already exists)
-      if (error.response && error.response.data && error.response.data.contract) {
-        console.log(`Using existing contract from error response: ${error.response.data.contract.contractId}`);
-        return {
-          ...contract,
-          id: error.response.data.contract.contractId
-        };
+      
+      let errorMessage = "Failed to save contract.";
+      
+      // Check for specific error messages
+      if (error.response) {
+        if (error.response.status === 403) {
+          if (error.response.data?.error === 'Resource limit reached') {
+            // Subscription limit error
+            const message = error.response.data.message || "You have reached the maximum number of smart contracts for your current plan.";
+            
+            // Add upgrade options if available
+            let fullMessage = message;
+            if (error.response.data?.upgradeOptions?.length > 0) {
+              const nextPlan = error.response.data.upgradeOptions[0];
+              fullMessage += ` Consider upgrading to ${nextPlan.plan} plan to add up to ${nextPlan.smartContracts} smart contracts.`;
+            }
+            
+            setContractError(fullMessage);
+          } else {
+            setContractError(error.response.data.message || "Permission denied.");
+          }
+        } else if (error.response.status === 404) {
+          setContractError("Team not found. Please select a valid team.");
+        } else {
+          setContractError(error.response.data.message || errorMessage);
+        }
+      } else if (error.request) {
+        setContractError("Network error. Please check your connection and try again.");
+      } else {
+        setContractError(errorMessage);
       }
+      
       return null;
     }
   };
