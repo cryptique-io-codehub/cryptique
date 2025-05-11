@@ -643,3 +643,71 @@ exports.updateMemberRole = async (req, res) => {
         });
     }
 };
+
+// New function to check subscription status
+exports.getSubscriptionStatus = async (req, res) => {
+    try {
+        const teamName = req.params.teamName;
+        
+        if (!teamName) {
+            return res.status(400).json({ message: "Team name is required" });
+        }
+        
+        const team = await Team.findOne({ name: teamName });
+        
+        if (!team) {
+            return res.status(404).json({ message: "Team not found" });
+        }
+        
+        // Default response - not in grace period
+        const response = {
+            inGracePeriod: false,
+            gracePeriod: null,
+            status: team.subscription?.status || 'incomplete',
+            plan: team.subscription?.plan || 'offchain',
+            billingCycle: team.subscription?.billingCycle || 'monthly'
+        };
+        
+        // Check if subscription exists and is in grace period
+        if (team.subscription) {
+            // Get current period end if it exists
+            const currentPeriodEnd = team.subscription.currentPeriodEnd;
+            
+            if (currentPeriodEnd) {
+                const now = new Date();
+                const endDate = new Date(currentPeriodEnd);
+                
+                // If subscription has ended but status is still active or past_due
+                // This is the grace period
+                if (endDate < now && 
+                    (team.subscription.status === 'active' || 
+                     team.subscription.status === 'past_due')) {
+                    
+                    // Calculate days left in grace period (default 7 days)
+                    const gracePeriodDays = 7;
+                    const gracePeriodEnd = new Date(endDate);
+                    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + gracePeriodDays);
+                    
+                    // If still in grace period
+                    if (now < gracePeriodEnd) {
+                        const daysLeft = Math.ceil((gracePeriodEnd - now) / (1000 * 60 * 60 * 24));
+                        
+                        response.inGracePeriod = true;
+                        response.gracePeriod = {
+                            endDate: gracePeriodEnd.toISOString(),
+                            daysLeft: daysLeft
+                        };
+                    }
+                }
+            }
+        }
+        
+        return res.status(200).json(response);
+    } catch (error) {
+        console.error("Error checking subscription status:", error);
+        return res.status(500).json({ 
+            message: "Error checking subscription status", 
+            error: error.message 
+        });
+    }
+};

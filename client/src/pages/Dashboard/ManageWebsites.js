@@ -47,6 +47,15 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
       console.error("Error checking subscription status:", error);
       // If we can't determine status, assume not in grace period to avoid blocking unnecessarily
       setInGracePeriod(false);
+      
+      // Handle 404 errors silently - this happens if the endpoint isn't implemented yet
+      if (error.response && error.response.status === 404) {
+        console.log("Subscription status endpoint not available, continuing without subscription check");
+      } else {
+        // For other errors, log them but don't show to the user to avoid disrupting experience
+        console.warn("Unable to check subscription status:", 
+          error.response?.data?.message || error.message);
+      }
     }
   };
 

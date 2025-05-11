@@ -1,5 +1,5 @@
 const express = require('express');
-const {addMember,getTeamDetails,createNewTeam,getAdminTeamDetails,getMembers,deleteTeam,updateTeam,removeMember,updateMemberRole}=require ('../controllers/teamController')
+const {addMember,getTeamDetails,createNewTeam,getAdminTeamDetails,getMembers,deleteTeam,updateTeam,removeMember,updateMemberRole,getSubscriptionStatus}=require ('../controllers/teamController')
 const {verifyToken}=require('../middleware/auth')
 const Team = require('../models/team');
 const cors = require('cors');
@@ -23,6 +23,7 @@ router.post('/delete',verifyToken,deleteTeam);
 router.post('/update',verifyToken,updateTeam);
 router.post('/remove-member',verifyToken,removeMember);
 router.post('/update-member-role',verifyToken,updateMemberRole);
+router.get('/subscription-status/:teamName',cors(corsOptions),verifyToken,getSubscriptionStatus);
 
 // Save billing details for a team
 router.post('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {
