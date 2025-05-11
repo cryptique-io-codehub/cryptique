@@ -17,6 +17,7 @@ import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
+import { useSubscription } from '../../context/subscriptionContext';
 
 const Dashboard = () => {
   // State management
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
+  const { hasAccess, isLoading, checkSubscriptionStatus } = useSubscription();
 
   // Screen size detection with multiple breakpoints
   useEffect(() => {
@@ -60,6 +62,33 @@ const Dashboard = () => {
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
 
+  // Function to check if the current route is accessible based on subscription
+  const isRouteAccessible = (routeFeature) => {
+    // If no feature mapping needed or it's the dashboard/settings, always accessible
+    if (!routeFeature || routeFeature === 'settings' || routeFeature === 'dashboard') {
+      return true;
+    }
+    
+    return hasAccess(routeFeature);
+  };
+
+  // Map routes to features
+  const getFeatureForRoute = (route) => {
+    const routeToFeatureMap = {
+      'offchain': 'offchainAnalytics',
+      'onchain': 'onchainExplorer',
+      'campaigns': 'campaigns', 
+      'conversion-events': 'conversionEvents',
+      'advertise': 'advertise',
+      'history': 'history',
+      'importusers': 'importUsers',
+      'cq-intelligence': 'cqIntelligence',
+      'managewebsites': 'manageWebsites'
+    };
+    
+    return routeToFeatureMap[route] || null;
+  };
+
   // Sync selectedPage with URL and preload data for new tabs
   useEffect(() => {
     const path = location.pathname;
@@ -73,6 +102,19 @@ const Dashboard = () => {
       const team = pathSegments[0] || localStorage.getItem("selectedTeam") || '';
       if (team) {
         navigate(`/${team}/settings/pricing`, { replace: true });
+        return;
+      }
+    }
+
+    // Check if this is a premium route
+    const featureForRoute = getFeatureForRoute(currentRoute);
+    
+    // If the route requires subscription but user doesn't have access, redirect to settings
+    if (featureForRoute && !isLoading && !hasAccess(featureForRoute)) {
+      const team = pathSegments[0] || localStorage.getItem("selectedTeam") || '';
+      if (team) {
+        console.log(`No access to ${featureForRoute}, redirecting to settings`);
+        navigate(`/${team}/settings/billing`, { replace: true });
         return;
       }
     }
@@ -128,7 +170,14 @@ const Dashboard = () => {
       }
     }
     
-  }, [location, selectedPage, selectedTeam, navigate, screenSize]);
+  }, [location, selectedPage, selectedTeam, navigate, screenSize, hasAccess, isLoading]);
+
+  // Check subscription status on initial load and when team changes
+  useEffect(() => {
+    if (selectedTeam) {
+      checkSubscriptionStatus();
+    }
+  }, [selectedTeam, checkSubscriptionStatus]);
 
   // Update isCompactMode based on the selected page
   useEffect(() => {

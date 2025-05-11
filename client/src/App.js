@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Interface from './pages/Onboarding/LoginForm.js'
 import Dashboard from './pages/Dashboard/Dashboard.js'
@@ -7,7 +7,9 @@ import Settings from './pages/Setting/Settings.js'
 import Billing from './pages/Setting/Billing/Billing.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
 import { useTeam, TeamProvider } from "./context/teamContext.js";
-import  {Navigate} from "react-router-dom";
+import { SubscriptionProvider } from "./context/subscriptionContext.js";
+import SubscriptionGuard from "./components/SubscriptionGuard.js";
+import { Navigate } from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
 import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
 import ManageWebsites from "./pages/Dashboard/ManageWebsites.js";
@@ -51,39 +53,58 @@ const RouteListener = () => {
 
   return null; // this component doesn't render anything
 };
+
+// Enhanced Dashboard route component with subscription protection
+const ProtectedDashboardRoute = ({ feature, path }) => (
+  <Route 
+    path={path} 
+    element={
+      <SubscriptionGuard feature={feature}>
+        <Dashboard />
+      </SubscriptionGuard>
+    } 
+  />
+);
+
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   
   return (
     <TeamProvider>
-      <ContractDataProvider>
-        <BrowserRouter>
-          <RouteListener />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Interface />} />
-            <Route path="/signup" element={<Interface />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/:team/offchain" element={<Dashboard />} />
-            <Route path="/:team/onchain" element={<Dashboard />} />
-            <Route path="/:team/campaigns" element={<Dashboard />} />
-            <Route path="/:team/conversion-events" element={<Dashboard />} />
-            <Route path="/:team/advertise" element={<Dashboard />} />
-            <Route path="/:team/history" element={<Dashboard />} />
-            <Route path="/:team/importusers" element={<Dashboard />} />
-            <Route path="/:team/managewebsites" element={<Dashboard />} />
-            <Route path="/:team/cq-intelligence" element={<Dashboard />} />
-            
-            {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
-            <Route path="/:team/settings" element={<Dashboard />} />
-            <Route path="/:team/settings/billing" element={<Dashboard />} />
-            <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
-            <Route path="/:team/settings/pricing" element={<Dashboard />} />
-            
-            <Route path="/test-analytics" element={<TestAnalytics />} />
-          </Routes>
-        </BrowserRouter>
-      </ContractDataProvider>
+      <SubscriptionProvider>
+        <ContractDataProvider>
+          <BrowserRouter>
+            <RouteListener />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Interface />} />
+              <Route path="/signup" element={<Interface />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              
+              {/* Protected feature routes */}
+              <ProtectedDashboardRoute path="/:team/offchain" feature="offchainAnalytics" />
+              <ProtectedDashboardRoute path="/:team/onchain" feature="onchainExplorer" />
+              <ProtectedDashboardRoute path="/:team/campaigns" feature="campaigns" />
+              <ProtectedDashboardRoute path="/:team/conversion-events" feature="conversionEvents" />
+              <ProtectedDashboardRoute path="/:team/advertise" feature="advertise" />
+              <ProtectedDashboardRoute path="/:team/history" feature="history" />
+              <ProtectedDashboardRoute path="/:team/importusers" feature="importUsers" />
+              <ProtectedDashboardRoute path="/:team/cq-intelligence" feature="cqIntelligence" />
+              
+              {/* Manage websites is available on all plans */}
+              <Route path="/:team/managewebsites" element={<Dashboard />} />
+              
+              {/* Settings pages are always accessible */}
+              <Route path="/:team/settings" element={<Dashboard />} />
+              <Route path="/:team/settings/billing" element={<Dashboard />} />
+              <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
+              <Route path="/:team/settings/pricing" element={<Dashboard />} />
+              
+              <Route path="/test-analytics" element={<TestAnalytics />} />
+            </Routes>
+          </BrowserRouter>
+        </ContractDataProvider>
+      </SubscriptionProvider>
     </TeamProvider>
   )
 }

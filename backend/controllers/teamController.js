@@ -644,7 +644,7 @@ exports.updateMemberRole = async (req, res) => {
     }
 };
 
-// New function to check subscription status
+// Function to check subscription status
 exports.getSubscriptionStatus = async (req, res) => {
     try {
         const teamName = req.params.teamName;
@@ -659,55 +659,133 @@ exports.getSubscriptionStatus = async (req, res) => {
             return res.status(404).json({ message: "Team not found" });
         }
         
-        // Default response - not in grace period
+        // Default response structure
         const response = {
             inGracePeriod: false,
             gracePeriod: null,
-            status: team.subscription?.status || 'incomplete',
-            plan: team.subscription?.plan || 'offchain',
-            billingCycle: team.subscription?.billingCycle || 'monthly'
+            status: team.subscription?.status || 'inactive',
+            plan: team.subscription?.plan || 'free',
+            features: {}
         };
         
-        // Check if subscription exists and is in grace period
-        if (team.subscription) {
-            // Get current period end if it exists
-            const currentPeriodEnd = team.subscription.currentPeriodEnd;
+        // Grace period calculation
+        if (team.subscription && team.subscription.endDate) {
+            const endDate = new Date(team.subscription.endDate);
+            const gracePeriodDays = 30; // 30-day grace period
+            const gracePeriodEndDate = new Date(endDate);
+            gracePeriodEndDate.setDate(gracePeriodEndDate.getDate() + gracePeriodDays);
             
-            if (currentPeriodEnd) {
-                const now = new Date();
-                const endDate = new Date(currentPeriodEnd);
+            // Check if in grace period
+            if (team.subscription.status !== 'active' && new Date() <= gracePeriodEndDate) {
+                response.inGracePeriod = true;
                 
-                // If subscription has ended but status is still active or past_due
-                // This is the grace period
-                if (endDate < now && 
-                    (team.subscription.status === 'active' || 
-                     team.subscription.status === 'past_due')) {
-                    
-                    // Calculate days left in grace period (default 7 days)
-                    const gracePeriodDays = 7;
-                    const gracePeriodEnd = new Date(endDate);
-                    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + gracePeriodDays);
-                    
-                    // If still in grace period
-                    if (now < gracePeriodEnd) {
-                        const daysLeft = Math.ceil((gracePeriodEnd - now) / (1000 * 60 * 60 * 24));
-                        
-                        response.inGracePeriod = true;
-                        response.gracePeriod = {
-                            endDate: gracePeriodEnd.toISOString(),
-                            daysLeft: daysLeft
-                        };
-                    }
-                }
+                // Calculate days left in grace period
+                const today = new Date();
+                const daysLeft = Math.ceil((gracePeriodEndDate - today) / (1000 * 60 * 60 * 24));
+                
+                response.gracePeriod = {
+                    endDate: gracePeriodEndDate.toISOString(),
+                    daysLeft: Math.max(0, daysLeft)
+                };
             }
         }
         
-        return res.status(200).json(response);
+        // Map features based on plan
+        const planFeatures = {
+            enterprise: {
+                offchainAnalytics: true,
+                onchainExplorer: true,
+                campaigns: true,
+                conversionEvents: true,
+                cqIntelligence: true,
+                history: true,
+                advertise: true,
+                manageWebsites: true,
+                importUsers: true,
+                maxWebsites: 'Unlimited',
+                maxSmartContracts: 'Unlimited',
+                maxTeamMembers: 'Unlimited',
+                supportLevel: 'Priority'
+            },
+            premium: {
+                offchainAnalytics: true,
+                onchainExplorer: true,
+                campaigns: true,
+                conversionEvents: true,
+                cqIntelligence: false,
+                history: true,
+                advertise: false,
+                manageWebsites: true,
+                importUsers: true,
+                maxWebsites: 50,
+                maxSmartContracts: 50,
+                maxTeamMembers: 25,
+                supportLevel: 'Premium'
+            },
+            pro: {
+                offchainAnalytics: true,
+                onchainExplorer: true,
+                campaigns: false,
+                conversionEvents: false,
+                cqIntelligence: false,
+                history: true,
+                advertise: false,
+                manageWebsites: true,
+                importUsers: false,
+                maxWebsites: 20,
+                maxSmartContracts: 10,
+                maxTeamMembers: 10,
+                supportLevel: 'Standard'
+            },
+            standard: {
+                offchainAnalytics: true,
+                onchainExplorer: false,
+                campaigns: false,
+                conversionEvents: false,
+                cqIntelligence: false,
+                history: true,
+                advertise: false,
+                manageWebsites: true,
+                importUsers: false,
+                maxWebsites: 5,
+                maxSmartContracts: 0,
+                maxTeamMembers: 3,
+                supportLevel: 'Basic'
+            },
+            free: {
+                offchainAnalytics: false,
+                onchainExplorer: false,
+                campaigns: false,
+                conversionEvents: false,
+                cqIntelligence: false,
+                history: false,
+                advertise: false,
+                manageWebsites: true,
+                importUsers: false,
+                maxWebsites: 1,
+                maxSmartContracts: 0,
+                maxTeamMembers: 1,
+                supportLevel: 'Community'
+            }
+        };
+        
+        // Set features based on plan
+        const plan = team.subscription?.plan || 'free';
+        response.features = planFeatures[plan] || planFeatures.free;
+        
+        // If subscription is not active, disable features except for free ones
+        if (team.subscription?.status !== 'active' && !response.inGracePeriod) {
+            // Reset all features to match free plan
+            Object.keys(response.features).forEach(feature => {
+                if (feature !== 'manageWebsites') {
+                    response.features[feature] = planFeatures.free[feature];
+                }
+            });
+        }
+        
+        res.status(200).json(response);
     } catch (error) {
         console.error("Error checking subscription status:", error);
-        return res.status(500).json({ 
-            message: "Error checking subscription status", 
-            error: error.message 
-        });
+        res.status(500).json({ message: "Internal server error" });
     }
 };
