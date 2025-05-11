@@ -19,6 +19,9 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('direct'); // 'direct' or 'gtm'
+  const [gtmCode, setGtmCode] = useState('');
+  const [dataLayerCode, setDataLayerCode] = useState('');
   
   // Add subscription grace period state
   const [inGracePeriod, setInGracePeriod] = useState(false);
@@ -87,10 +90,43 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     }, 5000);
   };
 
-  // Function to generate script code
+  // Modified generateScriptCode to also create GTM code
   const generateScriptCode = (siteId) => {
+    // Direct implementation script
     const code = `<script async src="${process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app'}/api/sdk/cq.js?siteId=${siteId}" data-cryptique="${siteId}"></script>`;
     setScriptCode(code);
+    
+    // GTM implementation code
+    const gtmSnippet = `// Add this to your GTM as a Custom HTML tag
+<script>
+  (function(w,d,s,l) {
+    // Load Cryptique SDK
+    var script = d.createElement('script');
+    script.async = true;
+    script.src = '${process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app'}/api/sdk/cq.js?siteId=${siteId}';
+    script.setAttribute('data-cryptique', '${siteId}');
+    d.head.appendChild(script);
+  })(window,document,'script');
+</script>`;
+    setGtmCode(gtmSnippet);
+    
+    // Data Layer implementation
+    const dataLayerSnippet = `// Add this dataLayer declaration before your GTM script
+window.dataLayer = window.dataLayer || [];
+dataLayer.push({
+  'cryptiqueSiteId': '${siteId}'
+});
+
+// Then in GTM, create a Custom JavaScript variable to access the site ID:
+function() {
+  return dataLayer.find(function(item) {
+    return item.cryptiqueSiteId;
+  }).cryptiqueSiteId || '';
+}
+
+// Use this variable in your Cryptique tag configuration
+`;
+    setDataLayerCode(dataLayerSnippet);
   };
 
   // Function to handle adding a new website
@@ -261,6 +297,13 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     }
   };
 
+  // Function to view SDK for a verified website
+  const viewSdk = (website) => {
+    setSelectedWebsite(website);
+    generateScriptCode(website.siteId);
+    setScriptModal(true);
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       {/* Page header */}
@@ -370,10 +413,22 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                             setSelectedWebsite(website);
                             generateScriptCode(website.siteId);
                             setScriptModal(true);
+                            setActiveTab('direct');
                           }}
                           className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         Verify
+                      </button>
+                    )}
+                    {website.isVerified && (
+                      <button
+                        onClick={() => {
+                          viewSdk(website);
+                          setActiveTab('direct');
+                        }}
+                        className="text-green-600 hover:text-green-900 mr-3"
+                      >
+                        View SDK
                       </button>
                     )}
                     <button
@@ -464,72 +519,170 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         </div>
       )}
 
-      {/* Script Modal for Verification */}
+      {/* Script Modal for Verification - Updated with tabs */}
       {scriptModal && selectedWebsite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Verify Your Website</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {selectedWebsite.isVerified ? 'Website SDK' : 'Verify Your Website'}
+              </h2>
               <button
                 onClick={() => setScriptModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-            <div className="mb-4">
-              <p className="text-gray-600 mb-4">
-                To verify ownership of <strong>{selectedWebsite.Domain}</strong>, please add the following script to your website's HTML just before the closing <code>&lt;/head&gt;</code> tag:
-              </p>
-              
-              <div className="bg-gray-100 p-3 rounded-md overflow-auto">
-                <code className="text-sm font-mono text-gray-800">{scriptCode}</code>
-              </div>
-              
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(scriptCode);
-                  showMessage("Script copied to clipboard!", "success");
-                }}
-                className="mt-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
                 </svg>
-                Copy to Clipboard
               </button>
             </div>
             
-            <div className="mt-6 flex justify-between">
+            {/* Tabs Navigation */}
+            <div className="mb-4 border-b border-gray-200">
+              <nav className="flex -mb-px">
+                <button 
+                  className={`px-4 py-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'direct' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('direct')}
+                >
+                  Direct Implementation
+                </button>
+                <button 
+                  className={`ml-8 px-4 py-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'gtm' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('gtm')}
+                >
+                  Google Tag Manager
+                </button>
+              </nav>
+            </div>
+            
+            {/* Tab Content */}
+            {activeTab === 'direct' && (
+              <div>
+                <p className="text-gray-600 mb-4">
+                  {selectedWebsite.isVerified 
+                    ? `SDK script for ${selectedWebsite.Domain}:` 
+                    : `To verify ownership of ${selectedWebsite.Domain}, please add the following script to your website's HTML just before the closing </head> tag:`}
+                </p>
+                
+                <div className="bg-gray-100 p-3 rounded-md overflow-auto">
+                  <code className="text-sm font-mono text-gray-800">{scriptCode}</code>
+                </div>
+                
                 <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(scriptCode);
+                    showMessage("Script copied to clipboard!", "success");
+                  }}
+                  className="mt-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                  </svg>
+                  Copy to Clipboard
+                </button>
+              </div>
+            )}
+            
+            {activeTab === 'gtm' && (
+              <div>
+                <p className="text-gray-600 mb-4">
+                  {selectedWebsite.isVerified 
+                    ? `Google Tag Manager implementation for ${selectedWebsite.Domain}:` 
+                    : `To verify ownership of ${selectedWebsite.Domain} with Google Tag Manager, follow these steps:`}
+                </p>
+                
+                <div className="mb-4">
+                  <h3 className="text-md font-medium text-gray-800 mb-2">Option 1: Custom HTML Tag</h3>
+                  <div className="bg-gray-100 p-3 rounded-md overflow-auto">
+                    <code className="text-sm font-mono text-gray-800">{gtmCode}</code>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(gtmCode);
+                      showMessage("GTM code copied to clipboard!", "success");
+                    }}
+                    className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center text-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                    </svg>
+                    Copy HTML Tag
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <h3 className="text-md font-medium text-gray-800 mb-2">Option 2: Data Layer Implementation</h3>
+                  <div className="bg-gray-100 p-3 rounded-md overflow-auto">
+                    <code className="text-sm font-mono text-gray-800">{dataLayerCode}</code>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(dataLayerCode);
+                      showMessage("DataLayer code copied to clipboard!", "success");
+                    }}
+                    className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center text-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                    </svg>
+                    Copy DataLayer Code
+                  </button>
+                </div>
+                
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+                  <p className="font-medium mb-1">Important GTM Setup Tips:</p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Create a new Custom HTML tag in Google Tag Manager</li>
+                    <li>Paste the code from Option 1 into the HTML field</li>
+                    <li>Set the trigger to fire on "All Pages"</li>
+                    <li>Save and publish your GTM container</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-6 flex justify-between">
+              <button
                 onClick={() => setScriptModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                  <button
-                    onClick={() => handleVerify(selectedWebsite)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                    disabled={verifyLoading}
-                  >
-                {verifyLoading ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Verify Now
-                  </>
-                )}
+              >
+                Close
               </button>
+              
+              {!selectedWebsite.isVerified && (
+                <button
+                  onClick={() => handleVerify(selectedWebsite)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                  disabled={verifyLoading}
+                >
+                  {verifyLoading ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Verify Now
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
