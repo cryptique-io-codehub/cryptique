@@ -90,20 +90,18 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     }, 5000);
   };
 
-  // Modified generateScriptCode to use the simpler format for both direct and GTM
+  // Modified generateScriptCode to use the exact structure requested
   const generateScriptCode = (siteId) => {
-    // Direct implementation script
-    const code = `<script async src="${process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app'}/api/sdk/cq.js?siteId=${siteId}" data-cryptique="${siteId}"></script>`;
-    setScriptCode(code);
+    // Use the exact script structure as specified
+    const code = `<script>
+    var script = document.createElement('script');
+    script.src = 'https://cdn.cryptique.io/scripts/analytics/1.0.1/cryptique.script.min.js';  
+    script.setAttribute('site-id', '${siteId}');
+    document.head.appendChild(script);
+  </script>`;
     
-    // Simplified GTM implementation code with the same structure
-    const gtmSnippet = `<script>
-  var script = document.createElement('script');
-  script.src = '${process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app'}/api/sdk/cq.js?siteId=${siteId}';  
-  script.setAttribute('data-cryptique', '${siteId}');
-  document.head.appendChild(script);
-</script>`;
-    setGtmCode(gtmSnippet);
+    setScriptCode(code);
+    setGtmCode(code); // Same script for both implementations
   };
 
   // Function to handle adding a new website
@@ -582,10 +580,10 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                     <span className="font-semibold">Step 1:</span> In Google Tag Manager, create a new Custom HTML tag
                   </p>
                   <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-semibold">Step 2:</span> Paste this code into the HTML field:
+                    <span className="font-semibold">Step 2:</span> Paste this exact code into the HTML field:
                   </p>
                   <div className="bg-gray-100 p-3 rounded-md overflow-auto">
-                    <code className="text-sm font-mono text-gray-800">{gtmCode}</code>
+                    <code className="text-sm font-mono text-gray-800">{scriptCode}</code>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">
                     <span className="font-semibold">Step 3:</span> Set the trigger to fire on "All Pages"
@@ -597,7 +595,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                 
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(gtmCode);
+                    navigator.clipboard.writeText(scriptCode);
                     showMessage("GTM code copied to clipboard!", "success");
                   }}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
