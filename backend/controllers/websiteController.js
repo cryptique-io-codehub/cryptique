@@ -6,55 +6,54 @@ const { v4: uuidv4 } = require('uuid');
 
 exports.addWebsite=async (req,res)=>{
    try{
-
         const {teamName,Domain,Name}=req.body;
-        // console.log(teamName);
-        // console.log(Domain);
-        // console.log(Name);
-
+        
         if(!teamName && !Domain) return res.status(400).json({message:"Required field is missing"});
 
         const checkTeam=await Team.findOne({name:teamName});
 
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
-
+        
+        // The checkWebsiteLimit middleware would have already:
+        // 1. Checked if the user has reached their limit
+        // 2. Incremented the usage.websites counter if allowed
+        
         const siteId = uuidv4(); 
-        // console.log(siteId);
         const newWebsite=new Website({
             siteId,
             Domain,
             Name:Name || '',
             team:checkTeam._id,
         })
-        // console.log('c');
+        
         await newWebsite.save();
-        // console.log('b');
         
         await Team.findOneAndUpdate(
             { name: teamName }, 
             { $push: { websites: newWebsite._id } },
             { new: true } 
         );
-        // console.log('ritik');
-        return res.status(200).json({message:"Website added successfully",website:newWebsite});
+        
+        return res.status(200).json({
+            message:"Website added successfully",
+            website: newWebsite,
+            usage: {
+                current: checkTeam.usage?.websites + 1 || 1,
+                limit: checkTeam.subscription?.limits?.websites || 
+                       (checkTeam.subscription?.plan === 'enterprise' ? null : 
+                        require('../config/stripe').SUBSCRIPTION_PLANS[checkTeam.subscription?.plan?.toUpperCase()]?.limits?.websites || 1)
+            }
+        });
 
    }catch(e){
-
         console.error("Error while adding website",e);
-
-        res.status(500).json({ message: 'Error creating user', error: e.message });
-        res.status(500).json({ message: 'Error creating user', error: e.message });
-
+        res.status(500).json({ message: 'Error creating website', error: e.message });
    }
-
 }
 
 exports.deleteWebsite=async (req,res)=>{
     try{
-
         const {teamName,webId}=req.body;
-        // console.log(teamName);
-        // console.log(webId);
         if(!webId && !teamName) return res.status(400).json({message:"Required fields are missing"});
 
         const checkTeam=await Team.findOne({name:teamName});
@@ -64,26 +63,36 @@ exports.deleteWebsite=async (req,res)=>{
         const website=await Website.deleteOne({_id:webId});
 
         if(website.deletedCount===0) {
-
             return res.status(404).json({message:"Website not found"});
-
         }else {
-
-            const team = await Team.findOneAndUpdate(
+            // Remove website from team's websites array
+            await Team.findOneAndUpdate(
                 { name: teamName }, 
                 { $pull: { websites: webId } }, 
                 { new: true } 
             );
+            
+            // Decrement the website usage counter if it's greater than 0
+            if (checkTeam.usage && checkTeam.usage.websites > 0) {
+                await Team.findByIdAndUpdate(checkTeam._id, {
+                    'usage.websites': checkTeam.usage.websites - 1
+                });
+            }
 
-            return res.status(200).json({message:"website deleted successfully",website});
+            return res.status(200).json({
+                message: "Website deleted successfully",
+                usage: {
+                    current: Math.max(0, (checkTeam.usage?.websites || 1) - 1),
+                    limit: checkTeam.subscription?.limits?.websites || 
+                           (checkTeam.subscription?.plan === 'enterprise' ? null : 
+                            require('../config/stripe').SUBSCRIPTION_PLANS[checkTeam.subscription?.plan?.toUpperCase()]?.limits?.websites || 1)
+                }
+            });
         }
 
     }catch(e){
-
         console.error("Error while deleting website",e);
-
         res.status(500).json({ message: 'Error while deleting the website', error: e.message });
-
     }
 }
 

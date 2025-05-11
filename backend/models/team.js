@@ -52,6 +52,46 @@ const teamsSchema=new mongoose.Schema({
             type: String,
             enum: ['monthly', 'annual'],
             default: 'monthly'
+        },
+        limits: {
+            websites: {
+                type: Number,
+                default: 1
+            },
+            smartContracts: {
+                type: Number,
+                default: 0
+            },
+            apiCalls: {
+                type: Number,
+                default: 0
+            },
+            teamMembers: {
+                type: Number,
+                default: 1
+            }
+        }
+    },
+    usage: {
+        websites: {
+            type: Number,
+            default: 0
+        },
+        smartContracts: {
+            type: Number,
+            default: 0
+        },
+        apiCalls: {
+            type: Number,
+            default: 0
+        },
+        teamMembers: {
+            type: Number,
+            default: 1 // Start with 1 for the creator
+        },
+        lastResetDate: {
+            type: Date,
+            default: Date.now // For tracking monthly reset of API calls
         }
     },
     billingAddress: {

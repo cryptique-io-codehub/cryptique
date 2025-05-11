@@ -7,6 +7,40 @@ import PricingSection from "./PricingSection";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
 
+// Style definitions for futuristic theme
+const styles = {
+  headingFont: { 
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600
+  },
+  bodyFont: { 
+    fontFamily: "'Poppins', sans-serif" 
+  },
+  primaryColor: "#1d0c46", // Deep purple
+  accentColor: "#caa968",  // Gold accent
+  futuristicGradient: "linear-gradient(135deg, #1d0c46 0%, #3a1d8a 50%, #1d0c46 100%)",
+  activeGlow: "0 0 15px rgba(202, 169, 104, 0.6)",
+  cardHover: {
+    transform: 'translateY(-8px)',
+    boxShadow: '0 10px 25px rgba(29, 12, 70, 0.2)',
+    transition: 'all 0.3s ease-in-out'
+  },
+  glassmorphism: {
+    background: 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+  },
+  statusChipColors: {
+    active: '#10B981', // Green
+    pastdue: '#F59E0B', // Amber
+    cancelled: '#EF4444', // Red
+    inactive: '#6B7280', // Gray
+    coming_soon: '#8B5CF6' // Purple
+  }
+};
+
 const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -201,70 +235,250 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
             <div className="flex-grow overflow-y-auto">
               {/* Settings content based on active section */}
               {activeSection === "general" && (
-                <div className="p-4 sm:p-6 bg-white m-4 rounded-lg shadow-sm">
-                  <div className="max-w-4xl">
-                    <h1 className="text-2xl font-bold mb-6">General Settings</h1>
+                <div className="p-4 sm:p-6 m-4 rounded-lg"
+                  style={{ 
+                    background: 'radial-gradient(circle at 50% 50%, rgba(29, 12, 70, 0.03), transparent)',
+                    maxWidth: '1100px',
+                    margin: '16px auto'
+                  }}
+                >
+                  <div className="max-w-4xl mx-auto">
+                    <div style={{ 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      marginBottom: '24px'
+                    }}>
+                      <h1 style={{ 
+                        ...styles.headingFont,
+                        background: styles.futuristicGradient,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: '1.875rem',
+                        marginBottom: '0.5rem'
+                      }}>
+                        General Settings
+                      </h1>
+                      <p style={{
+                        ...styles.bodyFont,
+                        color: 'rgba(107, 114, 128, 0.8)',
+                        fontSize: '0.875rem'
+                      }}>
+                        Configure your Cryptique analytics experience and manage API access
+                      </p>
+                    </div>
 
                     {/* API Keys Section */}
-                    <div className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+                    <div style={{
+                      ...styles.glassmorphism,
+                      marginBottom: '24px',
+                      padding: '24px',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      ':hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+                      }
+                    }}>
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h2 className="text-xl font-semibold">API Keys</h2>
-                          <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200">Coming Soon</span>
+                          <h2 style={{
+                            ...styles.headingFont,
+                            color: styles.primaryColor,
+                            fontSize: '1.25rem',
+                            marginBottom: '0.25rem'
+                          }}>API Keys</h2>
+                          <span style={{
+                            display: 'inline-block',
+                            backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                            color: '#8B5CF6',
+                            borderRadius: '9999px',
+                            padding: '0.125rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            border: '1px solid rgba(139, 92, 246, 0.3)'
+                          }}>Coming Soon</span>
                         </div>
-                        <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors opacity-50 cursor-not-allowed">
+                        <button style={{
+                          backgroundColor: 'rgba(29, 12, 70, 0.6)',
+                          color: 'white',
+                          padding: '0.375rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.875rem',
+                          opacity: '0.5',
+                          cursor: 'not-allowed',
+                          transition: 'background-color 0.2s'
+                        }}>
                           Generate New Key
                         </button>
                       </div>
-                      <p className="text-sm text-gray-600 mb-4">
+                      <p style={{
+                        ...styles.bodyFont,
+                        color: 'rgba(75, 85, 99, 0.9)',
+                        fontSize: '0.875rem',
+                        marginBottom: '1rem'
+                      }}>
                         Use API keys to access Cryptique data programmatically. This feature is currently in development and will be available soon.
                       </p>
 
-                      <div className="overflow-hidden bg-white border border-gray-200 rounded-lg mb-4 opacity-70">
-                        <div className="px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+                      <div style={{
+                        background: 'rgba(255, 255, 255, 0.6)',
+                        border: '1px solid rgba(209, 213, 219, 0.5)',
+                        borderRadius: '0.5rem',
+                        overflow: 'hidden',
+                        marginBottom: '1rem',
+                        opacity: '0.7'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(243, 244, 246, 0.7)',
+                          borderBottom: '1px solid rgba(209, 213, 219, 0.5)'
+                        }}>
                           <div>
-                            <span className="font-medium text-sm">Example API Key</span>
-                            <span className="ml-2 text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full">Preview</span>
+                            <span style={{
+                              fontWeight: '500',
+                              fontSize: '0.875rem'
+                            }}>Example API Key</span>
+                            <span style={{
+                              display: 'inline-block',
+                              marginLeft: '0.5rem',
+                              backgroundColor: 'rgba(209, 213, 219, 0.5)',
+                              color: 'rgba(75, 85, 99, 0.9)',
+                              padding: '0 0.5rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.75rem'
+                            }}>Preview</span>
                           </div>
-                          <span className="text-xs text-gray-500">Coming Soon</span>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(107, 114, 128, 0.7)'
+                          }}>Coming Soon</span>
                         </div>
-                        <div className="p-4 flex justify-between items-center">
-                          <div className="flex-1 font-mono text-sm bg-gray-50 p-2 rounded mr-4 overflow-hidden">
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '1rem'
+                        }}>
+                          <div style={{
+                            flex: '1',
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
+                            backgroundColor: 'rgba(249, 250, 251, 0.7)',
+                            padding: '0.5rem',
+                            borderRadius: '0.25rem',
+                            marginRight: '1rem',
+                            overflow: 'hidden'
+                          }}>
                             cq_k••••••••••••••••••••••••
                           </div>
-                          <div className="flex space-x-2">
-                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50 opacity-50 cursor-not-allowed">Copy</button>
-                            <button className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50 opacity-50 cursor-not-allowed">Revoke</button>
+                          <div style={{
+                            display: 'flex',
+                            gap: '0.5rem'
+                          }}>
+                            <button style={{
+                              padding: '0.25rem 0.5rem',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              opacity: '0.5',
+                              cursor: 'not-allowed'
+                            }}>Copy</button>
+                            <button style={{
+                              padding: '0.25rem 0.5rem',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              opacity: '0.5',
+                              cursor: 'not-allowed'
+                            }}>Revoke</button>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
-                        <div className="flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          <span>
-                            <strong>Coming Soon:</strong> API access will allow integration with your existing tools and custom dashboards. Subscribe to our updates to be notified when this feature launches.
-                          </span>
-                        </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        borderRadius: '0.375rem',
+                        padding: '0.75rem',
+                        fontSize: '0.875rem',
+                        color: 'rgba(30, 64, 175, 0.9)'
+                      }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{
+                          height: '1.25rem',
+                          width: '1.25rem',
+                          marginRight: '0.5rem',
+                          color: 'rgba(59, 130, 246, 0.8)'
+                        }} viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          <strong>Coming Soon:</strong> API access will allow integration with your existing tools and custom dashboards. Subscribe to our updates to be notified when this feature launches.
+                        </span>
                       </div>
                     </div>
 
                     {/* Analytics Preferences */}
-                    <div className="mb-8 p-6 border border-gray-200 rounded-lg">
-                      <h2 className="text-xl font-semibold mb-4">Analytics Preferences</h2>
-                      <p className="text-sm text-gray-600 mb-4">
+                    <div style={{
+                      ...styles.glassmorphism,
+                      marginBottom: '24px',
+                      padding: '24px',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      ':hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+                      }
+                    }}>
+                      <h2 style={{
+                        ...styles.headingFont,
+                        color: styles.primaryColor,
+                        fontSize: '1.25rem',
+                        marginBottom: '0.5rem'
+                      }}>Analytics Preferences</h2>
+                      <p style={{
+                        ...styles.bodyFont,
+                        color: 'rgba(75, 85, 99, 0.9)',
+                        fontSize: '0.875rem',
+                        marginBottom: '1rem'
+                      }}>
                         Configure how analytics data is collected and displayed across your dashboard.
                       </p>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
                           <div>
-                            <h3 className="font-medium text-gray-900">Default Date Range</h3>
-                            <p className="text-xs text-gray-500">Set the default time period for analytics charts</p>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>Default Date Range</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)'
+                            }}>Set the default time period for analytics charts</p>
                           </div>
-                          <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                          <select style={{
+                            padding: '0.5rem 0.75rem',
+                            border: '1px solid rgba(209, 213, 219, 0.8)',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                            backgroundColor: 'white'
+                          }}>
                             <option value="7days">Last 7 days</option>
                             <option value="30days" selected>Last 30 days</option>
                             <option value="90days">Last 90 days</option>
@@ -272,12 +486,33 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                           </select>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
                           <div>
-                            <h3 className="font-medium text-gray-900">Data Granularity</h3>
-                            <p className="text-xs text-gray-500">Choose the level of detail in your analytics</p>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>Data Granularity</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)'
+                            }}>Choose the level of detail in your analytics</p>
                           </div>
-                          <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                          <select style={{
+                            padding: '0.5rem 0.75rem',
+                            border: '1px solid rgba(209, 213, 219, 0.8)',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                            backgroundColor: 'white'
+                          }}>
                             <option value="hourly">Hourly</option>
                             <option value="daily" selected>Daily</option>
                             <option value="weekly">Weekly</option>
@@ -285,73 +520,306 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                           </select>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
                           <div>
-                            <h3 className="font-medium text-gray-900">Real-time Analytics</h3>
-                            <p className="text-xs text-gray-500">Enable live updating of dashboard stats</p>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>Real-time Analytics</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)'
+                            }}>Enable live updating of dashboard stats</p>
                           </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" checked />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                          <label style={{
+                            position: 'relative',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            cursor: 'pointer'
+                          }}>
+                            <input type="checkbox" className="sr-only peer" defaultChecked />
+                            <div style={{
+                              width: '2.75rem',
+                              height: '1.5rem',
+                              backgroundColor: '#3a1d8a',
+                              borderRadius: '9999px',
+                              position: 'relative',
+                              transition: 'background-color 0.2s'
+                            }}>
+                              <span style={{
+                                display: 'block',
+                                position: 'absolute',
+                                top: '0.125rem',
+                                left: '1.5rem',
+                                width: '1.25rem',
+                                height: '1.25rem',
+                                borderRadius: '9999px',
+                                backgroundColor: 'white',
+                                transition: 'transform 0.2s'
+                              }}></span>
+                            </div>
                           </label>
                         </div>
                       </div>
                       
-                      <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors">
+                      <button style={{
+                        marginTop: '1rem',
+                        background: styles.futuristicGradient,
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                      }}>
                         Save Preferences
                       </button>
                     </div>
                     
                     {/* Data Export */}
-                    <div className="mb-8 p-6 border border-gray-200 rounded-lg">
-                      <h2 className="text-xl font-semibold mb-4">Data Export</h2>
-                      <p className="text-sm text-gray-600 mb-4">
+                    <div style={{
+                      ...styles.glassmorphism,
+                      marginBottom: '24px',
+                      padding: '24px',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      ':hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+                      }
+                    }}>
+                      <h2 style={{
+                        ...styles.headingFont,
+                        color: styles.primaryColor,
+                        fontSize: '1.25rem',
+                        marginBottom: '0.5rem'
+                      }}>Data Export</h2>
+                      <p style={{
+                        ...styles.bodyFont,
+                        color: 'rgba(75, 85, 99, 0.9)',
+                        fontSize: '0.875rem',
+                        marginBottom: '1rem'
+                      }}>
                         Export your analytics data in various formats for reporting and deeper analysis.
                       </p>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
-                          <h3 className="font-medium mb-1">User Analytics Export</h3>
-                          <p className="text-xs text-gray-500 mb-3">Export detailed user behavior and conversion data</p>
-                          <div className="flex space-x-2">
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">CSV</button>
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">JSON</button>
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">Excel</button>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gap: '1rem',
+                        marginBottom: '1rem'
+                      }}>
+                        <div style={{
+                          padding: '1rem',
+                          border: '1px solid rgba(209, 213, 219, 0.8)',
+                          borderRadius: '0.5rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                          transition: 'border-color 0.2s, background-color 0.2s',
+                          ':hover': {
+                            borderColor: styles.primaryColor,
+                            backgroundColor: 'rgba(58, 29, 138, 0.05)'
+                          }
+                        }}>
+                          <h3 style={{
+                            fontWeight: '500',
+                            marginBottom: '0.25rem',
+                            color: styles.primaryColor
+                          }}>User Analytics Export</h3>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(107, 114, 128, 0.8)',
+                            marginBottom: '0.75rem'
+                          }}>Export detailed user behavior and conversion data</p>
+                          <div style={{
+                            display: 'flex',
+                            gap: '0.5rem'
+                          }}>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>CSV</button>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>JSON</button>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>Excel</button>
                           </div>
                         </div>
                         
-                        <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
-                          <h3 className="font-medium mb-1">Smart Contract Analytics</h3>
-                          <p className="text-xs text-gray-500 mb-3">Export on-chain transaction and interaction data</p>
-                          <div className="flex space-x-2">
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">CSV</button>
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">JSON</button>
-                            <button className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50">Excel</button>
+                        <div style={{
+                          padding: '1rem',
+                          border: '1px solid rgba(209, 213, 219, 0.8)',
+                          borderRadius: '0.5rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                          transition: 'border-color 0.2s, background-color 0.2s',
+                          ':hover': {
+                            borderColor: styles.primaryColor,
+                            backgroundColor: 'rgba(58, 29, 138, 0.05)'
+                          }
+                        }}>
+                          <h3 style={{
+                            fontWeight: '500',
+                            marginBottom: '0.25rem',
+                            color: styles.primaryColor
+                          }}>Smart Contract Analytics</h3>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(107, 114, 128, 0.8)',
+                            marginBottom: '0.75rem'
+                          }}>Export on-chain transaction and interaction data</p>
+                          <div style={{
+                            display: 'flex',
+                            gap: '0.5rem'
+                          }}>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>CSV</button>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>JSON</button>
+                            <button style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: 'rgba(249, 250, 251, 0.8)'
+                              }
+                            }}>Excel</button>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        border: '1px solid rgba(245, 158, 11, 0.2)',
+                        borderRadius: '0.375rem',
+                        padding: '0.75rem',
+                        fontSize: '0.875rem',
+                        color: 'rgba(146, 64, 14, 0.9)'
+                      }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{
+                          height: '1.25rem',
+                          width: '1.25rem',
+                          marginRight: '0.5rem',
+                          color: 'rgba(245, 158, 11, 0.8)'
+                        }} viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-sm text-amber-800">Exports may take a few minutes for larger data sets.</span>
+                        <span>Exports may take a few minutes for larger data sets.</span>
                       </div>
                     </div>
                     
                     {/* Advanced Settings */}
-                    <div className="p-6 border border-gray-200 rounded-lg">
-                      <h2 className="text-xl font-semibold mb-4">Advanced Settings</h2>
-                      <p className="text-sm text-gray-600 mb-4">
+                    <div style={{
+                      ...styles.glassmorphism,
+                      padding: '24px',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      ':hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+                      }
+                    }}>
+                      <h2 style={{
+                        ...styles.headingFont,
+                        color: styles.primaryColor,
+                        fontSize: '1.25rem',
+                        marginBottom: '0.5rem'
+                      }}>Advanced Settings</h2>
+                      <p style={{
+                        ...styles.bodyFont,
+                        color: 'rgba(75, 85, 99, 0.9)',
+                        fontSize: '0.875rem',
+                        marginBottom: '1rem'
+                      }}>
                         Configure advanced features for your Cryptique analytics account.
                       </p>
                       
-                      <div className="space-y-4">
-                        <div className="flex items-start p-3 bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">Data Retention</h3>
-                            <p className="text-xs text-gray-500 mb-2">Control how long your analytics data is stored</p>
-                            <select className="px-3 py-2 border border-gray-300 rounded text-sm">
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>Data Retention</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)',
+                              marginBottom: '0.5rem'
+                            }}>Control how long your analytics data is stored</p>
+                            <select style={{
+                              padding: '0.5rem 0.75rem',
+                              border: '1px solid rgba(209, 213, 219, 0.8)',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              backgroundColor: 'white'
+                            }}>
                               <option value="3months">3 months</option>
                               <option value="6months">6 months</option>
                               <option value="1year" selected>1 year</option>
@@ -360,35 +828,130 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                           </div>
                         </div>
                         
-                        <div className="flex items-start p-3 bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">IP Anonymization</h3>
-                            <p className="text-xs text-gray-500 mb-2">Mask the last octet of user IP addresses for privacy</p>
-                            <div className="flex items-center">
-                              <label className="relative inline-flex items-center cursor-pointer mr-4">
-                                <input type="checkbox" className="sr-only peer" checked />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>IP Anonymization</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)',
+                              marginBottom: '0.5rem'
+                            }}>Mask the last octet of user IP addresses for privacy</p>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              <label style={{
+                                position: 'relative',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                marginRight: '1rem'
+                              }}>
+                                <input type="checkbox" className="sr-only peer" defaultChecked />
+                                <div style={{
+                                  width: '2.75rem',
+                                  height: '1.5rem',
+                                  backgroundColor: '#3a1d8a',
+                                  borderRadius: '9999px',
+                                  position: 'relative',
+                                  transition: 'background-color 0.2s'
+                                }}>
+                                  <span style={{
+                                    display: 'block',
+                                    position: 'absolute',
+                                    top: '0.125rem',
+                                    left: '1.5rem',
+                                    width: '1.25rem',
+                                    height: '1.25rem',
+                                    borderRadius: '9999px',
+                                    backgroundColor: 'white',
+                                    transition: 'transform 0.2s'
+                                  }}></span>
+                                </div>
                               </label>
-                              <span className="text-sm text-gray-600">Enabled</span>
+                              <span style={{
+                                fontSize: '0.875rem',
+                                color: 'rgba(75, 85, 99, 0.9)'
+                              }}>Enabled</span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-start p-3 bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">Custom Parameters Tracking</h3>
-                            <p className="text-xs text-gray-500 mb-2">Track additional custom parameters for deeper insights</p>
-                            <div className="flex flex-col space-y-2">
-                              <input type="text" placeholder="Parameter name (e.g., utm_campaign)" className="px-3 py-2 border border-gray-300 rounded text-sm" />
-                              <div className="flex space-x-2">
-                                <button className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">Add Parameter</button>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                          borderRadius: '0.375rem',
+                          border: '1px solid rgba(229, 231, 235, 0.8)'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{
+                              fontWeight: '500',
+                              color: 'rgba(17, 24, 39, 0.9)',
+                              fontSize: '0.875rem'
+                            }}>Custom Parameters Tracking</h3>
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(107, 114, 128, 0.8)',
+                              marginBottom: '0.5rem'
+                            }}>Track additional custom parameters for deeper insights</p>
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem'
+                            }}>
+                              <input type="text" placeholder="Parameter name (e.g., utm_campaign)" style={{
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid rgba(209, 213, 219, 0.8)',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem'
+                              }} />
+                              <div style={{
+                                display: 'flex',
+                                gap: '0.5rem'
+                              }}>
+                                <button style={{
+                                  padding: '0.375rem 0.75rem',
+                                  backgroundColor: '#3a1d8a',
+                                  color: 'white',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.875rem',
+                                  border: 'none',
+                                  transition: 'background-color 0.2s',
+                                  ':hover': {
+                                    backgroundColor: '#1d0c46'
+                                  }
+                                }}>Add Parameter</button>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
                       
-                      <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors">
+                      <button style={{
+                        marginTop: '1rem',
+                        background: styles.futuristicGradient,
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                      }}>
                         Save Advanced Settings
                       </button>
                     </div>
