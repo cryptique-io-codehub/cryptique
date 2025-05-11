@@ -141,7 +141,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
           {/* Content area below header */}
           <div className="flex flex-1 overflow-hidden">
             {/* Settings sidebar - positioned like the second nav in on-chain/off-chain */}
-            <div 
+        <div 
               style={{ borderLeft: 0, margin: 0, padding: 0 }}
           className={`${
                 settingsSidebarOpen ? 'md:w-48 md:static md:block bg-white shadow-md h-full flex-shrink-0 transition-all duration-300 border-r border-gray-200' : 'hidden lg:hidden'
@@ -214,7 +214,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   <span>Manage Teams</span>
                   </div>
                 </div>
-                
+          
                 <div className="p-2 border-t mt-4 text-xs text-gray-500">
             Settings for {seteam}
           </div>

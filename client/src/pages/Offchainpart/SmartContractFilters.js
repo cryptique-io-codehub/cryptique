@@ -1008,7 +1008,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
   const deleteContractFromAPI = async (contractId) => {
     try {
-      await axiosInstance.delete(`/contracts/${contractId}`);
+      await axiosInstance.delete(`/smartcontract/${contractId}`);
       return true;
     } catch (error) {
       console.error("Error deleting contract from API:", error);

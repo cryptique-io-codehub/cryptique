@@ -5,7 +5,7 @@ const {
   deleteSmartContract, 
   updateSmartContract 
 } = require('../controllers/smartContractController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 

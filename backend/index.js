@@ -310,7 +310,7 @@ app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter")
 app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
 app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));
 app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
-app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
+app.use("/api/smartcontract", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling

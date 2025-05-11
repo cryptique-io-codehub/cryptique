@@ -5,7 +5,7 @@ const {
   getLatestBlockNumber,
   deleteContractTransactions
 } = require('../controllers/transactionController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
