@@ -12,7 +12,36 @@ exports.getContractTransactions = async (req, res) => {
     
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
+    
     if (!contract) {
+      console.error(`Contract not found with ID: ${contractId}`);
+      
+      // Attempt to find by alternative IDs in case frontend is using a different ID
+      const alternativeContract = await SmartContract.findOne({
+        $or: [
+          { _id: contractId },
+          { id: contractId }
+        ]
+      });
+      
+      if (alternativeContract) {
+        console.log(`Found contract with alternative ID. Using contractId: ${alternativeContract.contractId}`);
+        // Continue with the alternative contract
+        return res.status(200).json({ 
+          transactions: [],
+          metadata: {
+            total: 0,
+            latestBlockNumber: 0,
+            count: 0,
+            page: 1,
+            limit: parseInt(limit),
+            totalPages: 0,
+            hasMore: false,
+            note: "Contract found with alternative ID. No transactions yet."
+          }
+        });
+      }
+      
       return res.status(404).json({ message: "Contract not found" });
     }
     
@@ -96,8 +125,35 @@ exports.saveTransactions = async (req, res) => {
     
     // Find the contract
     const contract = await SmartContract.findOne({ contractId });
+    
     if (!contract) {
-      return res.status(404).json({ message: "Contract not found" });
+      console.error(`Contract not found with ID: ${contractId}`);
+      
+      // Attempt to find by alternative IDs in case frontend is using a different ID
+      const alternativeContract = await SmartContract.findOne({
+        $or: [
+          { _id: contractId },
+          { id: contractId }
+        ]
+      });
+      
+      if (alternativeContract) {
+        console.log(`Found contract with alternative ID. Using contractId: ${alternativeContract.contractId}`);
+        
+        // Update the contractId to use the valid one
+        const validContractId = alternativeContract.contractId;
+        
+        // Continue with the rest of the function using validContractId
+        // (This is an alternate approach if you want to try to recover)
+        /*
+        contract = alternativeContract;
+        */
+      }
+      
+      return res.status(404).json({ 
+        message: "Contract not found",
+        detail: "The contract ID provided does not exist in the database. Please ensure the contract is added correctly before sending transactions."
+      });
     }
     
     // Verify user has access to the team

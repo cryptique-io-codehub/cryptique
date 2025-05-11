@@ -34,6 +34,16 @@ exports.addSmartContract = async (req, res) => {
   try {
     const { teamId, teamName, address, name, blockchain, tokenSymbol } = req.body;
     
+    console.log("Add smart contract request:", {
+      teamId, 
+      teamName, 
+      address: address ? address.substring(0, 10) + '...' : 'undefined', 
+      name, 
+      blockchain,
+      tokenSymbol,
+      userId: req.userId
+    });
+    
     // First try to find team by ID, then by name
     let team;
     if (teamId) {
@@ -55,8 +65,11 @@ exports.addSmartContract = async (req, res) => {
     }
     
     if (!team) {
+      console.log(`Team not found: teamId=${teamId}, teamName=${teamName}, userId=${req.userId}`);
       return res.status(403).json({ message: "Not authorized to add contracts to this team" });
     }
+    
+    console.log(`Found team: ${team.name} (${team._id})`);
 
     // Check subscription plan and smart contract limits
     const subscriptionPlan = team.subscription?.plan || 'offchain';
@@ -131,14 +144,20 @@ exports.addSmartContract = async (req, res) => {
       lastUpdated: new Date()
     });
     
-    await newContract.save();
+    console.log(`Saving new contract: ${contractId}`);
     
-    console.log(`New contract created with ID: ${contractId}`);
-    
-    res.status(201).json({ 
-      message: "Contract added successfully", 
-      contract: newContract 
-    });
+    try {
+      await newContract.save();
+      console.log(`New contract created with ID: ${contractId}`);
+      
+      res.status(201).json({ 
+        message: "Contract added successfully", 
+        contract: newContract 
+      });
+    } catch (saveError) {
+      console.error("Error saving new contract:", saveError);
+      throw saveError;
+    }
   } catch (error) {
     console.error("Error adding smart contract:", error);
     

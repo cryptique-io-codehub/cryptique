@@ -938,9 +938,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         setContractError("No team selected. Please select a team first.");
         return null;
       }
-      
+
       console.log(`Saving contract ${contract.address} to team ${selectedTeam}`);
-      
+
       // Create payload for API
       const payload = {
         teamName: selectedTeam,
@@ -949,14 +949,14 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         blockchain: contract.blockchain,
         tokenSymbol: contract.tokenSymbol
       };
-      
+
       console.log("API payload:", payload);
       
       // Make the API request
-      const response = await axiosInstance.post('/smartcontract', payload);
+      const response = await axiosInstance.post('/contracts', payload);
       
       console.log("API response:", response.data);
-      
+        
       // Check if the contract was saved successfully
       if (response.data && response.data.contract) {
         return {
@@ -1008,7 +1008,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
   const deleteContractFromAPI = async (contractId) => {
     try {
-      await axiosInstance.delete(`/smartcontract/${contractId}`);
+      await axiosInstance.delete(`/contracts/${contractId}`);
       return true;
     } catch (error) {
       console.error("Error deleting contract from API:", error);

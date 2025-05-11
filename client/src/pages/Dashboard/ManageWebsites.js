@@ -29,7 +29,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
     fetchWebsites();
     checkSubscriptionStatus();
   }, []);
-  
+
   // Check subscription status
   const checkSubscriptionStatus = async () => {
     try {
@@ -154,7 +154,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           showMessage(error.response.data.message || "Failed to add website. Please try again.", "error");
         }
       } else {
-        showMessage("Failed to add website. Please try again.", "error");
+      showMessage("Failed to add website. Please try again.", "error");
       }
     }
   };
@@ -207,19 +207,19 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   // Function to delete a website
   const handleDelete = async (website) => {
     if (window.confirm(`Are you sure you want to delete ${website.Domain}? This action cannot be undone.`)) {
-      setDeleteLoading(true);
-      try {
+    setDeleteLoading(true);
+    try {
         const response = await axiosInstance.delete(`/website/delete/${website.siteId}`);
-        
-        if (response.status === 200) {
+
+      if (response.status === 200) {
           showMessage(`${website.Domain} has been deleted successfully`, "success");
           
           // Remove from local state
           setWebsiteArray(websiteArray.filter(site => site.siteId !== website.siteId));
-          
+        
           // If this was the selected website, clear selection
           if (selectedWebsite && selectedWebsite.siteId === website.siteId) {
-            setSelectedWebsite(null);
+          setSelectedWebsite(null);
           }
           
           // If this was the currently selected website in the app, clear localStorage
@@ -227,13 +227,13 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
             localStorage.removeItem("idy");
             localStorage.removeItem("selectedWebsite");
           }
-        }
-      } catch (error) {
-        console.error("Error deleting website:", error);
-        showMessage("Failed to delete website. Please try again.", "error");
-      } finally {
-        setDeleteLoading(false);
       }
+    } catch (error) {
+      console.error("Error deleting website:", error);
+      showMessage("Failed to delete website. Please try again.", "error");
+    } finally {
+      setDeleteLoading(false);
+    }
     }
   };
 
@@ -259,7 +259,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           Add Website
         </button>
       </div>
-      
+
       {/* Grace Period Warning */}
       {inGracePeriod && gracePeriodInfo && (
         <GracePeriodWarning 
@@ -304,17 +304,17 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
                 {websiteArray.map((website) => (
-                  <tr key={website.siteId} className="hover:bg-gray-50">
+                <tr key={website.siteId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full">
@@ -327,8 +327,8 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                           <div className="text-sm text-gray-500">{website.Name || <em>No name provided</em>}</div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                       {website.isVerified ? (
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           Verified
@@ -336,34 +336,34 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                       ) : (
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                           Not Verified
-                        </span>
+                    </span>
                       )}
-                    </td>
+                  </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {!website.isVerified && (
-                        <button
+                    {!website.isVerified && (
+                      <button
                           onClick={() => {
                             setSelectedWebsite(website);
                             generateScriptCode(website.siteId);
                             setScriptModal(true);
                           }}
                           className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Verify
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(website)}
-                        className="text-red-600 hover:text-red-900"
-                        disabled={deleteLoading}
                       >
-                        Delete
+                        Verify
                       </button>
-                    </td>
-                  </tr>
+                    )}
+                    <button
+                      onClick={() => handleDelete(website)}
+                        className="text-red-600 hover:text-red-900"
+                      disabled={deleteLoading}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
                 ))}
-              </tbody>
-            </table>
+          </tbody>
+        </table>
           </div>
         )}
       </div>
@@ -380,45 +380,45 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddWebsite}>
-              <div className="mb-4">
-                <label className="block font-medium text-gray-700 mb-2">Domain*</label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-base">
-                    https://
-                  </span>
+                  </svg>
+                </button>
+              </div>
+              
+              <form onSubmit={handleAddWebsite}>
+                <div className="mb-4">
+                  <label className="block font-medium text-gray-700 mb-2">Domain*</label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-base">
+                      https://
+                    </span>
+                    <input
+                      type="text"
+                      className="flex-1 min-w-0 block w-full px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="example.com"
+                      value={newWebsiteDomain}
+                      onChange={(e) => setNewWebsiteDomain(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
+                  </p>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block font-medium text-gray-700 mb-2">Name (optional)</label>
                   <input
                     type="text"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="example.com"
-                    value={newWebsiteDomain}
-                    onChange={(e) => setNewWebsiteDomain(e.target.value)}
-                    required
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Please enter a name for your website"
+                    value={newWebsiteName}
+                    onChange={(e) => setNewWebsiteName(e.target.value)}
                   />
+                  <p className="mt-1 text-sm text-gray-500">
+                    This is the name that will be displayed in the dashboard
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Just the domain or subdomain without 'https://' and/or 'www' (e.g. 'example.com' or 'subdomain.example.com')
-                </p>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block font-medium text-gray-700 mb-2">Name (optional)</label>
-                <input
-                  type="text"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Please enter a name for your website"
-                  value={newWebsiteName}
-                  onChange={(e) => setNewWebsiteName(e.target.value)}
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  This is the name that will be displayed in the dashboard
-                </p>
-              </div>
-              
+                
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -435,7 +435,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                   {inGracePeriod ? "Disabled During Grace Period" : "Add Website"}
                 </button>
               </div>
-            </form>
+              </form>
           </div>
         </div>
       )}
@@ -452,10 +452,10 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
+                  </svg>
+                </button>
+              </div>
+              
             <div className="mb-4">
               <p className="text-gray-600 mb-4">
                 To verify ownership of <strong>{selectedWebsite.Domain}</strong>, please add the following script to your website's HTML just before the closing <code>&lt;/head&gt;</code> tag:
@@ -481,17 +481,17 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
             </div>
             
             <div className="mt-6 flex justify-between">
-              <button
+                <button
                 onClick={() => setScriptModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => handleVerify(selectedWebsite)}
+                >
+                  Close
+                </button>
+                  <button
+                    onClick={() => handleVerify(selectedWebsite)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                disabled={verifyLoading}
-              >
+                    disabled={verifyLoading}
+                  >
                 {verifyLoading ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
