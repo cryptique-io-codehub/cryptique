@@ -4,6 +4,7 @@ const {verifyToken}=require('../middleware/auth')
 const Team = require('../models/team');
 const cors = require('cors');
 const router = express.Router();
+const { checkTeamMemberLimit } = require('../middleware/limitChecker');
 
 // Define CORS options
 const corsOptions = {
@@ -14,16 +15,16 @@ const corsOptions = {
   maxAge: 86400
 };
 
-router.post('/create',verifyToken,addMember);
-router.get('/:teamId/members',cors(corsOptions),verifyToken,getMembers);
-router.get('/details',verifyToken,getTeamDetails);
-router.get('/admin-team-details',verifyToken,getAdminTeamDetails);
-router.post('/createNewTeam',verifyToken,createNewTeam);
-router.post('/delete',verifyToken,deleteTeam);
-router.post('/update',verifyToken,updateTeam);
-router.post('/remove-member',verifyToken,removeMember);
-router.post('/update-member-role',verifyToken,updateMemberRole);
-router.get('/subscription-status/:teamName',cors(corsOptions),verifyToken,getSubscriptionStatus);
+router.post('/create', verifyToken, checkTeamMemberLimit(), addMember);
+router.get('/:teamId/members', cors(corsOptions), verifyToken, getMembers);
+router.get('/details', verifyToken, getTeamDetails);
+router.get('/admin-team-details', verifyToken, getAdminTeamDetails);
+router.post('/createNewTeam', verifyToken, createNewTeam);
+router.post('/delete', verifyToken, deleteTeam);
+router.post('/update', verifyToken, updateTeam);
+router.post('/remove-member', verifyToken, removeMember);
+router.post('/update-member-role', verifyToken, updateMemberRole);
+router.get('/subscription-status/:teamName', cors(corsOptions), verifyToken, getSubscriptionStatus);
 
 // Save billing details for a team
 router.post('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {

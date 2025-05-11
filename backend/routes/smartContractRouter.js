@@ -6,6 +6,8 @@ const {
   updateSmartContract 
 } = require('../controllers/smartContractController');
 const { verifyToken } = require('../middleware/auth');
+// Import the limit checker
+const { checkSmartContractLimit } = require('../middleware/limitChecker');
 
 const router = express.Router();
 
@@ -15,8 +17,8 @@ router.use(verifyToken);
 // Get all contracts for a team
 router.get('/team/:teamName', getTeamContracts);
 
-// Add a new contract
-router.post('/', addSmartContract);
+// Add a new contract - apply limit checking
+router.post('/', checkSmartContractLimit(), addSmartContract);
 
 // Delete a contract
 router.delete('/:contractId', deleteSmartContract);

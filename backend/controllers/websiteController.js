@@ -18,24 +18,8 @@ exports.addWebsite=async (req,res)=>{
 
         if(!checkTeam) return res.status(404).json({message:"Team not found"});
 
-        // Check subscription plan and website limits
-        const subscriptionPlan = checkTeam.subscription?.plan || 'offchain';
-        const planLimits = getPlanLimits(subscriptionPlan);
-        
-        // Count existing websites
-        const currentWebsiteCount = checkTeam.websites?.length || 0;
-        
-        // Check if the team has reached their website limit
-        if (currentWebsiteCount >= planLimits.websites) {
-            return res.status(403).json({
-                error: 'Resource limit reached',
-                message: `You have reached the maximum number of websites (${planLimits.websites}) allowed on your ${subscriptionPlan} plan.`,
-                resourceType: 'websites',
-                currentUsage: currentWebsiteCount,
-                limit: planLimits.websites,
-                upgradeOptions: getUpgradeOptions(subscriptionPlan)
-            });
-        }
+        // The limit checking is now handled by the middleware
+        // No need to check limits here
 
         const siteId = uuidv4(); 
         // console.log(siteId);

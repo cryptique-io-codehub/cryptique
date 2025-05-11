@@ -143,24 +143,8 @@ exports.addMember=async (req,res)=>{
             return res.status(404).json({ message: "Team not found" });
         }
         
-        // Check subscription plan and team member limits
-        const subscriptionPlan = teamss.subscription?.plan || 'offchain';
-        const planLimits = getPlanLimits(subscriptionPlan);
-        
-        // Count existing team members
-        const currentMemberCount = teamss.user?.length || 0;
-        
-        // Check if the team has reached their member limit
-        if (currentMemberCount >= planLimits.teamMembers) {
-            return res.status(403).json({
-                error: 'Resource limit reached',
-                message: `You have reached the maximum number of team members (${planLimits.teamMembers}) allowed on your ${subscriptionPlan} plan.`,
-                resourceType: 'teamMembers',
-                currentUsage: currentMemberCount,
-                limit: planLimits.teamMembers,
-                upgradeOptions: getUpgradeOptions(subscriptionPlan)
-            });
-        }
+        // Limit checking is now handled by the middleware
+        // No need to check limits here
         
         const userIdToCheck=this_user._id;
         // console.log(teamss);
