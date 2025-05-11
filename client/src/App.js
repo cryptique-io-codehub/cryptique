@@ -20,6 +20,8 @@ import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
 import ConversionEventsPage from "./pages/ConversionEvents/ConversionEventsPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Wrapper from "./components/Wrapper";
 
 const RouteListener = () => {
   const location = useLocation();
