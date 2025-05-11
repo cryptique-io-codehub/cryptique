@@ -609,4 +609,27 @@ router.get('/ab-tests/:testId/results', async (req, res) => {
   }
 });
 
+// Error handling middleware to ensure all errors include proper CORS headers
+router.use((err, req, res, next) => {
+  console.error('EventRouter error:', err);
+  
+  // Ensure CORS headers are set
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('app.cryptique.io') || 
+                origin.includes('cryptique.io') || 
+                origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  // Return error response
+  res.status(err.status || 500).json({
+    error: true,
+    message: err.message || 'An error occurred in the event service',
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 module.exports = router; 

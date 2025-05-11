@@ -239,6 +239,11 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
+    
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
   }
   
   next();
@@ -530,7 +535,7 @@ app.use('/api/sdk', sdkRouter);
 app.use('/api/user', userRouter);
 // app.use('/api/chat', chatRouter); // Commenting out since the file doesn't exist
 // app.use('/api/payment', paymentRouter); // Commenting out since the file doesn't exist
-app.use('/api/events', eventRouter);
+app.use('/api/events', cors(mainCorsOptions), eventRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

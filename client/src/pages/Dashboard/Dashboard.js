@@ -6,7 +6,7 @@ import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
 import { Menu, Home, BarChart, Activity } from "lucide-react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
 import ManageWebsites from './ManageWebsites.js'
@@ -17,7 +17,6 @@ import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
-import ConversionEventsPage from "../ConversionEvents/ConversionEventsPage";
 
 const Dashboard = () => {
   // State management
@@ -259,14 +258,7 @@ const Dashboard = () => {
       case "campaigns":
         return <Campaigns {...commonProps} />;
       case "conversion-events":
-        return (
-          <>
-            <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
-            <main className={getMainPaddingClasses()}>
-              <ConversionEventsPage />
-            </main>
-          </>
-        );
+        return <ConversionEvents {...commonProps} />;
       case "advertise":
         return <Advertise {...commonProps} />;
       case "history":
