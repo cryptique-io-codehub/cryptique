@@ -2,6 +2,7 @@ import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, G
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
+import { BiBarChart } from "react-icons/bi";
 
 const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, currentPage }) => {
   const [isHovering, setIsHovering] = useState(false);
@@ -158,7 +159,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
             className={`${isActive("conversion-events") ? "text-blue-600 bg-blue-50" : "text-gray-700"} flex items-center gap-2 hover:bg-gray-200 ${effectiveIsCompact && !isHovering ? "p-1" : "p-2"} rounded-lg cursor-pointer ${!showExpanded ? "justify-center" : ""} transition-all duration-200`}
             onClick={() => onNavigate && onNavigate("conversion-events")}
           >
-            <List size={effectiveIsCompact && !isHovering ? 16 : 14} /> {showExpanded && <span className="transition-opacity duration-200">Conversion events</span>}
+            <BiBarChart className="menu-icon" /> {showExpanded && <span className="transition-opacity duration-200">Conversion Events</span>}
           </Link>
           <Link 
             to={`/${selectedTeam}/advertise`}

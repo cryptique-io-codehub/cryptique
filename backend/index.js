@@ -505,6 +505,34 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
+// Import routers
+const authRouter=require('./routes/authRouter');
+const teamRouter=require('./routes/teamRouter');
+const websiteRouter=require('./routes/websiteRouter');
+const analyticsRouter=require('./routes/analyticsRouter');
+const dashboardRouter=require('./routes/dashboardRouter');
+const transactionRouter=require('./routes/transactionRouter');
+const contractRouter = require('./routes/smartContractRouter');
+const sdkRouter = require('./routes/sdkRouter');
+const userRouter = require('./routes/userRouter');
+const chatRouter = require('./routes/chatRouter');
+const paymentRouter = require('./routes/paymentRouter');
+const eventRouter = require('./routes/eventRouter');
+
+// Use routers
+app.use('/api/auth', authRouter);
+app.use('/api/team', teamRouter);
+app.use('/api/website', websiteRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/contracts', contractRouter);
+app.use('/api/transactions', transactionRouter);
+app.use('/api/sdk', sdkRouter);
+app.use('/api/user', userRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/payment', paymentRouter);
+app.use('/api/events', eventRouter);
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

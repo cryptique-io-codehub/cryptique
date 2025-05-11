@@ -1,6 +1,8 @@
 const express = require('express');
 const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats, updateDailyAnalyticsStats, updateWeeklyAnalyticsStats, updateMonthlyAnalyticsStats} = require('../controllers/sdkController');
 const cors = require('cors');
+const { track } = require('../controllers/trackController');
+const { getEventConfig, trackEvent, trackEvents } = require('../controllers/eventController');
 
 const router = express.Router();
 
@@ -59,5 +61,13 @@ router.get('/update-all-analytics-stats-hourly', updateHourlyAnalyticsStats);
 router.get('/update-all-analytics-stats-daily', updateDailyAnalyticsStats);
 router.get('/update-all-analytics-stats-weekly', updateWeeklyAnalyticsStats);
 router.get('/update-all-analytics-stats-monthly', updateMonthlyAnalyticsStats);
+
+// Event tracking endpoints
+router.post('/track-event', trackEvent);          // Track a single event
+router.post('/track-events', trackEvents);        // Track multiple events in batch
+router.get('/events/:siteId', getEventConfig);    // Get event configuration for a website
+
+// Handle preflight requests for all endpoints
+router.options('*', cors(corsOptions));
 
 module.exports = router;
