@@ -1,4 +1,14 @@
 /* ConversionEvents.css - Main styling for Conversion Events page */
+/* Define default variables if they don't exist in the parent theme */
+:root {
+  --text-color: #fff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --bg-primary: #141e3c;
+  --bg-secondary: rgba(20, 30, 60, 0.3);
+  --accent-primary: #4a8cff;
+  --accent-secondary: #8f5fff;
+  --border-color: rgba(100, 120, 200, 0.2);
+}
 
 .conversion-events-container {
   padding: 2rem;

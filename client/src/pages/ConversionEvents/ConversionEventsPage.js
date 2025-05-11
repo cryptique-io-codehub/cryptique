@@ -6,6 +6,13 @@ import EventModal from './EventModal';
 import CodeSnippetModal from './CodeSnippetModal';
 
 const ConversionEventsPage = () => {
+  // Add debugging state
+  const [debug, setDebug] = useState({ 
+    loaded: false, 
+    errors: [],
+    apiResponses: {} 
+  });
+  
   const [events, setEvents] = useState([]);
   const [websites, setWebsites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,36 +29,84 @@ const ConversionEventsPage = () => {
     const fetchWebsitesAndEvents = async () => {
       setLoading(true);
       setError(null);
+      const debugErrors = [];
+      const debugResponses = {};
       
       try {
         // Get websites for the team
-        const websiteResponse = await axiosInstance.get(`/website/team/${selectedTeam}`);
+        console.log("Fetching websites for team:", selectedTeam);
         
-        if (websiteResponse.data && websiteResponse.data.websites) {
-          setWebsites(websiteResponse.data.websites);
+        if (!selectedTeam) {
+          debugErrors.push("No team selected in localStorage");
+          setDebug(prev => ({ ...prev, errors: [...prev.errors, "No team selected in localStorage"] }));
+          throw new Error("No team selected. Please select a team first.");
+        }
+        
+        try {
+          const websiteResponse = await axiosInstance.get(`/website/team/${selectedTeam}`);
+          debugResponses.websiteResponse = websiteResponse.data;
           
-          // Select the first website by default if none selected
-          if (!selectedWebsite && websiteResponse.data.websites.length > 0) {
-            setSelectedWebsite(websiteResponse.data.websites[0].siteId);
+          if (websiteResponse.data && websiteResponse.data.websites) {
+            setWebsites(websiteResponse.data.websites);
+            console.log("Websites loaded:", websiteResponse.data.websites.length);
             
-            // Load events for the first website
-            const eventsResponse = await axiosInstance.get(`/events/site/${websiteResponse.data.websites[0].siteId}`);
-            if (eventsResponse.data && eventsResponse.data.events) {
-              setEvents(eventsResponse.data.events);
+            // Select the first website by default if none selected
+            if (!selectedWebsite && websiteResponse.data.websites.length > 0) {
+              const firstSiteId = websiteResponse.data.websites[0].siteId;
+              setSelectedWebsite(firstSiteId);
+              console.log("Selected first website:", firstSiteId);
+              
+              try {
+                // Load events for the first website
+                const eventsResponse = await axiosInstance.get(`/events/site/${firstSiteId}`);
+                debugResponses.eventsResponse = eventsResponse.data;
+                
+                if (eventsResponse.data && eventsResponse.data.events) {
+                  setEvents(eventsResponse.data.events);
+                  console.log("Events loaded:", eventsResponse.data.events.length);
+                } else {
+                  debugErrors.push("No events found in response");
+                }
+              } catch (eventError) {
+                debugErrors.push(`Event fetch error: ${eventError.message}`);
+                console.error("Error fetching events:", eventError);
+              }
+            } else if (selectedWebsite) {
+              try {
+                // Load events for the selected website
+                const eventsResponse = await axiosInstance.get(`/events/site/${selectedWebsite}`);
+                debugResponses.eventsResponse = eventsResponse.data;
+                
+                if (eventsResponse.data && eventsResponse.data.events) {
+                  setEvents(eventsResponse.data.events);
+                  console.log("Events loaded:", eventsResponse.data.events.length);
+                } else {
+                  debugErrors.push("No events found in response");
+                }
+              } catch (eventError) {
+                debugErrors.push(`Event fetch error: ${eventError.message}`);
+                console.error("Error fetching events:", eventError);
+              }
             }
-          } else if (selectedWebsite) {
-            // Load events for the selected website
-            const eventsResponse = await axiosInstance.get(`/events/site/${selectedWebsite}`);
-            if (eventsResponse.data && eventsResponse.data.events) {
-              setEvents(eventsResponse.data.events);
-            }
+          } else {
+            debugErrors.push("No websites found in response");
           }
+        } catch (websiteError) {
+          debugErrors.push(`Website fetch error: ${websiteError.message}`);
+          console.error("Error fetching websites:", websiteError);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load websites and events. Please try again.');
+        setError(err.message || 'Failed to load websites and events. Please try again.');
+        debugErrors.push(`Main error: ${err.message}`);
       } finally {
         setLoading(false);
+        setDebug(prev => ({ 
+          ...prev, 
+          loaded: true, 
+          errors: [...prev.errors, ...debugErrors], 
+          apiResponses: debugResponses 
+        }));
       }
     };
     
@@ -143,6 +198,51 @@ const ConversionEventsPage = () => {
     groups[category].push(event);
     return groups;
   }, {});
+  
+  // Add debug panel to display errors
+  const renderDebugPanel = () => {
+    if (!debug.loaded) return null;
+    
+    return (
+      <div style={{ 
+        position: 'fixed', 
+        bottom: '10px', 
+        right: '10px', 
+        padding: '15px', 
+        background: 'rgba(0,0,0,0.8)', 
+        color: 'white',
+        borderRadius: '5px',
+        maxWidth: '400px',
+        maxHeight: '300px',
+        overflow: 'auto',
+        zIndex: 1000
+      }}>
+        <h4>Debug Info</h4>
+        <div>
+          <strong>Selected Team:</strong> {selectedTeam || 'None'}
+        </div>
+        <div>
+          <strong>Selected Website:</strong> {selectedWebsite || 'None'}
+        </div>
+        <div>
+          <strong>Websites Count:</strong> {websites.length}
+        </div>
+        <div>
+          <strong>Events Count:</strong> {events.length}
+        </div>
+        {debug.errors.length > 0 && (
+          <>
+            <h5>Errors:</h5>
+            <ul>
+              {debug.errors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    );
+  };
   
   return (
     <div className="conversion-events-container">
@@ -250,7 +350,7 @@ const ConversionEventsPage = () => {
                       
                       <button 
                         className="action-button analytics"
-                        onClick={() => window.location.href = `/analytics/events/${event._id}`}
+                        onClick={() => {}} 
                         title="View analytics"
                       >
                         <FiBarChart2 size={18} />
@@ -258,7 +358,7 @@ const ConversionEventsPage = () => {
                       
                       <button 
                         className="action-button edit"
-                        onClick={() => handleEditEvent(event)}
+                        onClick={() => handleEditEvent(event)} 
                         title="Edit event"
                       >
                         <FiEdit2 size={18} />
@@ -266,7 +366,7 @@ const ConversionEventsPage = () => {
                       
                       <button 
                         className="action-button delete"
-                        onClick={() => handleDeleteEvent(event._id)}
+                        onClick={() => handleDeleteEvent(event._id)} 
                         title="Delete event"
                       >
                         <FiTrash2 size={18} />
@@ -298,6 +398,9 @@ const ConversionEventsPage = () => {
           onClose={() => setShowCodeModal(false)}
         />
       )}
+      
+      {/* Add debug panel */}
+      {renderDebugPanel()}
     </div>
   );
 };
