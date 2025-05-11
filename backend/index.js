@@ -3,6 +3,9 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
+const userRouter = require("./routes/userRouter");
+const campaignRouter = require("./routes/campaignRouter");
+const stripeRouter = require("./routes/stripeRouter");
 const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
 const { connectToDatabase } = require("./config/database");
@@ -11,30 +14,6 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Team = require("./models/team");
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Import all routers in one place to avoid duplicates
-const userRouter = require("./routes/userRouter");
-const campaignRouter = require("./routes/campaignRouter");
-const stripeRouter = require("./routes/stripeRouter");
-const teamRouter = require("./routes/teamRouter");
-const websiteRouter = require("./routes/websiteRouter");
-const analyticsRouter = require("./routes/analyticsRouter");
-const dashboardRouter = require("./routes/dashboardRouter");
-const transactionRouter = require("./routes/transactionRouter");
-const contractRouter = require("./routes/smartContractRouter");
-const sdkRouter = require("./routes/sdkRouter");
-const chatRouter = require("./routes/chatRouter");
-const paymentRouter = require("./routes/paymentRouter");
-const eventRouter = require("./routes/eventRouter");
-
-// Check if auth router exists before importing
-let authRouter;
-try {
-  authRouter = require("./routes/authRouter");
-} catch (error) {
-  console.warn("authRouter module not found. Using userRouter for /api/auth route instead.");
-  authRouter = userRouter; // Fallback to userRouter if authRouter doesn't exist
-}
 
 // Set trust proxy to true for Vercel/AWS Lambda environments
 app.set('trust proxy', 1);
@@ -152,9 +131,9 @@ connectToDatabase()
 
 // Define CORS options for different routes
 const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io", "https://www.cryptique.io", "https://cashtrek.org"],
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400
 };
@@ -222,6 +201,9 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
+// We'll handle CORS per-route instead of globally
+// This prevents conflicts between different CORS policies
+
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
   // Set common security headers
@@ -231,47 +213,32 @@ app.use((req, res, next) => {
   
   const origin = req.headers.origin;
   
-  // For SDK routes, use more permissive CORS settings
+  // For SDK routes, use origin-specific CORS instead of wide open
   if (req.path.startsWith('/api/sdk/')) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Max-Age', '86400');
+    }
     
     // Handle preflight OPTIONS requests for SDK routes immediately
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
   } 
-  // For analytics routes, also be permissive
-  else if (req.path.startsWith('/api/analytics/')) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-    
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
-    }
-  }
   // For all other routes, use more restrictive CORS
-  else if (origin && (
-    origin.includes('app.cryptique.io') || 
-    origin.includes('cryptique.io') || 
-    origin.includes('localhost') ||
-    origin.includes('cashtrek.org')
-  )) {
+  else if (origin && (origin.includes('app.cryptique.io') || 
+             origin.includes('cryptique.io') || 
+             origin.includes('localhost'))) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
-    
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
-    }
   }
   
   next();
@@ -538,21 +505,32 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-// Use routers - using the already imported router variables from above
+// Import routers
+const authRouter=userRouter; // Use existing userRouter for auth routes since authRouter.js doesn't exist
+const teamRouter=require('./routes/teamRouter');
+const websiteRouter=require('./routes/websiteRouter');
+const analyticsRouter=require('./routes/analytics');
+// const dashboardRouter=require('./routes/dashboardRouter'); // File doesn't exist, commenting out
+const transactionRouter=require('./routes/transactionRouter');
+const contractRouter = require('./routes/smartContractRouter');
+const sdkRouter = require('./routes/sdkRouter');
+// const chatRouter = require('./routes/chatRouter'); // File doesn't exist, commenting out
+// const paymentRouter = require('./routes/paymentRouter'); // File doesn't exist, commenting out
+const eventRouter = require('./routes/eventRouter');
+
+// Use routers
 app.use('/api/auth', authRouter);
 app.use('/api/team', teamRouter);
 app.use('/api/website', websiteRouter);
 app.use('/api/analytics', analyticsRouter);
-app.use('/api/dashboard', dashboardRouter);
+// app.use('/api/dashboard', dashboardRouter); // Commenting out since the file doesn't exist
 app.use('/api/contracts', contractRouter);
 app.use('/api/transactions', transactionRouter);
 app.use('/api/sdk', sdkRouter);
 app.use('/api/user', userRouter);
-app.use('/api/chat', chatRouter);
-app.use('/api/payment', paymentRouter);
+// app.use('/api/chat', chatRouter); // Commenting out since the file doesn't exist
+// app.use('/api/payment', paymentRouter); // Commenting out since the file doesn't exist
 app.use('/api/events', eventRouter);
-app.use('/api/campaign', campaignRouter);
-app.use('/api/stripe', stripeRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

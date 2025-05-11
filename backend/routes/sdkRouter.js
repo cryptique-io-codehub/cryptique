@@ -6,11 +6,11 @@ const { getEventConfig, trackEvent, trackEvents } = require('../controllers/even
 
 const router = express.Router();
 
-// Ultra-permissive CORS options for SDK endpoints
+// Configure CORS for the SDK endpoints - make it fully permissive for the SDK
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: '*', // Allow requests from any origin for the SDK
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id', 'Accept'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
   credentials: false, // SDK doesn't need credentials
   maxAge: 86400, // 24 hours
@@ -21,12 +21,12 @@ const corsOptions = {
 // Apply CORS to all routes in this router
 router.use(cors(corsOptions));
 
-// Extra middleware to ensure CORS headers are set correctly for all browsers
+// Middleware to ensure CORS headers are set - this is a backup in case the cors middleware doesn't work
 router.use((req, res, next) => {
-  // For SDK routes, allow any origin with a wildcard
+  // For SDK routes, allow any origin
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept, Origin');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept');
   res.header('Access-Control-Max-Age', '86400');
   
   // Handle OPTIONS requests immediately
@@ -35,11 +35,6 @@ router.use((req, res, next) => {
   }
   
   next();
-});
-
-// Handle all preflight requests explicitly
-router.options('*', (req, res) => {
-  res.status(204).end();
 });
 
 // Define routes with error handling
@@ -71,5 +66,8 @@ router.get('/update-all-analytics-stats-monthly', updateMonthlyAnalyticsStats);
 router.post('/track-event', trackEvent);          // Track a single event
 router.post('/track-events', trackEvents);        // Track multiple events in batch
 router.get('/events/:siteId', getEventConfig);    // Get event configuration for a website
+
+// Handle preflight requests for all endpoints
+router.options('*', cors(corsOptions));
 
 module.exports = router;
