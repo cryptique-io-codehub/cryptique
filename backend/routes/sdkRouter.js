@@ -6,9 +6,27 @@ const { getEventConfig, trackEvent, trackEvents } = require('../controllers/even
 
 const router = express.Router();
 
-// Configure CORS for the SDK endpoints - make it fully permissive for the SDK
+// Configure CORS for the SDK endpoints - allow specific origins
 const corsOptions = {
-  origin: '*', // Allow requests from any origin for the SDK
+  origin: function(origin, callback) {
+    // List of allowed domains for SDK tracking
+    const allowedOrigins = [
+      'https://app.cryptique.io', 
+      'https://cryptique.io', 
+      'http://localhost:3000',
+      'https://cashtrek.org',
+      'https://www.cashtrek.org'
+    ];
+    
+    // Either allow any origin in development, or check against allowed list
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin);
+    } else {
+      // For debugging purposes, log the rejected origin
+      console.log(`CORS rejected origin: ${origin}`);
+      callback(null, allowedOrigins[0]); // Allow the request but with a different origin
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id', 'Accept'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
@@ -23,8 +41,25 @@ router.use(cors(corsOptions));
 
 // Middleware to ensure CORS headers are set - this is a backup in case the cors middleware doesn't work
 router.use((req, res, next) => {
-  // For SDK routes, allow any origin
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  
+  // List of allowed domains for SDK tracking
+  const allowedOrigins = [
+    'https://app.cryptique.io', 
+    'https://cryptique.io', 
+    'http://localhost:3000',
+    'https://cashtrek.org',
+    'https://www.cashtrek.org'
+  ];
+  
+  // Set the appropriate CORS headers
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    // Allow the request with a default origin
+    res.header('Access-Control-Allow-Origin', 'https://app.cryptique.io');
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept');
   res.header('Access-Control-Max-Age', '86400');

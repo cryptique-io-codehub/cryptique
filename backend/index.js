@@ -514,7 +514,6 @@ const dashboardRouter=require('./routes/dashboardRouter');
 const transactionRouter=require('./routes/transactionRouter');
 const contractRouter = require('./routes/smartContractRouter');
 const sdkRouter = require('./routes/sdkRouter');
-const userRouter = require('./routes/userRouter');
 const chatRouter = require('./routes/chatRouter');
 const paymentRouter = require('./routes/paymentRouter');
 const eventRouter = require('./routes/eventRouter');
