@@ -252,7 +252,7 @@ router.post('/create-checkout-session', async (req, res) => {
 router.post('/create-portal-session', async (req, res) => {
   try {
     const { teamId, returnUrl } = req.body;
-    
+
     console.log('Creating portal session for teamId:', teamId);
 
     // Find the team first
@@ -321,10 +321,10 @@ router.post('/create-portal-session-by-subscription', async (req, res) => {
     const { subscriptionId, returnUrl } = req.body;
     
     console.log('Creating portal session using subscription ID:', subscriptionId);
-
+        
     if (!subscriptionId) {
       return res.status(400).json({ error: 'Subscription ID is required' });
-    }
+        }
 
     // Get the subscription to find the customer
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -346,7 +346,7 @@ router.post('/create-portal-session-by-subscription', async (req, res) => {
   } catch (error) {
     console.error('Error creating portal session from subscription:', error);
     res.status(500).json({ error: 'Failed to create portal session' });
-  }
+        }
 });
 
 // Handle webhook events
