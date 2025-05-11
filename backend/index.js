@@ -239,11 +239,6 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
-    
-    // Handle preflight OPTIONS requests
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
-    }
   }
   
   next();
@@ -509,33 +504,6 @@ async function handleSubscriptionEvent(subscription, eventType) {
     console.error(`Error handling subscription ${eventType} event:`, error);
   }
 }
-
-// Import routers
-const authRouter=userRouter; // Use existing userRouter for auth routes since authRouter.js doesn't exist
-const teamRouter=require('./routes/teamRouter');
-const websiteRouter=require('./routes/websiteRouter');
-const analyticsRouter=require('./routes/analytics');
-// const dashboardRouter=require('./routes/dashboardRouter'); // File doesn't exist, commenting out
-const transactionRouter=require('./routes/transactionRouter');
-const contractRouter = require('./routes/smartContractRouter');
-const sdkRouter = require('./routes/sdkRouter');
-// const chatRouter = require('./routes/chatRouter'); // File doesn't exist, commenting out
-// const paymentRouter = require('./routes/paymentRouter'); // File doesn't exist, commenting out
-const eventRouter = require('./routes/eventRouter');
-
-// Use routers
-app.use('/api/auth', authRouter);
-app.use('/api/team', teamRouter);
-app.use('/api/website', websiteRouter);
-app.use('/api/analytics', analyticsRouter);
-// app.use('/api/dashboard', dashboardRouter); // Commenting out since the file doesn't exist
-app.use('/api/contracts', contractRouter);
-app.use('/api/transactions', transactionRouter);
-app.use('/api/sdk', sdkRouter);
-app.use('/api/user', userRouter);
-// app.use('/api/chat', chatRouter); // Commenting out since the file doesn't exist
-// app.use('/api/payment', paymentRouter); // Commenting out since the file doesn't exist
-app.use('/api/events', cors(mainCorsOptions), eventRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

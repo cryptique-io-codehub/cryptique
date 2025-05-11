@@ -19,9 +19,6 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
-import ConversionEventsPage from "./pages/ConversionEvents/ConversionEventsPage";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Wrapper from "./components/Wrapper";
 
 const RouteListener = () => {
   const location = useLocation();
@@ -84,18 +81,6 @@ function App() {
             <Route path="/:team/settings/pricing" element={<Dashboard />} />
             
             <Route path="/test-analytics" element={<TestAnalytics />} />
-            
-            {/* Add Conversion Events route */}
-            <Route path="/conversion-events" element={
-              <ProtectedRoute>
-                <Wrapper
-                  title="Conversion Events"
-                  description="Create and manage custom events to track user interactions"
-                >
-                  <ConversionEventsPage />
-                </Wrapper>
-              </ProtectedRoute>
-            }/>
           </Routes>
         </BrowserRouter>
       </ContractDataProvider>

@@ -218,15 +218,15 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
   // Function to delete a website
   const handleDelete = async (website) => {
     if (window.confirm(`Are you sure you want to delete ${website.Domain}? This action cannot be undone.`)) {
-    setDeleteLoading(true);
-    try {
+      setDeleteLoading(true);
+      try {
         console.log(`Attempting to delete website: ${website.Domain} (ID: ${website.siteId})`);
         
         const response = await axiosInstance.delete(`/website/delete/${website.siteId}`);
         
         console.log("Delete response:", response.data);
 
-      if (response.status === 200) {
+        if (response.status === 200) {
           showMessage(`${website.Domain} has been deleted successfully`, "success");
           
           // Remove from local state
@@ -234,7 +234,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
         
           // If this was the selected website, clear selection
           if (selectedWebsite && selectedWebsite.siteId === website.siteId) {
-          setSelectedWebsite(null);
+            setSelectedWebsite(null);
           }
           
           // If this was the currently selected website in the app, clear localStorage
@@ -266,8 +266,8 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
           // Something happened in setting up the request
           showMessage(`Failed to delete website: ${error.message}`, "error");
         }
-    } finally {
-      setDeleteLoading(false);
+      } finally {
+        setDeleteLoading(false);
       }
     }
   };
@@ -508,10 +508,10 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
+                </svg>
+              </button>
+            </div>
+            
             {/* Instructions */}
             <p className="text-gray-700 mb-4">
               {selectedWebsite.isVerified 
@@ -522,7 +522,7 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
             {/* Tabs Navigation */}
             <div className="mb-5 border-b border-gray-200">
               <nav className="flex -mb-px">
-                <button
+                <button 
                   className={`px-4 py-2 border-b-2 font-medium text-sm ${
                     activeTab === 'direct' 
                       ? 'border-blue-500 text-blue-600' 
@@ -532,56 +532,56 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                 >
                   Standard Installation
                 </button>
-                  <button
+                <button 
                   className={`ml-8 px-4 py-2 border-b-2 font-medium text-sm ${
                     activeTab === 'gtm' 
                       ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
-            onClick={() => setActiveTab('gtm')}
-          >
-            Google Tag Manager
-          </button>
-        </nav>
-      </div>
-      
+                  onClick={() => setActiveTab('gtm')}
+                >
+                  Google Tag Manager
+                </button>
+              </nav>
+            </div>
+            
             {/* Tab Content */}
             {activeTab === 'direct' && (
-          <div>
+              <div>
                 <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4">
                   <p className="text-sm text-gray-600 mb-2">
                     <span className="font-semibold">Step 1:</span> Add this code just before the closing <code className="bg-gray-100 px-1 py-0.5 rounded">&lt;/head&gt;</code> tag of your website:
-            </p>
+                  </p>
                   <div className="bg-gray-100 p-3 rounded-md overflow-auto">
                     <code className="text-sm font-mono text-gray-800">{scriptCode}</code>
                   </div>
-            </div>
+                </div>
                 
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(scriptCode);
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(scriptCode);
                     showMessage("Script copied to clipboard!", "success");
-              }}
+                  }}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
-            >
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
                     <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-              </svg>
+                  </svg>
                   Copy Code
-            </button>
-          </div>
-        )}
-        
+                </button>
+              </div>
+            )}
+            
             {activeTab === 'gtm' && (
-          <div>
+              <div>
                 <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4">
                   <p className="text-sm text-gray-600 mb-2">
                     <span className="font-semibold">Step 1:</span> In Google Tag Manager, create a new Custom HTML tag
                   </p>
                   <p className="text-sm text-gray-600 mb-2">
                     <span className="font-semibold">Step 2:</span> Paste this exact code into the HTML field:
-            </p>
+                  </p>
                   <div className="bg-gray-100 p-3 rounded-md overflow-auto">
                     <code className="text-sm font-mono text-gray-800">{scriptCode}</code>
                   </div>
@@ -591,30 +591,30 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                   <p className="text-sm text-gray-600 mt-2">
                     <span className="font-semibold">Step 4:</span> Save and publish your container
                   </p>
-            </div>
+                </div>
                 
-            <button 
-              onClick={() => {
+                <button
+                  onClick={() => {
                     navigator.clipboard.writeText(scriptCode);
                     showMessage("GTM code copied to clipboard!", "success");
-              }}
+                  }}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
-            >
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
                     <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-              </svg>
+                  </svg>
                   Copy GTM Code
-            </button>
-          </div>
-        )}
-        
+                </button>
+              </div>
+            )}
+            
             {!selectedWebsite.isVerified && (
               <div className="mt-6 flex justify-between items-center pt-4 border-t border-gray-200">
                 <div className="text-sm text-gray-600">
                   <p>After adding the code to your website, click "Verify Now" to confirm installation.</p>
-            </div>
-            <button 
+                </div>
+                <button
                   onClick={() => handleVerify(selectedWebsite)}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
                   disabled={verifyLoading}
@@ -628,14 +628,14 @@ const ManageWebsites = ({ onMenuClick, onClose, screenSize }) => {
                     <>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
+                      </svg>
                       Verify Now
                     </>
                   )}
-            </button>
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
         </div>
       )}
     </div>

@@ -148,12 +148,12 @@ exports.addSmartContract = async (req, res) => {
     
     try {
       await newContract.save();
-    console.log(`New contract created with ID: ${contractId}`);
-    
-    res.status(201).json({ 
-      message: "Contract added successfully", 
-      contract: newContract 
-    });
+      console.log(`New contract created with ID: ${contractId}`);
+      
+      res.status(201).json({ 
+        message: "Contract added successfully", 
+        contract: newContract 
+      });
     } catch (saveError) {
       console.error("Error saving new contract:", saveError);
       throw saveError;
@@ -285,7 +285,7 @@ exports.updateSmartContract = async (req, res) => {
     console.error("Error updating smart contract:", error);
     res.status(500).json({ message: "Error updating contract", error: error.message });
   }
-}; 
+};
 
 // Helper function to get plan limits
 function getPlanLimits(plan) {
