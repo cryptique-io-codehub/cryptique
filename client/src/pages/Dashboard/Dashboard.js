@@ -16,7 +16,7 @@ import ConversionEvents from './ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
-import { preloadData } from '../../utils/preloadService.js'
+import preloadData from '../../utils/preloadService.js'
 import ConversionEventsPage from "../ConversionEvents/ConversionEventsPage";
 
 const Dashboard = () => {
