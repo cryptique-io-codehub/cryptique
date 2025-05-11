@@ -129,17 +129,37 @@ connectToDatabase()
     process.exit(1); // Exit on database connection failure
   });
 
-// Set up CORS for all routes
-app.use(cors({
+// Define CORS options for different routes
+const mainCorsOptions = {
   origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400
-}));
+};
 
-// Add CORS preflight for all routes
-app.options('*', cors());
+// SDK CORS configuration with explicit headers
+const sdkCorsOptions = {
+  origin: function(origin, callback) {
+    // Allow specific origins instead of wildcard
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    
+    // Check if origin is in our allowed list or if it's not provided (like in REST clients)
+    const originAllowed = !origin || allowedOrigins.includes(origin);
+    
+    if (originAllowed) {
+      callback(null, origin);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  credentials: true, // Changed to true to allow credentials
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
 
 // Parse cookies
 app.use(cookieParser());
@@ -180,6 +200,9 @@ app.use((req, res, next) => {
     }
   })(req, res, next);
 });
+
+// We'll handle CORS per-route instead of globally
+// This prevents conflicts between different CORS policies
 
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {

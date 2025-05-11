@@ -71,8 +71,24 @@ exports.addSmartContract = async (req, res) => {
     
     console.log(`Found team: ${team.name} (${team._id})`);
 
-    // Limit checking is now handled by the middleware
-    // No need to check limits here
+    // Check subscription plan and smart contract limits
+    const subscriptionPlan = team.subscription?.plan || 'offchain';
+    const planLimits = getPlanLimits(subscriptionPlan);
+    
+    // Get existing contracts count for this team
+    const existingContractsCount = await SmartContract.countDocuments({ team: team._id });
+    
+    // Check if the team has reached their smart contract limit
+    if (existingContractsCount >= planLimits.smartContracts) {
+        return res.status(403).json({
+            error: 'Resource limit reached',
+            message: `You have reached the maximum number of smart contracts (${planLimits.smartContracts}) allowed on your ${subscriptionPlan} plan.`,
+            resourceType: 'smartContracts',
+            currentUsage: existingContractsCount,
+            limit: planLimits.smartContracts,
+            upgradeOptions: getUpgradeOptions(subscriptionPlan)
+        });
+    }
 
     const normalizedAddress = address.toLowerCase();
     console.log(`Adding contract with address ${normalizedAddress} to team ${team.name} (${team._id})`);

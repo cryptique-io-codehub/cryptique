@@ -4,16 +4,13 @@ const {addWebsite,deleteWebsite,verify, getWebsitesOfTeam}=require("../controlle
 const Website = require('../models/website');
 const Analytics = require('../models/analytics');
 const {verifyToken}=require('../middleware/auth');
-// Import the middleware for checking website limits
-const { checkWebsiteLimit, checkResourceLimit } = require('../middleware/limitChecker');
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(verifyToken);
 
-// Apply limit checking middleware to create route
-router.post('/create', checkWebsiteLimit(), addWebsite);
+router.post('/create',addWebsite);
 router.post('/delete',deleteWebsite);
 // Add a new DELETE route that accepts siteId as a parameter
 router.delete('/delete/:siteId', async (req, res) => {
@@ -67,7 +64,7 @@ router.delete('/delete/:siteId', async (req, res) => {
   }
 });
 router.post('/verify',verify);
-router.get('/team/:teamName', checkResourceLimit('websites', 0), getWebsitesOfTeam);
+router.get('/team/:teamName',getWebsitesOfTeam);
 
 // New route to auto-verify websites with analytics data
 router.post('/auto-verify-all', async (req, res) => {
