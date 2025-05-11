@@ -126,102 +126,93 @@ exports.getTeamDetails = async (req, res) => {
 }
 
 exports.addMember=async (req,res)=>{
-    try{
-        const {email,teamId,role}=req.body;
-
-        if(email==='' && teamId==='') return res.status(400).json({ message: "Required field is missing" });
-
-        const userExistscheck=await User.findOne({email});
-
-        if(!userExistscheck) return res.status(404).json({ message: "User not found" });
-
-        const team = await Team.findById(teamId);
-
-        if(!team) return res.status(404).json({ message: "Team not found" });
-
-        // Check if the current user has permission to add members
-        const isAdmin = team.user.some(user => 
-            user.userId.equals(req.userId) && (user.role === 'admin' || user.role === 'owner')
-        ) || team.createdBy.equals(req.userId);
-
-        if (!isAdmin) {
-            return res.status(403).json({ message: "You don't have permission to add members to this team" });
+    try {
+       const email=req.body.email;
+       const role=req.body.role;
+       const team_name=req.body.teamss;
+        // Find user by email
+        const this_user = await User.findOne({ email });
+        // console.log(this_user);
+        if (!this_user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        // Check if user is already a member
-        const existingMember = team.user.find(user => user.userId.equals(userExistscheck._id));
-        if (existingMember) {
-            return res.status(400).json({ message: "User is already a member of this team" });
-        }
-
-        // Check team member limits - either from middleware or directly
-        let canAddMember = true;
-        let memberLimitMessage = '';
-        
-        // Check if middleware has already set limits
-        if (req.subscriptionLimits) {
-            const currentMemberCount = team.user.length;
-            const memberLimit = req.subscriptionLimits.teamMembers;
-            
-            if (memberLimit !== null && currentMemberCount >= memberLimit) {
-                canAddMember = false;
-                memberLimitMessage = `You have reached the maximum number of team members (${memberLimit}) allowed on your plan.`;
-            }
-        } else {
-            // If middleware didn't set limits, check subscription directly
-            const currentMemberCount = team.user.length;
-            const subscriptionPlan = team.subscription?.plan || 'free';
-            
-            // Get default limits for the plan
-            const defaultLimits = {
-                free: 1,
-                offchain: 1,
-                basic: 2,
-                pro: 5,
-                enterprise: 10
-            };
-            
-            const memberLimit = defaultLimits[subscriptionPlan.toLowerCase()] || 1;
-            
-            if (currentMemberCount >= memberLimit) {
-                canAddMember = false;
-                memberLimitMessage = `You have reached the maximum number of team members (${memberLimit}) allowed on your ${subscriptionPlan} plan.`;
-            }
+        // Find team created by current user
+        const teamss = await Team.findOne({name:team_name });
+        if (!teamss) {
+            return res.status(404).json({ message: "Team not found" });
         }
         
-        if (!canAddMember) {
+        // Check subscription plan and team member limits
+        const subscriptionPlan = teamss.subscription?.plan || 'offchain';
+        const planLimits = getPlanLimits(subscriptionPlan);
+        
+        // Count existing team members
+        const currentMemberCount = teamss.user?.length || 0;
+        
+        // Check if the team has reached their member limit
+        if (currentMemberCount >= planLimits.teamMembers) {
             return res.status(403).json({
                 error: 'Resource limit reached',
-                message: memberLimitMessage,
-                resourceType: 'teamMembers'
+                message: `You have reached the maximum number of team members (${planLimits.teamMembers}) allowed on your ${subscriptionPlan} plan.`,
+                resourceType: 'teamMembers',
+                currentUsage: currentMemberCount,
+                limit: planLimits.teamMembers,
+                upgradeOptions: getUpgradeOptions(subscriptionPlan)
             });
         }
-
-        // Add the member
-        team.user.push({
-            userId: userExistscheck._id,
-            role: role || 'viewer'
-        });
         
-        // Update usage tracking
-        if (!team.usage) {
-            team.usage = {
-                websites: team.websites?.length || 0,
-                smartContracts: 0,
-                apiCalls: 0,
-                teamMembers: team.user.length
-            };
-        } else {
-            team.usage.teamMembers = team.user.length;
+        const userIdToCheck=this_user._id;
+        // console.log(teamss);
+        const this_array=teamss.user;
+
+        // Ensure the first user (owner) always has admin role
+        if (this_array.length > 0 && this_array[0].role !== 'admin') {
+            this_array[0].role = 'admin';
+            await teamss.save();
+        }
+
+         // The user ID to check
+
+// Check if the user already exists in the array
+        console.log(this_array);
+        const user = this_array.some(item => item.userId.equals(userIdToCheck));
+        console.log(user);  
+        if (user) {
+        return res.status(400).json({ message: "User already exist" });
         }
         
-        await team.save();
+        await Team.findOneAndUpdate(
+            { _id: teamss._id },
+            { $push: { user: { userId: this_user._id, role } } },
+            { new: true, runValidators: true }
+        );
+    
+        // Update the user document directly using findOneAndUpdate
+        await User.findOneAndUpdate(
+            { _id: userIdToCheck },
+            { $addToSet: { team: teamss._id } }, // $addToSet prevents duplicates
+            { new: true, runValidators: true }
+        );
+        
 
-        return res.status(200).json({ message: "Member added successfully" });
-    } catch(e) {
-        console.error("Error adding team member:", e);
-        res.status(500).json({ message: "Error adding team member", error: e.message });
+
+
+    
+        // Instead of modifying the team object and saving it,
+        // use findOneAndUpdate to update the team directly
+        
+    
+        // Fetch the updated team to return in the response
+        const updatedTeam = await Team.findById(teamss._id);
+        
+        return res.status(200).json({ message: "members added successfully", team: updatedTeam });
+    
+    } catch (e) {
+        console.error("Error in team member addition:", e);
+        res.status(500).json({ message: 'Error adding member', error: e.message });
     }
+
 }
 
 // Helper function to get plan limits

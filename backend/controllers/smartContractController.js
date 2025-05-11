@@ -71,33 +71,23 @@ exports.addSmartContract = async (req, res) => {
     
     console.log(`Found team: ${team.name} (${team._id})`);
 
-    // Check subscription limits (if not already checked by middleware)
-    if (!req.subscriptionLimits) {
-      // If middleware didn't set limits, check for any existing usage limits
-      const existingContractsCount = await SmartContract.countDocuments({ team: team._id });
-      const subscriptionPlan = team.subscription?.plan || 'free';
-      
-      // Get default limits for the plan
-      const defaultLimits = {
-        free: 0,
-        offchain: 0,
-        basic: 1,
-        pro: 5,
-        enterprise: 10
-      };
-      
-      const contractLimit = defaultLimits[subscriptionPlan.toLowerCase()] || 0;
-      
-      // Check if the team has reached their smart contract limit
-      if (existingContractsCount >= contractLimit) {
+    // Check subscription plan and smart contract limits
+    const subscriptionPlan = team.subscription?.plan || 'offchain';
+    const planLimits = getPlanLimits(subscriptionPlan);
+    
+    // Get existing contracts count for this team
+    const existingContractsCount = await SmartContract.countDocuments({ team: team._id });
+    
+    // Check if the team has reached their smart contract limit
+    if (existingContractsCount >= planLimits.smartContracts) {
         return res.status(403).json({
-          error: 'Resource limit reached',
-          message: `You have reached the maximum number of smart contracts (${contractLimit}) allowed on your ${subscriptionPlan} plan.`,
-          resourceType: 'smartContracts',
-          currentUsage: existingContractsCount,
-          limit: contractLimit
+            error: 'Resource limit reached',
+            message: `You have reached the maximum number of smart contracts (${planLimits.smartContracts}) allowed on your ${subscriptionPlan} plan.`,
+            resourceType: 'smartContracts',
+            currentUsage: existingContractsCount,
+            limit: planLimits.smartContracts,
+            upgradeOptions: getUpgradeOptions(subscriptionPlan)
         });
-      }
     }
 
     const normalizedAddress = address.toLowerCase();
@@ -158,20 +148,12 @@ exports.addSmartContract = async (req, res) => {
     
     try {
       await newContract.save();
-      
-      // Update team's smart contract usage count
-      await Team.findByIdAndUpdate(
-        team._id,
-        { $inc: { 'usage.smartContracts': 1 } }, // Increment smart contract usage count
-        { new: true, upsert: true }
-      );
-      
-      console.log(`New contract created with ID: ${contractId}`);
-      
-      res.status(201).json({ 
-        message: "Contract added successfully", 
-        contract: newContract 
-      });
+    console.log(`New contract created with ID: ${contractId}`);
+    
+    res.status(201).json({ 
+      message: "Contract added successfully", 
+      contract: newContract 
+    });
     } catch (saveError) {
       console.error("Error saving new contract:", saveError);
       throw saveError;

@@ -12,15 +12,6 @@ const { connectToDatabase } = require("./config/database");
 const healthRouter = require("./routes/healthRouter");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Team = require("./models/team");
-
-// Import subscription middleware
-const { 
-  checkSubscription, 
-  checkWebsiteLimit, 
-  checkSmartContractLimit, 
-  checkTeamMemberLimit 
-} = require('./middleware/subscriptionMiddleware');
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -310,63 +301,17 @@ app.use("/health", healthRouter);
 app.use("/api/stripe", stripeRouter);
 
 // Apply specific CORS for SDK routes
-app.use("/api/sdk", require("./routes/sdkRouter"));  
+app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
 
-// Apply main CORS and subscription middleware for resource routes
+// Apply main CORS for all other routes
 app.use("/api/auth", cors(mainCorsOptions), userRouter);
-
-// Team routes with subscription checks
 app.use("/api/team", cors(mainCorsOptions), require("./routes/teamRouter"));
-
-// Website routes with subscription and limit checks
-app.use(
-  "/api/website", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  checkWebsiteLimit, 
-  require("./routes/websiteRouter")
-);
-
-// Analytics routes with subscription checks only
-app.use(
-  "/api/analytics", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  require("./routes/analytics")
-);
-
-// On-chain routes with subscription checks
-app.use(
-  "/api/onchain", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  require("./routes/onChainRouter")
-);
-
-// Campaign routes with subscription checks
-app.use(
-  "/api/campaign", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  require("./routes/campaignRouter")
-);
-
-// Smart contract routes with subscription and limit checks
-app.use(
-  "/api/contracts", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  checkSmartContractLimit, 
-  require("./routes/smartContractRouter")
-);
-
-// Transaction routes with subscription checks
-app.use(
-  "/api/transactions", 
-  cors(mainCorsOptions), 
-  checkSubscription, 
-  require("./routes/transactionRouter")
-);
+app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter"));
+app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
+app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));
+app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
+app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
+app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling
 try {

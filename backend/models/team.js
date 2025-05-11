@@ -34,8 +34,8 @@ const teamsSchema=new mongoose.Schema({
         },
         plan: {
             type: String,
-            enum: ['free', 'offchain', 'basic', 'pro', 'enterprise'],
-            default: 'free'
+            enum: ['offchain', 'basic', 'pro', 'enterprise'],
+            default: 'offchain'
         },
         stripeCustomerId: String,
         stripeSubscriptionId: String,
@@ -52,33 +52,6 @@ const teamsSchema=new mongoose.Schema({
             type: String,
             enum: ['monthly', 'annual'],
             default: 'monthly'
-        },
-        customLimits: {
-            type: Map,
-            of: Number,
-            default: {}
-        }
-    },
-    usage: {
-        websites: {
-            type: Number,
-            default: 0
-        },
-        smartContracts: {
-            type: Number,
-            default: 0
-        },
-        apiCalls: {
-            type: Number,
-            default: 0
-        },
-        teamMembers: {
-            type: Number,
-            default: 1
-        },
-        lastResetDate: {
-            type: Date,
-            default: Date.now
         }
     },
     billingAddress: {
@@ -86,28 +59,6 @@ const teamsSchema=new mongoose.Schema({
         default: null
     }
 }, { timestamps: true });
-
-teamsSchema.pre('save', function(next) {
-    if (!this.usage) {
-        this.usage = {
-            websites: this.websites ? this.websites.length : 0,
-            smartContracts: 0,
-            apiCalls: 0,
-            teamMembers: this.user ? this.user.length : 1,
-            lastResetDate: new Date()
-        };
-    }
-    
-    if (!this.subscription) {
-        this.subscription = {
-            status: 'active',
-            plan: 'free',
-            billingCycle: 'monthly'
-        };
-    }
-    
-    next();
-});
 
 const Team=mongoose.model('Team',teamsSchema);
 
