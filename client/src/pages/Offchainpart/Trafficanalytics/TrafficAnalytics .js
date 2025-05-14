@@ -80,12 +80,22 @@ const AttributionJourneySankey = ({analytics}) => {
         
       user.firstSource = source;
       
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
       // Check if user has ever connected a wallet in any session
       user.hasConnectedWallet = user.sessions.some(session => 
         session.wallet && 
         session.wallet.walletAddress && 
         session.wallet.walletAddress.trim() !== '' && 
-        session.wallet.walletAddress !== 'No Wallet Detected'
+        !noWalletPhrases.includes(session.wallet.walletAddress) &&
+        session.wallet.walletAddress.length > 10
       );
     }
     
@@ -632,7 +642,19 @@ const TrafficAnalytics = ({ analytics, setanalytics, trafficSources, setTrafficS
       }
       
       // Track unique wallets by first source (wallet address not empty)
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
+      if (session.wallet && 
+          session.wallet.walletAddress && 
+          session.wallet.walletAddress.trim() !== '' && 
+          !noWalletPhrases.includes(session.wallet.walletAddress) &&
+          session.wallet.walletAddress.length > 10) {
         if (!walletsBySource[firstSource]) {
           walletsBySource[firstSource] = new Set();
         }

@@ -66,14 +66,25 @@ const GeoAnalyticsMap = ({ analytics, selectedCountry, setSelectedCountry, hideT
       }
       
       // Track web3 users (has web3 wallet but not necessarily connected)
-      if (session.userId && session.wallet && session.wallet.walletType && 
-          session.wallet.walletType !== 'No Wallet Detected') {
+      if (session.userId && isWeb3User(session)) {
         metrics.web3Users.add(session.userId);
       }
       
       // Track wallet connections (has wallet address)
-      if (session.userId && session.wallet && session.wallet.walletAddress && 
-          session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
+      if (session.userId && session.wallet && 
+          session.wallet.walletAddress && 
+          session.wallet.walletAddress.trim() !== '' && 
+          !noWalletPhrases.includes(session.wallet.walletAddress) &&
+          session.wallet.walletAddress.length > 10) {
         metrics.walletConnections.add(session.userId);
       }
       

@@ -123,6 +123,15 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
       }
     }
 
+    // Track wallet connections
+    const noWalletPhrases = [
+      'No Wallet Detected', 
+      'No Wallet Connected', 
+      'Not Connected', 
+      'No Chain Detected', 
+      'Error'
+    ];
+    
     // Process only the filtered sessions
     filteredSessions.forEach(session => {
       const date = new Date(session.startTime);
@@ -134,7 +143,11 @@ const AnalyticsChart = ({ analytics, setAnalytics, isLoading, error }) => {
         finalData[timeKey].visitors.add(visitorId);
         
         // Check if this session has a wallet connection
-        if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+        if (session.wallet && 
+            session.wallet.walletAddress && 
+            session.wallet.walletAddress.trim() !== '' && 
+            !noWalletPhrases.includes(session.wallet.walletAddress) &&
+            session.wallet.walletAddress.length > 10) {
           finalData[timeKey].walletConnects.add(session.wallet.walletAddress);
           console.log(`Added wallet connection from session to time slot: ${timeKey}`, {
             address: session.wallet.walletAddress,

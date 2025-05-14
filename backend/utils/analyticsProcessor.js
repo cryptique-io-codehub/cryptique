@@ -446,10 +446,19 @@ class AnalyticsProcessor {
             }
             
             // Check if this session had a wallet connection
+            const noWalletPhrases = [
+              'No Wallet Detected', 
+              'No Wallet Connected', 
+              'Not Connected', 
+              'No Chain Detected', 
+              'Error'
+            ];
+            
             const hasWalletConnection = session.wallet && 
               session.wallet.walletAddress && 
-              session.wallet.walletAddress.trim() !== '' &&
-              session.wallet.walletAddress !== 'No Wallet Detected';
+              session.wallet.walletAddress.trim() !== '' && 
+              !noWalletPhrases.includes(session.wallet.walletAddress) &&
+              session.wallet.walletAddress.length > 10;
             
             if (hasWalletConnection) {
               userJourney.hasConverted = true;

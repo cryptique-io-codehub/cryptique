@@ -215,14 +215,25 @@ const TrafficSourcesComponent = ({ setanalytics, analytics }) => {
       const walletType = hasWallet && session.wallet.walletType ? session.wallet.walletType : null;
       const walletAddress = hasWallet && session.wallet.walletAddress ? session.wallet.walletAddress : null;
       
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
       // Always attribute wallet activities to the user's FIRST source only
-      if (walletType && walletType !== 'No Wallet Detected') {
+      if (walletType && !noWalletPhrases.includes(walletType)) {
         resultMap.get(userFirstSource).web3users.add(userId);
       }
       
       // Only count wallet as connected if it has a valid wallet address
-      // Make sure wallet address is not empty and not "No Wallet Detected"
-      if (walletAddress && walletAddress !== '' && walletAddress !== 'No Wallet Detected') {
+      if (walletAddress && 
+          walletAddress.trim() !== '' && 
+          !noWalletPhrases.includes(walletAddress) &&
+          walletAddress.length > 10) {
         resultMap.get(userFirstSource).walletsConnected.add(userId);
       }
     }

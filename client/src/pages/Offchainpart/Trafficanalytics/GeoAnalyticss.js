@@ -163,7 +163,20 @@ const GeoAnalytics = ({ analytics, selectedCountry, setSelectedCountry }) => {
       }
         
       // Track wallet connections (has non-empty address) separately
-      if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress.trim() !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
+      if (session.wallet && 
+          session.wallet.walletAddress && 
+          session.wallet.walletAddress.trim() !== '' && 
+          !noWalletPhrases.includes(session.wallet.walletAddress) &&
+          session.wallet.walletAddress.length > 10) {
           metrics[countryName].walletConnections.add(userId);
       }
       
