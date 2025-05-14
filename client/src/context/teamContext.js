@@ -33,10 +33,22 @@ export const TeamProvider = ({ children }) => {
         loadTeamData();
       }
     };
+    
+    // Listen for the custom teamDataUpdated event
+    const handleTeamDataUpdated = (e) => {
+      console.log('Received teamDataUpdated event with data:', e.detail);
+      if (e.detail && e.detail.teamData) {
+        console.log('Setting team data from custom event');
+        setSelectedTeam(e.detail.teamData);
+      }
+    };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('teamDataUpdated', handleTeamDataUpdated);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('teamDataUpdated', handleTeamDataUpdated);
     };
   }, []);
 
@@ -45,6 +57,11 @@ export const TeamProvider = ({ children }) => {
     setSelectedTeam(team);
     if (team) {
       localStorage.setItem('selectedTeamData', JSON.stringify(team));
+      
+      // Dispatch the custom event to notify other components
+      window.dispatchEvent(new CustomEvent('teamDataUpdated', { 
+        detail: { teamData: team }
+      }));
     } else {
       localStorage.removeItem('selectedTeamData');
     }

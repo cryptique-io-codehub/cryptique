@@ -17,6 +17,61 @@ export const SubscriptionProvider = ({ children }) => {
     error: null
   });
 
+  // Function to update subscription status from team data
+  const updateSubscriptionFromTeamData = (teamData) => {
+    if (!teamData || !teamData.subscription) {
+      return false;
+    }
+
+    try {
+      const { plan, status } = teamData.subscription;
+      
+      // Normalize plan name to lowercase for consistent comparison
+      const planLower = (plan || '').toLowerCase();
+      
+      // Check if plan is premium and status is active
+      const isPremiumPlan = PREMIUM_PLANS.includes(planLower);
+      const isActive = status === 'active' && isPremiumPlan;
+      
+      console.log('Updating subscription status from team data:', { 
+        plan, 
+        status, 
+        planLower, 
+        isPremiumPlan, 
+        isActive 
+      });
+      
+      setSubscriptionStatus({
+        isActive,
+        plan: plan || 'free',
+        status: status || 'inactive',
+        loading: false,
+        error: null
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating subscription from team data:', error);
+      return false;
+    }
+  };
+
+  // Listen for team data updated event
+  useEffect(() => {
+    const handleTeamDataUpdated = (e) => {
+      console.log('Subscription context received teamDataUpdated event');
+      if (e.detail && e.detail.teamData) {
+        updateSubscriptionFromTeamData(e.detail.teamData);
+      }
+    };
+
+    window.addEventListener('teamDataUpdated', handleTeamDataUpdated);
+    
+    return () => {
+      window.removeEventListener('teamDataUpdated', handleTeamDataUpdated);
+    };
+  }, []);
+
   // Fetch subscription status when team changes
   useEffect(() => {
     if (!selectedTeam || !selectedTeam._id) {
@@ -32,6 +87,12 @@ export const SubscriptionProvider = ({ children }) => {
 
     console.log('Selected team in subscription context:', selectedTeam);
     console.log('Team subscription data:', selectedTeam.subscription);
+
+    // First try to update from the team data directly
+    if (updateSubscriptionFromTeamData(selectedTeam)) {
+      console.log('Successfully updated subscription from selected team data');
+      return;
+    }
 
     const fetchSubscription = async () => {
       try {

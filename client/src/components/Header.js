@@ -104,61 +104,130 @@ const TeamSelector = () => {
     fetchTeamsIfNeeded();
   }, [dropdownOpen, curTeams.length, isLoadingTeams]);
 
+  // Function to fetch complete team data including subscription
+  const fetchCompleteTeamData = async (teamId) => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      
+      // Fetch complete team data including subscription information
+      const response = await axios.get(`${API_URL}/api/team/${teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data && response.data._id) {
+        console.log('Fetched complete team data:', response.data);
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching complete team data:', error);
+      return null;
+    }
+  };
+
+  // Function to fetch subscription data
+  const fetchSubscriptionData = async (teamId) => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      
+      // Fetch subscription data directly from the Stripe endpoint
+      const response = await axios.get(`${API_URL}/api/stripe/subscription/${teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Fetched subscription data:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching subscription data:', error);
+      return null;
+    }
+  };
+
   const handleTeamSelect = async (teamss) => {
     // If this is a different team than the currently selected one
     const previousTeam = localStorage.getItem('selectedTeam');
     if (previousTeam !== teamss.name) {
       setIsRefreshing(true);
       
-      // Update localStorage with new team
-      localStorage.setItem('selectedTeam', teamss.name);
-      setSelectedTeam(teamss.name);
-      
-      // Save complete team data
-      localStorage.setItem('selectedTeamData', JSON.stringify({
-        _id: teamss._id,
-        name: teamss.name,
-        role: teamss.role || 'user',
-        isOwner: teamss.isOwner || false
-      }));
-      
-      // Clear website selection since it's team-specific
-      localStorage.removeItem("selectedWebsite");
-      localStorage.removeItem("idy");
-      
-      // Clear session storage to force reload of data
-      sessionStorage.removeItem("preloadedWebsites");
-      sessionStorage.removeItem("preloadedContracts");
-      
-      // Preload data for the new team (force refresh)
-      console.log(`Team switched from ${previousTeam} to ${teamss.name}, refreshing data...`);
       try {
+        // Update localStorage with basic team info first for immediate feedback
+        localStorage.setItem('selectedTeam', teamss.name);
+        setSelectedTeam(teamss.name);
+        
+        // Fetch complete team data including subscription
+        console.log(`Team switched from ${previousTeam} to ${teamss.name}, fetching complete data...`);
+        
+        // Fetch complete team data
+        const completeTeamData = await fetchCompleteTeamData(teamss._id);
+        
+        // Also fetch subscription data directly to ensure it's up to date
+        const subscriptionData = await fetchSubscriptionData(teamss._id);
+        
+        // Merge the data
+        const teamDataToStore = {
+          ...(completeTeamData || {}),
+          _id: teamss._id,
+          name: teamss.name,
+          role: teamss.role || 'user',
+          isOwner: teamss.isOwner || false
+        };
+        
+        // Add subscription data if available
+        if (subscriptionData && subscriptionData.subscription) {
+          teamDataToStore.subscription = subscriptionData.subscription;
+        }
+        
+        console.log('Storing complete team data with subscription:', teamDataToStore);
+        
+        // Save the merged data to localStorage
+        localStorage.setItem('selectedTeamData', JSON.stringify(teamDataToStore));
+        
+        // Dispatch a custom event to notify other components about the team change
+        window.dispatchEvent(new CustomEvent('teamDataUpdated', { 
+          detail: { teamData: teamDataToStore }
+        }));
+        
+        // Clear website selection since it's team-specific
+        localStorage.removeItem("selectedWebsite");
+        localStorage.removeItem("idy");
+        
+        // Clear session storage to force reload of data
+        sessionStorage.removeItem("preloadedWebsites");
+        sessionStorage.removeItem("preloadedContracts");
+        
+        // Preload data for the new team (force refresh)
         await preloadData(true, teamss.name);
         console.log("Successfully refreshed data for new team");
+        
+        // Update URL if on settings page
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/settings')) {
+          navigate(`/${teamss.name}/settings`, { replace: true });
+        } else {
+          // For other pages, forcefully reload the current page to ensure all components update
+          const currentUrl = new URL(window.location.href);
+          const pathSegments = currentUrl.pathname.split('/').filter(Boolean);
+          
+          if (pathSegments.length > 1) {
+            // Replace the team segment in the URL
+            pathSegments[0] = teamss.name;
+            const newPath = `/${pathSegments.join('/')}`;
+            navigate(newPath, { replace: true });
+          } else {
+            // If we're on the dashboard or a page without team in URL
+            navigate('/dashboard');
+          }
+        }
       } catch (error) {
-        console.error("Failed to refresh data for new team:", error);
+        console.error("Error during team switch:", error);
       } finally {
         setIsRefreshing(false);
-      }
-      
-      // Update URL if on settings page
-      const currentPath = window.location.pathname;
-      if (currentPath.includes('/settings')) {
-        navigate(`/${teamss.name}/settings`, { replace: true });
-      } else {
-        // For other pages, forcefully reload the current page to ensure all components update
-        const currentUrl = new URL(window.location.href);
-        const pathSegments = currentUrl.pathname.split('/').filter(Boolean);
-        
-        if (pathSegments.length > 1) {
-          // Replace the team segment in the URL
-          pathSegments[0] = teamss.name;
-          const newPath = `/${pathSegments.join('/')}`;
-          navigate(newPath, { replace: true });
-        } else {
-          // If we're on the dashboard or a page without team in URL
-          navigate('/dashboard');
-        }
       }
     }
     
