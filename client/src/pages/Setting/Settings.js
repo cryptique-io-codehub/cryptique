@@ -7,6 +7,7 @@ import PricingSection from "./PricingSection";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
 import { useSubscription } from "../../context/subscriptionContext";
+import axios from "axios";
 
 // Style definitions for futuristic theme
 const styles = {
@@ -49,7 +50,9 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
   const [isCompactMode, setIsCompactMode] = useState(true); // Settings sidebar should be compact by default
   const [isHovering, setIsHovering] = useState(false);
+  const { selectedTeam, setSelectedTeam } = useTeam();
   const { isActive: hasActiveSubscription, plan, status, loading } = useSubscription();
+  const [refreshing, setRefreshing] = useState(false);
 
   // Determine active section based on current path
   const determineActiveSection = () => {
@@ -134,6 +137,48 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
   // Initialize a local isMobile variable with fallback
   const isMobile = screenSize && screenSize.isMobile;
   
+  // Add function to manually refresh team subscription data
+  const refreshSubscriptionData = async () => {
+    if (!selectedTeam || !selectedTeam._id) {
+      return;
+    }
+    
+    try {
+      setRefreshing(true);
+      console.log('Manually refreshing team data for team:', selectedTeam._id);
+      
+      const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      
+      // Fetch fresh team data including subscription information
+      const response = await axios.get(`${API_URL}/api/team/${selectedTeam._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data && response.data._id) {
+        console.log('Manually refreshed team data:', response.data);
+        
+        // Update the team data
+        setSelectedTeam(response.data);
+        
+        // Additional direct check of subscription status
+        const subResponse = await axios.get(`${API_URL}/api/stripe/subscription/${selectedTeam._id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        console.log('Direct subscription check:', subResponse.data);
+      }
+    } catch (error) {
+      console.error('Error manually refreshing team data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <>
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
@@ -265,7 +310,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                       </div>
                       
                       <div className="p-6">
-                        {loading ? (
+                        {loading || refreshing ? (
                           <div className="flex items-center justify-center p-4">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                           </div>
@@ -276,16 +321,27 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                                 <h3 className="font-medium text-gray-700">Current Plan</h3>
                                 <p className="text-lg font-bold capitalize">{plan}</p>
                               </div>
-                              <div className={`px-3 py-1 rounded-full text-white text-sm ${
-                                status === 'active' ? 'bg-green-500' : 
-                                status === 'past_due' ? 'bg-amber-500' : 
-                                status === 'canceled' ? 'bg-red-500' : 'bg-gray-500'
-                              }`}>
-                                {status === 'past_due' ? 'Past Due' : 
-                                 status === 'incomplete' ? 'Incomplete' : 
-                                 status === 'canceled' ? 'Canceled' : 
-                                 status === 'active' ? 'Active' : 
-                                 status}
+                              <div className="flex items-center space-x-2">
+                                <div className={`px-3 py-1 rounded-full text-white text-sm ${
+                                  status === 'active' ? 'bg-green-500' : 
+                                  status === 'past_due' ? 'bg-amber-500' : 
+                                  status === 'canceled' ? 'bg-red-500' : 'bg-gray-500'
+                                }`}>
+                                  {status === 'past_due' ? 'Past Due' : 
+                                   status === 'incomplete' ? 'Incomplete' : 
+                                   status === 'canceled' ? 'Canceled' : 
+                                   status === 'active' ? 'Active' : 
+                                   status}
+                                </div>
+                                <button 
+                                  onClick={refreshSubscriptionData}
+                                  className="p-1 text-gray-500 hover:text-gray-700"
+                                  title="Refresh subscription data"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </button>
                               </div>
                             </div>
                             

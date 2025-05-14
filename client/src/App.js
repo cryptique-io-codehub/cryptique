@@ -20,8 +20,10 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
+import axios from 'axios';
 
-const RouteListener = () => {
+// Title updater component - this doesn't need access to Team context
+const TitleUpdater = () => {
   const location = useLocation();
 
   useEffect(() => {
@@ -50,8 +52,48 @@ const RouteListener = () => {
     document.title = `${pageTitle}`;
   }, [location]);
 
+  return null;
+};
+
+// Team data refresher - needs to be within the TeamProvider
+const TeamDataRefresher = () => {
+  const location = useLocation();
+  const { selectedTeam, setSelectedTeam } = useTeam();
+  
+  // Refresh team subscription data on navigation
+  useEffect(() => {
+    const refreshTeamData = async () => {
+      if (selectedTeam && selectedTeam._id) {
+        try {
+          console.log('Refreshing team data on route change for team:', selectedTeam._id);
+          const API_URL = process.env.REACT_APP_API_URL || 'https://cryptique-backend.vercel.app';
+          const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+          
+          // Fetch fresh team data including subscription information
+          const response = await axios.get(`${API_URL}/api/team/${selectedTeam._id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.data && response.data._id) {
+            console.log('Refreshed team data:', response.data);
+            
+            // Update the team data in both state and localStorage
+            setSelectedTeam(response.data);
+          }
+        } catch (error) {
+          console.error('Error refreshing team data:', error);
+        }
+      }
+    };
+    
+    refreshTeamData();
+  }, [location.pathname, selectedTeam?._id, setSelectedTeam]);
+
   return null; // this component doesn't render anything
 };
+
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   
@@ -60,7 +102,8 @@ function App() {
       <SubscriptionProvider>
         <ContractDataProvider>
           <BrowserRouter>
-            <RouteListener />
+            <TitleUpdater />
+            <TeamDataRefresher />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Interface />} />
