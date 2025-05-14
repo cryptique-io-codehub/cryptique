@@ -17,6 +17,7 @@ import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
+import SubscriptionRequired from "../../components/SubscriptionRequired.js";
 
 const Dashboard = () => {
   // State management
@@ -239,6 +240,19 @@ const Dashboard = () => {
       isSidebarOpen: isSidebarOpen
     };
 
+    // Define which pages are free (don't need subscription)
+    const freePages = ['dashboard', 'settings'];
+    
+    // Helper function to wrap content with SubscriptionRequired if needed
+    const withSubscriptionCheck = (component, featureName) => {
+      // Dashboard and settings pages are always accessible
+      if (freePages.includes(selectedPage)) {
+        return component;
+      }
+      // Other pages need active subscription
+      return <SubscriptionRequired featureName={featureName}>{component}</SubscriptionRequired>;
+    };
+
     switch (selectedPage) {
       case "dashboard":
         return (
@@ -252,25 +266,52 @@ const Dashboard = () => {
           </>
         );
       case "offchain-analytics":
-        return <OffchainAnalytics {...commonProps} />;
+        return withSubscriptionCheck(
+          <OffchainAnalytics {...commonProps} />,
+          "website analytics"
+        );
       case "onchain-explorer":
-        return <OnchainExplorer {...commonProps} />;
+        return withSubscriptionCheck(
+          <OnchainExplorer {...commonProps} />,
+          "blockchain analytics"
+        );
       case "campaigns":
-        return <Campaigns {...commonProps} />;
+        return withSubscriptionCheck(
+          <Campaigns {...commonProps} />,
+          "campaign management"
+        );
       case "conversion-events":
-        return <ConversionEvents {...commonProps} />;
+        return withSubscriptionCheck(
+          <ConversionEvents {...commonProps} />,
+          "conversion tracking"
+        );
       case "advertise":
-        return <Advertise {...commonProps} />;
+        return withSubscriptionCheck(
+          <Advertise {...commonProps} />,
+          "advertising features"
+        );
       case "history":
-        return <History {...commonProps} />;
+        return withSubscriptionCheck(
+          <History {...commonProps} />,
+          "historical data"
+        );
       case "import-users":
-        return <ImportUsers {...commonProps} />;
+        return withSubscriptionCheck(
+          <ImportUsers {...commonProps} />,
+          "user import functionality"
+        );
       case "manage-websites":
-        return <ManageWebsites {...commonProps} />;
+        return withSubscriptionCheck(
+          <ManageWebsites {...commonProps} />,
+          "website management"
+        );
       case "cq-intelligence":
-        return <CQIntelligence {...commonProps} />;
+        return withSubscriptionCheck(
+          <CQIntelligence {...commonProps} />,
+          "advanced intelligence features"
+        );
       case "settings":
-        return <Settings {...commonProps} isSidebarVisible={true} />;
+        return <Settings onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />;
       default:
         return (
           <>

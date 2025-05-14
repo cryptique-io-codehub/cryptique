@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X, Tag } from "lucide-react";
+import { CreditCard, Users, Settings as SettingsIcon, Menu, ChevronDown, X, Tag, Shield, BarChart2, AlertTriangle } from "lucide-react";
 import Header from "../../components/Header";
 import Billing from "./Billing/Billing";
 import TeamsSection from "./TeamsSection";
 import PricingSection from "./PricingSection";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTeam } from "../../context/teamContext";
+import { useSubscription } from "../../context/subscriptionContext";
 
 // Style definitions for futuristic theme
 const styles = {
@@ -48,6 +49,7 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
   const [seteam, setseTeam] = useState(localStorage.getItem("selectedTeam"));
   const [isCompactMode, setIsCompactMode] = useState(true); // Settings sidebar should be compact by default
   const [isHovering, setIsHovering] = useState(false);
+  const { isActive: hasActiveSubscription, plan, status, loading } = useSubscription();
 
   // Determine active section based on current path
   const determineActiveSection = () => {
@@ -243,6 +245,95 @@ const Settings = ({ onMenuClick, screenSize = {}, isSidebarVisible = true }) => 
                   }}
                 >
                   <div className="max-w-4xl mx-auto">
+                    {/* Subscription Status Card */}
+                    <div className="mb-8 bg-white rounded-lg shadow-md overflow-hidden">
+                      <div className={`p-4 text-white ${hasActiveSubscription ? 'bg-green-600' : 'bg-amber-600'}`}>
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-xl font-bold flex items-center">
+                            <Shield className="mr-2" size={20} />
+                            Subscription Status
+                          </h2>
+                          {!hasActiveSubscription && (
+                            <button 
+                              onClick={() => handleSectionChange("billing")}
+                              className="px-4 py-2 bg-white text-amber-600 rounded-md font-medium text-sm hover:bg-gray-100 transition-colors"
+                            >
+                              Upgrade Now
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="p-6">
+                        {loading ? (
+                          <div className="flex items-center justify-center p-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b pb-4">
+                              <div>
+                                <h3 className="font-medium text-gray-700">Current Plan</h3>
+                                <p className="text-lg font-bold capitalize">{plan}</p>
+                              </div>
+                              <div className={`px-3 py-1 rounded-full text-white text-sm ${
+                                status === 'active' ? 'bg-green-500' : 
+                                status === 'past_due' ? 'bg-amber-500' : 
+                                status === 'canceled' ? 'bg-red-500' : 'bg-gray-500'
+                              }`}>
+                                {status === 'past_due' ? 'Past Due' : 
+                                 status === 'incomplete' ? 'Incomplete' : 
+                                 status === 'canceled' ? 'Canceled' : 
+                                 status === 'active' ? 'Active' : 
+                                 status}
+                              </div>
+                            </div>
+                            
+                            {!hasActiveSubscription && (
+                              <div className="bg-amber-50 p-4 rounded-md border border-amber-200 flex items-start">
+                                <AlertTriangle className="text-amber-500 mr-3 flex-shrink-0 mt-1" size={18} />
+                                <div>
+                                  <h4 className="font-medium text-amber-800">Limited Access</h4>
+                                  <p className="text-amber-700 text-sm">
+                                    You currently have access to the dashboard and settings only.
+                                    Upgrade to unlock all premium features including analytics, smart contracts, and more.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {hasActiveSubscription && (
+                              <div className="bg-green-50 p-4 rounded-md border border-green-200 flex items-start">
+                                <BarChart2 className="text-green-500 mr-3 flex-shrink-0 mt-1" size={18} />
+                                <div>
+                                  <h4 className="font-medium text-green-800">Full Access</h4>
+                                  <p className="text-green-700 text-sm">
+                                    You have full access to all Cryptique features and analytics.
+                                    Thank you for your subscription!
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="flex justify-between pt-2">
+                              <button 
+                                onClick={() => handleSectionChange("pricing")} 
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                              >
+                                View All Plans
+                              </button>
+                              <button 
+                                onClick={() => handleSectionChange("billing")}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                              >
+                                Manage Subscription
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
                     <div style={{ 
                       display: 'flex',
                       flexDirection: 'column',

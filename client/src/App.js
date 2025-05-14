@@ -7,6 +7,7 @@ import Settings from './pages/Setting/Settings.js'
 import Billing from './pages/Setting/Billing/Billing.js'
 import TeamsSection from './pages/Setting/TeamsSection.js'
 import { useTeam, TeamProvider } from "./context/teamContext.js";
+import { SubscriptionProvider } from "./context/subscriptionContext.js";
 import  {Navigate} from "react-router-dom";
 import OffchainAnalytics from "./pages/Dashboard/OffchainAnalytics.js";
 import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
@@ -56,34 +57,36 @@ function App() {
   
   return (
     <TeamProvider>
-      <ContractDataProvider>
-        <BrowserRouter>
-          <RouteListener />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Interface />} />
-            <Route path="/signup" element={<Interface />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/:team/offchain" element={<Dashboard />} />
-            <Route path="/:team/onchain" element={<Dashboard />} />
-            <Route path="/:team/campaigns" element={<Dashboard />} />
-            <Route path="/:team/conversion-events" element={<Dashboard />} />
-            <Route path="/:team/advertise" element={<Dashboard />} />
-            <Route path="/:team/history" element={<Dashboard />} />
-            <Route path="/:team/importusers" element={<Dashboard />} />
-            <Route path="/:team/managewebsites" element={<Dashboard />} />
-            <Route path="/:team/cq-intelligence" element={<Dashboard />} />
-            
-            {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
-            <Route path="/:team/settings" element={<Dashboard />} />
-            <Route path="/:team/settings/billing" element={<Dashboard />} />
-            <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
-            <Route path="/:team/settings/pricing" element={<Dashboard />} />
-            
-            <Route path="/test-analytics" element={<TestAnalytics />} />
-          </Routes>
-        </BrowserRouter>
-      </ContractDataProvider>
+      <SubscriptionProvider>
+        <ContractDataProvider>
+          <BrowserRouter>
+            <RouteListener />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Interface />} />
+              <Route path="/signup" element={<Interface />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/:team/offchain" element={<Dashboard />} />
+              <Route path="/:team/onchain" element={<Dashboard />} />
+              <Route path="/:team/campaigns" element={<Dashboard />} />
+              <Route path="/:team/conversion-events" element={<Dashboard />} />
+              <Route path="/:team/advertise" element={<Dashboard />} />
+              <Route path="/:team/history" element={<Dashboard />} />
+              <Route path="/:team/importusers" element={<Dashboard />} />
+              <Route path="/:team/managewebsites" element={<Dashboard />} />
+              <Route path="/:team/cq-intelligence" element={<Dashboard />} />
+              
+              {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
+              <Route path="/:team/settings" element={<Dashboard />} />
+              <Route path="/:team/settings/billing" element={<Dashboard />} />
+              <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
+              <Route path="/:team/settings/pricing" element={<Dashboard />} />
+              
+              <Route path="/test-analytics" element={<TestAnalytics />} />
+            </Routes>
+          </BrowserRouter>
+        </ContractDataProvider>
+      </SubscriptionProvider>
     </TeamProvider>
   )
 }
