@@ -13,6 +13,8 @@ export const TeamProvider = ({ children }) => {
         const teamData = localStorage.getItem('selectedTeamData');
         if (teamData) {
           const parsedTeam = JSON.parse(teamData);
+          console.log('Loaded team data from localStorage:', parsedTeam);
+          console.log('Team subscription data:', parsedTeam.subscription);
           setSelectedTeam(parsedTeam);
         }
       } catch (error) {
@@ -27,6 +29,7 @@ export const TeamProvider = ({ children }) => {
     // Listen for changes to selectedTeamData in localStorage
     const handleStorageChange = (e) => {
       if (e.key === 'selectedTeamData') {
+        console.log('Team data changed in localStorage');
         loadTeamData();
       }
     };
@@ -38,6 +41,7 @@ export const TeamProvider = ({ children }) => {
   }, []);
 
   const updateSelectedTeam = (team) => {
+    console.log('Updating selected team:', team);
     setSelectedTeam(team);
     if (team) {
       localStorage.setItem('selectedTeamData', JSON.stringify(team));

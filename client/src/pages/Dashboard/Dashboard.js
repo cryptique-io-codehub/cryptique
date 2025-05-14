@@ -18,6 +18,7 @@ import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
 import SubscriptionRequired from "../../components/SubscriptionRequired.js";
+import { useSubscription } from "../../context/subscriptionContext.js";
 
 const Dashboard = () => {
   // State management
@@ -239,6 +240,10 @@ const Dashboard = () => {
       selectedPage: {selectedPage},
       isSidebarOpen: isSidebarOpen
     };
+
+    // Log subscription status for debugging
+    const { isActive: hasSubscription, plan, status } = useSubscription();
+    console.log('Dashboard subscription status:', { hasSubscription, plan, status, selectedPage });
 
     // Define which pages are free (don't need subscription)
     const freePages = ['dashboard', 'settings'];
