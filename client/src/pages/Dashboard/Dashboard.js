@@ -33,6 +33,14 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
+  
+  // Get subscription status at component level
+  const { isActive: hasSubscription, plan, status } = useSubscription();
+  
+  // Log subscription status on mount and when it changes
+  useEffect(() => {
+    console.log('Dashboard subscription status:', { hasSubscription, plan, status, currentPage: selectedPage });
+  }, [hasSubscription, plan, status, selectedPage]);
 
   // Screen size detection with multiple breakpoints
   useEffect(() => {
@@ -240,10 +248,6 @@ const Dashboard = () => {
       selectedPage: {selectedPage},
       isSidebarOpen: isSidebarOpen
     };
-
-    // Log subscription status for debugging
-    const { isActive: hasSubscription, plan, status } = useSubscription();
-    console.log('Dashboard subscription status:', { hasSubscription, plan, status, selectedPage });
 
     // Define which pages are free (don't need subscription)
     const freePages = ['dashboard', 'settings'];
