@@ -10,11 +10,6 @@
 export const isWeb3User = (session) => {
   if (!session) return false;
   
-  // If session explicitly has isWeb3User set to false, respect that
-  if (session.isWeb3User === false) {
-    return false;
-  }
-  
   // Direct hasWeb3 or walletConnected flags
   if (session.hasWeb3 === true || session.walletConnected === true) {
     return true;
@@ -31,9 +26,10 @@ export const isWeb3User = (session) => {
       'Error'
     ];
     
-    // Has wallet type that indicates an actual wallet
+    // Has wallet type that indicates an actual wallet (like MetaMask, Coinbase, etc.)
     if (session.wallet.walletType && 
-        !noWalletPhrases.includes(session.wallet.walletType)) {
+        !noWalletPhrases.includes(session.wallet.walletType) &&
+        session.wallet.walletType !== 'Unknown') {
       return true;
     }
     
@@ -51,6 +47,11 @@ export const isWeb3User = (session) => {
         session.wallet.walletAddress.length > 10) { // Basic check for address length
       return true;
     }
+  }
+  
+  // Only if no wallet indicators were found, use the explicit flag
+  if (session.isWeb3User === true) {
+    return true;
   }
   
   return false;
