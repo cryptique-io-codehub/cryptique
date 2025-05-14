@@ -1,5 +1,6 @@
 import React from 'react';
 import WorldMap from "react-svg-worldmap";
+import { isWeb3User } from '../../utils/analyticsHelpers';
 
 // Extended ISO Alpha-2 code to country name map
 const countryCodeToName = {
