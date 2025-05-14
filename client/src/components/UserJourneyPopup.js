@@ -68,10 +68,20 @@ const UserJourneyPopup = ({ userJourney, onClose }) => {
 
   // Determine if conversion happened in this session
   const hasWalletConnection = (session) => {
+    // Negative values that indicate no wallet
+    const noWalletPhrases = [
+      'No Wallet Detected', 
+      'No Wallet Connected', 
+      'Not Connected', 
+      'No Chain Detected', 
+      'Error'
+    ];
+    
     return session.wallet && 
            session.wallet.walletAddress && 
            session.wallet.walletAddress.trim() !== '' && 
-           session.wallet.walletAddress !== 'No Wallet Detected';
+           !noWalletPhrases.includes(session.wallet.walletAddress) &&
+           session.wallet.walletAddress.length > 10;
   };
 
   // Format paths for display

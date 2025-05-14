@@ -10,6 +10,11 @@
 export const isWeb3User = (session) => {
   if (!session) return false;
   
+  // If session explicitly has isWeb3User set to false, respect that
+  if (session.isWeb3User === false) {
+    return false;
+  }
+  
   // Direct hasWeb3 or walletConnected flags
   if (session.hasWeb3 === true || session.walletConnected === true) {
     return true;
@@ -17,20 +22,33 @@ export const isWeb3User = (session) => {
   
   // Check wallet information
   if (session.wallet) {
-    // Has wallet type that's not "No Wallet Detected"
-    if (session.wallet.walletType && session.wallet.walletType !== 'No Wallet Detected') {
+    // Negative values that indicate no wallet
+    const noWalletPhrases = [
+      'No Wallet Detected', 
+      'No Wallet Connected', 
+      'Not Connected', 
+      'No Chain Detected', 
+      'Error'
+    ];
+    
+    // Has wallet type that indicates an actual wallet
+    if (session.wallet.walletType && 
+        !noWalletPhrases.includes(session.wallet.walletType)) {
       return true;
     }
     
-    // Has chain name that's not "No Wallet Detected"
-    if (session.wallet.chainName && session.wallet.chainName !== 'No Wallet Detected') {
+    // Has chain name that indicates an actual chain
+    if (session.wallet.chainName && 
+        !noWalletPhrases.includes(session.wallet.chainName) &&
+        !session.wallet.chainName.includes('Unknown')) {
       return true;
     }
     
-    // Has a non-empty wallet address
+    // Has a valid wallet address
     if (session.wallet.walletAddress && 
         session.wallet.walletAddress.trim() !== '' && 
-        session.wallet.walletAddress !== 'No Wallet Detected') {
+        !noWalletPhrases.includes(session.wallet.walletAddress) &&
+        session.wallet.walletAddress.length > 10) { // Basic check for address length
       return true;
     }
   }
@@ -93,6 +111,15 @@ export const calculateWeb3Stats = (sessions, uniqueVisitors) => {
     };
   }
   
+  // Negative values that indicate no wallet
+  const noWalletPhrases = [
+    'No Wallet Detected', 
+    'No Wallet Connected', 
+    'Not Connected', 
+    'No Chain Detected', 
+    'Error'
+  ];
+  
   // Count unique Web3 users
   const web3UserIds = new Set();
   const walletUserIds = new Set();
@@ -109,7 +136,8 @@ export const calculateWeb3Stats = (sessions, uniqueVisitors) => {
     if (session.wallet && 
         session.wallet.walletAddress && 
         session.wallet.walletAddress.trim() !== '' && 
-        session.wallet.walletAddress !== 'No Wallet Detected') {
+        !noWalletPhrases.includes(session.wallet.walletAddress) &&
+        session.wallet.walletAddress.length > 10) {
       walletUserIds.add(session.userId);
     }
   });

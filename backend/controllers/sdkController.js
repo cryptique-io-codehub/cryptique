@@ -25,8 +25,22 @@ exports.postAnalytics = async (req, res) => {
       // Find existing session with this ID
       const existingSession = await Session.findOne({ sessionId: sessionId });
       
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
       // Handle wallet updates if present
-      if (wallet && wallet.walletAddress && wallet.walletAddress.length > 0 && wallet.walletAddress !== "No Wallet Detected") {
+      if (wallet && 
+          wallet.walletAddress && 
+          wallet.walletAddress.trim() !== '' && 
+          !noWalletPhrases.includes(wallet.walletAddress) &&
+          wallet.walletAddress.length > 10) {
+        
         const newWallet = {
           walletAddress: wallet.walletAddress,
           walletType: wallet.walletType || "Unknown",

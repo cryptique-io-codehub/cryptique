@@ -212,6 +212,15 @@ class AnalyticsProcessor {
                  (!endDate || timestamp <= endDate);
         });
 
+      // Negative values that indicate no wallet
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
       // Process traffic sources data
       const sources = new Map();
       const campaigns = new Map(); // Track campaigns separately
@@ -244,7 +253,11 @@ class AnalyticsProcessor {
                 
                 const campaignData = campaigns.get(campaignKey);
                 campaignData.visitors++;
-                if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+                if (session.wallet && 
+                    session.wallet.walletAddress && 
+                    session.wallet.walletAddress.trim() !== '' && 
+                    !noWalletPhrases.includes(session.wallet.walletAddress) &&
+                    session.wallet.walletAddress.length > 10) {
                   campaignData.wallets++;
                 }
               }
@@ -265,7 +278,11 @@ class AnalyticsProcessor {
             sourceData.visitors++;
             
             // Count wallets if connected
-            if (session.wallet && session.wallet.walletAddress && session.wallet.walletAddress !== '' && session.wallet.walletAddress !== 'No Wallet Detected') {
+            if (session.wallet && 
+                session.wallet.walletAddress && 
+                session.wallet.walletAddress.trim() !== '' && 
+                !noWalletPhrases.includes(session.wallet.walletAddress) &&
+                session.wallet.walletAddress.length > 10) {
               sourceData.wallets++;
             }
           });
