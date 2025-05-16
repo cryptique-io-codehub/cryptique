@@ -17,6 +17,7 @@
     "client": "file:",
     "date-fns": "^4.1.0",
     "firebase": "^11.5.0",
+    "framer-motion": "^12.12.1",
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
