@@ -189,11 +189,11 @@ function SignupForm({ onBackToLogin }) {
   return (
     <div className="form-container w-full max-w-md mx-auto p-4 sm:p-6 mt-0">
       <div className="header mb-4 text-center sm:text-left">
-        <h1 className="text-2xl sm:text-3xl font-bold">Sign up</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Sign up</h1>
       </div>
 
       <div className="social-login mb-0">
-        <button onClick={googleLogin} className="google-btn w-full flex items-center justify-center gap-3 py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 transition">
+        <button onClick={googleLogin} className="google-btn w-full flex items-center justify-center gap-3 py-2 px-4 border border-white/20 rounded-xl shadow-sm bg-white/10 hover:bg-white/20 transition text-white">
           <div className="google-icon">
             <svg width="20" height="20" viewBox="0 0 20 20">
               <path d="M19.8 10.2c0-.7-.1-1.4-.2-2h-9.6v3.8h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3-4.5 3-7.3z" fill="#4285F4"/>
@@ -202,43 +202,58 @@ function SignupForm({ onBackToLogin }) {
               <path d="M10 3.9c1.6 0 3 .5 4.1 1.6l3-3C15.3.9 12.9 0 10 0 5.9 0 2.3 2.4.5 5.9l3.5 2.7c.8-2.5 3.2-4.7 6-4.7z" fill="#EA4335"/>
             </svg>
           </div>
-          <span className="text-sm sm:text-base font-medium ">Continue with Google</span>
+          <span className="text-sm sm:text-base font-medium">Continue with Google</span>
         </button>
       </div>
 
       <div className="or-divider flex items-center justify-center mt-3">
-        <div className="line flex-1 h-px bg-gray-200"></div>
-        <div className="or-text px-3 text-sm text-gray-500">OR</div>
-        <div className="line flex-1 h-px bg-gray-200"></div>
+        <div className="line flex-1 h-px bg-white/20"></div>
+        <div className="or-text px-3 text-sm text-gray-300">OR</div>
+        <div className="line flex-1 h-px bg-white/20"></div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="form-group">
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
           <input 
             type="text" 
             id="fullName" 
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            placeholder="Enter your full name"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="signupEmail" className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+          <label htmlFor="signupEmail" className="block text-sm font-medium text-gray-300 mb-1">Email address</label>
           <input 
             type="email" 
             id="signupEmail" 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            placeholder="Enter your email"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="signupPassword" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label htmlFor="avatar" className="block text-sm font-medium text-gray-300 mb-1">Avatar</label>
+          <input 
+            type="text" 
+            id="avatar" 
+            value={avatar}
+            onChange={(e) => setavatar(e.target.value)}
+            required
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            placeholder="Enter avatar URL"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="signupPassword" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
           <div className="password-input-container relative">
             <input 
               type={showPassword ? "text" : "password"} 
@@ -246,31 +261,21 @@ function SignupForm({ onBackToLogin }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 pr-16"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 pr-12"
+              placeholder="Enter your password"
             />
             <button 
               type="button" 
-              className="password-toggle absolute right-2 top-1/2 transform -translate-y-1/2 text-xs sm:text-sm text-blue-600 hover:text-blue-800"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400 hover:text-white"
               onClick={togglePasswordVisibility}
             >
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
-          <div className="form-group">
-          <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
-          <input 
-            type="text" 
-            id="avatar" 
-            value={avatar}
-            onChange={(e) => setavatar(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
         </div>
 
         <div className="form-group">
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
           <div className="password-input-container relative">
             <input 
               type={showPassword ? "text" : "password"} 
@@ -278,14 +283,19 @@ function SignupForm({ onBackToLogin }) {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              placeholder="Confirm your password"
             />
           </div>
         </div>
 
         <button 
           type="submit" 
-          className={`submit-btn w-full py-2 px-4 rounded-md text-white font-medium transition ${isFormValid ? 'bg-blue-600 hover:bg-blue-700 active' : 'bg-blue-300 cursor-not-allowed'}`}
+          className={`w-full py-3 rounded-xl font-medium transition-colors ${
+            isFormValid 
+              ? 'bg-red-600 text-white hover:bg-red-700' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
           disabled={!isFormValid || isLoading}
         >
           {isLoading ? (
@@ -303,8 +313,8 @@ function SignupForm({ onBackToLogin }) {
       </form>
 
       <div className="terms-privacy text-center mt-6">
-        <p className="text-xs sm:text-sm text-gray-500">
-          By signing up, you agree to our <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
+        <p className="text-xs sm:text-sm text-gray-300">
+          By signing up, you agree to our <a href="#" className="text-red-500 hover:text-red-400">Terms of Service</a> and <a href="#" className="text-red-500 hover:text-red-400">Privacy Policy</a>
         </p>
       </div>
     </div>
