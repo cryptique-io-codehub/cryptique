@@ -1,5 +1,5 @@
 import React, { useState,useEffect } from "react";
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Interface from './pages/Onboarding/LoginForm.js'
 import Dashboard from './pages/Dashboard/Dashboard.js'
 import LandingPage from './pages/LandingPage/LandingPage.js'
@@ -95,6 +95,15 @@ const TeamDataRefresher = () => {
   return null; // this component doesn't render anything
 };
 
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
 function App() {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('selectedTeam') || '');
   
@@ -106,25 +115,86 @@ function App() {
             <TitleUpdater />
             <TeamDataRefresher />
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              {/* Redirect root to login */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              
+              {/* Public routes */}
               <Route path="/login" element={<Interface />} />
               <Route path="/signup" element={<Interface />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/:team/offchain" element={<Dashboard />} />
-              <Route path="/:team/onchain" element={<Dashboard />} />
-              <Route path="/:team/campaigns" element={<Dashboard />} />
-              <Route path="/:team/conversion-events" element={<Dashboard />} />
-              <Route path="/:team/advertise" element={<Dashboard />} />
-              <Route path="/:team/history" element={<Dashboard />} />
-              <Route path="/:team/importusers" element={<Dashboard />} />
-              <Route path="/:team/managewebsites" element={<Dashboard />} />
-              <Route path="/:team/cq-intelligence" element={<Dashboard />} />
               
-              {/* Route settings pages through Dashboard component for consistent sidebar behavior */}
-              <Route path="/:team/settings" element={<Dashboard />} />
-              <Route path="/:team/settings/billing" element={<Dashboard />} />
-              <Route path="/:team/settings/teamsSection" element={<Dashboard />} />
-              <Route path="/:team/settings/pricing" element={<Dashboard />} />
+              {/* Protected routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/offchain" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/onchain" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/campaigns" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/conversion-events" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/advertise" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/history" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/importusers" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/managewebsites" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/cq-intelligence" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              
+              {/* Protected settings routes */}
+              <Route path="/:team/settings" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/settings/billing" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/settings/teamsSection" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/:team/settings/pricing" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
               
               <Route path="/test-analytics" element={<TestAnalytics />} />
             </Routes>
