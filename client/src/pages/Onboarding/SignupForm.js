@@ -8,7 +8,6 @@ import preloadData from '../../utils/preloadService.js';
 function SignupForm({ onBackToLogin }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [avatar, setavatar] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,11 +21,10 @@ function SignupForm({ onBackToLogin }) {
     setIsFormValid(
       fullName.trim() !== '' && 
       email.trim() !== '' && 
-      avatar.trim() !== '' && 
       password.trim() !== '' && 
       password === confirmPassword
     );
-  }, [fullName, email, password, avatar, confirmPassword]);
+  }, [fullName, email, password, confirmPassword]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,8 +37,7 @@ function SignupForm({ onBackToLogin }) {
         formData: {
           name: fullName,
           email,
-          password,
-          avatar
+          password
         },
       });
       console.log(response);
@@ -125,7 +122,6 @@ function SignupForm({ onBackToLogin }) {
       const response = await axiosInstance.post('/auth/google-login', {
           name: user.displayName,
           email: user.email,
-          avatar: user.photoURL,
       });
       const aa=user.email.split('@')[0];
       
@@ -236,19 +232,6 @@ function SignupForm({ onBackToLogin }) {
             required
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
             placeholder="Enter your email"
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="avatar" className="block text-sm font-medium text-gray-300 mb-1">Avatar</label>
-          <input 
-            type="text" 
-            id="avatar" 
-            value={avatar}
-            onChange={(e) => setavatar(e.target.value)}
-            required
-            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-            placeholder="Enter avatar URL"
           />
         </div>
 
