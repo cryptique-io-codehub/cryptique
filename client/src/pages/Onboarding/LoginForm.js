@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import phone from './login-phone.png'
 import axiosInstance from '../../axiosInstance.js';
 import preloadData from '../../utils/preloadService.js';
+import { motion } from 'framer-motion';
 
 function Interface() {
   const [loading, setLoading] = useState(false);
@@ -42,65 +43,288 @@ function Interface() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
+    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 to-black relative">
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0">
+        <div className="relative min-h-[350px] sm:min-h-[400px] w-full max-w-full mx-auto mb-8 sm:mb-12 cursor-crosshair overflow-visible">
+          {/* Central "BROKEN" Text */}
+          <motion.div 
+            className="absolute left-[50%] top-[45%] transform -translate-x-1/2 -translate-y-1/2 z-30"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            whileHover={{ scale: 1.05, filter: 'brightness(1.5)' }}
+            whileTap={{ scale: 0.95, rotate: [-2, 2, -2, 0] }}
+          >
+            <div className="relative text-[60px] sm:text-[80px] md:text-[120px] font-black text-red-600 tracking-tight select-none filter drop-shadow-xl leading-none animate-glitch-text">
+              <span className="absolute -top-1 -left-1 text-cyan-600/40 animate-glitch-offset clip-text">BROKEN</span>
+              <span className="absolute -bottom-1 -right-1 text-yellow-600/40 animate-glitch-offset-2 clip-text">BROKEN</span>
+              <span className="bg-clip-text bg-gradient-to-br from-red-700 via-red-600 to-red-500">BROKEN</span>
+              <div className="absolute inset-0 bg-red-500/10 blur-md rounded-lg -z-10"></div>
+            </div>
+          </motion.div>
+
+          {/* Scattered Words */}
+          <motion.div 
+            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[-8deg] z-20 cursor-pointer"
+            style={{ top: '5%', left: '5%' }}
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, x: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: 4 }}
+          >
+            UNTRACEABLE
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-6 z-20 cursor-pointer"
+            style={{ bottom: '8%', right: '4%' }}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, x: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -3 }}
+          >
+            NO SEGMENTATION
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[-5deg] z-20 cursor-pointer"
+            style={{ top: '12%', right: '6%' }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: 2 }}
+          >
+            WASTED RESOURCES
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[3deg] z-20 cursor-pointer"
+            style={{ bottom: '25%', left: '3%' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -1 }}
+          >
+            DISCONNECTED DATA
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-4deg] z-20 cursor-pointer"
+            style={{ top: '25%', left: '65%' }}
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: 2 }}
+          >
+            BLIND SPENDING
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[2deg] z-20 cursor-pointer"
+            style={{ top: '68%', left: '18%' }}
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -2 }}
+          >
+            ATTRIBUTION VOID
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-7deg] z-20 cursor-pointer"
+            style={{ top: '30%', right: '20%' }}
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: 3 }}
+          >
+            IDENTITY GAPS
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[5deg] z-20 cursor-pointer"
+            style={{ bottom: '20%', right: '45%' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -2 }}
+          >
+            FRAGMENTED ANALYTICS
+          </motion.div>
+
+          {/* Medium-importance terms */}
+          <motion.div 
+            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-12 z-10 cursor-pointer"
+            style={{ top: '35%', left: '10%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            incomplete data
+          </motion.div>
+
+          <motion.div 
+            className="hidden sm:block absolute text-sm md:text-lg font-bold text-red-500 transform -rotate-4 z-10 cursor-pointer"
+            style={{ bottom: '32%', left: '34%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            missing wallet data
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-3 z-10 cursor-pointer"
+            style={{ top: '42%', right: '10%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            broken touchpoints
+          </motion.div>
+
+          <motion.div 
+            className="hidden sm:block absolute text-sm md:text-lg font-bold text-red-500 transform -rotate-6 z-10 cursor-pointer"
+            style={{ bottom: '35%', right: '53%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            siloed metrics
+          </motion.div>
+
+          {/* Error Messages */}
+          <motion.div 
+            className="absolute top-[5%] left-[40%] transform -translate-x-1/2 bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[-2deg] cursor-pointer border-l-2 border-red-600"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.95 }}
+            transition={{ duration: 0.2 }}
+            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,0,0,0.6)' }}
+            whileTap={{ scale: 0.9, rotate: 2 }}
+          >
+            <span className="text-red-500 mr-0.5">❌</span>
+            <span className="text-red-500 font-bold">ERROR:</span>
+            <span className="ml-0.5 animate-pulse">tracking failed</span>
+          </motion.div>
+
+          <motion.div 
+            className="absolute bottom-[8%] left-[25%] transform bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[1deg] cursor-pointer border-l-2 border-yellow-500"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.95 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,255,0,0.6)' }}
+            whileTap={{ scale: 0.9, rotate: -1 }}
+          >
+            <span className="text-yellow-500 mr-0.5">⚠️</span>
+            <span className="text-yellow-400 font-bold">WARNING:</span>
+            <span className="ml-0.5">data corrupted</span>
+          </motion.div>
+
+          {/* Technical Fragments */}
+          <motion.div 
+            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
+            style={{ top: '25%', left: '48%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            0xF7E9
+          </motion.div>
+
+          <motion.div 
+            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
+            style={{ bottom: '25%', right: '38%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 0.2 }}
+          >
+            0xA1B2
+          </motion.div>
+
+          {/* Glitch Lines */}
+          <motion.div 
+            className="hidden sm:block absolute w-32 h-0.5 bg-red-500/40 z-10 left-1/2 transform -translate-x-1/2 rotate-45 cursor-crosshair"
+            style={{ bottom: '30%' }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
+          >
+            <div className="w-full h-full animate-glitch-horizontal"></div>
+          </motion.div>
+
+          <motion.div 
+            className="hidden sm:block absolute w-24 h-0.5 bg-red-500/40 z-10 right-[30%] rotate-[-30deg] cursor-crosshair"
+            style={{ top: '40%' }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
+          >
+            <div className="w-full h-full animate-glitch-horizontal"></div>
+          </motion.div>
+
+          {/* System Error Message */}
+          <motion.div 
+            className="absolute text-xs font-mono text-red-400/80 z-20 cursor-pointer"
+            style={{ bottom: '3%', left: '50%', transform: 'translateX(-50%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            whileHover={{ scale: 1.1, color: "#ff2d2d" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+              error: Web3 marketing system failure
+            </motion.span>
+          </motion.div>
+
+          {/* Mobile Gradient Overlay */}
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-gray-900 to-transparent sm:hidden"></div>
+        </div>
+      </div>
+
+      {/* Floating Login Box */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <motion.div 
+          className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+            <p className="text-gray-300">Sign in to continue</p>
+          </div>
+
+          {showLogin ? (
+            <LoginForm onSignupClick={toggleForm} toggleLoading={toggleLoading}/>
+          ) : (
+            <SignupForm onBackToLogin={toggleForm} />
+          )}
+        </motion.div>
+      </div>
+
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50 flex items-center justify-center">
-          <div className="bg-white p-3 px-6 rounded-md">
-            <p className="text-md text-gray-800 font-semibold">Loading...</p>
+        <div className="fixed top-0 left-0 w-full h-full bg-black/80 z-50 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-lg p-6 rounded-xl border border-white/20">
+            <p className="text-white font-semibold">Loading...</p>
           </div>
         </div>
       )}
-      
-      {/* Left panel - Full height on desktop, partial on mobile */}
-      <div className="w-full h-60 sm:h-72 md:h-80 lg:w-1/2 lg:h-screen bg-indigo-900 fixed lg:relative z-10">
-        <LeftPanel/>
-      </div>
-      
-      {/* Right panel - Properly positioned on all devices */}
-      <div className="w-full lg:w-1/2 mt-60 sm:mt-72 md:mt-80 lg:mt-0 overflow-y-auto h-full pb-16">
-        <RightPanel 
-          showLogin={showLogin} 
-          toggleForm={toggleForm}  
-          toggleLoading={toggleLoading} 
-          a={a} 
-        />
-      </div>
-    </div>
-  );
-}
-
-function LeftPanel() {
-  return (
-    <div className="w-full h-full flex items-end justify-center relative overflow-hidden">
-      <img
-        src={phone}
-        alt="Marketing Graphic"
-        className="w-auto h-auto max-w-full object-contain pb-0 mb-0"
-        style={{ 
-          maxHeight: '115%',
-          transform: 'translateY(5%)' 
-        }}
-      />
-    </div>
-  );
-}
-
-function RightPanel({ showLogin, toggleForm, a, toggleLoading }) {
-  return (
-    <div className="bg-white w-full p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col min-h-full">
-      <div className="self-end mb-4 sm:mb-6 lg:mb-8">
-        <p className="text-sm text-gray-700">
-          {a ? <div>Already have an Account?&nbsp;&nbsp;<button onClick={toggleForm} className="text-indigo-600 font-medium">Sign in</button></div> : <div></div>}
-        </p>
-      </div>
-      
-      <div className="flex-grow flex flex-col items-center justify-center max-w-md mx-auto w-full px-2 sm:px-4">
-        {showLogin ? (
-          <LoginForm onSignupClick={toggleForm} toggleLoading={toggleLoading}/>
-        ) : (
-          <SignupForm onBackToLogin={toggleForm} />
-        )}
-      </div>
     </div>
   );
 }
@@ -167,7 +391,6 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         email: user.email,
         avatar: user.photoURL,
       });
-      console.log(user.email);
       const aa=user.email.split('@')[0];
       if (response.data.user) {
         localStorage.setItem('accessToken', response.data.accessToken);
@@ -188,103 +411,97 @@ function LoginForm({ onSignupClick, toggleLoading }) {
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-medium text-gray-800">Sign in</h1>
+    <div className="space-y-6">
+      <button 
+        onClick={googleLogin} 
+        className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center justify-center gap-3 transition-colors text-white"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20">
+          <path d="M19.8 10.2c0-.7-.1-1.4-.2-2h-9.6v3.8h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3-4.5 3-7.3z" fill="#4285F4"/>
+          <path d="M10 20c2.9 0 5.3-1 7-2.6l-3.4-2.6c-.9.6-2.1 1-3.6 1-2.8 0-5.1-1.9-6-4.4H.5v2.7c1.8 3.5 5.4 5.9 9.5 5.9z" fill="#34A853"/>
+          <path d="M4 10.2c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V3.5H.5c-.8 1.6-1.3 3.4-1.3 5.2 0 1.8.5 3.6 1.3 5.2l3.5-2.7z" fill="#FBBC05"/>
+          <path d="M10 3.9c1.6 0 3 .5 4.1 1.6l3-3C15.3.9 12.9 0 10 0 5.9 0 2.3 2.4.5 5.9l3.5 2.7c.8-2.5 3.2-4.7 6-4.7z" fill="#EA4335"/>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div className="flex items-center">
+        <div className="flex-grow h-px bg-white/20"></div>
+        <div className="px-4 text-sm text-gray-300">OR</div>
+        <div className="flex-grow h-px bg-white/20"></div>
       </div>
 
-      <div className="w-full space-y-4 sm:space-y-6">
-        <button 
-          onClick={googleLogin} 
-          className="w-full py-2.5 sm:py-3 px-4 border border-gray-300 rounded-full flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors text-gray-700 text-sm sm:text-base"
-        >
-          <svg width="18" height="18" viewBox="0 0 20 20">
-            <path d="M19.8 10.2c0-.7-.1-1.4-.2-2h-9.6v3.8h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3-4.5 3-7.3z" fill="#4285F4"/>
-            <path d="M10 20c2.9 0 5.3-1 7-2.6l-3.4-2.6c-.9.6-2.1 1-3.6 1-2.8 0-5.1-1.9-6-4.4H.5v2.7c1.8 3.5 5.4 5.9 9.5 5.9z" fill="#34A853"/>
-            <path d="M4 10.2c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V3.5H.5c-.8 1.6-1.3 3.4-1.3 5.2 0 1.8.5 3.6 1.3 5.2l3.5-2.7z" fill="#FBBC05"/>
-            <path d="M10 3.9c1.6 0 3 .5 4.1 1.6l3-3C15.3.9 12.9 0 10 0 5.9 0 2.3 2.4.5 5.9l3.5 2.7c.8-2.5 3.2-4.7 6-4.7z" fill="#EA4335"/>
-          </svg>
-          <span>Continue with Google</span>
-        </button>
-
-        <div className="flex items-center">
-          <div className="flex-grow h-px bg-gray-200"></div>
-          <div className="px-4 text-sm text-gray-400">OR</div>
-          <div className="flex-grow h-px bg-gray-200"></div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="email" className="block mb-2 text-sm text-gray-300">
+            Email address
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            placeholder="Enter your email"
+            required
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-          <div>
-            <label htmlFor="email" className="block mb-1 text-sm text-gray-600">
-              User name or email address
+        <div>
+          <div className="flex justify-between mb-2">
+            <label htmlFor="password" className="text-sm text-gray-300">
+              Password
             </label>
+          </div>
+          <div className="relative">
             <input 
-              type="email" 
-              id="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              type={showPassword ? "text" : "password"} 
+              id="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 pr-12"
+              placeholder="Enter your password"
               required
             />
-          </div>
-
-          <div>
-            <div className="flex justify-between mb-1">
-              <label htmlFor="password" className="text-sm text-gray-600">
-                Your password
-              </label>
-            </div>
-            <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                id="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 pr-12"
-                required
-              />
-              <button 
-                type="button" 
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400 flex items-center"
-                onClick={togglePasswordVisibility}
-              >
-                {showPassword ? (
-                  <span className="flex items-center">Hide</span>
-                ) : (
-                  <span className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Show
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <button type="button" className="text-sm text-gray-500 hover:text-indigo-600">
-              Forgot your password?
+            <button 
+              type="button" 
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400 hover:text-white"
+              onClick={togglePasswordVisibility}
+            >
+              {showPassword ? "Hide" : "Show"}
             </button>
           </div>
-
-          <button 
-            type="submit" 
-            className={`w-full py-2.5 sm:py-3 rounded-md font-medium transition-colors text-sm sm:text-base ${
-              isFormValid ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-            }`}
-            disabled={!isFormValid}
-          >
-            Sign in
-          </button>
-        </form>
-
-        <div className="text-center text-sm text-gray-600 mt-4">
-          <p>
-            Don't have an account? <button onClick={onSignupClick} className="text-indigo-600 font-medium">Sign up</button>
-          </p>
         </div>
+
+        <div className="text-right">
+          <button type="button" className="text-sm text-gray-300 hover:text-white">
+            Forgot your password?
+          </button>
+        </div>
+
+        <button 
+          type="submit" 
+          className={`w-full py-3 rounded-xl font-medium transition-colors ${
+            isFormValid 
+              ? 'bg-red-600 text-white hover:bg-red-700' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
+          disabled={!isFormValid}
+        >
+          Sign in
+        </button>
+      </form>
+
+      <div className="text-center text-sm text-gray-300">
+        <p>
+          Don't have an account?{' '}
+          <button 
+            onClick={onSignupClick} 
+            className="text-red-500 hover:text-red-400 font-medium"
+          >
+            Sign up
+          </button>
+        </p>
       </div>
     </div>
   );

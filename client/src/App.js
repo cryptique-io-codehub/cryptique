@@ -21,6 +21,7 @@ import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
 import axios from 'axios';
+import './styles/animations.css';
 
 // Title updater component - this doesn't need access to Team context
 const TitleUpdater = () => {
