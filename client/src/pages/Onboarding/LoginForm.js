@@ -43,10 +43,10 @@ function Interface() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 to-black relative">
+    <div className="min-h-screen w-full overflow-hidden bg-[#1d0c46] relative">
       {/* Animated Background */}
       <div className="absolute inset-0 z-0">
-        <div className="relative min-h-[350px] sm:min-h-[400px] w-full max-w-full mx-auto mb-8 sm:mb-12 cursor-crosshair overflow-visible">
+        <div className="relative min-h-screen w-full max-w-full mx-auto cursor-crosshair overflow-visible">
           {/* Central "BROKEN" Text */}
           <motion.div 
             className="absolute left-[50%] top-[45%] transform -translate-x-1/2 -translate-y-1/2 z-30"
@@ -64,7 +64,7 @@ function Interface() {
             </div>
           </motion.div>
 
-          {/* Scattered Words */}
+          {/* Scattered Words - Distributed across the entire page */}
           <motion.div 
             className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[-8deg] z-20 cursor-pointer"
             style={{ top: '5%', left: '5%' }}
@@ -161,7 +161,44 @@ function Interface() {
             FRAGMENTED ANALYTICS
           </motion.div>
 
-          {/* Medium-importance terms */}
+          {/* Additional scattered words for better coverage */}
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[8deg] z-20 cursor-pointer"
+            style={{ top: '75%', right: '15%' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -2 }}
+          >
+            DATA LEAKS
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-6deg] z-20 cursor-pointer"
+            style={{ top: '85%', left: '25%' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: 2 }}
+          >
+            SECURITY BREACH
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[4deg] z-20 cursor-pointer"
+            style={{ top: '15%', left: '35%' }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, y: { duration: 0.2 } }}
+            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
+            whileTap={{ scale: 0.9, rotate: -2 }}
+          >
+            SYSTEM FAILURE
+          </motion.div>
+
+          {/* Medium-importance terms - Distributed across the page */}
           <motion.div 
             className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-12 z-10 cursor-pointer"
             style={{ top: '35%', left: '10%' }}
@@ -206,7 +243,30 @@ function Interface() {
             siloed metrics
           </motion.div>
 
-          {/* Error Messages */}
+          {/* Additional medium-importance terms */}
+          <motion.div 
+            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-[-3deg] z-10 cursor-pointer"
+            style={{ top: '55%', left: '45%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            corrupted files
+          </motion.div>
+
+          <motion.div 
+            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-[5deg] z-10 cursor-pointer"
+            style={{ bottom: '45%', left: '15%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
+            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
+          >
+            lost connections
+          </motion.div>
+
+          {/* Error Messages - Distributed across the page */}
           <motion.div 
             className="absolute top-[5%] left-[40%] transform -translate-x-1/2 bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[-2deg] cursor-pointer border-l-2 border-red-600"
             initial={{ opacity: 0 }}
@@ -233,7 +293,21 @@ function Interface() {
             <span className="ml-0.5">data corrupted</span>
           </motion.div>
 
-          {/* Technical Fragments */}
+          {/* Additional error messages */}
+          <motion.div 
+            className="absolute top-[25%] right-[15%] transform bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[2deg] cursor-pointer border-l-2 border-red-600"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.95 }}
+            transition={{ duration: 0.2, delay: 0.15 }}
+            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,0,0,0.6)' }}
+            whileTap={{ scale: 0.9, rotate: -2 }}
+          >
+            <span className="text-red-500 mr-0.5">❌</span>
+            <span className="text-red-500 font-bold">ERROR:</span>
+            <span className="ml-0.5 animate-pulse">system crash</span>
+          </motion.div>
+
+          {/* Technical Fragments - Distributed across the page */}
           <motion.div 
             className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
             style={{ top: '25%', left: '48%' }}
@@ -254,7 +328,28 @@ function Interface() {
             0xA1B2
           </motion.div>
 
-          {/* Glitch Lines */}
+          {/* Additional technical fragments */}
+          <motion.div 
+            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
+            style={{ top: '65%', left: '28%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 0.4 }}
+          >
+            0xC4D5
+          </motion.div>
+
+          <motion.div 
+            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
+            style={{ bottom: '15%', left: '55%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
+          >
+            0xE6F7
+          </motion.div>
+
+          {/* Glitch Lines - Distributed across the page */}
           <motion.div 
             className="hidden sm:block absolute w-32 h-0.5 bg-red-500/40 z-10 left-1/2 transform -translate-x-1/2 rotate-45 cursor-crosshair"
             style={{ bottom: '30%' }}
@@ -277,6 +372,18 @@ function Interface() {
             <div className="w-full h-full animate-glitch-horizontal"></div>
           </motion.div>
 
+          {/* Additional glitch lines */}
+          <motion.div 
+            className="hidden sm:block absolute w-28 h-0.5 bg-red-500/40 z-10 left-[20%] rotate-[60deg] cursor-crosshair"
+            style={{ top: '75%' }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
+          >
+            <div className="w-full h-full animate-glitch-horizontal"></div>
+          </motion.div>
+
           {/* System Error Message */}
           <motion.div 
             className="absolute text-xs font-mono text-red-400/80 z-20 cursor-pointer"
@@ -293,7 +400,7 @@ function Interface() {
           </motion.div>
 
           {/* Mobile Gradient Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-gray-900 to-transparent sm:hidden"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1d0c46] to-transparent sm:hidden"></div>
         </div>
       </div>
 
