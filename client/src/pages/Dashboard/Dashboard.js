@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar.js";
 import Header from "../../components/Header.js";
 import Tabs from "./components/Tabs";
-import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
-import { Menu, Home, BarChart, Activity, ArrowRight } from "lucide-react";
+import { Menu, Home, BarChart, Activity, ArrowRight, ExternalLink, Users, Trophy, LineChart, Clock, Zap } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
@@ -36,7 +35,13 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [websiteData, setWebsiteData] = useState({
+    totalWebsites: 0,
+    recentVisitors: 0,
+    activeWebsites: 0,
+    activeCampaigns: 0
+  });
   
   // Get contract data from context
   const { contractArray, isLoadingContracts, refreshContracts } = useContractData();
@@ -79,12 +84,71 @@ const Dashboard = () => {
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
 
-  // Refresh contracts when dashboard loads
+  // Fetch data on component mount
   useEffect(() => {
-    if (refreshContracts) {
-      refreshContracts();
-    }
-  }, [refreshContracts]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Refresh contracts data
+        if (refreshContracts) {
+          refreshContracts();
+        }
+        
+        // Fetch websites for this team
+        const teamId = selectedTeam;
+        if (!teamId) return;
+
+        const response = await axiosInstance.get(`/website/team/${teamId}`);
+        
+        if (response.data && response.data.websites) {
+          const websites = response.data.websites;
+          const activeWebs = websites.filter(site => site.isActive).length;
+          
+          // Get sample analytics data for the first website if available
+          let visitorCount = 0;
+          let campaignCount = 0;
+          
+          if (websites.length > 0) {
+            const firstWebsite = websites[0];
+            
+            try {
+              // Fetch analytics data
+              const analyticsResponse = await sdkApi.getAnalytics(firstWebsite.siteId);
+              if (analyticsResponse && analyticsResponse.analytics) {
+                visitorCount = analyticsResponse.analytics.uniqueVisitors || 0;
+              }
+            } catch (err) {
+              console.error("Error fetching analytics:", err);
+            }
+            
+            try {
+              // Fetch campaign data for the first website
+              const campaignResponse = await axiosInstance.get(`/campaign/site/${firstWebsite.siteId}`);
+              if (campaignResponse && campaignResponse.data && campaignResponse.data.campaigns) {
+                campaignCount = campaignResponse.data.campaigns.length;
+              }
+            } catch (err) {
+              console.error("Error fetching campaigns:", err);
+              // If there's an error, we'll leave the campaign count at 0
+            }
+          }
+          
+          setWebsiteData({
+            totalWebsites: websites.length,
+            recentVisitors: visitorCount,
+            activeWebsites: activeWebs,
+            activeCampaigns: campaignCount
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching website data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedTeam, refreshContracts]);
 
   // Sync selectedPage with URL
   useEffect(() => {
@@ -115,48 +179,62 @@ const Dashboard = () => {
     navigate(`/${selectedTeam}/${page}`);
   };
 
-  // Render smart contracts
-  const renderSmartContracts = () => {
-    if (isLoadingContracts) {
-      return (
-        <div className="animate-pulse">
-          <div className="h-16 bg-gray-200 rounded w-full mb-2"></div>
-        </div>
-      );
+  // Define dashboard cards
+  const dashboardCards = [
+    {
+      title: "Quick Setup Guide",
+      description: "Learn how to add the Cryptique tracking script to your website",
+      icon: <Zap size={20} style={{ color: styles.accentColor }} />,
+      path: "https://cryptique.gitbook.io/cryptique",
+      external: true,
+      color: styles.primaryColor,
+      textLight: true
+    },
+    {
+      title: "Manage Websites",
+      description: `You have ${websiteData.totalWebsites} registered websites`,
+      icon: <LineChart size={20} style={{ color: styles.accentColor }} />,
+      path: "manage-websites",
+      external: false,
+      metric: websiteData.totalWebsites,
+      metricLabel: "Websites"
+    },
+    {
+      title: "Recent Visitors",
+      description: "Monitor your website traffic",
+      icon: <Users size={20} style={{ color: styles.accentColor }} />,
+      path: "offchain",
+      external: false,
+      metric: websiteData.recentVisitors,
+      metricLabel: "Visitors"
+    },
+    {
+      title: "Campaign Performance",
+      description: "Track your marketing campaigns",
+      icon: <Trophy size={20} style={{ color: styles.accentColor }} />,
+      path: "campaigns",
+      external: false,
+      metric: websiteData.activeCampaigns,
+      metricLabel: "Active"
+    },
+    {
+      title: "Smart Contracts",
+      description: "Manage your blockchain smart contracts",
+      icon: <Activity size={20} style={{ color: styles.accentColor }} />,
+      path: "onchain",
+      external: false,
+      metric: contractArray ? contractArray.length : 0,
+      metricLabel: "Connected",
+      isContractCard: true
     }
+  ];
 
-    if (!contractArray || contractArray.length === 0) {
-      return (
-        <div className="text-center py-6 text-gray-500">
-          <p>No smart contracts connected</p>
-          <button 
-            onClick={() => navigate(`/${selectedTeam}/onchain`)}
-            className="mt-2 text-sm font-medium"
-            style={{ color: styles.primaryColor }}
-          >
-            Connect a smart contract
-          </button>
-        </div>
-      );
+  const handleCardClick = (path, external) => {
+    if (external) {
+      window.open(path, '_blank');
+    } else {
+      navigate(`/${selectedTeam}/${path}`);
     }
-
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1">
-          <div className="text-3xl font-bold mb-1">{contractArray.length}</div>
-          <p className="text-gray-500 text-sm">Connected Smart Contracts</p>
-        </div>
-        <div className="mt-4">
-          <button 
-            onClick={() => navigate(`/${selectedTeam}/onchain`)}
-            className="text-sm font-medium hover:underline"
-            style={{ color: styles.primaryColor }}
-          >
-            View all contracts
-          </button>
-        </div>
-      </div>
-    );
   };
 
   // Get sidebar classes based on screen size and state
@@ -219,44 +297,64 @@ const Dashboard = () => {
               <Tabs isSidebarOpen={isSidebarOpen} />
 
               {/* Dashboard Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <FeatureCards />
-                
-                {/* Smart Contracts Panel */}
-                <div 
-                  className="rounded-lg p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-full border border-gray-100 bg-white"
-                  onClick={() => navigate(`/${selectedTeam}/onchain`)}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-lg">
-                        Smart Contracts
-                      </h3>
-                      <div className="p-1.5 rounded-full" style={{ backgroundColor: `${styles.primaryColor}10` }}>
-                        <Activity size={20} style={{ color: styles.accentColor }} />
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                {/* Loading Skeleton */}
+                {isLoading || isLoadingContracts ? (
+                  [...Array(5)].map((_, i) => (
+                    <div key={i} className="bg-white rounded-lg p-5 shadow-sm animate-pulse h-[160px]">
+                      <div className="h-6 bg-gray-200 rounded mb-3 w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-4 w-full"></div>
+                      <div className="flex justify-between items-end mt-8">
+                        <div className="h-8 bg-gray-200 rounded w-16"></div>
+                        <div className="h-5 bg-gray-200 rounded w-5"></div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Manage your blockchain smart contracts
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    {!isLoadingContracts && contractArray && (
+                  ))
+                ) : (
+                  /* Feature Cards */
+                  dashboardCards.map((card, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleCardClick(card.path, card.external)}
+                      className={`rounded-lg p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[160px] border border-gray-100`}
+                      style={{
+                        backgroundColor: index === 0 ? styles.primaryColor : 'white',
+                        color: index === 0 ? 'white' : 'inherit'
+                      }}
+                    >
                       <div>
-                        <span className="text-2xl font-semibold">{contractArray.length}</span>
-                        <span className="text-xs ml-1 text-gray-500">Connected</span>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className={`font-semibold text-lg ${index === 0 ? 'text-white' : ''}`}>
+                            {card.title}
+                          </h3>
+                          <div className={`p-1.5 rounded-full ${index === 0 ? 'bg-white/10' : `bg-${styles.primaryColor}/10`}`}>
+                            {card.icon}
+                          </div>
+                        </div>
+                        <p className={`text-sm ${index === 0 ? 'text-white/80' : 'text-gray-500'} mb-4`}>
+                          {card.description}
+                        </p>
                       </div>
-                    )}
-                    {isLoadingContracts && (
-                      <div className="animate-pulse h-6 bg-gray-200 rounded w-16"></div>
-                    )}
-                    
-                    <div className="flex items-center text-sm font-medium">
-                      <ArrowRight size={16} />
+                      
+                      <div className="flex items-center justify-between">
+                        {card.metric !== undefined && (
+                          <div>
+                            <span className="text-2xl font-semibold">{card.metric}</span>
+                            <span className={`text-xs ml-1 ${index === 0 ? 'text-white/70' : 'text-gray-500'}`}>{card.metricLabel}</span>
+                          </div>
+                        )}
+                        
+                        <div className={`flex items-center text-sm font-medium ${index === 0 ? 'text-white' : ''}`}>
+                          {card.external ? (
+                            <ExternalLink size={16} className={index === 0 ? 'text-white' : ''} />
+                          ) : (
+                            <ArrowRight size={16} className={index === 0 ? 'text-white' : ''} />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </main>
           </>
