@@ -83,14 +83,44 @@ const Dashboard = () => {
         const teamId = selectedTeam;
         if (!teamId) return;
         
-        // Get recent website activity
-        const response = await axiosInstance.get(`/analytics/recentActivity/${teamId}`);
+        // Mock recent activity data until the API endpoint is implemented
+        const mockActivities = [
+          {
+            title: "Website Added",
+            description: "A new website was registered in your account",
+            time: "2 hours ago"
+          },
+          {
+            title: "New Visitors",
+            description: "Your website had 12 new visitors today",
+            time: "4 hours ago"
+          },
+          {
+            title: "Wallet Connected",
+            description: "A user connected their Web3 wallet",
+            time: "yesterday"
+          }
+        ];
         
-        if (response.data && response.data.activities) {
-          setRecentActivity(response.data.activities.slice(0, 5));
+        setRecentActivity(mockActivities);
+        
+        // When the real API endpoint is available, uncomment this code:
+        /*
+        try {
+          // Get recent activity from the API
+          const response = await axiosInstance.get(`/analytics/recentActivity/${teamId}`);
+          
+          if (response.data && response.data.activities) {
+            setRecentActivity(response.data.activities.slice(0, 5));
+          }
+        } catch (apiError) {
+          console.error("Error fetching recent activity:", apiError);
+          // Fall back to mock data if API call fails
+          setRecentActivity(mockActivities);
         }
+        */
       } catch (error) {
-        console.error("Error fetching recent activity:", error);
+        console.error("Error in activity handling:", error);
       } finally {
         setIsLoading(false);
       }

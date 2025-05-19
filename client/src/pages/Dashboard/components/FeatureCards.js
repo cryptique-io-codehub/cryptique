@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ExternalLink, Users, Trophy, LineChart, Clock, Zap, ArrowRight, ArrowUpRight } from "lucide-react";
 import axios from "axios";
 import axiosInstance from "../../../axiosInstance";
+import sdkApi from "../../../utils/sdkApi";
 
 export const FeatureCards = () => {
   const navigate = useNavigate();
@@ -40,9 +41,10 @@ export const FeatureCards = () => {
           let visitorCount = 0;
           if (websites.length > 0) {
             try {
-              const analyticsResponse = await axiosInstance.get(`/analytics/summary/${websites[0]._id}`);
-              if (analyticsResponse.data && analyticsResponse.data.visitorCount) {
-                visitorCount = analyticsResponse.data.visitorCount;
+              // Use the SDK API utility instead of direct axios call
+              const analyticsResponse = await sdkApi.getAnalytics(websites[0].siteId);
+              if (analyticsResponse && analyticsResponse.analytics) {
+                visitorCount = analyticsResponse.analytics.uniqueVisitors || 0;
               }
             } catch (err) {
               console.error("Error fetching analytics:", err);
