@@ -165,7 +165,7 @@ const Dashboard = () => {
       'advertise': 'advertise',
       'history': 'history',
       'importusers': 'import-users',
-      'managewebsites': 'manage-websites',
+      'managewebsites': 'managewebsites',
       'cq-intelligence': 'cq-intelligence',
       'settings': 'settings'
     };
@@ -194,7 +194,7 @@ const Dashboard = () => {
       title: "Manage Websites",
       description: `You have ${websiteData.totalWebsites} registered websites`,
       icon: <LineChart size={20} style={{ color: styles.accentColor }} />,
-      path: "manage-websites",
+      path: "managewebsites",
       external: false,
       metric: websiteData.totalWebsites,
       metricLabel: "Websites"
@@ -584,7 +584,7 @@ const Dashboard = () => {
           <ImportUsers {...commonProps} />,
           "user import functionality"
         );
-      case "manage-websites":
+      case "managewebsites":
         return withSubscriptionCheck(
           <ManageWebsites {...commonProps} />,
           "website management"
