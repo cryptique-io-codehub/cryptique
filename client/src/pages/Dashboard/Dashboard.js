@@ -20,6 +20,7 @@ import preloadData from '../../utils/preloadService.js'
 import SubscriptionRequired from "../../components/SubscriptionRequired.js";
 import { useSubscription } from "../../context/subscriptionContext.js";
 import axiosInstance from '../../axiosInstance';
+import sdkApi from '../../utils/sdkApi.js';
 
 const Dashboard = () => {
   // State management
@@ -83,47 +84,88 @@ const Dashboard = () => {
         const teamId = selectedTeam;
         if (!teamId) return;
         
-        // Mock recent activity data until the API endpoint is implemented
-        const mockActivities = [
-          {
-            title: "Website Added",
-            description: "A new website was registered in your account",
-            time: "2 hours ago"
-          },
-          {
-            title: "New Visitors",
-            description: "Your website had 12 new visitors today",
-            time: "4 hours ago"
-          },
-          {
-            title: "Wallet Connected",
-            description: "A user connected their Web3 wallet",
-            time: "yesterday"
-          }
-        ];
+        // Get website data for this team
+        const websitesResponse = await axiosInstance.get(`/website/team/${teamId}`);
         
-        setRecentActivity(mockActivities);
-        
-        // When the real API endpoint is available, uncomment this code:
-        /*
-        try {
-          // Get recent activity from the API
-          const response = await axiosInstance.get(`/analytics/recentActivity/${teamId}`);
+        if (websitesResponse.data && websitesResponse.data.websites && websitesResponse.data.websites.length > 0) {
+          const firstWebsite = websitesResponse.data.websites[0];
           
-          if (response.data && response.data.activities) {
-            setRecentActivity(response.data.activities.slice(0, 5));
+          try {
+            // Get analytics data for the website
+            const analyticsData = await sdkApi.getAnalytics(firstWebsite.siteId);
+            
+            if (analyticsData && analyticsData.analytics) {
+              const analytics = analyticsData.analytics;
+              
+              // Check if we have sessions data
+              if (analytics.sessions && analytics.sessions.length > 0) {
+                // Sort sessions by startTime (newest first)
+                const sortedSessions = [...analytics.sessions].sort((a, b) => 
+                  new Date(b.startTime) - new Date(a.startTime)
+                );
+                
+                // Take the 5 most recent sessions and format them as activity items
+                const recentActivities = sortedSessions.slice(0, 5).map(session => {
+                  const date = new Date(session.startTime);
+                  const hours = Math.floor((Date.now() - date.getTime()) / (60 * 60 * 1000));
+                  
+                  let timeString = hours === 0 
+                    ? 'Just now'
+                    : hours === 1 
+                      ? '1 hour ago' 
+                      : hours < 24
+                        ? `${hours} hours ago`
+                        : `${Math.floor(hours / 24)} days ago`;
+                  
+                  return {
+                    title: session.isWeb3User ? 'Web3 User Visit' : 'Website Visit',
+                    description: session.entryPage 
+                      ? `Visited ${session.entryPage}` 
+                      : `Viewed ${session.pagesViewed || 1} page(s)`,
+                    time: timeString
+                  };
+                });
+                
+                setRecentActivity(recentActivities);
+              } else {
+                // If no session data, create an activity for the website registration
+                const websiteActivity = {
+                  title: 'Website Registered',
+                  description: `${firstWebsite.Domain} was added to your account`,
+                  time: 'Recently'
+                };
+                
+                setRecentActivity([websiteActivity]);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching analytics data:", error);
+            fallbackToDefaultActivity(firstWebsite);
           }
-        } catch (apiError) {
-          console.error("Error fetching recent activity:", apiError);
-          // Fall back to mock data if API call fails
-          setRecentActivity(mockActivities);
+        } else {
+          fallbackToDefaultActivity();
         }
-        */
       } catch (error) {
         console.error("Error in activity handling:", error);
+        fallbackToDefaultActivity();
       } finally {
         setIsLoading(false);
       }
+    };
+    
+    // Helper function to show default activities when real data can't be loaded
+    const fallbackToDefaultActivity = (website = null) => {
+      const activities = [
+        {
+          title: website ? 'Website Added' : 'Welcome to Cryptique',
+          description: website 
+            ? `${website.Domain} was registered in your account` 
+            : 'Add a website to start tracking analytics',
+          time: 'Recently'
+        }
+      ];
+      
+      setRecentActivity(activities);
     };
     
     fetchRecentActivity();
