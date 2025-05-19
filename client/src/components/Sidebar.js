@@ -1,4 +1,4 @@
-import { Home, BarChart, LineChart, Users, Settings, List, Database, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit, CreditCard, Lock } from "lucide-react";
+import { Home, BarChart2, Database, LineChart, Users, Settings, List, Activity, Globe, Sun, Upload, Bot, Sparkles, BrainCircuit, CreditCard, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useParams } from "react-router-dom";
@@ -181,15 +181,15 @@ const Sidebar = ({ isOpen, onClose, onNavigate, hideMarketing, isCompact, curren
           
           {/* Premium features */}
           {renderNavItem(`/${selectedTeam}/offchain`, "offchain", 
-            <BarChart size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
+            <BarChart2 size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
             "Off-chain analytics")}
             
           {renderNavItem(`/${selectedTeam}/onchain`, "onchain", 
-            <LineChart size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
+            <Database size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
             "On-chain explorer")}
             
           {renderNavItem(`/${selectedTeam}/cq-intelligence`, "cq-intelligence", 
-            <BrainCircuit size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
+            <LineChart size={effectiveIsCompact && !isHovering ? 16 : 14} />, 
             "CQ Intelligence")}
           
           {showExpanded && <hr className="my-2 border-gray-300" />}

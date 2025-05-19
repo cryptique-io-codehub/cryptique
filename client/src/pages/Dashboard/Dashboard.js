@@ -171,7 +171,7 @@ const Dashboard = () => {
     };
     
     const newPage = routeToPageMap[currentRoute] || 'dashboard';
-    setSelectedPage(newPage);
+      setSelectedPage(newPage);
   }, [location]);
 
   const handleNavigation = (page) => {
@@ -249,7 +249,7 @@ const Dashboard = () => {
   const getMainContentClasses = () => {
     let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
     if (screenSize.isDesktop) {
-      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
     }
     return baseClasses;
   };
@@ -296,7 +296,7 @@ const Dashboard = () => {
               {hasSubscription ? (
                 // Premium user dashboard
                 <>
-                  <MarketingSection />
+              <MarketingSection />
                   <Tabs isSidebarOpen={isSidebarOpen} />
 
                   {/* Dashboard Grid Layout */}

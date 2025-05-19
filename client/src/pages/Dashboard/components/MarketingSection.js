@@ -76,8 +76,8 @@ const MarketingSection = () => {
             path: "onchain"
           },
           {
-            title: "AI Analytics",
-            description: "Get intelligent insights from your data with CQ Intelligence",
+            title: "CQ Intelligence",
+            description: "Get intelligent insights from your data with AI-powered analytics",
             icon: <LineChart style={{ color: styles.accentColor }} />,
             path: "cq-intelligence"
           },
