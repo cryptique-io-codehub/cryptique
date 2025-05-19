@@ -70,7 +70,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize, selectedPage}) => {
     useEffect(() => {
       const newIdy = localStorage.getItem("idy");
       if (newIdy !== idy) {
-        setIdy(newIdy);
+        setidy(newIdy);
       }
     }, [idy]);
 
