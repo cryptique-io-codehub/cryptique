@@ -120,15 +120,7 @@ const Dashboard = () => {
     if (isLoadingContracts) {
       return (
         <div className="animate-pulse">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="mb-4 flex items-center gap-3">
-              <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
-              <div className="flex-1">
-                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            </div>
-          ))}
+          <div className="h-16 bg-gray-200 rounded w-full mb-2"></div>
         </div>
       );
     }
@@ -149,41 +141,21 @@ const Dashboard = () => {
     }
 
     return (
-      <div className="space-y-4">
-        {contractArray.slice(0, 4).map((contract, index) => (
-          <div 
-            key={contract.id || index} 
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-            onClick={() => navigate(`/${selectedTeam}/onchain`)}
-          >
-            <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${styles.primaryColor}20` }}>
-              <span className="text-xl" style={{ color: styles.primaryColor }}>
-                {contract.tokenSymbol ? contract.tokenSymbol[0] : '#'}
-              </span>
-            </div>
-            <div className="flex-1">
-              <h4 className="font-medium text-gray-900">{contract.name}</h4>
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500 truncate max-w-[180px]">
-                  {contract.address}
-                </p>
-                <span className="text-xs text-gray-400">{contract.blockchain}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {contractArray.length > 4 && (
-          <div className="text-center mt-3">
-            <button 
-              onClick={() => navigate(`/${selectedTeam}/onchain`)}
-              className="text-sm font-medium"
-              style={{ color: styles.primaryColor }}
-            >
-              View all {contractArray.length} contracts
-            </button>
-          </div>
-        )}
+      <div className="text-center py-6">
+        <div 
+          className="text-5xl font-bold mb-2"
+          style={{ color: styles.primaryColor }}
+        >
+          {contractArray.length}
+        </div>
+        <p className="text-gray-500 mb-4">Connected Smart Contracts</p>
+        <button 
+          onClick={() => navigate(`/${selectedTeam}/onchain`)}
+          className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors"
+          style={{ backgroundColor: styles.primaryColor }}
+        >
+          View all contracts
+        </button>
       </div>
     );
   };
