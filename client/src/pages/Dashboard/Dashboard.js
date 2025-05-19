@@ -5,7 +5,7 @@ import Tabs from "./components/Tabs";
 import { FeatureCards } from "./components/FeatureCards";
 import MarketingSection from "./components/MarketingSection";
 import Settings from "../Setting/Settings.js";
-import { Menu, Home, BarChart, Activity } from "lucide-react";
+import { Menu, Home, BarChart, Activity, ArrowRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import OffchainAnalytics from './OffchainAnalytics.js'
 import OnchainExplorer from './OnchainExplorer.js'
@@ -141,21 +141,20 @@ const Dashboard = () => {
     }
 
     return (
-      <div className="text-center py-6">
-        <div 
-          className="text-5xl font-bold mb-2"
-          style={{ color: styles.primaryColor }}
-        >
-          {contractArray.length}
+      <div className="flex flex-col h-full">
+        <div className="flex-1">
+          <div className="text-3xl font-bold mb-1">{contractArray.length}</div>
+          <p className="text-gray-500 text-sm">Connected Smart Contracts</p>
         </div>
-        <p className="text-gray-500 mb-4">Connected Smart Contracts</p>
-        <button 
-          onClick={() => navigate(`/${selectedTeam}/onchain`)}
-          className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-          style={{ backgroundColor: styles.primaryColor }}
-        >
-          View all contracts
-        </button>
+        <div className="mt-4">
+          <button 
+            onClick={() => navigate(`/${selectedTeam}/onchain`)}
+            className="text-sm font-medium hover:underline"
+            style={{ color: styles.primaryColor }}
+          >
+            View all contracts
+          </button>
+        </div>
       </div>
     );
   };
@@ -220,20 +219,43 @@ const Dashboard = () => {
               <Tabs isSidebarOpen={isSidebarOpen} />
 
               {/* Dashboard Grid Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-3">
-                  <FeatureCards />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <FeatureCards />
                 
                 {/* Smart Contracts Panel */}
-                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
-                  <h3 
-                    className="font-semibold text-lg mb-4 pb-2 border-b border-gray-100"
-                    style={{ color: styles.primaryColor }}
-                  >
-                    Smart Contracts
-                  </h3>
-                  {renderSmartContracts()}
+                <div 
+                  className="rounded-lg p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-full border border-gray-100 bg-white"
+                  onClick={() => navigate(`/${selectedTeam}/onchain`)}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-lg">
+                        Smart Contracts
+                      </h3>
+                      <div className="p-1.5 rounded-full" style={{ backgroundColor: `${styles.primaryColor}10` }}>
+                        <Activity size={20} style={{ color: styles.accentColor }} />
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Manage your blockchain smart contracts
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    {!isLoadingContracts && contractArray && (
+                      <div>
+                        <span className="text-2xl font-semibold">{contractArray.length}</span>
+                        <span className="text-xs ml-1 text-gray-500">Connected</span>
+                      </div>
+                    )}
+                    {isLoadingContracts && (
+                      <div className="animate-pulse h-6 bg-gray-200 rounded w-16"></div>
+                    )}
+                    
+                    <div className="flex items-center text-sm font-medium">
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </main>
