@@ -37,6 +37,7 @@ const Dashboard = () => {
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
   const [isLoading, setIsLoading] = useState(true);
   const [dataFetching, setDataFetching] = useState(false);
+  const [pageReady, setPageReady] = useState(false); // Track when dashboard page is fully ready
   const [websiteData, setWebsiteData] = useState({
     totalWebsites: 0,
     recentVisitors: 0,
@@ -47,11 +48,23 @@ const Dashboard = () => {
   // Get contract data from context
   const { contractArray, isLoadingContracts, refreshContracts } = useContractData();
   
+  // Set loading state and dispatch global loading event
+  const setGlobalLoadingState = (isLoading, source = 'dashboard') => {
+    setDataFetching(isLoading);
+    
+    // Dispatch global event for central loading indicator
+    window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+      detail: { isLoading, source }
+    }));
+  };
+  
   // Listen for global loading events
   useEffect(() => {
     const handleGlobalLoading = (event) => {
       console.log('Dashboard received global loading event:', event.detail);
-      setDataFetching(event.detail.isLoading);
+      if (event.detail.source !== 'dashboard') {
+        setDataFetching(event.detail.isLoading);
+      }
     };
     
     window.addEventListener('globalDataLoading', handleGlobalLoading);
@@ -70,8 +83,14 @@ const Dashboard = () => {
         setSelectedTeam(currentTeam);
         
         // Force refresh data when team changes
-        setDataFetching(true);
-        preloadData(true, currentTeam, (isLoading) => setDataFetching(isLoading));
+        setGlobalLoadingState(true);
+        setPageReady(false);
+        preloadData(true, currentTeam, (isLoading) => {
+          setGlobalLoadingState(isLoading);
+          if (!isLoading) {
+            setPageReady(true);
+          }
+        });
       }
     };
     
@@ -127,6 +146,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setGlobalLoadingState(true);
       try {
         // Refresh contracts data
         if (refreshContracts) {
@@ -135,7 +155,10 @@ const Dashboard = () => {
         
         // Fetch websites for this team
         const teamId = selectedTeam;
-        if (!teamId) return;
+        if (!teamId) {
+          setPageReady(true);
+          return;
+        }
 
         const response = await axiosInstance.get(`/website/team/${teamId}`);
         
@@ -183,6 +206,8 @@ const Dashboard = () => {
         console.error("Error fetching website data:", error);
       } finally {
         setIsLoading(false);
+        setGlobalLoadingState(false);
+        setPageReady(true);
       }
     };
 
@@ -665,69 +690,81 @@ const Dashboard = () => {
         </div>
       )}
       
-      <div className={getSidebarClasses()}>
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          onNavigate={handleNavigation}
-          currentPage={selectedPage}
-          isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen)}
-          screenSize={screenSize}
-        />
-      </div>
-
-      <div className={getMainContentClasses()}>
-        {(screenSize.isMobile || screenSize.isTablet) && (
-          <button 
-            className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            aria-label="Toggle navigation menu"
-          >
-            <Menu size={screenSize.isMobile ? 20 : 24} />
-          </button>
-        )}
-
-        {renderCurrentPage()}
-      </div>
-
-      {(screenSize.isMobile || screenSize.isTablet) && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      
-      {screenSize.isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-30">
-          <button 
-            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "dashboard" ? "text-blue-600" : "text-gray-600"}`}
-            onClick={() => handleNavigation("dashboard")}
-            aria-label="Dashboard"
-            style={{ color: selectedPage === "dashboard" ? styles.primaryColor : undefined }}
-          >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </button>
-          <button 
-            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "offchain-analytics" ? "text-blue-600" : "text-gray-600"}`}
-            onClick={() => handleNavigation("offchain")}
-            aria-label="Analytics"
-            style={{ color: selectedPage === "offchain-analytics" ? styles.primaryColor : undefined }}
-          >
-            <BarChart size={20} />
-            <span className="text-xs mt-1">Analytics</span>
-          </button>
-          <button 
-            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "campaigns" ? "text-blue-600" : "text-gray-600"}`}
-            onClick={() => handleNavigation("campaigns")}
-            aria-label="Campaigns"
-            style={{ color: selectedPage === "campaigns" ? styles.primaryColor : undefined }}
-          >
-            <Activity size={20} />
-            <span className="text-xs mt-1">Campaigns</span>
-          </button>
+      {/* Page content container - show initial loading state when page is initializing */}
+      {!pageReady ? (
+        <div className="fixed inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-gray-600">Preparing dashboard...</p>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className={getSidebarClasses()}>
+            <Sidebar 
+              isOpen={isSidebarOpen} 
+              onClose={() => setIsSidebarOpen(false)} 
+              onNavigate={handleNavigation}
+              currentPage={selectedPage}
+              isCompact={isCompactMode || (screenSize.isTablet && !isSidebarOpen)}
+              screenSize={screenSize}
+            />
+          </div>
+          
+          <div className={getMainContentClasses()}>
+            {(screenSize.isMobile || screenSize.isTablet) && (
+              <button 
+                className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                aria-label="Toggle navigation menu"
+              >
+                <Menu size={screenSize.isMobile ? 20 : 24} />
+              </button>
+            )}
+            
+            {renderCurrentPage()}
+          </div>
+          
+          {(screenSize.isMobile || screenSize.isTablet) && isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+          
+          {screenSize.isMobile && (
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-30">
+              <button 
+                className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "dashboard" ? "text-blue-600" : "text-gray-600"}`}
+                onClick={() => handleNavigation("dashboard")}
+                aria-label="Dashboard"
+                style={{ color: selectedPage === "dashboard" ? styles.primaryColor : undefined }}
+              >
+                <Home size={20} />
+                <span className="text-xs mt-1">Home</span>
+              </button>
+              <button 
+                className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "offchain-analytics" ? "text-blue-600" : "text-gray-600"}`}
+                onClick={() => handleNavigation("offchain")}
+                aria-label="Analytics"
+                style={{ color: selectedPage === "offchain-analytics" ? styles.primaryColor : undefined }}
+              >
+                <BarChart size={20} />
+                <span className="text-xs mt-1">Analytics</span>
+              </button>
+              <button 
+                className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "campaigns" ? "text-blue-600" : "text-gray-600"}`}
+                onClick={() => handleNavigation("campaigns")}
+                aria-label="Campaigns"
+                style={{ color: selectedPage === "campaigns" ? styles.primaryColor : undefined }}
+              >
+                <Activity size={20} />
+                <span className="text-xs mt-1">Campaigns</span>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

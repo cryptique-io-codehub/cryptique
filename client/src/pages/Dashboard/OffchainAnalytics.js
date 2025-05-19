@@ -14,7 +14,7 @@ import sdkApi from '../../utils/sdkApi';
 import { calculateAverageDuration, formatDuration, calculateWeb3Stats } from '../../utils/analyticsHelpers';
 import GracePeriodWarning from '../../components/GracePeriodWarning';
 
-const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
+const OffchainAnalytics = ({ onMenuClick, screenSize, selectedPage }) => {
   const [activeSection, setActiveSection] = useState('Dashboard');
   const [selectedWebsite, setSelectedWebsite] = useState();
   const [selectedDate, setSelectedDate] = useState('Select Date');
@@ -31,18 +31,28 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
   const [selectedCountry, setSelectedCountry] = useState();
   const [verifyload,setverifyload]=useState(false);
   const [web3UsersCount, setWeb3UsersCount] = useState(0);
+  const [pageReady, setPageReady] = useState(false);
   
   // State for subscription grace period
   const [inGracePeriod, setInGracePeriod] = useState(false);
   const [gracePeriodInfo, setGracePeriodInfo] = useState(null);
 
+  // Set loading state and dispatch global loading event
+  const setLoadingState = (isLoading) => {
+    setverifyload(isLoading);
+    
+    // Dispatch global event for central loading indicator
+    window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+      detail: { isLoading: isLoading, source: 'offchainAnalytics' }
+    }));
+  };
+
   // State for analytics cards
-  // console.log(analytics);
-  useEffect(()=>{
-    const handleSelectWebsite=async()=>{
-      const idt=localStorage.getItem("idy");
-      if(idt){
-        setverifyload(true);
+  useEffect(() => {
+    const handleSelectWebsite = async () => {
+      const idt = localStorage.getItem("idy");
+      if (idt) {
+        setLoadingState(true);
         try {
           // Use the SDK API utility instead of the axios instance
           const response = await sdkApi.getAnalytics(idt);
@@ -80,16 +90,20 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
               });
             }
           }
+          setPageReady(true);
         } catch (error) {
           console.error('Error fetching analytics:', error);
           setError('Failed to load analytics data. Please check your connection or try again later.');
+          setPageReady(true);
         } finally {
-          setverifyload(false);
+          setLoadingState(false);
         }
+      } else {
+        setPageReady(true);
       }
     }
     handleSelectWebsite();
-  },[idy]);
+  }, [idy, chartData]);
 
   // Add this after the other useEffect hooks
   useEffect(() => {
@@ -189,6 +203,7 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setLoadingState(true);
       setError(null);
       
       try {
@@ -300,11 +315,14 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
 
         setWeb3Data(web3Data);
 
+        setPageReady(true);
       } catch (err) {
         console.error('Error in fetchData:', err);
         setError(err.message || 'Failed to load analytics data. Please try again later.');
+        setPageReady(true);
       } finally {
         setIsLoading(false);
+        setLoadingState(false);
       }
     };
 
@@ -314,6 +332,7 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
     } else {
       console.log('No idy available, skipping data fetch');
       setError('No website selected. Please select a website to view analytics.');
+      setPageReady(true);
     }
   }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.sessions]);
 

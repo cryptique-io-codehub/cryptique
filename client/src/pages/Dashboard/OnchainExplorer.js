@@ -9,7 +9,7 @@ import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 import { useContractData } from "../../contexts/ContractDataContext";
 import preloadData from "../../utils/preloadService";
 
-const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
+const OnchainExplorer = ({ onMenuClick, screenSize, selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
     const [selectedWebsite, setSelectedWebsite] = useState();
     const [selectedDate, setSelectedDate] = useState('Select Date');
@@ -20,55 +20,59 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [analytics,setanalytics]=useState({});
     const [idy,setidy]=useState(localStorage.getItem("idy"));
     const [isLoading, setIsLoading] = useState(false);
+    const [pageReady, setPageReady] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
     
     // Import the refreshContracts function from context
-    const { refreshContracts } = useContractData();
-    
-    // Refresh contract data when component mounts or when team changes
+    const { refreshContracts, isLoadingTransactions } = useContractData();
+
+    // Set loading state and dispatch global loading event
+    const setGlobalLoadingState = (isLoading) => {
+      setIsLoading(isLoading);
+      
+      // Dispatch global event for central loading indicator
+      window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+        detail: { isLoading, source: 'onchainExplorer' }
+      }));
+    };
+
+    // Load initial data
     useEffect(() => {
-      const loadContractData = async () => {
-        console.log("OnchainExplorer mounted, refreshing contract data");
+      const loadInitialData = async () => {
+        setGlobalLoadingState(true);
         
         try {
-          // First clear any cached data to ensure fresh data
-          sessionStorage.removeItem("preloadedContracts");
-          
-          // Then use the context's refresh function
-          if (typeof refreshContracts === 'function') {
+          if (refreshContracts) {
             await refreshContracts();
           }
           
-          // Also run the preload service with force refresh
-          await preloadData(true);
+          // Any other onchain-specific initialization can go here
           
-          console.log("Successfully refreshed contract data on OnchainExplorer mount");
         } catch (error) {
-          console.error("Error refreshing contract data in OnchainExplorer:", error);
+          console.error("Error loading onchain data:", error);
+          setError("Failed to load blockchain data. Please try again.");
+        } finally {
+          setGlobalLoadingState(false);
+          setPageReady(true);
         }
       };
       
-      loadContractData();
-      
-      // Also set up a listener for team changes
-      const currentTeam = localStorage.getItem("selectedTeam");
-      
-      const checkTeamChange = () => {
-        const newTeam = localStorage.getItem("selectedTeam");
-        if (newTeam && newTeam !== currentTeam) {
-          console.log(`Team changed in OnchainExplorer: ${currentTeam} → ${newTeam}, refreshing data`);
-          loadContractData();
-        }
-      };
-      
-      // Check for team changes
-      const intervalId = setInterval(checkTeamChange, 2000);
-      
-      return () => {
-        clearInterval(intervalId);
-      };
+      loadInitialData();
     }, [refreshContracts]);
+
+    // Update loading state when contract transactions are loading
+    useEffect(() => {
+      setGlobalLoadingState(isLoadingTransactions);
+    }, [isLoadingTransactions]);
+
+    // Listen for website changes
+    useEffect(() => {
+      const newIdy = localStorage.getItem("idy");
+      if (newIdy !== idy) {
+        setIdy(newIdy);
+      }
+    }, [idy]);
 
     const navItems = [
       { section: 'On-chain analytics', type: 'header' },
@@ -144,126 +148,94 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                   {/* Main content */}
                   <div className="px-2 md:px-4 pb-4">
                     {/* Main content section */}
-                    {activeSection === 'Dashboard' && (
+                    {!pageReady ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+                          <p className="text-gray-600">Initializing blockchain explorer...</p>
+                        </div>
+                      </div>
+                    ) : (
                       <>
-                    <Filters 
-                    websitearray={websitearray}
-                    setWebsitearray={setWebsitearray}
-                    contractarray={contractarray}
-                    setcontractarray={setcontractarray}
-                    analytics={analytics}
-                    setanalytics={setanalytics}
-                    selectedDate={selectedDate} 
-                    setSelectedDate={setSelectedDate} 
-                    selectedWebsite={selectedWebsite} 
-                    setSelectedWebsite={setSelectedWebsite}
-                    selectedFilters={selectedFilters} 
-                    setSelectedFilters={setSelectedFilters}
-                    idy={idy}
-                    setidy={setidy}
-                    selectedPage={selectedPage}
-                    onMenuClick={onMenuClick}
-                  />
-                      <OnchainDashboard/>
-                      </>
-
-                    )}
-                    
-                    {activeSection === 'Traffic analytics' && (
-                      <>
-                         <Filters 
-                    websitearray={websitearray}
-                    setWebsitearray={setWebsitearray}
-                    contractarray={contractarray}
-                    setcontractarray={setcontractarray}
-                    analytics={analytics}
-                    setanalytics={setanalytics}
-                    selectedDate={selectedDate} 
-                    setSelectedDate={setSelectedDate} 
-                    selectedWebsite={selectedWebsite} 
-                    setSelectedWebsite={setSelectedWebsite}
-                    selectedFilters={selectedFilters} 
-                    setSelectedFilters={setSelectedFilters}
-                    idy={idy}
-                    setidy={setidy}
-                    selectedPage={selectedPage}
-                    onMenuClick={onMenuClick}
-                  />
-                        <OnchainTraffic/>
-                      </>
-                    )}
-                    
-                    {activeSection === 'User Insights' && (
-                      <>
-                        <Filters 
-                    websitearray={websitearray}
-                    setWebsitearray={setWebsitearray}
-                    contractarray={contractarray}
-                    setcontractarray={setcontractarray}
-                    analytics={analytics}
-                    setanalytics={setanalytics}
-                    selectedDate={selectedDate} 
-                    setSelectedDate={setSelectedDate} 
-                    selectedWebsite={selectedWebsite} 
-                    setSelectedWebsite={setSelectedWebsite}
-                    selectedFilters={selectedFilters} 
-                    setSelectedFilters={setSelectedFilters}
-                    idy={idy}
-                    setidy={setidy}
-                    selectedPage={selectedPage}
-                    onMenuClick={onMenuClick}
-                  />
-                        <Onchainuserinsights/>
-                      </>
-                    )}
-                    
-                    {activeSection === 'Market Insights' && (
-                      <>
-                        <Filters 
-                                           websitearray={websitearray}
-                                           setWebsitearray={setWebsitearray}
-                                           contractarray={contractarray}
-                                           setcontractarray={setcontractarray}
-                                           analytics={analytics}
-                                           setanalytics={setanalytics}
-                                           selectedDate={selectedDate} 
-                                           setSelectedDate={setSelectedDate} 
-                                           selectedWebsite={selectedWebsite} 
-                                           setSelectedWebsite={setSelectedWebsite}
-                                           selectedFilters={selectedFilters} 
-                                           setSelectedFilters={setSelectedFilters}
-                                           idy={idy}
-                                           setidy={setidy}
-                                           selectedPage={selectedPage}
-                                           onMenuClick={onMenuClick}
-                       
-                                         />
-                        <OnchainmarketInsights/>
-                      </>
-                    )}
-
-                    {activeSection === 'Wallet Insights' && (
-                      <>
-                         <Filters 
-                                            websitearray={websitearray}
-                                            setWebsitearray={setWebsitearray}
-                                            contractarray={contractarray}
-                                            setcontractarray={setcontractarray}
-                                            analytics={analytics}
-                                            setanalytics={setanalytics}
-                                            selectedDate={selectedDate} 
-                                            setSelectedDate={setSelectedDate} 
-                                            selectedWebsite={selectedWebsite} 
-                                            setSelectedWebsite={setSelectedWebsite}
-                                            selectedFilters={selectedFilters} 
-                                            setSelectedFilters={setSelectedFilters}
-                                            idy={idy}
-                                            setidy={setidy}
-                                            selectedPage={selectedPage}
-                                            onMenuClick={onMenuClick}
+                        {/* Show loading indicator when data is being fetched */}
+                        {isLoading && (
+                          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                            <div className="flex flex-col items-center">
+                              <svg
+                                className="animate-spin h-8 w-8 text-blue-600 mb-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
+                              <span className="text-sm text-gray-600 font-medium">Loading blockchain data...</span>
+                            </div>
+                          </div>
+                        )}
                         
-                                          />
-                        <Onchainwalletinsights/>
+                        {/* Filter bar */}
+                        <div className="mb-6">
+                          <Filters
+                            websitearray={websitearray}
+                            setWebsitearray={setWebsitearray}
+                            contractarray={contractarray}
+                            setcontractarray={setcontractarray}
+                            analytics={analytics}
+                            setanalytics={setanalytics}
+                            selectedDate={selectedDate}
+                            setSelectedDate={setSelectedDate}
+                            selectedWebsite={selectedWebsite}
+                            setSelectedWebsite={setSelectedWebsite}
+                            selectedFilters={selectedFilters}
+                            setSelectedFilters={setSelectedFilters}
+                            idy={idy}
+                            setidy={setidy}
+                            selectedPage={selectedPage}
+                            onMenuClick={onMenuClick}
+                          />
+                        </div>
+                        
+                        {/* Main content area with section tabs */}
+                        <div className="flex flex-col space-y-6">
+                          {/* Tabs for sections */}
+                          <div className="bg-white rounded-lg shadow-sm p-2 flex space-x-2 overflow-x-auto no-scrollbar">
+                            {['Dashboard', 'Traffic', 'User Insights', 'Market Insights', 'Wallet Analytics'].map((section) => (
+                              <button
+                                key={section}
+                                onClick={() => setActiveSection(section)}
+                                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
+                                  activeSection === section
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                                }`}
+                              >
+                                {section}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {/* Section content */}
+                          <div className="bg-white rounded-lg shadow-sm p-6">
+                            {activeSection === 'Dashboard' && <OnchainDashboard />}
+                            {activeSection === 'Traffic' && <OnchainTraffic />}
+                            {activeSection === 'User Insights' && <Onchainuserinsights />}
+                            {activeSection === 'Market Insights' && <OnchainmarketInsights />}
+                            {activeSection === 'Wallet Analytics' && <Onchainwalletinsights />}
+                          </div>
+                        </div>
                       </>
                     )}
                   </div>
