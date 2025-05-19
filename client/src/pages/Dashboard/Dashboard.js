@@ -376,7 +376,7 @@ const Dashboard = () => {
                         Track website visitors, analyze blockchain data, and grow your Web3 project.
                       </p>
                       <button
-                        onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                        onClick={() => navigate(`/${selectedTeam}/settings/pricing`)}
                         className="px-6 py-2 rounded-lg font-semibold transition-transform hover:scale-105 shadow-lg"
                         style={{ background: styles.accentColor, color: styles.primaryColor }}
                       >
@@ -490,7 +490,7 @@ const Dashboard = () => {
 
                     <div 
                       className="rounded-lg p-6 shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-all cursor-pointer"
-                      onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                      onClick={() => navigate(`/${selectedTeam}/settings/pricing`)}
                       style={{ background: styles.accentColor }}
                     >
                       <h3 className="text-xl font-semibold mb-2" style={{ color: styles.primaryColor }}>Upgrade Now</h3>
@@ -537,7 +537,7 @@ const Dashboard = () => {
                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Ready to unlock the full power of Cryptique?</h2>
                     <p className="text-white/80 max-w-2xl mx-auto mb-6">Join thousands of Web3 projects that are growing faster with our comprehensive analytics platform.</p>
                     <button
-                      onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                      onClick={() => navigate(`/${selectedTeam}/settings/pricing`)}
                       className="px-8 py-3 rounded-lg text-lg font-semibold transition-transform hover:scale-105 shadow-lg"
                       style={{ background: styles.accentColor, color: styles.primaryColor }}
                     >
