@@ -21,6 +21,7 @@ import SubscriptionRequired from "../../components/SubscriptionRequired.js";
 import { useSubscription } from "../../context/subscriptionContext.js";
 import axiosInstance from '../../axiosInstance';
 import sdkApi from '../../utils/sdkApi.js';
+import { useContractData } from "../../contexts/ContractDataContext";
 
 const Dashboard = () => {
   // State management
@@ -35,8 +36,10 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
-  const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Get contract data from context
+  const { contractArray, isLoadingContracts, refreshContracts } = useContractData();
   
   // Style definitions matching the brand
   const styles = {
@@ -76,100 +79,12 @@ const Dashboard = () => {
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
 
-  // Fetch recent activity data
+  // Refresh contracts when dashboard loads
   useEffect(() => {
-    const fetchRecentActivity = async () => {
-      try {
-        setIsLoading(true);
-        const teamId = selectedTeam;
-        if (!teamId) return;
-        
-        // Get website data for this team
-        const websitesResponse = await axiosInstance.get(`/website/team/${teamId}`);
-        
-        if (websitesResponse.data && websitesResponse.data.websites && websitesResponse.data.websites.length > 0) {
-          const firstWebsite = websitesResponse.data.websites[0];
-          
-          try {
-            // Get analytics data for the website
-            const analyticsData = await sdkApi.getAnalytics(firstWebsite.siteId);
-            
-            if (analyticsData && analyticsData.analytics) {
-              const analytics = analyticsData.analytics;
-              
-              // Check if we have sessions data
-              if (analytics.sessions && analytics.sessions.length > 0) {
-                // Sort sessions by startTime (newest first)
-                const sortedSessions = [...analytics.sessions].sort((a, b) => 
-                  new Date(b.startTime) - new Date(a.startTime)
-                );
-                
-                // Take the 5 most recent sessions and format them as activity items
-                const recentActivities = sortedSessions.slice(0, 5).map(session => {
-                  const date = new Date(session.startTime);
-                  const hours = Math.floor((Date.now() - date.getTime()) / (60 * 60 * 1000));
-                  
-                  let timeString = hours === 0 
-                    ? 'Just now'
-                    : hours === 1 
-                      ? '1 hour ago' 
-                      : hours < 24
-                        ? `${hours} hours ago`
-                        : `${Math.floor(hours / 24)} days ago`;
-                  
-                  return {
-                    title: session.isWeb3User ? 'Web3 User Visit' : 'Website Visit',
-                    description: session.entryPage 
-                      ? `Visited ${session.entryPage}` 
-                      : `Viewed ${session.pagesViewed || 1} page(s)`,
-                    time: timeString
-                  };
-                });
-                
-                setRecentActivity(recentActivities);
-              } else {
-                // If no session data, create an activity for the website registration
-                const websiteActivity = {
-                  title: 'Website Registered',
-                  description: `${firstWebsite.Domain} was added to your account`,
-                  time: 'Recently'
-                };
-                
-                setRecentActivity([websiteActivity]);
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching analytics data:", error);
-            fallbackToDefaultActivity(firstWebsite);
-          }
-        } else {
-          fallbackToDefaultActivity();
-        }
-      } catch (error) {
-        console.error("Error in activity handling:", error);
-        fallbackToDefaultActivity();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    // Helper function to show default activities when real data can't be loaded
-    const fallbackToDefaultActivity = (website = null) => {
-      const activities = [
-        {
-          title: website ? 'Website Added' : 'Welcome to Cryptique',
-          description: website 
-            ? `${website.Domain} was registered in your account` 
-            : 'Add a website to start tracking analytics',
-          time: 'Recently'
-        }
-      ];
-      
-      setRecentActivity(activities);
-    };
-    
-    fetchRecentActivity();
-  }, [selectedTeam]);
+    if (refreshContracts) {
+      refreshContracts();
+    }
+  }, [refreshContracts]);
 
   // Sync selectedPage with URL
   useEffect(() => {
@@ -200,31 +115,34 @@ const Dashboard = () => {
     navigate(`/${selectedTeam}/${page}`);
   };
 
-  // Render recent activity
-  const renderRecentActivity = () => {
-    if (isLoading) {
+  // Render smart contracts
+  const renderSmartContracts = () => {
+    if (isLoadingContracts) {
       return (
         <div className="animate-pulse">
           {[1, 2, 3].map(i => (
-            <div key={i} className="mb-4">
-              <div className="h-5 bg-gray-200 rounded w-1/3 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div key={i} className="mb-4 flex items-center gap-3">
+              <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
             </div>
           ))}
         </div>
       );
     }
 
-    if (recentActivity.length === 0) {
+    if (!contractArray || contractArray.length === 0) {
       return (
         <div className="text-center py-6 text-gray-500">
-          <p>No recent activity found</p>
+          <p>No smart contracts connected</p>
           <button 
-            onClick={() => navigate(`/${selectedTeam}/manage-websites`)}
+            onClick={() => navigate(`/${selectedTeam}/onchain`)}
             className="mt-2 text-sm font-medium"
             style={{ color: styles.primaryColor }}
           >
-            Add a website to track
+            Connect a smart contract
           </button>
         </div>
       );
@@ -232,15 +150,40 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-4">
-        {recentActivity.map((activity, index) => (
-          <div key={index} className="border-b border-gray-100 pb-3">
-            <h4 className="font-medium text-gray-900">{activity.title}</h4>
-            <div className="flex justify-between">
-              <p className="text-sm text-gray-500">{activity.description}</p>
-              <span className="text-xs text-gray-400">{activity.time}</span>
+        {contractArray.slice(0, 4).map((contract, index) => (
+          <div 
+            key={contract.id || index} 
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            onClick={() => navigate(`/${selectedTeam}/onchain`)}
+          >
+            <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${styles.primaryColor}20` }}>
+              <span className="text-xl" style={{ color: styles.primaryColor }}>
+                {contract.tokenSymbol ? contract.tokenSymbol[0] : '#'}
+              </span>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">{contract.name}</h4>
+              <div className="flex justify-between">
+                <p className="text-sm text-gray-500 truncate max-w-[180px]">
+                  {contract.address}
+                </p>
+                <span className="text-xs text-gray-400">{contract.blockchain}</span>
+              </div>
             </div>
           </div>
         ))}
+        
+        {contractArray.length > 4 && (
+          <div className="text-center mt-3">
+            <button 
+              onClick={() => navigate(`/${selectedTeam}/onchain`)}
+              className="text-sm font-medium"
+              style={{ color: styles.primaryColor }}
+            >
+              View all {contractArray.length} contracts
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -310,15 +253,15 @@ const Dashboard = () => {
                   <FeatureCards />
                 </div>
                 
-                {/* Recent Activity Panel */}
+                {/* Smart Contracts Panel */}
                 <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
                   <h3 
                     className="font-semibold text-lg mb-4 pb-2 border-b border-gray-100"
                     style={{ color: styles.primaryColor }}
                   >
-                    Recent Activity
+                    Smart Contracts
                   </h3>
-                  {renderRecentActivity()}
+                  {renderSmartContracts()}
                 </div>
               </div>
             </main>
