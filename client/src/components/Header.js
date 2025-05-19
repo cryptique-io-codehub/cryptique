@@ -154,6 +154,7 @@ const TeamSelector = () => {
     const previousTeam = localStorage.getItem('selectedTeam');
     if (previousTeam !== teamss.name) {
       setIsRefreshing(true);
+      setDropdownOpen(false);
       
       try {
         // Update localStorage with basic team info first for immediate feedback
@@ -197,103 +198,78 @@ const TeamSelector = () => {
         localStorage.removeItem("selectedWebsite");
         localStorage.removeItem("idy");
         
-        // Clear session storage to force reload of data
-        sessionStorage.removeItem("preloadedWebsites");
-        sessionStorage.removeItem("preloadedContracts");
+        // Preload data for the new team with loading state
+        await preloadData(true, teamss.name, (isLoading) => setIsRefreshing(isLoading));
         
-        // Preload data for the new team (force refresh)
-        await preloadData(true, teamss.name);
-        console.log("Successfully refreshed data for new team");
-        
-        // Update URL if on settings page
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('/settings')) {
-          navigate(`/${teamss.name}/settings`, { replace: true });
-        } else {
-          // For other pages, forcefully reload the current page to ensure all components update
-          const currentUrl = new URL(window.location.href);
-          const pathSegments = currentUrl.pathname.split('/').filter(Boolean);
-          
-          if (pathSegments.length > 1) {
-            // Replace the team segment in the URL
-            pathSegments[0] = teamss.name;
-            const newPath = `/${pathSegments.join('/')}`;
-            navigate(newPath, { replace: true });
-          } else {
-            // If we're on the dashboard or a page without team in URL
-            navigate('/dashboard');
-          }
-        }
+        // Force refresh the current page to ensure all components update
+        window.location.reload();
       } catch (error) {
-        console.error("Error during team switch:", error);
-      } finally {
+        console.error("Error fetching team data:", error);
         setIsRefreshing(false);
       }
+    } else {
+      // Same team selected, just close dropdown
+      setDropdownOpen(false);
     }
-    
-    setDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <div className="flex items-center flex-wrap">
-        <span className="text-sm font-medium text-gray-700 mr-2 whitespace-nowrap">Team:</span>
-        
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded shadow-sm text-sm bg-white whitespace-nowrap"
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? (
-              <>
-                <span className="truncate max-w-[100px] sm:max-w-[120px] text-gray-400">Refreshing...</span>
-                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-              </>
-            ) : (
-              <>
-                <span className="truncate max-w-[100px] sm:max-w-[120px]">{selectedTeam}</span>
-                <ChevronDown size={16} />
-              </>
-            )}
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
-              <div className="max-h-60 overflow-y-auto">
-                {isLoadingTeams ? (
-                  <p className="px-4 py-2 text-sm text-gray-500 text-center">
-                    Loading teams...
-                  </p>
-                ) : curTeams.length > 0 ? (
-                  curTeams.map((team) => (
-                    <button
-                      key={team.id}
-                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 
-                        transition-colors duration-200 
-                        border-b border-gray-100 last:border-b-0
-                        hover:bg-blue-50 ${team.name === selectedTeam ? 'bg-blue-50' : ''}`}
-                      onClick={() => handleTeamSelect(team)}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="truncate">{team.name}</span>
-                        {team.members && (
-                          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                            {team.members} members
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <p className="px-4 py-2 text-sm text-gray-500 text-center">
-                    No teams available
-                  </p>
-                )}
-              </div>
-            </div>
+    <div className="flex items-center">
+      <div className="relative" ref={dropdownRef}>
+        <button 
+          onClick={toggleDropdown} 
+          className="flex items-center space-x-1 text-white bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-md transition-colors"
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <span className="text-sm font-medium">Loading team data...</span>
+          ) : (
+            <>
+              <span className="text-sm font-medium">{selectedTeam || 'Select Team'}</span>
+              <ChevronDown size={16} />
+            </>
           )}
-        </div>
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-300 shadow-lg rounded-md z-50">
+            <div className="max-h-60 overflow-y-auto">
+              {isLoadingTeams ? (
+                <p className="px-4 py-2 text-sm text-gray-500 text-center">
+                  Loading teams...
+                </p>
+              ) : curTeams.length > 0 ? (
+                curTeams.map((team) => (
+                  <button
+                    key={team.id}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 
+                      transition-colors duration-200 
+                      border-b border-gray-100 last:border-b-0
+                      hover:bg-blue-50 ${team.name === selectedTeam ? 'bg-blue-50' : ''}`}
+                    onClick={() => handleTeamSelect(team)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="truncate">{team.name}</span>
+                      {team.members && (
+                        <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                          {team.members} members
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <p className="px-4 py-2 text-sm text-gray-500 text-center">
+                  No teams available
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

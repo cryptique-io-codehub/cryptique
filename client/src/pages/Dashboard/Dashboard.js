@@ -36,6 +36,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
   const [isLoading, setIsLoading] = useState(true);
+  const [dataFetching, setDataFetching] = useState(false);
   const [websiteData, setWebsiteData] = useState({
     totalWebsites: 0,
     recentVisitors: 0,
@@ -45,6 +46,44 @@ const Dashboard = () => {
   
   // Get contract data from context
   const { contractArray, isLoadingContracts, refreshContracts } = useContractData();
+  
+  // Listen for global loading events
+  useEffect(() => {
+    const handleGlobalLoading = (event) => {
+      console.log('Dashboard received global loading event:', event.detail);
+      setDataFetching(event.detail.isLoading);
+    };
+    
+    window.addEventListener('globalDataLoading', handleGlobalLoading);
+    
+    return () => {
+      window.removeEventListener('globalDataLoading', handleGlobalLoading);
+    };
+  }, []);
+  
+  // Listen for team changes
+  useEffect(() => {
+    const handleTeamChange = () => {
+      const currentTeam = localStorage.getItem("selectedTeam");
+      if (currentTeam !== selectedTeam) {
+        console.log(`Team changed from "${selectedTeam}" to "${currentTeam}"`);
+        setSelectedTeam(currentTeam);
+        
+        // Force refresh data when team changes
+        setDataFetching(true);
+        preloadData(true, currentTeam, (isLoading) => setDataFetching(isLoading));
+      }
+    };
+    
+    // Set up event listeners
+    window.addEventListener('storage', handleTeamChange);
+    window.addEventListener('teamDataUpdated', handleTeamChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleTeamChange);
+      window.removeEventListener('teamDataUpdated', handleTeamChange);
+    };
+  }, [selectedTeam]);
   
   // Style definitions matching the brand
   const styles = {
@@ -613,6 +652,19 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen overflow-hidden space-x-0" style={{ background: styles.backgroundColor }}>
+      {/* Show loading overlay when data is being fetched */}
+      {dataFetching && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-lg p-6 rounded-xl border border-white/20 text-center">
+            <div className="mb-4">
+              <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
+            </div>
+            <p className="text-white font-semibold">Loading team data...</p>
+            <p className="text-gray-300 text-sm mt-1">This may take a moment</p>
+          </div>
+        </div>
+      )}
+      
       <div className={getSidebarClasses()}>
         <Sidebar 
           isOpen={isSidebarOpen} 

@@ -19,6 +19,7 @@ import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
 import TestAnalytics from './pages/TestAnalytics';
 import { ContractDataProvider } from './contexts/ContractDataContext.js';
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import axios from 'axios';
 import './styles/animations.css';
 
@@ -113,6 +114,7 @@ function App() {
           <BrowserRouter>
             <TitleUpdater />
             <TeamDataRefresher />
+            <GlobalLoadingIndicator />
             <Routes>
               {/* Redirect root to login */}
               <Route path="/" element={<Navigate to="/login" replace />} />

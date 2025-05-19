@@ -5,12 +5,31 @@ import axiosInstance from '../axiosInstance';
  * This improves the user experience by fetching frequently used data ahead of time
  * @param {boolean} forceRefresh - Whether to force refresh all data even if cached
  * @param {string} teamId - Optional team ID to load data for (defaults to selectedTeam from localStorage)
+ * @param {function} setLoadingCallback - Optional callback to handle loading state (receives true/false)
  */
-const preloadData = async (forceRefresh = false, teamId = null) => {
+const preloadData = async (forceRefresh = false, teamId = null, setLoadingCallback = null) => {
   try {
+    // Set global loading state
+    if (setLoadingCallback) {
+      setLoadingCallback(true);
+    }
+    
+    // Dispatch a global loading event
+    window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+      detail: { isLoading: true, source: 'preloadData' }
+    }));
+    
     const selectedTeam = teamId || localStorage.getItem("selectedTeam");
     if (!selectedTeam) {
       console.log("No team selected, skipping preload");
+      
+      // Reset loading states
+      if (setLoadingCallback) {
+        setLoadingCallback(false);
+      }
+      window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+        detail: { isLoading: false, source: 'preloadData' }
+      }));
       return;
     }
 
@@ -22,6 +41,14 @@ const preloadData = async (forceRefresh = false, teamId = null) => {
     
     if (!forceRefresh && now - lastPreloadTime < 10000) {
       console.log("Preload throttled - too recent. Using existing data.");
+      
+      // Reset loading states
+      if (setLoadingCallback) {
+        setLoadingCallback(false);
+      }
+      window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+        detail: { isLoading: false, source: 'preloadData' }
+      }));
       return;
     }
     
@@ -43,6 +70,14 @@ const preloadData = async (forceRefresh = false, teamId = null) => {
     console.log("Preloading completed");
   } catch (error) {
     console.error("Error preloading data:", error);
+  } finally {
+    // Always reset loading states in finally block
+    if (setLoadingCallback) {
+      setLoadingCallback(false);
+    }
+    window.dispatchEvent(new CustomEvent('globalDataLoading', { 
+      detail: { isLoading: false, source: 'preloadData' }
+    }));
   }
 };
 
