@@ -1,83 +1,83 @@
-import React, { useState, useEffect } from "react";
-import marketingImage from "./image 1.png"; // Ensure correct path
-import rightCardImage from "./button.png"; // Ensure correct path
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, BarChart2, Users, Target } from 'lucide-react';
 
 const MarketingSection = () => {
-  const [isMobile, setIsMobile] = useState(false);
+  const navigate = useNavigate();
+  const selectedTeam = localStorage.getItem("selectedTeam") || "";
 
-  // Check if mobile view
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
-    // Initial check
-    checkMobile();
-    
-    // Listen for window resize
-    window.addEventListener('resize', checkMobile);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const features = [
+    {
+      title: "Analytics Dashboard",
+      description: "Track your website's performance with detailed analytics",
+      icon: <BarChart2 className="w-6 h-6" />,
+      path: "offchain"
+    },
+    {
+      title: "User Insights",
+      description: "Understand your users' behavior and preferences",
+      icon: <Users className="w-6 h-6" />,
+      path: "cq-intelligence"
+    },
+    {
+      title: "Campaign Management",
+      description: "Create and manage your marketing campaigns",
+      icon: <Target className="w-6 h-6" />,
+      path: "campaigns"
+    }
+  ];
 
   return (
-    <section className="p-2 sm:p-4 flex flex-col md:flex-row gap-3 -mt-4 mb-0">
-      {/* Main Card */}
-      <div className="w-full md:w-2/3 h-auto bg-[#d6b680] text-white shadow-lg rounded-xl p-3 sm:p-4 flex flex-col md:flex-row relative overflow-hidden mb-3 md:mb-0">
-        
-        {/* Left Half - Text */}
-        <div className={`w-full md:w-1/2 flex flex-col justify-center z-10 ${isMobile ? 'p-2' : 'p-2 sm:p-4 md:p-6 lg:p-10'}`}>
-          <h2 className={`${isMobile ? 'text-lg' : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'} font-bold`}>One Stop for your Web 3 Marketing</h2>
-          <p className="mt-1 text-xs sm:text-sm md:text-base opacity-90">
-            Easy onboarding<br />One-min integration<br />No-code insights
-          </p>
-          <button className="mt-2 md:mt-3 w-full sm:w-auto bg-white text-blue-600 font-semibold py-1 sm:py-2 px-3 sm:px-4 rounded-lg shadow-md hover:bg-gray-100 transition text-xs sm:text-sm md:text-base">
-            Integrate your website/app now
-          </button>
-        </div>
-        
-        {/* Right Half - Image - Positioned to touch right boundary perfectly */}
-        <div className={`${isMobile ? 'w-full h-32 mt-2' : 'w-full md:w-1/2 h-40 sm:h-48 md:h-auto md:absolute md:inset-y-0 md:right-0'} flex items-center justify-end`}>
-          <img 
-            src={marketingImage}  
-            alt="Marketing Graphic"
-            className="h-full w-auto object-contain md:h-full md:max-w-none"
-          />
-        </div>
-      </div>
-      
-      {/* Secondary Card */}
-      <div className="w-full md:w-1/3 h-auto bg-[#3A1C5A] text-white shadow-lg rounded-xl p-3 sm:p-4 flex flex-col relative">
-        <div>
-          <h3 className={`${isMobile ? 'text-sm' : 'text-md sm:text-lg'} font-bold mb-1 sm:mb-2 mt-1 sm:mt-2`}>Get more of Cryptique</h3>
-          <p className="text-xs sm:text-sm opacity-90 mb-2">
-            Get started with our app docs invite your team, and import your lists.
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Welcome to Cryptique Analytics
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Your all-in-one platform for web analytics, user insights, and campaign management
           </p>
         </div>
-        
-        {/* App Docs and Invite Team Section */}
-        <div className="space-y-2 sm:space-y-3 mt-1">
-          <div className="flex justify-between items-center border-b border-white/30 pb-2">
-            <span className="text-xs sm:text-sm">App Docs</span>
-            <a href="#" className="text-yellow-300 text-xs sm:text-sm">Click here →</a>
-          </div>
-          <div className="flex justify-between items-center border-b border-white/30 pb-2">
-            <span className="text-xs sm:text-sm">Invite team</span>
-            <a href="#" className="text-yellow-300 text-xs sm:text-sm">Click here →</a>
-          </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              onClick={() => navigate(`/${selectedTeam}/${feature.path}`)}
+              className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 ml-4">
+                  {feature.title}
+                </h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                {feature.description}
+              </p>
+              <div className="flex items-center text-blue-600 font-medium">
+                Learn more
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </div>
+            </div>
+          ))}
         </div>
-        
-        {/* Image Positioned in the Bottom */}
-        <div className={`absolute bottom-2 ${isMobile ? 'right-2' : 'right-4 sm:right-6 md:right-4 lg:right-6'}`}>
-          <img 
-            src={rightCardImage}  
-            alt="Button Graphic"
-            className={`${isMobile ? 'w-[50px]' : 'w-[60px] sm:w-[80px] md:w-[100px] lg:w-[120px]'} h-auto`}
-          />
+
+        <div className="mt-8 text-center">
+          <a
+            href="https://cryptique.gitbook.io/cryptique"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
+          >
+            View Documentation
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </a>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

@@ -197,10 +197,7 @@ const Dashboard = () => {
 
   const handleNavigation = (page) => {
     setSelectedPage(page);
-    // Close sidebar on navigation only for mobile
-    if (screenSize.isMobile && isSidebarOpen) {
-      setIsSidebarOpen(false);
-    }
+    navigate(`/${selectedTeam}/${page}`);
   };
 
   // Get sidebar classes based on screen size and state
@@ -245,7 +242,7 @@ const Dashboard = () => {
         () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
       screenSize: screenSize,
-      selectedPage: {selectedPage},
+      selectedPage: selectedPage,
       isSidebarOpen: isSidebarOpen
     };
 
@@ -269,7 +266,7 @@ const Dashboard = () => {
             <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
             <main className={getMainPaddingClasses()}>
               <MarketingSection />
-              <Tabs />
+              <Tabs isSidebarOpen={isSidebarOpen} />
               <FeatureCards />
             </main>
           </>
@@ -388,7 +385,7 @@ const Dashboard = () => {
           </button>
           <button 
             className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "offchain-analytics" ? "text-blue-600" : "text-gray-600"}`}
-            onClick={() => handleNavigation("offchain-analytics")}
+            onClick={() => handleNavigation("offchain")}
             aria-label="Analytics"
           >
             <BarChart size={20} />
