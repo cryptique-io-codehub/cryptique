@@ -19,6 +19,7 @@ import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
 import SubscriptionRequired from "../../components/SubscriptionRequired.js";
 import { useSubscription } from "../../context/subscriptionContext.js";
+import axiosInstance from '../../utils/axiosInstance.js'
 
 const Dashboard = () => {
   // State management
@@ -33,6 +34,16 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem("selectedTeam") || "");
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Style definitions matching the brand
+  const styles = {
+    primaryColor: "#1d0c46", // Deep purple
+    accentColor: "#caa968",  // Gold accent
+    futuristicGradient: "linear-gradient(135deg, #1d0c46 0%, #3a1d8a 50%, #1d0c46 100%)",
+    backgroundColor: "#f8f8ff"
+  };
   
   // Get subscription status at component level
   const { isActive: hasSubscription, plan, status } = useSubscription();
@@ -47,12 +58,11 @@ const Dashboard = () => {
     const updateScreenSize = () => {
       const width = window.innerWidth;
       setScreenSize({
-        isMobile: width < 640, // Small mobile devices
-        isTablet: width >= 640 && width < 1024, // Tablets and small laptops
-        isDesktop: width >= 1024 // Desktops and large screens
+        isMobile: width < 640,
+        isTablet: width >= 640 && width < 1024,
+        isDesktop: width >= 1024
       });
       
-      // Auto-close sidebar on mobile, auto-open on desktop
       if (width >= 1024 && !isSidebarOpen) {
         setIsSidebarOpen(true);
       } else if (width < 640 && isSidebarOpen) {
@@ -60,34 +70,41 @@ const Dashboard = () => {
       }
     };
     
-    // Initial check
     updateScreenSize();
-    
-    // Add event listener for resize
     window.addEventListener('resize', updateScreenSize);
-    
-    // Cleanup
     return () => window.removeEventListener('resize', updateScreenSize);
   }, [isSidebarOpen]);
 
-  // Sync selectedPage with URL and preload data for new tabs
+  // Fetch recent activity data
+  useEffect(() => {
+    const fetchRecentActivity = async () => {
+      try {
+        setIsLoading(true);
+        const teamId = selectedTeam;
+        if (!teamId) return;
+        
+        // Get recent website activity
+        const response = await axiosInstance.get(`/analytics/recentActivity/${teamId}`);
+        
+        if (response.data && response.data.activities) {
+          setRecentActivity(response.data.activities.slice(0, 5));
+        }
+      } catch (error) {
+        console.error("Error fetching recent activity:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRecentActivity();
+  }, [selectedTeam]);
+
+  // Sync selectedPage with URL
   useEffect(() => {
     const path = location.pathname;
-    
-    // Extract the current route from the path
     const pathSegments = path.split('/').filter(Boolean);
     const currentRoute = pathSegments.length > 1 ? pathSegments[1] : '';
     
-    // Redirect old pricing route to settings/pricing
-    if (currentRoute === 'pricing') {
-      const team = pathSegments[0] || localStorage.getItem("selectedTeam") || '';
-      if (team) {
-        navigate(`/${team}/settings/pricing`, { replace: true });
-        return;
-      }
-    }
-    
-    // Map route names to page identifiers
     const routeToPageMap = {
       'dashboard': 'dashboard',
       'offchain': 'offchain-analytics',
@@ -102,143 +119,91 @@ const Dashboard = () => {
       'settings': 'settings'
     };
     
-    // Set the selected page based on the current route
     const newPage = routeToPageMap[currentRoute] || 'dashboard';
-    
-    console.log("Current route:", currentRoute, "Selected page:", newPage);
-    
-    // If page is changing, preload data
-    if (newPage !== selectedPage) {
-      // Preload data when navigating to pages that need dropdowns
-      if (newPage === 'onchain-explorer') {
-        // Special handling for onchain explorer: actively clear the cache to force reload
-        console.log("Navigating to onchain explorer, ensuring fresh contract data");
-        
-        // Clear preloaded contract data to ensure fresh load
-        sessionStorage.removeItem("preloadedContracts");
-        
-        // Specifically preload the contract data
-        const selectedTeam = localStorage.getItem("selectedTeam");
-        if (selectedTeam) {
-          preloadData()
-            .then(() => console.log("Successfully preloaded fresh data for onchain page"))
-            .catch(err => console.error("Error preloading data for onchain page:", err));
-        }
-      } else if (['offchain-analytics', 'campaigns', 'conversion-events', 'cq-intelligence'].includes(newPage)) {
-        // For other pages with dropdowns, use regular preloading
-        preloadData()
-          .catch(err => console.error(`Error preloading data for ${newPage}:`, err));
-      }
-      
-      setSelectedPage(newPage);
-      
-      // Force sidebar to be open but compact when in settings
-      if (newPage === 'settings' && !screenSize.isMobile) {
-        setIsSidebarOpen(true);
-      }
-    }
-    
-  }, [location, selectedPage, selectedTeam, navigate, screenSize]);
-
-  // Update isCompactMode based on the selected page
-  useEffect(() => {
-    // If any page other than the dashboard is selected, enable compact mode
-    setIsCompactMode(selectedPage !== "dashboard");
-  }, [selectedPage]);
-
-  // Make sure sidebar is visible and in compact mode when in Settings page
-  useEffect(() => {
-    // Always ensure sidebar is open on desktop for Settings page
-    // This is crucial because the sidebar should not be hidden, just compacted
-    if (selectedPage === "settings" && !screenSize.isMobile) {
-      setIsSidebarOpen(true);
-      // Force compact mode for settings page
-      setIsCompactMode(true);
-    }
-  }, [selectedPage, screenSize.isMobile]);
-
-  // Add team change detection
-  useEffect(() => {
-    let currentTeam = localStorage.getItem("selectedTeam");
-    
-    const handleTeamChange = () => {
-      const newTeam = localStorage.getItem("selectedTeam");
-      if (newTeam && newTeam !== currentTeam) {
-        console.log(`Team changed in Dashboard: ${currentTeam} → ${newTeam}`);
-        currentTeam = newTeam;
-        
-        // Force clear all cached data
-        sessionStorage.removeItem("preloadedWebsites");
-        sessionStorage.removeItem("preloadedContracts");
-        
-        // Use preload service to refresh all data
-        preloadData(true, newTeam).catch(err => {
-          console.error("Error preloading data after team change:", err);
-        });
-        
-        // Forcefully reload the current page to ensure all components update
-        // This is a more extreme solution but guarantees data is fresh
-        setTimeout(() => {
-          if (window.location.pathname.includes('onchain')) {
-            // If we're on the onchain page, force a reload
-            window.location.reload();
-          }
-        }, 500);
-      }
-    };
-    
-    // Check for team changes every 2 seconds
-    const intervalId = setInterval(handleTeamChange, 2000);
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
+    setSelectedPage(newPage);
+  }, [location]);
 
   const handleNavigation = (page) => {
     setSelectedPage(page);
     navigate(`/${selectedTeam}/${page}`);
   };
 
+  // Render recent activity
+  const renderRecentActivity = () => {
+    if (isLoading) {
+      return (
+        <div className="animate-pulse">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="mb-4">
+              <div className="h-5 bg-gray-200 rounded w-1/3 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (recentActivity.length === 0) {
+      return (
+        <div className="text-center py-6 text-gray-500">
+          <p>No recent activity found</p>
+          <button 
+            onClick={() => navigate(`/${selectedTeam}/manage-websites`)}
+            className="mt-2 text-sm font-medium"
+            style={{ color: styles.primaryColor }}
+          >
+            Add a website to track
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {recentActivity.map((activity, index) => (
+          <div key={index} className="border-b border-gray-100 pb-3">
+            <h4 className="font-medium text-gray-900">{activity.title}</h4>
+            <div className="flex justify-between">
+              <p className="text-sm text-gray-500">{activity.description}</p>
+              <span className="text-xs text-gray-400">{activity.time}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // Get sidebar classes based on screen size and state
   const getSidebarClasses = () => {
-    // For settings page, ensure the sidebar is always visible on desktop
     if (selectedPage === "settings" && screenSize.isDesktop) {
       return "h-screen sticky top-0 flex-shrink-0 visible";
     }
     return "h-screen sticky top-0 flex-shrink-0";
   };
 
-  // Get correct content padding based on sidebar state and screen size
+  // Get main content classes
   const getMainContentClasses = () => {
     let baseClasses = "flex-1 flex flex-col overflow-y-auto relative transition-all duration-300 ";
-    
     if (screenSize.isDesktop) {
-      // Both settings and other pages should have consistent behavior
-        baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
+      baseClasses += isSidebarOpen ? "ml-0" : "ml-0";
     }
-    
     return baseClasses;
   };
 
-  // Get main content padding
+  // Get main padding classes
   const getMainPaddingClasses = () => {
     let paddingClasses = "p-4 md:p-6 lg:p-8 flex flex-col gap-4 md:gap-6 lg:gap-8 ";
-    
     if (screenSize.isMobile) {
-      paddingClasses += "pt-16 pb-20"; // Extra padding for mobile menu button and bottom spacing
+      paddingClasses += "pt-16 pb-20";
     }
-    
     return paddingClasses;
   };
 
   // Render component for current page
   const renderCurrentPage = () => {
     const commonProps = {
-      // Important: When clicking the menu button in Settings page, we should only toggle the settings sidebar
-      // not the main sidebar which should stay visible in compact mode
       onMenuClick: selectedPage === "settings" ? 
-        () => console.log("Settings sidebar toggle") : // This will be handled in Settings.js
+        () => console.log("Settings sidebar toggle") : 
         () => setIsSidebarOpen(!isSidebarOpen),
       onClose: () => setSelectedPage("dashboard"),
       screenSize: screenSize,
@@ -246,16 +211,12 @@ const Dashboard = () => {
       isSidebarOpen: isSidebarOpen
     };
 
-    // Define which pages are free (don't need subscription)
     const freePages = ['dashboard', 'settings'];
     
-    // Helper function to wrap content with SubscriptionRequired if needed
     const withSubscriptionCheck = (component, featureName) => {
-      // Dashboard and settings pages are always accessible
       if (freePages.includes(selectedPage)) {
         return component;
       }
-      // Other pages need active subscription
       return <SubscriptionRequired featureName={featureName}>{component}</SubscriptionRequired>;
     };
 
@@ -264,10 +225,30 @@ const Dashboard = () => {
         return (
           <>
             <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} screenSize={screenSize} />
-            <main className={getMainPaddingClasses()}>
+            <main 
+              className={getMainPaddingClasses()} 
+              style={{ background: styles.backgroundColor }}
+            >
               <MarketingSection />
               <Tabs isSidebarOpen={isSidebarOpen} />
-              <FeatureCards />
+
+              {/* Dashboard Grid Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-3">
+                  <FeatureCards />
+                </div>
+                
+                {/* Recent Activity Panel */}
+                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                  <h3 
+                    className="font-semibold text-lg mb-4 pb-2 border-b border-gray-100"
+                    style={{ color: styles.primaryColor }}
+                  >
+                    Recent Activity
+                  </h3>
+                  {renderRecentActivity()}
+                </div>
+              </div>
             </main>
           </>
         );
@@ -332,9 +313,9 @@ const Dashboard = () => {
         );
     }
   };
+
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden space-x-0">
-      {/* Sidebar - conditionally rendered based on screen size and state */}
+    <div className="flex h-screen overflow-hidden space-x-0" style={{ background: styles.backgroundColor }}>
       <div className={getSidebarClasses()}>
         <Sidebar 
           isOpen={isSidebarOpen} 
@@ -346,9 +327,7 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Main content area */}
       <div className={getMainContentClasses()}>
-        {/* Mobile menu toggle button - always visible regardless of page */}
         {(screenSize.isMobile || screenSize.isTablet) && (
           <button 
             className="fixed top-4 left-4 p-2 bg-white rounded-md shadow-md text-gray-700 hover:bg-gray-200 focus:outline-none z-30"
@@ -359,11 +338,9 @@ const Dashboard = () => {
           </button>
         )}
 
-        {/* Render the selected page */}
         {renderCurrentPage()}
       </div>
 
-      {/* Overlay for mobile when sidebar is open */}
       {(screenSize.isMobile || screenSize.isTablet) && isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
@@ -372,13 +349,13 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Quick access bottom navigation for mobile */}
       {screenSize.isMobile && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-30">
           <button 
             className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "dashboard" ? "text-blue-600" : "text-gray-600"}`}
             onClick={() => handleNavigation("dashboard")}
             aria-label="Dashboard"
+            style={{ color: selectedPage === "dashboard" ? styles.primaryColor : undefined }}
           >
             <Home size={20} />
             <span className="text-xs mt-1">Home</span>
@@ -387,6 +364,7 @@ const Dashboard = () => {
             className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "offchain-analytics" ? "text-blue-600" : "text-gray-600"}`}
             onClick={() => handleNavigation("offchain")}
             aria-label="Analytics"
+            style={{ color: selectedPage === "offchain-analytics" ? styles.primaryColor : undefined }}
           >
             <BarChart size={20} />
             <span className="text-xs mt-1">Analytics</span>
@@ -395,17 +373,10 @@ const Dashboard = () => {
             className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "campaigns" ? "text-blue-600" : "text-gray-600"}`}
             onClick={() => handleNavigation("campaigns")}
             aria-label="Campaigns"
+            style={{ color: selectedPage === "campaigns" ? styles.primaryColor : undefined }}
           >
             <Activity size={20} />
             <span className="text-xs mt-1">Campaigns</span>
-          </button>
-          <button 
-            className={`p-2 rounded-full flex flex-col items-center ${selectedPage === "settings" ? "text-blue-600" : "text-gray-600"}`}
-            onClick={() => handleNavigation("settings")}
-            aria-label="Settings"
-          >
-            <Settings size={20} />
-            <span className="text-xs mt-1">Settings</span>
           </button>
         </div>
       )}

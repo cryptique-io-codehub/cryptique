@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { BarChart2, LineChart, Target, Home } from "lucide-react";
 
 const Tabs = ({ isSidebarOpen }) => {
   const [activeTab, setActiveTab] = useState("Overview");
@@ -8,16 +9,40 @@ const Tabs = ({ isSidebarOpen }) => {
   const location = useLocation();
   const selectedTeam = localStorage.getItem("selectedTeam") || "";
 
+  // Style definitions matching the brand
+  const styles = {
+    primaryColor: "#1d0c46", // Deep purple
+    accentColor: "#caa968", // Gold accent
+    backgroundColor: "#f8f8ff"
+  };
+
   const tabs = [
-    { name: "Overview", path: "dashboard" },
-    { name: "Analytics", path: "offchain" },
-    { name: "Campaigns", path: "campaigns" }
+    { 
+      name: "Overview", 
+      path: "dashboard",
+      icon: <Home size={isMobile ? 16 : 18} />
+    },
+    { 
+      name: "Off-chain Analytics", 
+      path: "offchain",
+      icon: <BarChart2 size={isMobile ? 16 : 18} />
+    },
+    { 
+      name: "On-chain Explorer", 
+      path: "onchain",
+      icon: <LineChart size={isMobile ? 16 : 18} />
+    },
+    { 
+      name: "Campaigns", 
+      path: "campaigns",
+      icon: <Target size={isMobile ? 16 : 18} />
+    }
   ];
 
   // Check if mobile view
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+      setIsMobile(window.innerWidth < 768);
     };
     
     // Initial check
@@ -45,18 +70,24 @@ const Tabs = ({ isSidebarOpen }) => {
   };
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className={`flex border-b border-gray-300 pb-2 -mt-4 ${isMobile ? 'min-w-full justify-around' : 'min-w-max'}`}>
+    <div className="w-full overflow-x-auto mb-4">
+      <div 
+        className="flex border-b border-gray-200 -mt-4"
+        style={{ backgroundColor: styles.backgroundColor }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.name}
             onClick={() => handleTabClick(tab)}
-            className={`relative ${isMobile ? 'px-1 mx-1' : 'px-2 sm:px-3 md:px-4 mx-1 sm:mx-2 md:mx-4'} py-2 text-sm sm:text-base md:text-lg font-semibold text-gray-600 hover:text-black transition-all mt-0 flex-1 text-center`}
+            className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all`}
+            style={{ 
+              color: activeTab === tab.name ? styles.primaryColor : '#64748b',
+              borderBottom: activeTab === tab.name ? `2px solid ${styles.accentColor}` : '2px solid transparent'
+            }}
           >
-            {tab.name}
-            {activeTab === tab.name && (
-              <span className={`absolute left-0 right-0 bottom-0 mx-auto w-full ${isMobile ? 'max-w-12' : 'max-w-16 sm:max-w-20 md:max-w-32'} h-1 bg-blue-500 rounded-full mt-0`}></span>
-            )}
+            {tab.icon}
+            {!isMobile && <span>{tab.name}</span>}
+            {isMobile && activeTab === tab.name && <span>{tab.name}</span>}
           </button>
         ))}
       </div>
