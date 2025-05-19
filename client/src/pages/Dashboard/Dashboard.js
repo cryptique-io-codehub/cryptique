@@ -293,69 +293,259 @@ const Dashboard = () => {
               className={getMainPaddingClasses()} 
               style={{ background: styles.backgroundColor }}
             >
-              <MarketingSection />
-              <Tabs isSidebarOpen={isSidebarOpen} />
+              {hasSubscription ? (
+                // Premium user dashboard
+                <>
+                  <MarketingSection />
+                  <Tabs isSidebarOpen={isSidebarOpen} />
 
-              {/* Dashboard Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                {/* Loading Skeleton */}
-                {isLoading || isLoadingContracts ? (
-                  [...Array(5)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-lg p-5 shadow-sm animate-pulse h-[160px]">
-                      <div className="h-6 bg-gray-200 rounded mb-3 w-3/4"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-4 w-full"></div>
-                      <div className="flex justify-between items-end mt-8">
-                        <div className="h-8 bg-gray-200 rounded w-16"></div>
-                        <div className="h-5 bg-gray-200 rounded w-5"></div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  /* Feature Cards */
-                  dashboardCards.map((card, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleCardClick(card.path, card.external)}
-                      className={`rounded-lg p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[160px] border border-gray-100`}
-                      style={{
-                        backgroundColor: index === 0 ? styles.primaryColor : 'white',
-                        color: index === 0 ? 'white' : 'inherit'
-                      }}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className={`font-semibold text-lg ${index === 0 ? 'text-white' : ''}`}>
-                            {card.title}
-                          </h3>
-                          <div className={`p-1.5 rounded-full ${index === 0 ? 'bg-white/10' : `bg-${styles.primaryColor}/10`}`}>
-                            {card.icon}
+                  {/* Dashboard Grid Layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    {/* Loading Skeleton */}
+                    {isLoading || isLoadingContracts ? (
+                      [...Array(5)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-lg p-5 shadow-sm animate-pulse h-[160px]">
+                          <div className="h-6 bg-gray-200 rounded mb-3 w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded mb-4 w-full"></div>
+                          <div className="flex justify-between items-end mt-8">
+                            <div className="h-8 bg-gray-200 rounded w-16"></div>
+                            <div className="h-5 bg-gray-200 rounded w-5"></div>
                           </div>
                         </div>
-                        <p className={`text-sm ${index === 0 ? 'text-white/80' : 'text-gray-500'} mb-4`}>
-                          {card.description}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        {card.metric !== undefined && (
+                      ))
+                    ) : (
+                      /* Feature Cards */
+                      dashboardCards.map((card, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleCardClick(card.path, card.external)}
+                          className={`rounded-lg p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[160px] border border-gray-100`}
+                          style={{
+                            backgroundColor: index === 0 ? styles.primaryColor : 'white',
+                            color: index === 0 ? 'white' : 'inherit'
+                          }}
+                        >
                           <div>
-                            <span className="text-2xl font-semibold">{card.metric}</span>
-                            <span className={`text-xs ml-1 ${index === 0 ? 'text-white/70' : 'text-gray-500'}`}>{card.metricLabel}</span>
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className={`font-semibold text-lg ${index === 0 ? 'text-white' : ''}`}>
+                                {card.title}
+                              </h3>
+                              <div className={`p-1.5 rounded-full ${index === 0 ? 'bg-white/10' : `bg-${styles.primaryColor}/10`}`}>
+                                {card.icon}
+                              </div>
+                            </div>
+                            <p className={`text-sm ${index === 0 ? 'text-white/80' : 'text-gray-500'} mb-4`}>
+                              {card.description}
+                            </p>
                           </div>
-                        )}
-                        
-                        <div className={`flex items-center text-sm font-medium ${index === 0 ? 'text-white' : ''}`}>
-                          {card.external ? (
-                            <ExternalLink size={16} className={index === 0 ? 'text-white' : ''} />
-                          ) : (
-                            <ArrowRight size={16} className={index === 0 ? 'text-white' : ''} />
-                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            {card.metric !== undefined && (
+                              <div>
+                                <span className="text-2xl font-semibold">{card.metric}</span>
+                                <span className={`text-xs ml-1 ${index === 0 ? 'text-white/70' : 'text-gray-500'}`}>{card.metricLabel}</span>
+                              </div>
+                            )}
+                            
+                            <div className={`flex items-center text-sm font-medium ${index === 0 ? 'text-white' : ''}`}>
+                              {card.external ? (
+                                <ExternalLink size={16} className={index === 0 ? 'text-white' : ''} />
+                              ) : (
+                                <ArrowRight size={16} className={index === 0 ? 'text-white' : ''} />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                // Free user marketing dashboard
+                <div className="max-w-7xl mx-auto">
+                  {/* Hero Section */}
+                  <div className="rounded-xl overflow-hidden mb-8">
+                    <div 
+                      className="px-6 py-12 md:py-20 flex flex-col items-center text-center"
+                      style={{ background: styles.futuristicGradient }}
+                    >
+                      <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        Unlock the Full Power of <span style={{ color: styles.accentColor }}>Cryptique</span>
+                      </h1>
+                      <p className="text-lg md:text-xl text-white/80 max-w-2xl mb-8">
+                        Track website visitors, analyze blockchain data, and grow your Web3 project with our comprehensive analytics suite.
+                      </p>
+                      <button
+                        onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                        className="px-8 py-3 rounded-lg text-lg font-semibold transition-transform hover:scale-105 shadow-lg"
+                        style={{ background: styles.accentColor, color: styles.primaryColor }}
+                      >
+                        Upgrade Now
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Feature Highlights */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-lg p-6 shadow-md border border-gray-100">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: `${styles.primaryColor}20` }}>
+                        <Users size={24} style={{ color: styles.primaryColor }} />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2" style={{ color: styles.primaryColor }}>Web2 Analytics</h3>
+                      <p className="text-gray-600 mb-4">Track visitors, monitor conversions, and analyze user behavior across your websites.</p>
+                      <div className="border-t border-gray-100 pt-4 mt-auto">
+                        <ul className="space-y-2">
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Visitor tracking
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Conversion analytics
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Campaign management
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-6 shadow-md border border-gray-100">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: `${styles.primaryColor}20` }}>
+                        <Activity size={24} style={{ color: styles.primaryColor }} />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2" style={{ color: styles.primaryColor }}>Blockchain Analytics</h3>
+                      <p className="text-gray-600 mb-4">Connect your smart contracts and gain insights from on-chain data in real-time.</p>
+                      <div className="border-t border-gray-100 pt-4 mt-auto">
+                        <ul className="space-y-2">
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Smart contract monitoring
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Transaction analysis
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Multi-chain support
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-6 shadow-md border border-gray-100">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: `${styles.primaryColor}20` }}>
+                        <Trophy size={24} style={{ color: styles.primaryColor }} />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2" style={{ color: styles.primaryColor }}>Marketing Tools</h3>
+                      <p className="text-gray-600 mb-4">Create, manage, and track the performance of your marketing campaigns.</p>
+                      <div className="border-t border-gray-100 pt-4 mt-auto">
+                        <ul className="space-y-2">
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Campaign tracking
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Performance metrics
+                          </li>
+                          <li className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-green-500">✓</div>
+                            Conversion optimization
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resources Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div 
+                      className="rounded-lg p-6 shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-all cursor-pointer"
+                      onClick={() => window.open('https://blog.cryptique.io', '_blank')}
+                      style={{ background: `linear-gradient(135deg, #1d0c46 0%, #2d1c56 100%)` }}
+                    >
+                      <h3 className="text-xl font-semibold mb-2 text-white">Cryptique Blog</h3>
+                      <p className="text-white/80 mb-6">Stay updated with the latest Web3 analytics trends and Cryptique features.</p>
+                      <div className="mt-auto flex items-center text-white/90">
+                        <span className="text-sm font-medium">Visit our blog</span>
+                        <ExternalLink size={16} className="ml-2" />
+                      </div>
+                    </div>
+
+                    <div 
+                      className="rounded-lg p-6 shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-all cursor-pointer"
+                      onClick={() => window.open('https://cryptique.gitbook.io/cryptique', '_blank')}
+                      style={{ background: `linear-gradient(135deg, #1d0c46 0%, #2d1c56 100%)` }}
+                    >
+                      <h3 className="text-xl font-semibold mb-2 text-white">Documentation</h3>
+                      <p className="text-white/80 mb-6">Learn how to implement and get the most out of Cryptique with our detailed guides.</p>
+                      <div className="mt-auto flex items-center text-white/90">
+                        <span className="text-sm font-medium">Read the docs</span>
+                        <ExternalLink size={16} className="ml-2" />
+                      </div>
+                    </div>
+
+                    <div 
+                      className="rounded-lg p-6 shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-all cursor-pointer"
+                      onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                      style={{ background: styles.accentColor }}
+                    >
+                      <h3 className="text-xl font-semibold mb-2" style={{ color: styles.primaryColor }}>Upgrade Now</h3>
+                      <p className="mb-6" style={{ color: `${styles.primaryColor}DD` }}>Get unlimited access to all Cryptique features and start optimizing your Web3 project today.</p>
+                      <div className="mt-auto flex items-center" style={{ color: styles.primaryColor }}>
+                        <span className="text-sm font-medium">View pricing</span>
+                        <ArrowRight size={16} className="ml-2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Testimonials */}
+                  <div className="bg-white rounded-lg p-6 shadow-md border border-gray-100 mb-8">
+                    <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: styles.primaryColor }}>What Our Users Say</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-4 rounded-lg" style={{ background: `${styles.primaryColor}08` }}>
+                        <p className="italic text-gray-600 mb-4">"Cryptique has transformed how we understand our Web3 audience. The integration of on-chain and website analytics gives us insights we couldn't get anywhere else."</p>
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-gray-300 mr-3"></div>
+                          <div>
+                            <p className="font-medium" style={{ color: styles.primaryColor }}>Alex Thompson</p>
+                            <p className="text-sm text-gray-500">CTO, DeFiPulse</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-lg" style={{ background: `${styles.primaryColor}08` }}>
+                        <p className="italic text-gray-600 mb-4">"The campaign tracking features have increased our conversion rates by 37%. The ROI on Cryptique was immediate and substantial."</p>
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-gray-300 mr-3"></div>
+                          <div>
+                            <p className="font-medium" style={{ color: styles.primaryColor }}>Sarah Chen</p>
+                            <p className="text-sm text-gray-500">Marketing Director, TokenWave</p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
+
+                  {/* CTA Section */}
+                  <div 
+                    className="rounded-lg p-8 text-center mb-8"
+                    style={{ background: styles.futuristicGradient }}
+                  >
+                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Ready to unlock the full power of Cryptique?</h2>
+                    <p className="text-white/80 max-w-2xl mx-auto mb-6">Join thousands of Web3 projects that are growing faster with our comprehensive analytics platform.</p>
+                    <button
+                      onClick={() => navigate(`/${selectedTeam}/subscription`)}
+                      className="px-8 py-3 rounded-lg text-lg font-semibold transition-transform hover:scale-105 shadow-lg"
+                      style={{ background: styles.accentColor, color: styles.primaryColor }}
+                    >
+                      Upgrade Now
+                    </button>
+                  </div>
+                </div>
+              )}
             </main>
           </>
         );
