@@ -19,7 +19,7 @@ import CQIntelligence from './CQIntelligence.js'
 import preloadData from '../../utils/preloadService.js'
 import SubscriptionRequired from "../../components/SubscriptionRequired.js";
 import { useSubscription } from "../../context/subscriptionContext.js";
-import axiosInstance from '../../utils/axiosInstance.js'
+import axiosInstance from '../../axiosInstance';
 
 const Dashboard = () => {
   // State management
