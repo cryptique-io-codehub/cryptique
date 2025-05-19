@@ -11,7 +11,8 @@ export const FeatureCards = () => {
   const [websiteData, setWebsiteData] = useState({
     totalWebsites: 0,
     recentVisitors: 0,
-    activeWebsites: 0
+    activeWebsites: 0,
+    activeCampaigns: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,22 +40,38 @@ export const FeatureCards = () => {
           
           // Get sample analytics data for the first website if available
           let visitorCount = 0;
+          let campaignCount = 0;
+          
           if (websites.length > 0) {
+            const firstWebsite = websites[0];
+            
             try {
-              // Use the SDK API utility instead of direct axios call
-              const analyticsResponse = await sdkApi.getAnalytics(websites[0].siteId);
+              // Fetch analytics data
+              const analyticsResponse = await sdkApi.getAnalytics(firstWebsite.siteId);
               if (analyticsResponse && analyticsResponse.analytics) {
                 visitorCount = analyticsResponse.analytics.uniqueVisitors || 0;
               }
             } catch (err) {
               console.error("Error fetching analytics:", err);
             }
+            
+            try {
+              // Fetch campaign data for the first website
+              const campaignResponse = await axiosInstance.get(`/campaign/site/${firstWebsite.siteId}`);
+              if (campaignResponse && campaignResponse.data && campaignResponse.data.campaigns) {
+                campaignCount = campaignResponse.data.campaigns.length;
+              }
+            } catch (err) {
+              console.error("Error fetching campaigns:", err);
+              // If there's an error, we'll leave the campaign count at 0
+            }
           }
           
           setWebsiteData({
             totalWebsites: websites.length,
             recentVisitors: visitorCount,
-            activeWebsites: activeWebs
+            activeWebsites: activeWebs,
+            activeCampaigns: campaignCount
           });
         }
       } catch (error) {
@@ -93,8 +110,7 @@ export const FeatureCards = () => {
       path: "offchain",
       external: false,
       metric: websiteData.recentVisitors,
-      metricLabel: "Visitors",
-      metricChange: "+12%"
+      metricLabel: "Visitors"
     },
     {
       title: "Campaign Performance",
@@ -102,7 +118,7 @@ export const FeatureCards = () => {
       icon: <Trophy size={20} style={{ color: styles.accentColor }} />,
       path: "campaigns",
       external: false,
-      metric: "3",
+      metric: websiteData.activeCampaigns,
       metricLabel: "Active"
     }
   ];
@@ -160,15 +176,10 @@ export const FeatureCards = () => {
           </div>
           
           <div className="flex items-center justify-between">
-            {card.metric && (
+            {card.metric !== undefined && (
               <div>
                 <span className="text-2xl font-semibold">{card.metric}</span>
                 <span className={`text-xs ml-1 ${index === 0 ? 'text-white/70' : 'text-gray-500'}`}>{card.metricLabel}</span>
-                {card.metricChange && (
-                  <span className="text-xs ml-2 text-green-500 font-medium">
-                    {card.metricChange}
-                  </span>
-                )}
               </div>
             )}
             
