@@ -116,7 +116,6 @@ function SignupForm({ onBackToLogin }) {
   const googleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      setIsLoading(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -133,14 +132,13 @@ function SignupForm({ onBackToLogin }) {
         localStorage.setItem('User', JSON.stringify(response.data.user));
         
         // Preload data before navigating to dashboard
-        await preloadData(true, null, (isLoading) => setIsLoading(isLoading));
+        await preloadData();
         
         // Redirect to dashboard
         navigate(`/dashboard`);
       }
     } catch (error) {
       console.error('Error during Google login:', error);
-      setIsLoading(false);
     }
   };
 

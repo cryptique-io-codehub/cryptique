@@ -461,9 +461,10 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         localStorage.setItem('selectedTeam', aa);
         localStorage.setItem('User', JSON.stringify(response.data.user));
         
-        // Preload data before navigating to dashboard, pass loading callback
-        await preloadData(true, null, toggleLoading);
+        // Preload data before navigating to dashboard
+        await preloadData();
         
+        toggleLoading(false);
         navigate(`/dashboard`);
       } else {
         toggleLoading(false);
@@ -503,9 +504,10 @@ function LoginForm({ onSignupClick, toggleLoading }) {
         localStorage.setItem('selectedTeam', aa);
         localStorage.setItem('User', JSON.stringify(response.data.user));
         
-        // Preload data before navigating to dashboard, pass loading callback
-        await preloadData(true, null, toggleLoading);
+        // Preload data before navigating to dashboard
+        await preloadData();
         
+        toggleLoading(false);
         navigate(`/dashboard`);
       }
     } catch (error) {
