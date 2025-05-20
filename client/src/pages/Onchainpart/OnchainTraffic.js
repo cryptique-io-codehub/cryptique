@@ -677,47 +677,49 @@ export default function OnchainTraffic() {
         
         {/* Traffic Sources Table - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources Detailed Analysis</h2>
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Transacted</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL ({selectedContract?.tokenSymbol || 'Token'})</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {trafficSourcesTableData.length > 0 ? (
-                  trafficSourcesTableData.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.tvl}</td>
-                    </tr>
-                  ))
-                ) : (
+            <div className="max-h-96 overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                      {isLoadingAnalytics || isLoadingTransactions ? (
-                        <div className="flex justify-center items-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
-                          <span>Loading data...</span>
-                        </div>
-                      ) : (
-                        'No traffic sources data available'
-                      )}
-                    </td>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Transacted</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL ({selectedContract?.tokenSymbol || 'Token'})</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {trafficSourcesTableData.length > 0 ? (
+                    trafficSourcesTableData.map((item, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.tvl}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                        {isLoadingAnalytics || isLoadingTransactions ? (
+                          <div className="flex justify-center items-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
+                            <span>Loading data...</span>
+                          </div>
+                        ) : (
+                          'No traffic sources data available'
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
