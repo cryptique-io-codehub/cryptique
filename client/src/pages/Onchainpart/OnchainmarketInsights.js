@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useContractData } from '../../contexts/ContractDataContext';
 
 export default function OnchainmarketInsights() {
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Get contract data from context
+  const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -49,22 +53,26 @@ export default function OnchainmarketInsights() {
     { chain: "Blast", users: 18, icon: "🟡", color: "bg-yellow-400" }
   ];
 
-  // Simulate loading data
+  // Use loading state from contract context or simulate loading data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!isLoadingTransactions) {
+      // If contract data is loaded, we can set our loading to false
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500); // short timeout to ensure smooth transitions
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingTransactions]);
 
   const formatNumber = (num) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  if (isLoading) {
+  // Show loading state when transactions are loading
+  if (isLoading || isLoadingTransactions) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: styles.primaryColor }} />
           <p className="text-lg font-medium font-montserrat" style={{ color: styles.primaryColor }}>
@@ -76,7 +84,7 @@ export default function OnchainmarketInsights() {
   }
 
   return (
-    <div className="bg-gray-50 p-6 w-full min-h-screen">
+    <div className="bg-gray-50 w-full min-h-screen">
       {/* Import the fonts in the head */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
@@ -90,9 +98,10 @@ export default function OnchainmarketInsights() {
         }
       `}</style>
 
-      <div className="mb-6">
+      {/* Page content section */}
+      <div className="pt-4 pb-6">
         <h1 className="text-2xl font-bold text-gray-800 font-montserrat" style={{ color: styles.primaryColor }}>
-          Market Insights
+          Market Insights {selectedContract ? `for ${selectedContract.name}` : ''}
         </h1>
         <p className="text-gray-600 font-poppins mt-1">
           Explore market trends and user distribution across blockchains

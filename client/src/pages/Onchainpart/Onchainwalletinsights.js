@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Download, Copy, AlertCircle, Loader2 } from 'lucide-react';
+import { useContractData } from '../../contexts/ContractDataContext';
 
 export default function Onchainwalletinsights() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Get contract data from context
+  const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -38,22 +42,26 @@ export default function Onchainwalletinsights() {
   const walletsPerPage = 15;
   const totalPages = Math.ceil(totalWallets / walletsPerPage);
   
-  // Simulate loading data
+  // Use loading state from contract context or simulate loading data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!isLoadingTransactions) {
+      // If contract data is loaded, we can set our loading to false
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500); // short timeout to ensure smooth transitions
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingTransactions]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
-  if (isLoading) {
+  // Show loading state when transactions are loading
+  if (isLoading || isLoadingTransactions) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: styles.primaryColor }} />
           <p className="text-lg font-medium font-montserrat" style={{ color: styles.primaryColor }}>
@@ -65,7 +73,7 @@ export default function Onchainwalletinsights() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
+    <div className="bg-gray-50 min-h-screen">
       {/* Import the fonts in the head */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
@@ -79,16 +87,17 @@ export default function Onchainwalletinsights() {
         }
       `}</style>
 
-      <div className="mb-6">
+      {/* Page content section */}
+      <div className="pt-4 pb-6">
         <h1 className="text-2xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
-          Wallet Insights
+          Wallet Insights {selectedContract ? `for ${selectedContract.name}` : ''}
         </h1>
         <p className="text-gray-600 font-poppins mt-1">
           Track and analyze wallet activity across the blockchain
         </p>
       </div>
 
-      <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-sm border border-gray-100">
+      <div className="max-w-full bg-white rounded-lg shadow-sm border border-gray-100">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold font-montserrat" style={{ color: styles.primaryColor }}>
