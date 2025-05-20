@@ -1110,91 +1110,76 @@ export const ContractDataProvider = ({ children }) => {
     if (walletValues.length === 0) {
       return generateEmptyTransactionDistribution();
     }
+
+    // Step 3: Distribute wallets evenly across buckets
+    const totalWallets = walletValues.length;
+    const NUM_BUCKETS = 7;
     
-    // Step 3: Determine scale (logarithmic or linear) based on distribution
-    const min = walletValues[0] || 0;
-    const max = walletValues[walletValues.length - 1] || 1000;
-    const mean = walletValues.reduce((sum, val) => sum + val, 0) / walletValues.length;
-    const useLogarithmic = max > mean * 10; // Use logarithmic scale for wider ranges
+    // Ensure each bucket has at least 2% of wallets and at most 25%
+    const minBucketSize = Math.max(Math.ceil(totalWallets * 0.02), 1); // Minimum 2% of wallets per bucket
+    const maxBucketSize = Math.floor(totalWallets * 0.25); // Maximum 25% of wallets per bucket
     
-    // Step 4: Create 7 buckets with each bucket containing max 20% of wallets
+    // Calculate target wallets per bucket (roughly equal distribution)
+    let targetWalletsPerBucket = Math.floor(totalWallets / NUM_BUCKETS);
+    
+    // Adjust target if it falls outside min/max bounds
+    targetWalletsPerBucket = Math.max(targetWalletsPerBucket, minBucketSize);
+    targetWalletsPerBucket = Math.min(targetWalletsPerBucket, maxBucketSize);
+    
     const buckets = [];
-    const bucketSize = Math.ceil(walletValues.length / 7); // Initial size per bucket
-    const maxBucketSize = Math.ceil(walletValues.length * 0.2); // Max 20% per bucket
-    
+    let remaining = totalWallets;
     let currentIndex = 0;
-    let currentBucketSize = 0;
-    let lowerBound = min;
-    
-    for (let i = 0; i < 7; i++) {
+
+    // Create buckets with wallet counts first, then determine value ranges
+    for (let i = 0; i < NUM_BUCKETS; i++) {
       // For the last bucket, include all remaining wallets
-      if (i === 6) {
-        const upperBound = max;
-        const count = walletValues.length - currentIndex;
-        const percentage = (count / walletValues.length) * 100;
+      if (i === NUM_BUCKETS - 1) {
+        const bucketSize = remaining;
+        const percentage = (bucketSize / totalWallets) * 100;
+        
+        const lowerBound = currentIndex > 0 ? walletValues[currentIndex] : 0;
+        const upperBound = walletValues[totalWallets - 1];
         
         buckets.push({
-          range: formatTokenValueRange(lowerBound, upperBound === lowerBound ? lowerBound : upperBound),
-          percentage: Math.round(percentage)
+          range: formatTokenValueRange(lowerBound, upperBound),
+          percentage: Math.round(percentage),
+          count: bucketSize
         });
         break;
       }
       
-      // Calculate dynamic bucket size, ensuring max 20% per bucket
-      currentBucketSize = Math.min(bucketSize, maxBucketSize);
-      // For narrower distributions, ensure at least some wallets in each bucket
-      currentBucketSize = Math.max(currentBucketSize, Math.ceil(walletValues.length / 20));
+      // Calculate bucket size for current bucket (aim for even distribution)
+      let bucketSize = Math.min(targetWalletsPerBucket, remaining - (NUM_BUCKETS - i - 1) * minBucketSize);
       
-      const targetIndex = Math.min(currentIndex + currentBucketSize, walletValues.length - 1);
-      let upperBound;
+      // Ensure each bucket has at least minBucketSize wallets
+      bucketSize = Math.max(bucketSize, minBucketSize);
       
-      if (useLogarithmic) {
-        // Logarithmic scale for wide distributions
-        const logMin = Math.log(Math.max(0.000001, lowerBound)); // Ensure min is positive for log
-        const logMax = Math.log(Math.max(0.000001, max));
-        const bucketFraction = (i + 1) / 7;
-        upperBound = Math.exp(logMin + (logMax - logMin) * bucketFraction);
-      } else {
-        // Linear scale for narrower distributions
-        upperBound = walletValues[targetIndex];
-      }
+      // And no more than maxBucketSize wallets
+      bucketSize = Math.min(bucketSize, maxBucketSize, remaining - (NUM_BUCKETS - i - 1));
       
-      // Count wallets in this range
-      let count = 0;
-      while (currentIndex < walletValues.length && walletValues[currentIndex] <= upperBound) {
-        count++;
-        currentIndex++;
-      }
+      // Calculate range boundaries based on wallet values
+      const lowerBound = currentIndex > 0 ? walletValues[currentIndex] : 0;
+      const upperBound = walletValues[currentIndex + bucketSize - 1];
       
-      // Calculate percentage
-      const percentage = (count / walletValues.length) * 100;
+      // Calculate percentage of total wallets in this bucket
+      const percentage = (bucketSize / totalWallets) * 100;
       
-      // Create bucket
       buckets.push({
         range: formatTokenValueRange(lowerBound, upperBound),
-        percentage: Math.round(percentage)
+        percentage: Math.round(percentage),
+        count: bucketSize
       });
       
       // Update for next bucket
-      lowerBound = upperBound;
+      currentIndex += bucketSize;
+      remaining -= bucketSize;
     }
     
-    // Ensure exactly 7 buckets
-    while (buckets.length < 7) {
-      buckets.push({ range: "0", percentage: 0 });
-    }
-    
-    // Normalize percentages to ensure they sum to 100%
-    const totalPercentage = buckets.reduce((sum, bucket) => sum + bucket.percentage, 0);
-    if (totalPercentage !== 100) {
-      // Adjust the largest bucket
-      const largestBucketIndex = buckets.findIndex(b => 
-        b.percentage === Math.max(...buckets.map(bucket => bucket.percentage))
-      );
-      buckets[largestBucketIndex].percentage += (100 - totalPercentage);
-    }
-    
-    return buckets;
+    // Remove count property (just used for calculation)
+    return buckets.map(bucket => ({
+      range: bucket.range,
+      percentage: bucket.percentage
+    }));
   };
 
   // Helper function to format token value ranges
