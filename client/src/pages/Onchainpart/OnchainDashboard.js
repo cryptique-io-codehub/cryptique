@@ -162,15 +162,18 @@ const createAdaptiveTransactionBuckets = (transactions, walletCount) => {
   return buckets;
 };
 
-// Wallet categorization logic - returns object with calculated percentages
-const categorizeWallets = (transactions, walletBalances) => {
+// Wallet categorization logic - returns object with calculated percentages and top wallets
+const categorizeWallets = (transactions) => {
   // If no data, return default values
   if (!transactions || transactions.length === 0) {
     return {
       airdropFarmers: 32,
       whales: 7,
       whalesVolumePercentage: 58,
-      bridgeUsers: 15
+      bridgeUsers: 15,
+      topAirdropFarmers: [],
+      topWhales: [],
+      topBridgeUsers: []
     };
   }
   
@@ -179,30 +182,37 @@ const categorizeWallets = (transactions, walletBalances) => {
   let totalVolume = 0;
   
   transactions.forEach(tx => {
-    if (!tx.walletAddress) return;
+    if (!tx.from_address) return;
     
-    if (!walletStats[tx.walletAddress]) {
-      walletStats[tx.walletAddress] = {
+    if (!walletStats[tx.from_address]) {
+      walletStats[tx.from_address] = {
+        address: tx.from_address,
         transactionCount: 0,
         volume: 0,
-        approvals: 0
+        approvals: 0,
+        noValueTxs: 0
       };
     }
     
-    walletStats[tx.walletAddress].transactionCount++;
+    walletStats[tx.from_address].transactionCount++;
     
     // Track volume
-    if (tx.value) {
-      const txValue = parseFloat(tx.value);
-      walletStats[tx.walletAddress].volume += txValue;
-      totalVolume += txValue;
+    if (tx.value_eth) {
+      const txValue = parseFloat(tx.value_eth);
+      if (!isNaN(txValue)) {
+        walletStats[tx.from_address].volume += txValue;
+        totalVolume += txValue;
+      }
+    } else {
+      // Track transactions without value_eth data (potential bridge transactions)
+      walletStats[tx.from_address].noValueTxs++;
     }
     
     // Track approval transactions
-    if (tx.methodName && (tx.methodName.toLowerCase().includes('approve') || 
-                          tx.methodName.toLowerCase().includes('bridge') ||
-                          tx.methodName.toLowerCase().includes('permit'))) {
-      walletStats[tx.walletAddress].approvals++;
+    if (tx.method_name && (tx.method_name.toLowerCase().includes('approve') || 
+                          tx.method_name.toLowerCase().includes('bridge') ||
+                          tx.method_name.toLowerCase().includes('permit'))) {
+      walletStats[tx.from_address].approvals++;
     }
   });
   
@@ -210,13 +220,32 @@ const categorizeWallets = (transactions, walletBalances) => {
   const walletAddresses = Object.keys(walletStats);
   const totalWallets = walletAddresses.length;
   
-  // Airdrop farmers: Few transactions (1-3) with no significant volume
-  const airdropFarmers = walletAddresses.filter(address => {
-    const stats = walletStats[address];
-    return stats.transactionCount <= 3 && stats.volume < (totalVolume * 0.001 / totalWallets);
-  });
+  // Airdrop farmers: Exactly 1 transaction with minimal token amount (bottom 10% by volume)
+  // First, collect all wallets with exactly 1 transaction
+  const singleTxWallets = walletAddresses.filter(address => 
+    walletStats[address].transactionCount === 1
+  );
   
-  // Whales: High volume wallets (top 10% by volume)
+  // Sort them by volume (ascending)
+  const sortedByMinVolume = [...singleTxWallets].sort((a, b) => 
+    walletStats[a].volume - walletStats[b].volume
+  );
+  
+  // Take wallets with exactly 1 transaction and minimal volume (bottom ones)
+  const minimalVolumeThreshold = totalVolume * 0.0001 / totalWallets; // Very small fraction of average
+  const airdropFarmers = sortedByMinVolume.filter(address => 
+    walletStats[address].volume <= minimalVolumeThreshold
+  );
+  
+  // Extract top 10 airdrop farmers (or fewer if there aren't that many)
+  const topAirdropFarmers = sortedByMinVolume.slice(0, Math.min(10, sortedByMinVolume.length))
+    .map(address => ({
+      address,
+      transactionCount: walletStats[address].transactionCount,
+      volume: walletStats[address].volume
+    }));
+  
+  // Whales: High volume wallets (top 7% by volume)
   const sortedByVolume = [...walletAddresses].sort((a, b) => 
     walletStats[b].volume - walletStats[a].volume
   );
@@ -224,22 +253,62 @@ const categorizeWallets = (transactions, walletBalances) => {
   const whaleCount = Math.max(Math.ceil(totalWallets * 0.07), 1); // ~7% of wallets
   const whales = sortedByVolume.slice(0, whaleCount);
   
-  // Calculate whale volume percentage
-  const whaleVolume = whales.reduce((sum, address) => sum + walletStats[address].volume, 0);
-  const whalesVolumePercentage = Math.round((whaleVolume / totalVolume) * 100);
+  // Extract top 10 whales
+  const topWhales = sortedByVolume.slice(0, Math.min(10, sortedByVolume.length))
+    .map(address => ({
+      address,
+      transactionCount: walletStats[address].transactionCount,
+      volume: walletStats[address].volume
+    }));
   
-  // Bridge users: High approval transaction ratio
+  // Calculate whale volume percentage
+  const whaleVolume = whales.reduce((sum, address) => {
+    const vol = walletStats[address]?.volume || 0;
+    return sum + vol;
+  }, 0);
+  
+  const whalesVolumePercentage = totalVolume > 0 
+    ? Math.round((whaleVolume / totalVolume) * 100)
+    : 58; // Default if no volume data
+  
+  // Bridge users: High percentage of transactions without value_eth data or with approval methods
   const bridgeUsers = walletAddresses.filter(address => {
     const stats = walletStats[address];
-    return stats.approvals / stats.transactionCount > 0.5; // >50% are approvals
+    
+    // Check if wallet has transactions
+    if (stats.transactionCount === 0) return false;
+    
+    // Consider a wallet a bridge user if:
+    // 1. More than 50% of transactions are approvals OR
+    // 2. More than 50% of transactions have no value_eth
+    return (stats.approvals / stats.transactionCount > 0.5) || 
+           (stats.noValueTxs / stats.transactionCount > 0.5);
   });
+  
+  // Sort bridge users by approval count (descending)
+  const sortedBridgeUsers = [...bridgeUsers].sort((a, b) => 
+    (walletStats[b].approvals + walletStats[b].noValueTxs) - 
+    (walletStats[a].approvals + walletStats[a].noValueTxs)
+  );
+  
+  // Extract top 10 bridge users
+  const topBridgeUsers = sortedBridgeUsers.slice(0, Math.min(10, sortedBridgeUsers.length))
+    .map(address => ({
+      address,
+      transactionCount: walletStats[address].transactionCount,
+      approvals: walletStats[address].approvals,
+      noValueTxs: walletStats[address].noValueTxs
+    }));
   
   // Calculate percentages
   return {
     airdropFarmers: Math.min(Math.round((airdropFarmers.length / totalWallets) * 100), 70),
     whales: Math.round((whales.length / totalWallets) * 100),
     whalesVolumePercentage,
-    bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60)
+    bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60),
+    topAirdropFarmers,
+    topWhales,
+    topBridgeUsers
   };
 };
 
@@ -260,6 +329,7 @@ export default function OnchainDashboard() {
   const [chartTimeRange, setChartTimeRange] = useState('30d'); // Default to 30 days
   const [showAnalysisModal, setShowAnalysisModal] = useState(false); // Add state for analysis modal
   const [showTransactionDistributionModal, setShowTransactionDistributionModal] = useState(false); // Add state for transaction distribution modal
+  const [activeWalletTab, setActiveWalletTab] = useState('whales'); // Track active wallet category tab
 
   // Process real contract data if available
   const contractData = !showDemoData ? processContractTransactions() : null;
@@ -1254,10 +1324,9 @@ export default function OnchainDashboard() {
                   <table className="w-full min-w-[600px] border-collapse">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="py-2 px-4 text-left border border-gray-200">Transaction Range</th>
+                        <th className="py-2 px-4 text-left border border-gray-200">Token Range</th>
                         <th className="py-2 px-4 text-left border border-gray-200">% of Wallets</th>
                         <th className="py-2 px-4 text-left border border-gray-200">Wallet Count</th>
-                        <th className="py-2 px-4 text-left border border-gray-200">Typical User Type</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1271,9 +1340,6 @@ export default function OnchainDashboard() {
                               : Math.round(item.percentage * 64.29)
                             }
                           </td>
-                          <td className="py-2 px-4 border border-gray-200">
-                            {getWalletTypeForRange(item.range)}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1286,55 +1352,167 @@ export default function OnchainDashboard() {
                 </p>
               </div>
               
-              {/* Activity Insights */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 font-montserrat">Activity Insights</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start">
-                    <div className="bg-blue-100 p-2 rounded-full mr-3 mt-1">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">User Engagement Patterns</h4>
-                      <p className="text-gray-700 text-sm">
-                        {!showDemoData && contractData?.transactionCountData ? 
-                          `${getHighTransactionCount(transactionCountData)}% of wallets show high engagement (100+ transactions), while ${getLowTransactionCount(transactionCountData)}% interact minimally (1-10 transactions), indicating ${getLowTransactionCount(transactionCountData) > 50 ? "a primarily casual userbase" : "a healthy balance of casual and dedicated users"}.`
-                          : 
-                          "The majority of wallets (56.8%) interact with the contract fewer than 10 times, suggesting a high number of casual users or airdrop farmers. Highly active users (100+ transactions) represent a dedicated but small percentage (19.4%) of the userbase."
-                        }
-                      </p>
+              {/* Top Wallets by Category */}
+              <div className="bg-gray-50 rounded-lg p-6 mb-8">
+                <h3 className="text-lg font-semibold mb-4 font-montserrat">Top Wallets by Category</h3>
+                
+                {/* Tabs for different wallet categories */}
+                <div className="mb-4">
+                  <div className="flex border-b">
+                    <button 
+                      onClick={() => setActiveWalletTab('whales')}
+                      className={`px-4 py-2 border-b-2 ${activeWalletTab === 'whales' ? 'border-blue-500 text-blue-500' : 'border-gray-200 text-gray-500'} font-medium`}
+                    >
+                      Whales
+                    </button>
+                    <button 
+                      onClick={() => setActiveWalletTab('airdropFarmers')}
+                      className={`px-4 py-2 border-b-2 ${activeWalletTab === 'airdropFarmers' ? 'border-blue-500 text-blue-500' : 'border-gray-200 text-gray-500'} font-medium`}
+                    >
+                      Airdrop Farmers
+                    </button>
+                    <button 
+                      onClick={() => setActiveWalletTab('bridgeUsers')}
+                      className={`px-4 py-2 border-b-2 ${activeWalletTab === 'bridgeUsers' ? 'border-blue-500 text-blue-500' : 'border-gray-200 text-gray-500'} font-medium`}
+                    >
+                      Bridge Users
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Tab content */}
+                <div>
+                  {/* Whales Tab */}
+                  <div className={activeWalletTab === 'whales' ? 'block' : 'hidden'}>
+                    <p className="text-sm mb-3">Top wallets by transaction volume (whales represent approximately {!showDemoData && contractData?.walletCategories?.whales ? contractData.walletCategories.whales : 7}% of all wallets but control {!showDemoData && contractData?.walletCategories?.whalesVolumePercentage ? contractData.walletCategories.whalesVolumePercentage : 58}% of volume)</p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px] border-collapse">
+                        <thead>
+                          <tr className="bg-blue-50">
+                            <th className="py-2 px-4 text-left border border-gray-200">Wallet Address</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Transaction Count</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Total Volume</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!showDemoData && contractData?.walletCategories?.topWhales ? (
+                            contractData.walletCategories.topWhales.map((whale, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  {whale.address.substring(0, 8)}...{whale.address.substring(whale.address.length - 6)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">{whale.transactionCount}</td>
+                                <td className="py-2 px-4 border border-gray-200">
+                                  {formatVolume(whale.volume, selectedContract?.tokenSymbol || "TOKEN")}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            // Demo data for whales
+                            Array(10).fill(0).map((_, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  0x{Math.random().toString(16).substring(2, 10)}...{Math.random().toString(16).substring(2, 8)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">{Math.floor(Math.random() * 500) + 100}</td>
+                                <td className="py-2 px-4 border border-gray-200">
+                                  {formatVolume((Math.random() * 50000) + 10000, "ETH")}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                   
-                  <div className="flex items-start">
-                    <div className="bg-green-100 p-2 rounded-full mr-3 mt-1">
-                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">Whale Activity Impact</h4>
-                      <p className="text-gray-700 text-sm">
-                        {!showDemoData && contractData?.walletCategories ?
-                          `Whales represent approximately ${contractData.walletCategories.whales || 7}% of unique addresses but account for ${hasHighWhaleActivity(transactionCountData) ? "a significant portion (>50%)" : "a moderate portion (<40%)"} of total transaction volume, suggesting ${hasHighWhaleActivity(transactionCountData) ? "high concentration of token control" : "relatively distributed token ownership"}.`
-                          :
-                          "Whale wallets (5% of addresses) control approximately 63% of total transaction volume, indicating high centralization of token holdings and potential market influence."
-                        }
-                      </p>
+                  {/* Airdrop Farmers Tab */}
+                  <div className={activeWalletTab === 'airdropFarmers' ? 'block' : 'hidden'}>
+                    <p className="text-sm mb-3">Single transaction wallets with minimal volume (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.airdropFarmers ? contractData.walletCategories.airdropFarmers : 32}% of all wallets)</p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px] border-collapse">
+                        <thead>
+                          <tr className="bg-amber-50">
+                            <th className="py-2 px-4 text-left border border-gray-200">Wallet Address</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Transaction Count</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Volume</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!showDemoData && contractData?.walletCategories?.topAirdropFarmers ? (
+                            contractData.walletCategories.topAirdropFarmers.map((farmer, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-amber-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  {farmer.address.substring(0, 8)}...{farmer.address.substring(farmer.address.length - 6)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">{farmer.transactionCount}</td>
+                                <td className="py-2 px-4 border border-gray-200">
+                                  {formatVolume(farmer.volume, selectedContract?.tokenSymbol || "TOKEN")}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            // Demo data for airdrop farmers
+                            Array(10).fill(0).map((_, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-amber-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  0x{Math.random().toString(16).substring(2, 10)}...{Math.random().toString(16).substring(2, 8)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">1</td>
+                                <td className="py-2 px-4 border border-gray-200">
+                                  {formatVolume(Math.random() * 0.01, "ETH")}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                   
-                  <div className="flex items-start">
-                    <div className="bg-purple-100 p-2 rounded-full mr-3 mt-1">
-                      <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">Cross-Chain Activity</h4>
-                      <p className="text-gray-700 text-sm">
-                        {!showDemoData && contractData?.walletCategories ?
-                          `Bridge users make up around ${contractData.walletCategories.bridgeUsers || 15}% of the total wallet count, characterized by high numbers of approval transactions with limited direct token movement. This suggests significant cross-chain liquidity movement.`
-                          :
-                          "Approximately 12% of wallets primarily use approval transactions for cross-chain bridging, with minimal direct token transfers. These users typically perform 2-5 transactions related to bridge approvals."
-                        }
-                      </p>
+                  {/* Bridge Users Tab */}
+                  <div className={activeWalletTab === 'bridgeUsers' ? 'block' : 'hidden'}>
+                    <p className="text-sm mb-3">Wallets with high percentage of approvals or zero-value transactions (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.bridgeUsers ? contractData.walletCategories.bridgeUsers : 15}% of all wallets)</p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px] border-collapse">
+                        <thead>
+                          <tr className="bg-purple-50">
+                            <th className="py-2 px-4 text-left border border-gray-200">Wallet Address</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Total Transactions</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">Approval Txns</th>
+                            <th className="py-2 px-4 text-left border border-gray-200">No-Value Txns</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!showDemoData && contractData?.walletCategories?.topBridgeUsers ? (
+                            contractData.walletCategories.topBridgeUsers.map((bridgeUser, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  {bridgeUser.address.substring(0, 8)}...{bridgeUser.address.substring(bridgeUser.address.length - 6)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">{bridgeUser.transactionCount}</td>
+                                <td className="py-2 px-4 border border-gray-200">{bridgeUser.approvals}</td>
+                                <td className="py-2 px-4 border border-gray-200">{bridgeUser.noValueTxs}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            // Demo data for bridge users
+                            Array(10).fill(0).map((_, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
+                                <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
+                                  0x{Math.random().toString(16).substring(2, 10)}...{Math.random().toString(16).substring(2, 8)}
+                                </td>
+                                <td className="py-2 px-4 border border-gray-200">{Math.floor(Math.random() * 20) + 5}</td>
+                                <td className="py-2 px-4 border border-gray-200">{Math.floor(Math.random() * 10) + 3}</td>
+                                <td className="py-2 px-4 border border-gray-200">{Math.floor(Math.random() * 8) + 2}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
