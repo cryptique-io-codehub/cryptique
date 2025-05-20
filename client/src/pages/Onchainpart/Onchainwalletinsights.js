@@ -1,8 +1,19 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Copy, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Download, Copy, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Onchainwalletinsights() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Dashboard styles matching the rest of the application
+  const styles = {
+    primaryColor: "#1d0c46", // Deep purple
+    accentColor: "#caa968",  // Gold accent
+    backgroundColor: "#f9fafb",
+    cardBg: "white",
+    textPrimary: "#111827",
+    textSecondary: "#4b5563"
+  };
   
   // Sample wallet data
   const wallets = [
@@ -26,21 +37,73 @@ export default function Onchainwalletinsights() {
   const totalWallets = 6429;
   const walletsPerPage = 15;
   const totalPages = Math.ceil(totalWallets / walletsPerPage);
+  
+  // Simulate loading data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: styles.primaryColor }} />
+          <p className="text-lg font-medium font-montserrat" style={{ color: styles.primaryColor }}>
+            Loading wallet insights...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen p-6">
-      <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-sm">
+      {/* Import the fonts in the head */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+        
+        .font-montserrat {
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
+          Wallet Insights
+        </h1>
+        <p className="text-gray-600 font-poppins mt-1">
+          Track and analyze wallet activity across the blockchain
+        </p>
+      </div>
+
+      <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-sm border border-gray-100">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
-          <h1 className="text-2xl font-semibold">List</h1>
-          <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
+          <h2 className="text-xl font-semibold font-montserrat" style={{ color: styles.primaryColor }}>
+            Connected Wallets
+          </h2>
+          <button 
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
+            style={{ 
+              backgroundColor: `${styles.primaryColor}10`, 
+              color: styles.primaryColor
+            }}
+          >
             <Download size={16} />
             Export all wallets
-            <span className="text-xs text-gray-500 ml-1">6429</span>
+            <span className="text-xs ml-1 opacity-70">{totalWallets.toLocaleString()}</span>
           </button>
         </div>
 
@@ -48,7 +111,7 @@ export default function Onchainwalletinsights() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b text-sm text-gray-500">
+              <tr className="border-b text-sm text-gray-500 font-montserrat">
                 <th className="py-4 px-6 text-left font-medium">Wallet Address</th>
                 <th className="py-4 px-6 text-left font-medium">Total balance (USD)</th>
                 <th className="py-4 px-6 text-left font-medium">Number of Transactions</th>
@@ -56,7 +119,7 @@ export default function Onchainwalletinsights() {
                 <th className="py-4 px-6 text-left font-medium">Last transaction date</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="font-poppins">
               {wallets.map((wallet, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
                   <td className="py-4 px-6">
@@ -66,7 +129,7 @@ export default function Onchainwalletinsights() {
                         <Copy size={16} />
                       </button>
                       {wallet.hasAlert && (
-                        <AlertCircle size={16} className="text-red-500" />
+                        <AlertCircle size={16} style={{ color: styles.accentColor }} />
                       )}
                     </div>
                   </td>
@@ -81,34 +144,40 @@ export default function Onchainwalletinsights() {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-between items-center p-6 text-sm text-gray-500">
+        <div className="flex justify-between items-center p-6 text-sm text-gray-500 font-poppins">
           <div>
-            Showing 1-{walletsPerPage} of {totalWallets} matching wallets
+            Showing 1-{walletsPerPage} of {totalWallets.toLocaleString()} matching wallets
           </div>
           <div className="flex items-center space-x-2">
             <button 
-              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-50" 
+              className="flex items-center border rounded px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white" 
               disabled={currentPage === 1}
               onClick={() => handlePageChange(currentPage - 1)}
+              style={{ color: styles.primaryColor }}
             >
               <ChevronLeft size={16} />
               Previous
             </button>
             
-            {[1, 2, 3, 4].map(page => (
+            {Array.from({ length: Math.min(4, totalPages) }, (_, i) => i + 1).map(page => (
               <button 
                 key={page}
-                className={`w-8 h-8 rounded flex items-center justify-center ${currentPage === page ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
+                className={`w-8 h-8 rounded flex items-center justify-center ${currentPage === page ? 'font-medium' : 'hover:bg-gray-50'}`}
                 onClick={() => handlePageChange(page)}
+                style={{ 
+                  backgroundColor: currentPage === page ? `${styles.primaryColor}10` : '',
+                  color: currentPage === page ? styles.primaryColor : ''
+                }}
               >
                 {page}
               </button>
             ))}
             
             <button 
-              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50"
+              className="flex items-center border rounded px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
+              style={{ color: styles.primaryColor }}
             >
               Next
               <ChevronRight size={16} />

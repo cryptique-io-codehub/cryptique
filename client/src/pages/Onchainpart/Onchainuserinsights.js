@@ -1,7 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Loader2 } from 'lucide-react';
 
 export default function Onchainuserinsights() {
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Dashboard styles matching the rest of the application
+  const styles = {
+    primaryColor: "#1d0c46", // Deep purple
+    accentColor: "#caa968",  // Gold accent
+    backgroundColor: "#f9fafb",
+    cardBg: "white",
+    textPrimary: "#111827",
+    textSecondary: "#4b5563"
+  };
+
   // Platform colors
   const platformColors = {
     'X': '#4285F4',
@@ -68,33 +81,64 @@ export default function Onchainuserinsights() {
     { name: 'Facebook', value: 60 }
   ];
 
+  // Simulate loading data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   // Custom bar component for colored bars
   const CustomBar = (props) => {
     const { x, y, width, height, name } = props;
     return <rect x={x} y={y} width={width} height={height} fill={platformColors[name]} rx={4} ry={4} />;
   };
 
-  // CSS for fonts
-  const fontStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
-    
-    .card-heading {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 600;
-    }
-    
-    .card-body {
-      font-family: 'Poppins', sans-serif;
-    }
-  `;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: styles.primaryColor }} />
+          <p className="text-lg font-medium font-montserrat" style={{ color: styles.primaryColor }}>
+            Loading user insights...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4">
-      <style>{fontStyles}</style>
+    <div className="bg-gray-50 min-h-screen p-6">
+      {/* Import the fonts in the head */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+        
+        .card-heading {
+          font-family: 'Montserrat', sans-serif;
+          font-weight: 600;
+          color: ${styles.primaryColor};
+        }
+        
+        .card-body {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 font-montserrat" style={{ color: styles.primaryColor }}>
+          User Insights
+        </h1>
+        <p className="text-gray-600 font-poppins mt-1">
+          Analyze your user behavior patterns and optimize your conversion strategies
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Protocol Explorers */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">Protocol Explorers (%)</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">Users who've interacted with multiple dApps outside of their main</p>
           <div className="h-64">
@@ -121,7 +165,7 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* NFT Diggers */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">NFT Diggers (%)</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">% of NFT users from each traffic channel</p>
           <div className="h-64">
@@ -148,7 +192,7 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* Multichain Power Users */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">Multichain Power Users</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">Users transacting across 3+ chains</p>
           <div className="h-64">
@@ -176,7 +220,7 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* Airdrop Farmers */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">Airdrop Farmers</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">Users with high contact count, low retention, and interaction with airdrops/targeted NFTs</p>
           <div className="h-64">
@@ -204,7 +248,7 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* One-Time vs Retained Users */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">One-Time vs Retained Users</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">Did they come back after first visit? Did they keep using the chain?</p>
           <div className="h-64">
@@ -221,15 +265,15 @@ export default function Onchainuserinsights() {
                 />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontFamily: 'Poppins' }} />
-                <Bar dataKey="newUsers" name="New" fill="#4285F4" />
-                <Bar dataKey="retained" name="Retained" fill="#ff4d4d" />
+                <Bar dataKey="newUsers" name="New" fill={styles.primaryColor} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="retained" name="Retained" fill={styles.accentColor} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         
         {/* Whales */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-1 card-heading">Whales (average transaction value)</h2>
           <p className="text-sm text-gray-500 mb-4 card-body">Source with highest average transaction value</p>
           <div className="h-64">
@@ -245,7 +289,7 @@ export default function Onchainuserinsights() {
                   tick={{ fontFamily: 'Poppins' }}
                 />
                 <Tooltip />
-                <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill={styles.primaryColor} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

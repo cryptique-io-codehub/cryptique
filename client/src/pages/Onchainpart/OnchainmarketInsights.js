@@ -1,6 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function OnchainmarketInsights() {
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Dashboard styles matching the rest of the application
+  const styles = {
+    primaryColor: "#1d0c46", // Deep purple
+    accentColor: "#caa968",  // Gold accent
+    backgroundColor: "#f9fafb",
+    cardBg: "white",
+    textPrimary: "#111827",
+    textSecondary: "#4b5563"
+  };
+
   const userCategories = [
     { title: "Protocol Explorers", count: 75125, color: "bg-indigo-100" },
     { title: "NFT Degens", count: 45124, color: "bg-indigo-100" },
@@ -36,26 +49,61 @@ export default function OnchainmarketInsights() {
     { chain: "Blast", users: 18, icon: "🟡", color: "bg-yellow-400" }
   ];
 
+  // Simulate loading data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const formatNumber = (num) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: styles.primaryColor }} />
+          <p className="text-lg font-medium font-montserrat" style={{ color: styles.primaryColor }}>
+            Loading market insights...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-gray-50 p-4 w-full min-h-screen font-poppins">
+    <div className="bg-gray-50 p-6 w-full min-h-screen">
       {/* Import the fonts in the head */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+        
+        .font-montserrat {
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
       `}</style>
 
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-gray-800 font-montserrat">Market Insight</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 font-montserrat" style={{ color: styles.primaryColor }}>
+          Market Insights
+        </h1>
+        <p className="text-gray-600 font-poppins mt-1">
+          Explore market trends and user distribution across blockchains
+        </p>
       </div>
 
       {/* User Categories Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {userCategories.map((category, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <h2 className="text-lg font-bold text-indigo-900 font-montserrat">{category.title}</h2>
+          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center hover:shadow-md transition-shadow">
+            <h2 className="text-lg font-bold font-montserrat" style={{ color: styles.primaryColor }}>{category.title}</h2>
             <p className="text-3xl font-bold mt-2 font-poppins">{formatNumber(category.count)}</p>
             <p className="text-sm text-gray-500 font-poppins">Users</p>
           </div>
@@ -65,8 +113,8 @@ export default function OnchainmarketInsights() {
       {/* Chain Data Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Transaction Volume Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 font-montserrat">Total transaction volume by chain</h2>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-medium font-montserrat mb-4" style={{ color: styles.primaryColor }}>Total transaction volume by chain</h2>
           <div className="overflow-y-auto max-h-96">
             <table className="w-full">
               <thead>
@@ -77,7 +125,7 @@ export default function OnchainmarketInsights() {
               </thead>
               <tbody className="font-poppins">
                 {transactionData.map((item, index) => (
-                  <tr key={index} className="border-t border-gray-100">
+                  <tr key={index} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="py-3 flex items-center">
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>
                         {item.icon}
@@ -93,8 +141,8 @@ export default function OnchainmarketInsights() {
         </div>
 
         {/* Active Users Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 font-montserrat">Unique active users by chain</h2>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-medium font-montserrat mb-4" style={{ color: styles.primaryColor }}>Unique active users by chain</h2>
           <div className="overflow-y-auto max-h-96">
             <table className="w-full">
               <thead>
@@ -105,7 +153,7 @@ export default function OnchainmarketInsights() {
               </thead>
               <tbody className="font-poppins">
                 {usersData.map((item, index) => (
-                  <tr key={index} className="border-t border-gray-100">
+                  <tr key={index} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="py-3 flex items-center">
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>
                         {item.icon}
