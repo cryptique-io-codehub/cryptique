@@ -317,37 +317,27 @@ export default function OnchainTraffic() {
       }
     });
     
-    // Extract contract wallet addresses for matching
-    const contractWallets = new Set();
-    let totalTokenVolume = 0;
-    
-    if (contractData?.contractTransactions) {
+    // Process contract data if available
+    if (contractData?.contractTransactions && contractData.contractTransactions.length > 0) {
+      // Extract contract wallet addresses for matching
+      const contractWallets = new Set();
+      
       contractData.contractTransactions.forEach(tx => {
         if (tx.from_address) {
           contractWallets.add(tx.from_address.toLowerCase());
-          
-          // Calculate token volume if value is available
-          if (tx.value_eth) {
-            const value = parseFloat(tx.value_eth);
-            if (!isNaN(value)) {
-              totalTokenVolume += value;
-            }
-          }
         }
       });
-    }
-    
-    // Match wallets with transactions and calculate TVL
-    Object.entries(userWalletMap).forEach(([userId, walletAddress]) => {
-      if (contractWallets.has(walletAddress)) {
-        const source = userFirstSource[userId];
-        if (source && sourceData.has(source)) {
-          sourceData.get(source).transactedWallets.add(userId);
-          
-          // Calculate token volume contribution for this wallet
-          let walletVolume = 0;
-          
-          if (contractData?.contractTransactions) {
+      
+      // Match wallets with transactions and calculate TVL
+      Object.entries(userWalletMap).forEach(([userId, walletAddress]) => {
+        if (contractWallets.has(walletAddress)) {
+          const source = userFirstSource[userId];
+          if (source && sourceData.has(source)) {
+            sourceData.get(source).transactedWallets.add(userId);
+            
+            // Calculate token volume contribution for this wallet
+            let walletVolume = 0;
+            
             contractData.contractTransactions.forEach(tx => {
               if (tx.from_address && tx.from_address.toLowerCase() === walletAddress && tx.value_eth) {
                 const value = parseFloat(tx.value_eth);
@@ -356,12 +346,12 @@ export default function OnchainTraffic() {
                 }
               }
             });
+            
+            sourceData.get(source).tvl += walletVolume;
           }
-          
-          sourceData.get(source).tvl += walletVolume;
         }
-      }
-    });
+      });
+    }
     
     // Convert to array format
     return Array.from(sourceData.values()).map(data => ({
@@ -432,14 +422,12 @@ export default function OnchainTraffic() {
     }
   };
 
-  // Process traffic sources data when analytics or contract data changes
+  // Process traffic sources data when analytics changes
   useEffect(() => {
-    if (isLoadingAnalytics || isLoadingTransactions) return;
-    
+    // Process data regardless of loading state to ensure we have something to display
     const processedData = processTrafficSourcesData();
     setProcessedSourcesData(processedData);
-    
-  }, [analytics, contractData, selectedContract?.id, isLoadingAnalytics, isLoadingTransactions]);
+  }, [analytics, contractData?.contractTransactions]);
 
   // Choose which data to use based on whether we should show demo data
   const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
@@ -711,6 +699,14 @@ export default function OnchainTraffic() {
         {/* Traffic Sources Table - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
+          {isLoadingAnalytics && processedSourcesData.length === 0 && (
+            <div className="py-3 text-center text-gray-500 text-sm">
+              <div className="flex justify-center items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
+                <span>Loading analytics data...</span>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <div className="max-h-96 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -726,16 +722,7 @@ export default function OnchainTraffic() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {isLoadingAnalytics || isLoadingTransactions ? (
-                    <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        <div className="flex justify-center items-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
-                          <span>Loading traffic data...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : trafficSourcesTableData.length > 0 ? (
+                  {trafficSourcesTableData.length > 0 ? (
                     trafficSourcesTableData.map((item, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
@@ -743,8 +730,8 @@ export default function OnchainTraffic() {
                         <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{item.web3Users}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{item.walletsConnected}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.transactedWallets}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.tvl}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.transactedWallets || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.tvl || 0}</td>
                       </tr>
                     ))
                   ) : (
@@ -758,6 +745,14 @@ export default function OnchainTraffic() {
               </table>
             </div>
           </div>
+          {selectedContract && isLoadingTransactions && (
+            <div className="text-center text-xs text-gray-500 mt-3">
+              <div className="flex justify-center items-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-700 mr-2"></div>
+                <span>Updating transaction data...</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
