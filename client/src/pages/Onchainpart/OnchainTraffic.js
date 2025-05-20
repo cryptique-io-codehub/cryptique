@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
 import FunnelDashboard2 from "./FunnelDashboard2";
-import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
+import GeoOnchainMap from "./GeoOnchainMap";
+import CountryDetail from "./CountryDetail";
 import { useContractData } from '../../contexts/ContractDataContext';
 import ChainBanner from '../../components/ChainBanner';
 import { getChainConfig } from '../../utils/chainRegistry';
@@ -30,6 +31,7 @@ export default function OnchainTraffic() {
   // Add loading state
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
+  const [selectedCountry, setSelectedCountry] = useState(null);
   
   // Load analytics data when website selection changes
   useEffect(() => {
@@ -460,11 +462,44 @@ export default function OnchainTraffic() {
           </div>
         </div>
         
-        {/* Geographic Map (Optional) */}
+        {/* Geographic Map - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Geographic User Distribution</h2>
-          <div className="h-96">
-            <GeoAnalyticsMap />
+          
+          {/* Map and country details side by side - use flex-col on mobile, flex-row on desktop */}
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="w-full lg:w-3/5">
+              <GeoOnchainMap 
+                analytics={analytics}
+                contractData={{
+                  showDemoData,
+                  contractTransactions,
+                  contractId: selectedContract?.id,
+                  contract: selectedContract,
+                  processedData: contractData
+                }}
+                selectedCountry={selectedCountry}
+                setSelectedCountry={setSelectedCountry}
+                hideTopCountries={selectedCountry !== null}
+                isLoadingAnalytics={isLoadingAnalytics}
+                isLoadingTransactions={isLoadingTransactions || updatingTransactions}
+              />
+            </div>
+            
+            {/* Country details section - only shown if a country is selected */}
+            <div className="w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto">
+              <CountryDetail 
+                countryCode={selectedCountry}
+                analytics={analytics}
+                contractData={{
+                  showDemoData,
+                  contractTransactions,
+                  contractId: selectedContract?.id,
+                  contract: selectedContract,
+                  processedData: contractData
+                }}
+              />
+            </div>
           </div>
         </div>
         
