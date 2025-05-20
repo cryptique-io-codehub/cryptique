@@ -378,6 +378,123 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
   
+  // New function to create value-based distribution buckets
+  const createAdaptiveTransactionBuckets = (transactions) => {
+    // If no transactions data, return default buckets
+    if (!transactions || transactions.length === 0) {
+      return generateEmptyTokenDistribution();
+    }
+
+    // Step 1: Calculate total token value per wallet
+    const walletValueTotals = {};
+    transactions.forEach(tx => {
+      if (tx.walletAddress && tx.value) {
+        const value = parseFloat(tx.value);
+        if (!isNaN(value)) {
+          walletValueTotals[tx.walletAddress] = (walletValueTotals[tx.walletAddress] || 0) + value;
+        }
+      }
+    });
+
+    // Step 2: Use predefined value ranges for bucketing
+    const predefinedRanges = [
+      { min: 0, max: 5, label: "0-5" },
+      { min: 5, max: 50, label: "5-50" },
+      { min: 50, max: 250, label: "50-250" },
+      { min: 250, max: 500, label: "250-500" },
+      { min: 500, max: 1000, label: "500-1K" },
+      { min: 1000, max: 10000, label: "1K-10K" },
+      { min: 10000, max: Number.MAX_VALUE, label: ">10K" }
+    ];
+    
+    // Count wallets in each range
+    const bucketCounts = Array(predefinedRanges.length).fill(0);
+    const walletValues = Object.values(walletValueTotals);
+    const totalWallets = walletValues.length;
+    
+    if (totalWallets === 0) {
+      return generateEmptyTokenDistribution();
+    }
+    
+    // Distribute wallets into buckets
+    walletValues.forEach(value => {
+      for (let i = 0; i < predefinedRanges.length; i++) {
+        if (value >= predefinedRanges[i].min && value < predefinedRanges[i].max) {
+          bucketCounts[i]++;
+          break;
+        }
+        // Special case for the last bucket (includes the max value)
+        if (i === predefinedRanges.length - 1 && value >= predefinedRanges[i].min) {
+          bucketCounts[i]++;
+        }
+      }
+    });
+    
+    // Calculate percentages and create final buckets
+    const buckets = predefinedRanges.map((range, i) => ({
+      range: range.label,
+      percentage: Math.round((bucketCounts[i] / totalWallets) * 100)
+    }));
+    
+    // Ensure percentages sum to 100%
+    const totalPercentage = buckets.reduce((sum, bucket) => sum + bucket.percentage, 0);
+    if (totalPercentage !== 100) {
+      // Find the bucket with the most wallets and adjust
+      const maxBucketIndex = bucketCounts.indexOf(Math.max(...bucketCounts));
+      buckets[maxBucketIndex].percentage += (100 - totalPercentage);
+    }
+    
+    return buckets;
+  };
+
+  // Generate empty token distribution (fallback)
+  const generateEmptyTokenDistribution = () => {
+    return [
+      { range: "0-5", percentage: 0 },
+      { range: "5-50", percentage: 0 },
+      { range: "50-250", percentage: 0 },
+      { range: "250-500", percentage: 0 },
+      { range: "500-1K", percentage: 0 },
+      { range: "1K-10K", percentage: 0 },
+      { range: ">10K", percentage: 0 }
+    ];
+  };
+
+  // Function to analyze transactions and create a distribution of token values across wallets
+  const analyzeTransactionCountDistribution = (transactions) => {
+    // If no data, return empty buckets
+    if (!transactions || transactions.length === 0) {
+      return generateEmptyTokenDistribution();
+    }
+    
+    // Step 1: Calculate total transaction volume per wallet
+    const walletTotalValues = {};
+    
+    transactions.forEach(tx => {
+      const wallet = tx.from_address;
+      if (!wallet) return;
+      
+      const value = parseFloat(tx.value_eth) || 0;
+      if (isNaN(value)) return;
+      
+      if (!walletTotalValues[wallet]) {
+        walletTotalValues[wallet] = value;
+      } else {
+        walletTotalValues[wallet] += value;
+      }
+    });
+    
+    // Step 2: Prepare input for the bucketing function
+    const txsForBucketing = Object.entries(walletTotalValues).map(([address, value]) => ({
+      walletAddress: address,
+      value: value,
+      methodName: 'transfer' // Not relevant for this analysis
+    }));
+    
+    // Call the adaptive bucketing function
+    return createAdaptiveTransactionBuckets(txsForBucketing);
+  };
+
   // Process contract transactions into meaningful data
   const processContractTransactions = () => {
     if (!selectedContract || !contractTransactions || contractTransactions.length === 0) {
@@ -427,15 +544,15 @@ export const ContractDataProvider = ({ children }) => {
         // Generate wallet balance distribution once
         const walletBalanceDistribution = generateWalletBalanceDistribution();
         
-        // Generate demo transaction count distribution (preset values)
-        const transactionCountDistribution = [
-          { range: "1-5", percentage: 22.5 },
-          { range: "6-10", percentage: 18.3 },
-          { range: "11-20", percentage: 15.7 },
-          { range: "21-50", percentage: 12.9 },
-          { range: "51-100", percentage: 11.2 },
-          { range: "101-500", percentage: 10.6 },
-          { range: "500+", percentage: 8.8 }
+        // Generate demo token distribution with realistic values
+        const tokenDistribution = [
+          { range: "0-5", percentage: 32 },
+          { range: "5-50", percentage: 27 },
+          { range: "50-250", percentage: 18 },
+          { range: "250-500", percentage: 10 },
+          { range: "500-1K", percentage: 7 },
+          { range: "1K-10K", percentage: 5 },
+          { range: ">10K", percentage: 1 }
         ];
         
         // Generate demo wallet categories
@@ -456,7 +573,7 @@ export const ContractDataProvider = ({ children }) => {
           medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
           netWorth: calculateMedianNetWorth(walletBalanceDistribution),
           walletBalanceData: walletBalanceDistribution,
-          transactionCountData: transactionCountDistribution,
+          tokenDistributionData: tokenDistribution,
           walletCategories: demoWalletCategories
         };
       }
@@ -469,7 +586,7 @@ export const ContractDataProvider = ({ children }) => {
           netWorth: formatDollarAmount(demoWalletStatsRef.current.netWorth)
         },
         walletBalanceData: demoWalletStatsRef.current.walletBalanceData,
-        transactionCountData: demoWalletStatsRef.current.transactionCountData,
+        tokenDistributionData: demoWalletStatsRef.current.tokenDistributionData,
         walletCategories: demoWalletStatsRef.current.walletCategories
       };
     }
@@ -635,9 +752,9 @@ export const ContractDataProvider = ({ children }) => {
       // Generate wallet balance distribution once
       const walletBalanceDistribution = generateWalletBalanceDistribution();
       
-      // Generate transaction count distribution
+      // Generate token distribution
       // For real contracts, use actual transaction data for distribution
-      const transactionCountDistribution = analyzeTransactionCountDistribution(contractTransactions);
+      const tokenDistribution = analyzeTransactionCountDistribution(contractTransactions);
       
       // Store the generated values for this contract
       walletStatsByContractRef.current[selectedContract.id] = {
@@ -650,7 +767,7 @@ export const ContractDataProvider = ({ children }) => {
         medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
         netWorth: calculateMedianNetWorth(walletBalanceDistribution),
         walletBalanceData: walletBalanceDistribution,
-        transactionCountData: transactionCountDistribution
+        tokenDistributionData: tokenDistribution
       };
     }
     
@@ -720,7 +837,7 @@ export const ContractDataProvider = ({ children }) => {
         netWorth: formatDollarAmount(contractWalletStats.netWorth)
       },
       walletBalanceData: contractWalletStats.walletBalanceData,
-      transactionCountData: contractWalletStats.transactionCountData,
+      tokenDistributionData: contractWalletStats.tokenDistributionData,
       // Add wallet categories to the processed data
       walletCategories: walletCategories,
       // Use the generated transaction data for charts
@@ -1083,169 +1200,6 @@ export const ContractDataProvider = ({ children }) => {
     } else {
       return `$${amount.toLocaleString()}`;
     }
-  };
-
-  // New adaptive bucketing function
-  const createAdaptiveTransactionBuckets = (transactions) => {
-    // If no transactions data, return default buckets
-    if (!transactions || transactions.length === 0) {
-      return generateEmptyTransactionDistribution();
-    }
-
-    // Step 1: Calculate total token value per wallet
-    const walletValueTotals = {};
-    transactions.forEach(tx => {
-      if (tx.walletAddress && tx.value) {
-        const value = parseFloat(tx.value);
-        if (!isNaN(value)) {
-          walletValueTotals[tx.walletAddress] = (walletValueTotals[tx.walletAddress] || 0) + value;
-        }
-      }
-    });
-
-    // Step 2: Create a sorted array of wallet total values
-    const walletValues = Object.values(walletValueTotals).sort((a, b) => a - b);
-    
-    // If no valid wallet values, return empty buckets
-    if (walletValues.length === 0) {
-      return generateEmptyTransactionDistribution();
-    }
-
-    // Step 3: Distribute wallets evenly across buckets
-    const totalWallets = walletValues.length;
-    const NUM_BUCKETS = 7;
-    
-    // Ensure each bucket has at least 2% of wallets and at most 25%
-    const minBucketSize = Math.max(Math.ceil(totalWallets * 0.02), 1); // Minimum 2% of wallets per bucket
-    const maxBucketSize = Math.floor(totalWallets * 0.25); // Maximum 25% of wallets per bucket
-    
-    // Calculate target wallets per bucket (roughly equal distribution)
-    let targetWalletsPerBucket = Math.floor(totalWallets / NUM_BUCKETS);
-    
-    // Adjust target if it falls outside min/max bounds
-    targetWalletsPerBucket = Math.max(targetWalletsPerBucket, minBucketSize);
-    targetWalletsPerBucket = Math.min(targetWalletsPerBucket, maxBucketSize);
-    
-    const buckets = [];
-    let remaining = totalWallets;
-    let currentIndex = 0;
-
-    // Create buckets with wallet counts first, then determine value ranges
-    for (let i = 0; i < NUM_BUCKETS; i++) {
-      // For the last bucket, include all remaining wallets
-      if (i === NUM_BUCKETS - 1) {
-        const bucketSize = remaining;
-        const percentage = (bucketSize / totalWallets) * 100;
-        
-        const lowerBound = currentIndex > 0 ? walletValues[currentIndex] : 0;
-        const upperBound = walletValues[totalWallets - 1];
-        
-        buckets.push({
-          range: formatTokenValueRange(lowerBound, upperBound),
-          percentage: Math.round(percentage),
-          count: bucketSize
-        });
-        break;
-      }
-      
-      // Calculate bucket size for current bucket (aim for even distribution)
-      let bucketSize = Math.min(targetWalletsPerBucket, remaining - (NUM_BUCKETS - i - 1) * minBucketSize);
-      
-      // Ensure each bucket has at least minBucketSize wallets
-      bucketSize = Math.max(bucketSize, minBucketSize);
-      
-      // And no more than maxBucketSize wallets
-      bucketSize = Math.min(bucketSize, maxBucketSize, remaining - (NUM_BUCKETS - i - 1));
-      
-      // Calculate range boundaries based on wallet values
-      const lowerBound = currentIndex > 0 ? walletValues[currentIndex] : 0;
-      const upperBound = walletValues[currentIndex + bucketSize - 1];
-      
-      // Calculate percentage of total wallets in this bucket
-      const percentage = (bucketSize / totalWallets) * 100;
-      
-      buckets.push({
-        range: formatTokenValueRange(lowerBound, upperBound),
-        percentage: Math.round(percentage),
-        count: bucketSize
-      });
-      
-      // Update for next bucket
-      currentIndex += bucketSize;
-      remaining -= bucketSize;
-    }
-    
-    // Remove count property (just used for calculation)
-    return buckets.map(bucket => ({
-      range: bucket.range,
-      percentage: bucket.percentage
-    }));
-  };
-
-  // Helper function to format token value ranges
-  const formatTokenValueRange = (min, max) => {
-    // Format values with appropriate units (K, M, etc.)
-    const formatValue = (val) => {
-      if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
-      if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
-      return val.toFixed(2);
-    };
-    
-    if (min === max) {
-      return formatValue(min);
-    } else if (max === Number.MAX_VALUE || max > 1000000000) {
-      return `>${formatValue(min)}`;
-    } else {
-      return `${formatValue(min)}-${formatValue(max)}`;
-    }
-  };
-
-  // Generate empty transaction distribution (fallback)
-  const generateEmptyTransactionDistribution = () => {
-    return [
-      { range: "0-0.10", percentage: 0 },
-      { range: "0.10-1.0", percentage: 0 },
-      { range: "1.0-10", percentage: 0 },
-      { range: "10-100", percentage: 0 },
-      { range: "100-1K", percentage: 0 },
-      { range: "1K-10K", percentage: 0 },
-      { range: ">10K", percentage: 0 }
-    ];
-  };
-
-  // Function to analyze transactions and create a distribution of token values across wallets
-  const analyzeTransactionCountDistribution = (transactions) => {
-    // If no data, return empty buckets
-    if (!transactions || transactions.length === 0) {
-      return generateEmptyTransactionDistribution();
-    }
-    
-    // Step 1: Calculate total transaction volume per wallet
-    const walletTotalValues = {};
-    
-    transactions.forEach(tx => {
-      const wallet = tx.from_address;
-      if (!wallet) return;
-      
-      const value = parseFloat(tx.value_eth) || 0;
-      if (isNaN(value)) return;
-      
-      if (!walletTotalValues[wallet]) {
-        walletTotalValues[wallet] = value;
-      } else {
-        walletTotalValues[wallet] += value;
-      }
-    });
-    
-    // Step 2: Prepare input for the bucketing function
-    const txsForBucketing = Object.entries(walletTotalValues).map(([address, value]) => ({
-      walletAddress: address,
-      value: value,
-      methodName: 'transfer' // Not relevant for this analysis
-    }));
-    
-    // Call the adaptive bucketing function
-    return createAdaptiveTransactionBuckets(txsForBucketing);
   };
 
   // Wallet categorization logic - returns object with calculated percentages
