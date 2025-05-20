@@ -5,6 +5,7 @@ import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
 import { useContractData } from '../../contexts/ContractDataContext';
 import ChainBanner from '../../components/ChainBanner';
 import { getChainConfig } from '../../utils/chainRegistry';
+import sdkApi from '../../utils/sdkApi';
 
 export default function OnchainTraffic() {
   // Get contract data from context
@@ -21,126 +22,96 @@ export default function OnchainTraffic() {
   // Process real contract data if available
   const contractData = !showDemoData ? processContractTransactions() : null;
 
-  // State for analytics (keeping this for compatibility)
+  // State for analytics data
   const [analytics, setanalytics] = useState({});
   // Track when contract or website selection changes
   const [lastContractId, setLastContractId] = useState(null);
   const [lastWebsiteId, setLastWebsiteId] = useState(null);
+  // Add loading state
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(null);
   
-  // Load or simulate analytics data when contract changes
+  // Load analytics data when website selection changes
   useEffect(() => {
+    const websiteId = localStorage.getItem('idy');
     const currentContractId = selectedContract?.id || null;
-    const currentWebsiteId = localStorage.getItem('selected_website') || null;
     
-    console.log("Contract or website selection changed:", {
-      contractChanged: currentContractId !== lastContractId,
-      websiteChanged: currentWebsiteId !== lastWebsiteId,
-      contractId: currentContractId,
-      websiteId: currentWebsiteId
+    // Check if either website or contract selection has changed
+    const websiteChanged = websiteId !== lastWebsiteId;
+    const contractChanged = currentContractId !== lastContractId;
+    
+    console.log("Selection state:", {
+      websiteId,
+      lastWebsiteId,
+      websiteChanged,
+      currentContractId,
+      lastContractId,
+      contractChanged
     });
     
     // Update last seen IDs
+    setLastWebsiteId(websiteId);
     setLastContractId(currentContractId);
-    setLastWebsiteId(currentWebsiteId);
     
-    // Try to get analytics data from localStorage - specifically for the selected website
-    let storedAnalytics = null;
+    // Only fetch if we have a website ID
+    if (!websiteId) {
+      console.log("No website ID found, cannot fetch analytics");
+      return;
+    }
     
-    const loadAnalyticsData = async () => {
+    const fetchAnalyticsData = async () => {
+      setIsLoadingAnalytics(true);
+      setAnalyticsError(null);
+      
       try {
-        // First try to get website-specific analytics from storage by idy
-        const websiteId = localStorage.getItem('idy');
-        if (websiteId) {
-          console.log(`Looking for analytics data for website ID ${websiteId}`);
-          
-          // Try both formats of storage key
-          let websiteAnalytics = localStorage.getItem(`analytics_${websiteId}`);
-          if (!websiteAnalytics) {
-            // Try the alternative format with website domain
-            const websiteDomain = localStorage.getItem('selectedWebsite');
-            if (websiteDomain) {
-              websiteAnalytics = localStorage.getItem(`analytics_${websiteDomain}`);
-            }
-          }
-          
-          if (websiteAnalytics) {
-            try {
-              storedAnalytics = JSON.parse(websiteAnalytics);
-              console.log(`Found analytics data for website ${websiteId}`);
-            } catch (parseError) {
-              console.error('Error parsing website analytics:', parseError);
-            }
-          }
-        }
+        console.log(`Fetching analytics data for website ID: ${websiteId}`);
+        const response = await sdkApi.getAnalytics(websiteId);
         
-        // If no website-specific data, try the generic storage
-        if (!storedAnalytics) {
-          const genericAnalytics = localStorage.getItem('analytics_storage');
-          if (genericAnalytics) {
-            try {
-              storedAnalytics = JSON.parse(genericAnalytics);
-              console.log("Using generic analytics data");
-            } catch (parseError) {
-              console.error('Error parsing generic analytics:', parseError);
-            }
-          }
-        }
-        
-        // If still no analytics, try to fetch it from off-chain analytics route
-        if (!storedAnalytics && websiteId) {
+        if (response.subscriptionError) {
+          console.error("Subscription error:", response.message);
+          setAnalyticsError(response.message);
+          setanalytics({});
+        } else if (response && response.analytics) {
+          console.log("Successfully fetched analytics data:", {
+            uniqueVisitors: response.analytics.uniqueVisitors,
+            sessionsCount: response.analytics.sessions?.length,
+            walletsCount: response.analytics.wallets?.length
+          });
+          
+          // Store the analytics data in state
+          setanalytics(response.analytics);
+          
+          // Also store in localStorage for future use
           try {
-            // You might need to adjust this based on your actual API structure
-            const response = await fetch(`/api/analytics/${websiteId}`);
-            if (response.ok) {
-              const data = await response.json();
-              if (data.analytics) {
-                storedAnalytics = data.analytics;
-                console.log("Fetched analytics data from API");
-              }
-            }
-          } catch (fetchError) {
-            console.error('Error fetching analytics from API:', fetchError);
+            localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(response.analytics));
+            localStorage.setItem('analytics_storage', JSON.stringify(response.analytics));
+          } catch (storageError) {
+            console.error("Failed to store analytics in localStorage:", storageError);
           }
-        }
-        
-        if (storedAnalytics) {
-          console.log("Setting analytics data:", storedAnalytics);
-          setanalytics(storedAnalytics);
         } else {
-          // No stored analytics, use demo data
-          console.log("No real analytics found, using demo data");
+          console.error("Invalid response format:", response);
+          setAnalyticsError("Invalid analytics data format");
           simulateDemoAnalytics();
         }
       } catch (error) {
-        console.error('Error loading analytics data:', error);
-        // Fall back to demo data if loading fails
+        console.error("Error fetching analytics data:", error);
+        setAnalyticsError("Failed to load analytics data");
         simulateDemoAnalytics();
+      } finally {
+        setIsLoadingAnalytics(false);
       }
     };
     
-    loadAnalyticsData();
-  }, [selectedContract?.id, contractTransactions?.length]);
-  
-  // Save analytics data to localStorage when it changes
-  useEffect(() => {
-    // Only save if we have meaningful analytics data
-    if (analytics && analytics.uniqueVisitors && analytics.sessions) {
-      try {
-        // Get the current website ID
-        const websiteId = localStorage.getItem('idy');
-        if (websiteId) {
-          // Save to website-specific storage
-          localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(analytics));
-          console.log(`Saved analytics data to localStorage for website ${websiteId}`);
-        }
-        
-        // Also save to generic storage
-        localStorage.setItem('analytics_storage', JSON.stringify(analytics));
-      } catch (error) {
-        console.error('Error saving analytics data to localStorage:', error);
-      }
+    // Determine when to fetch data
+    if (websiteChanged || (websiteId && !analytics.uniqueVisitors)) {
+      // Fetch new data if website changed or we don't have data yet
+      fetchAnalyticsData();
+    } else if (contractChanged && websiteId) {
+      // If only contract changed, we'll keep the same analytics but match wallets
+      // Re-run wallet matching (handled in FunnelDashboard2 component)
+      console.log("Contract changed, keeping same analytics but will re-match wallets");
     }
-  }, [analytics]);
+  }, [selectedContract?.id, localStorage.getItem('idy')]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
@@ -314,18 +285,31 @@ export default function OnchainTraffic() {
         {/* Funnel Dashboard - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Conversion Funnel</h2>
-          <FunnelDashboard2 
-            analytics={analytics} 
-            contractData={{
-              showDemoData,
-              contractTransactions,
-              contractId: selectedContract?.id,
-              contract: selectedContract,
-              processedData: contractData,
-              chainId: selectedContract?.chainId,
-              chainName: selectedContract?.blockchain
-            }}
-          />
+          {isLoadingAnalytics ? (
+            <div className="flex items-center justify-center p-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+              <span className="ml-3 text-gray-600">Loading analytics data...</span>
+            </div>
+          ) : analyticsError ? (
+            <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+              <p className="font-medium">Error loading analytics data</p>
+              <p className="text-sm">{analyticsError}</p>
+              <p className="text-sm mt-2">Please try selecting a different website or refreshing the page.</p>
+            </div>
+          ) : (
+            <FunnelDashboard2 
+              analytics={analytics} 
+              contractData={{
+                showDemoData,
+                contractTransactions,
+                contractId: selectedContract?.id,
+                contract: selectedContract,
+                processedData: contractData,
+                chainId: selectedContract?.chainId,
+                chainName: selectedContract?.blockchain
+              }}
+            />
+          )}
         </div>
         
         {/* Traffic Sources by On-Chain USD Volume - Full Width */}
