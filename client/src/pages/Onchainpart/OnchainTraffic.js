@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
 import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoOnchainMap from "./GeoOnchainMap";
@@ -34,8 +34,6 @@ export default function OnchainTraffic() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
-  // Add state for processed traffic sources data
-  const [processedSourcesData, setProcessedSourcesData] = useState([]);
   
   // Check for website ID changes
   useEffect(() => {
@@ -210,11 +208,11 @@ export default function OnchainTraffic() {
   
   // Traffic sources table demo data
   const demoTrafficSourcesTableData = [
-    { source: "Instagram", visitors: 387, impressions: 452, websConnected: 219, webRegistered: 42, tvl: 1298 },
-    { source: "LinkedIn", visitors: 276, impressions: 415, websConnected: 204, webRegistered: 36, tvl: 944 },
-    { source: "Discord", visitors: 524, impressions: 617, websConnected: 313, webRegistered: 67, tvl: 2156 },
-    { source: "Twitter", visitors: 342, impressions: 398, websConnected: 194, webRegistered: 29, tvl: 865 },
-    { source: "Google", visitors: 475, impressions: 521, websConnected: 278, webRegistered: 53, tvl: 1772 }
+    { source: "Instagram", visitors: 387, impressions: 452, web3Users: 210, walletsConnected: 180, transactedWallets: 42, tvl: 1298 },
+    { source: "LinkedIn", visitors: 276, impressions: 415, web3Users: 192, walletsConnected: 156, transactedWallets: 36, tvl: 944 },
+    { source: "Discord", visitors: 524, impressions: 617, web3Users: 370, walletsConnected: 313, transactedWallets: 67, tvl: 2156 },
+    { source: "Twitter", visitors: 342, impressions: 398, web3Users: 230, walletsConnected: 194, transactedWallets: 29, tvl: 865 },
+    { source: "Google", visitors: 475, impressions: 521, web3Users: 320, walletsConnected: 278, transactedWallets: 53, tvl: 1772 }
   ];
   
   // Time to chain conversion demo data
@@ -230,9 +228,14 @@ export default function OnchainTraffic() {
 
   // Process analytics data to get traffic sources information
   const processTrafficSourcesData = () => {
-    if (!analytics || !Array.isArray(analytics.sessions) || analytics.sessions.length === 0) {
+    console.log("Running processTrafficSourcesData");
+    
+    if (!analytics?.sessions || !Array.isArray(analytics.sessions) || analytics.sessions.length === 0) {
+      console.log("No sessions data available, returning empty array");
       return [];
     }
+    
+    console.log(`Processing ${analytics.sessions.length} sessions for traffic sources data`);
     
     // Maps to track data by source
     const sourceData = new Map();
@@ -354,7 +357,7 @@ export default function OnchainTraffic() {
     }
     
     // Convert to array format
-    return Array.from(sourceData.values()).map(data => ({
+    const result = Array.from(sourceData.values()).map(data => ({
       source: data.source,
       impressions: data.impressions,
       visitors: data.visitors.size,
@@ -363,8 +366,11 @@ export default function OnchainTraffic() {
       transactedWallets: data.transactedWallets.size,
       tvl: Math.round(data.tvl * 100) / 100
     })).sort((a, b) => b.visitors - a.visitors);
+    
+    console.log(`Processed ${result.length} traffic sources:`, result);
+    return result;
   };
-  
+
   // Function to normalize source names
   const normalizeSource = (source) => {
     if (!source || typeof source !== 'string' || source.trim() === '') {
@@ -422,20 +428,21 @@ export default function OnchainTraffic() {
     }
   };
 
-  // Process traffic sources data when analytics changes
-  useEffect(() => {
-    // Process data regardless of loading state to ensure we have something to display
-    const processedData = processTrafficSourcesData();
-    setProcessedSourcesData(processedData);
-  }, [analytics, contractData?.contractTransactions]);
+  // Calculate processed sources data with useMemo
+  const trafficSourcesMemo = useMemo(() => {
+    return processTrafficSourcesData();
+  }, [analytics?.sessions, contractData?.contractTransactions]);
 
   // Choose which data to use based on whether we should show demo data
   const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
   const trafficSourcesData = showDemoData ? demoTrafficSourcesData : (contractData?.trafficSourcesData || demoTrafficSourcesData);
   const trafficQualityData = showDemoData ? demoTrafficQualityData : (contractData?.trafficQualityData || demoTrafficQualityData);
   const timeToConversionData = showDemoData ? demoTimeToConversionData : (contractData?.timeToConversionData || demoTimeToConversionData);
-  // Use the state for traffic sources table data instead of calculating it on each render
-  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : processedSourcesData;
+  
+  // Use demo data only if explicitly showing demo data or if we have no real data
+  const trafficSourcesTableData = showDemoData || !trafficSourcesMemo.length 
+    ? demoTrafficSourcesTableData 
+    : trafficSourcesMemo;
 
   // Creating the legend items for traffic quality analysis
   const CustomLegend = () => {
@@ -699,7 +706,7 @@ export default function OnchainTraffic() {
         {/* Traffic Sources Table - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
-          {isLoadingAnalytics && processedSourcesData.length === 0 && (
+          {isLoadingAnalytics && trafficSourcesMemo.length === 0 && (
             <div className="py-3 text-center text-gray-500 text-sm">
               <div className="flex justify-center items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
