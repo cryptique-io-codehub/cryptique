@@ -259,9 +259,10 @@ export default function OnchainTraffic() {
         if (!sourceData.has(source)) {
           sourceData.set(source, {
             source,
-            visitors: new Set(),
             impressions: 0,
-            websConnected: new Set(),
+            visitors: new Set(),
+            web3Users: new Set(),
+            walletsConnected: new Set(),
             transactedWallets: new Set(),
             tvl: 0
           });
@@ -269,6 +270,20 @@ export default function OnchainTraffic() {
         
         // Count this user as a visitor for their first source
         sourceData.get(source).visitors.add(userId);
+      }
+      
+      // Track impression for the user's first source
+      const source = userFirstSource[userId];
+      if (source && sourceData.has(source)) {
+        sourceData.get(source).impressions++;
+      }
+      
+      // Track web3 users
+      if (session.hasWeb3 || (session.wallet && session.wallet.walletType)) {
+        const source = userFirstSource[userId];
+        if (source && sourceData.has(source)) {
+          sourceData.get(source).web3Users.add(userId);
+        }
       }
       
       // Track wallet for this user if available
@@ -284,14 +299,8 @@ export default function OnchainTraffic() {
         // Add to wallet connections for the user's first source
         const source = userFirstSource[userId];
         if (source && sourceData.has(source)) {
-          sourceData.get(source).websConnected.add(userId);
+          sourceData.get(source).walletsConnected.add(userId);
         }
-      }
-      
-      // Count impression for the user's first source
-      const source = userFirstSource[userId];
-      if (source && sourceData.has(source)) {
-        sourceData.get(source).impressions++;
       }
     });
     
@@ -344,10 +353,11 @@ export default function OnchainTraffic() {
     // Convert to array format
     return Array.from(sourceData.values()).map(data => ({
       source: data.source,
-      visitors: data.visitors.size,
       impressions: data.impressions,
-      websConnected: data.websConnected.size,
-      webRegistered: data.transactedWallets.size,
+      visitors: data.visitors.size,
+      web3Users: data.web3Users.size,
+      walletsConnected: data.walletsConnected.size,
+      transactedWallets: data.transactedWallets.size,
       tvl: Math.round(data.tvl * 100) / 100
     })).sort((a, b) => b.visitors - a.visitors);
   };
@@ -684,8 +694,9 @@ export default function OnchainTraffic() {
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Web3 Users</th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Transacted</th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL ({selectedContract?.tokenSymbol || 'Token'})</th>
@@ -696,16 +707,17 @@ export default function OnchainTraffic() {
                     trafficSourcesTableData.map((item, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.web3Users}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.walletsConnected}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.transactedWallets}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{item.tvl}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
                         {isLoadingAnalytics || isLoadingTransactions ? (
                           <div className="flex justify-center items-center">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
