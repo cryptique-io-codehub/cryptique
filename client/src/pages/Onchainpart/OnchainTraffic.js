@@ -207,11 +207,11 @@ export default function OnchainTraffic() {
   
   // Traffic sources table demo data
   const demoTrafficSourcesTableData = [
-    { source: "Instagram", visitors: 387, impressions: 452, websConnected: 219, webRegistered: 173, tvl: 298 },
-    { source: "LinkedIn", visitors: 276, impressions: 415, websConnected: 304, webRegistered: 182, tvl: 429 },
-    { source: "Behance", visitors: 124, impressions: 217, websConnected: 193, webRegistered: 145, tvl: 312 },
-    { source: "Dribbble", visitors: 342, impressions: 398, websConnected: 247, webRegistered: 156, tvl: 203 },
-    { source: "Pinterest", visitors: 475, impressions: 321, websConnected: 278, webRegistered: 219, tvl: 354 }
+    { source: "Instagram", visitors: 387, impressions: 452, websConnected: 219, webRegistered: 42, tvl: 1298 },
+    { source: "LinkedIn", visitors: 276, impressions: 415, websConnected: 204, webRegistered: 36, tvl: 944 },
+    { source: "Discord", visitors: 524, impressions: 617, websConnected: 313, webRegistered: 67, tvl: 2156 },
+    { source: "Twitter", visitors: 342, impressions: 398, websConnected: 194, webRegistered: 29, tvl: 865 },
+    { source: "Google", visitors: 475, impressions: 521, websConnected: 278, webRegistered: 53, tvl: 1772 }
   ];
   
   // Time to chain conversion demo data
@@ -225,11 +225,195 @@ export default function OnchainTraffic() {
     { day: "Day 5", users: 170 }
   ];
 
+  // Process analytics data to get traffic sources information
+  const processTrafficSourcesData = () => {
+    if (!analytics || !Array.isArray(analytics.sessions) || analytics.sessions.length === 0) {
+      return [];
+    }
+    
+    // Maps to track data by source
+    const sourceData = new Map();
+    const userFirstSource = {};
+    const userWalletMap = {};
+    
+    // First pass: Determine each user's first source and wallet
+    analytics.sessions.forEach(session => {
+      if (!session || !session.userId) return;
+      
+      const userId = String(session.userId);
+      
+      // Track the first source for each user
+      if (!userFirstSource[userId]) {
+        let source = 'Direct'; // Default source
+        
+        // Determine source from UTM data or referrer
+        if (session.utmData && session.utmData.source) {
+          source = normalizeSource(session.utmData.source);
+        } else if (session.referrer) {
+          source = normalizeSource(session.referrer);
+        }
+        
+        userFirstSource[userId] = source;
+        
+        // Initialize source in map if needed
+        if (!sourceData.has(source)) {
+          sourceData.set(source, {
+            source,
+            visitors: new Set(),
+            impressions: 0,
+            websConnected: new Set(),
+            transactedWallets: new Set(),
+            tvl: 0
+          });
+        }
+        
+        // Count this user as a visitor for their first source
+        sourceData.get(source).visitors.add(userId);
+      }
+      
+      // Track wallet for this user if available
+      if (session.wallet && session.wallet.walletAddress && 
+          session.wallet.walletAddress.trim() !== '' && 
+          session.wallet.walletAddress.length > 10 &&
+          !['No Wallet Detected', 'No Wallet Connected', 'Not Connected', 
+            'No Chain Detected', 'Error'].includes(session.wallet.walletAddress)) {
+        
+        const walletAddress = session.wallet.walletAddress.toLowerCase();
+        userWalletMap[userId] = walletAddress;
+        
+        // Add to wallet connections for the user's first source
+        const source = userFirstSource[userId];
+        if (source && sourceData.has(source)) {
+          sourceData.get(source).websConnected.add(userId);
+        }
+      }
+      
+      // Count impression for the user's first source
+      const source = userFirstSource[userId];
+      if (source && sourceData.has(source)) {
+        sourceData.get(source).impressions++;
+      }
+    });
+    
+    // Extract contract wallet addresses for matching
+    const contractWallets = new Set();
+    let totalTokenVolume = 0;
+    
+    if (contractData?.contractTransactions) {
+      contractData.contractTransactions.forEach(tx => {
+        if (tx.from_address) {
+          contractWallets.add(tx.from_address.toLowerCase());
+          
+          // Calculate token volume if value is available
+          if (tx.value_eth) {
+            const value = parseFloat(tx.value_eth);
+            if (!isNaN(value)) {
+              totalTokenVolume += value;
+            }
+          }
+        }
+      });
+    }
+    
+    // Match wallets with transactions and calculate TVL
+    Object.entries(userWalletMap).forEach(([userId, walletAddress]) => {
+      if (contractWallets.has(walletAddress)) {
+        const source = userFirstSource[userId];
+        if (source && sourceData.has(source)) {
+          sourceData.get(source).transactedWallets.add(userId);
+          
+          // Calculate token volume contribution for this wallet
+          let walletVolume = 0;
+          
+          if (contractData?.contractTransactions) {
+            contractData.contractTransactions.forEach(tx => {
+              if (tx.from_address && tx.from_address.toLowerCase() === walletAddress && tx.value_eth) {
+                const value = parseFloat(tx.value_eth);
+                if (!isNaN(value)) {
+                  walletVolume += value;
+                }
+              }
+            });
+          }
+          
+          sourceData.get(source).tvl += walletVolume;
+        }
+      }
+    });
+    
+    // Convert to array format
+    return Array.from(sourceData.values()).map(data => ({
+      source: data.source,
+      visitors: data.visitors.size,
+      impressions: data.impressions,
+      websConnected: data.websConnected.size,
+      webRegistered: data.transactedWallets.size,
+      tvl: Math.round(data.tvl * 100) / 100
+    })).sort((a, b) => b.visitors - a.visitors);
+  };
+  
+  // Function to normalize source names
+  const normalizeSource = (source) => {
+    if (!source || typeof source !== 'string' || source.trim() === '') {
+      return 'Direct';
+    }
+    
+    const sourceStr = source.trim().toLowerCase();
+    
+    // Source mapping for common variations
+    const sourceMapping = {
+      'facebook': 'Facebook',
+      'fb': 'Facebook',
+      'instagram': 'Instagram',
+      'ig': 'Instagram',
+      'twitter': 'Twitter',
+      'x': 'Twitter',
+      'linkedin': 'LinkedIn',
+      'google': 'Google',
+      'youtube': 'YouTube',
+      'reddit': 'Reddit',
+      'tiktok': 'TikTok',
+      'discord': 'Discord',
+      'telegram': 'Telegram',
+      'medium': 'Medium',
+      'github': 'GitHub'
+    };
+    
+    // Check direct mapping
+    if (sourceMapping[sourceStr]) {
+      return sourceMapping[sourceStr];
+    }
+    
+    // Extract domain if it's a URL
+    try {
+      let domain;
+      if (sourceStr.includes('://')) {
+        domain = new URL(sourceStr).hostname.replace('www.', '');
+      } else if (sourceStr.includes('.')) {
+        domain = sourceStr.split('/')[0].replace('www.', '');
+      } else {
+        return sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
+      }
+      
+      // Check if domain matches any mapping
+      for (const [key, value] of Object.entries(sourceMapping)) {
+        if (domain.includes(key)) {
+          return value;
+        }
+      }
+      
+      // Return capitalized domain
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    } catch (e) {
+      return sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1);
+    }
+  };
+
   // Choose which data to use based on whether we should show demo data
   const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
   const trafficSourcesData = showDemoData ? demoTrafficSourcesData : (contractData?.trafficSourcesData || demoTrafficSourcesData);
   const trafficQualityData = showDemoData ? demoTrafficQualityData : (contractData?.trafficQualityData || demoTrafficQualityData);
-  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : (contractData?.trafficSourcesTableData || demoTrafficSourcesTableData);
+  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : processTrafficSourcesData();
   const timeToConversionData = showDemoData ? demoTimeToConversionData : (contractData?.timeToConversionData || demoTimeToConversionData);
 
   // Creating the legend items for traffic quality analysis
@@ -502,21 +686,36 @@ export default function OnchainTraffic() {
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Web Registered</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL (USD)</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Transacted</th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL ({selectedContract?.tokenSymbol || 'Token'})</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {trafficSourcesTableData.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">${item.tvl}</td>
+                {trafficSourcesTableData.length > 0 ? (
+                  trafficSourcesTableData.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.websConnected}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.webRegistered}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.tvl}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                      {isLoadingAnalytics || isLoadingTransactions ? (
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
+                          <span>Loading data...</span>
+                        </div>
+                      ) : (
+                        'No traffic sources data available'
+                      )}
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
