@@ -494,73 +494,60 @@ export const ContractDataProvider = ({ children }) => {
       : 0;
     
     // Process wallet age distribution
-    // First get the first transaction date for each wallet
-    const walletFirstTransactionMap = {};
+    // Instead of using actual data, always use proxy data with specified ranges
+    // <6M: 25-50%, 6M-1Y: 30-60%, 1Y-2Y: 25-50%, 2Y+: 7-15%
     
-    // Sort transactions by date (ascending)
-    const sortedTransactions = [...contractTransactions].sort((a, b) => 
-      new Date(a.block_time) - new Date(b.block_time)
-    );
+    // Generate values within specified ranges
+    const lessThan6MonthsPercent = Math.floor(Math.random() * 26) + 25; // 25-50%
+    const sixMonthsTo1YearPercent = Math.floor(Math.random() * 31) + 30; // 30-60%
+    const oneYearTo2YearsPercent = Math.floor(Math.random() * 26) + 25; // 25-50%
+    const olderThan2YearsPercent = Math.floor(Math.random() * 9) + 7; // 7-15%
     
-    // Find the first transaction for each wallet
-    sortedTransactions.forEach(tx => {
-      const wallet = tx.from_address;
-      if (!walletFirstTransactionMap[wallet]) {
-        walletFirstTransactionMap[wallet] = new Date(tx.block_time);
-      }
-    });
+    // Normalize percentages to sum to 100%
+    const totalPercent = lessThan6MonthsPercent + sixMonthsTo1YearPercent + 
+                          oneYearTo2YearsPercent + olderThan2YearsPercent;
     
-    // Count wallets in each age range
-    let walletsOlderThan2Years = 0;
-    let wallets1To2Years = 0;
-    let wallets6MonthsTo1Year = 0;
-    let walletsLessThan6Months = 0;
+    let normalizedLessThan6Months = Math.round((lessThan6MonthsPercent / totalPercent) * 100);
+    let normalizedSixMonthsTo1Year = Math.round((sixMonthsTo1YearPercent / totalPercent) * 100);
+    let normalizedOneYearTo2Years = Math.round((oneYearTo2YearsPercent / totalPercent) * 100);
+    let normalizedOlderThan2Years = Math.round((olderThan2YearsPercent / totalPercent) * 100);
     
-    // Calculate wallet age distribution
-    Object.values(walletFirstTransactionMap).forEach(firstTxDate => {
-      if (firstTxDate <= twoYearsAgo) {
-        walletsOlderThan2Years++;
-      } else if (firstTxDate <= oneYearAgo) {
-        wallets1To2Years++;
-      } else if (firstTxDate <= sixMonthsAgo) {
-        wallets6MonthsTo1Year++;
-      } else {
-        walletsLessThan6Months++;
-      }
-    });
+    // Ensure they sum to exactly 100%
+    const currentSum = normalizedLessThan6Months + normalizedSixMonthsTo1Year + 
+                      normalizedOneYearTo2Years + normalizedOlderThan2Years;
+                      
+    if (currentSum !== 100) {
+      normalizedOlderThan2Years += (100 - currentSum);
+    }
     
-    const totalWallets = uniqueWallets.size;
-    
-    // Calculate average wallet age in years
-    let totalAgeInDays = 0;
-    
-    Object.values(walletFirstTransactionMap).forEach(firstTxDate => {
-      const ageInDays = (now - firstTxDate) / (1000 * 60 * 60 * 24);
-      totalAgeInDays += ageInDays;
-    });
-    
-    const avgWalletAgeInYears = (totalAgeInDays / totalWallets) / 365;
+    // Calculate median wallet age based on this distribution
+    const avgWalletAgeInYears = (
+      (0.25 * normalizedLessThan6Months) + 
+      (0.75 * normalizedSixMonthsTo1Year) + 
+      (1.5 * normalizedOneYearTo2Years) + 
+      (3 * normalizedOlderThan2Years)
+    ) / 100;
     
     // Format wallet age distribution data for the pie chart
     const walletAgeData = [
       { 
         name: "2Y+", 
-        value: totalWallets > 0 ? Math.round((walletsOlderThan2Years / totalWallets) * 100) : 0, 
+        value: normalizedOlderThan2Years, 
         color: "#3b82f6" 
       },
       { 
         name: "1Y-2Y", 
-        value: totalWallets > 0 ? Math.round((wallets1To2Years / totalWallets) * 100) : 0, 
+        value: normalizedOneYearTo2Years, 
         color: "#f97316" 
       },
       { 
         name: "6M-1Y", 
-        value: totalWallets > 0 ? Math.round((wallets6MonthsTo1Year / totalWallets) * 100) : 0, 
+        value: normalizedSixMonthsTo1Year, 
         color: "#10b981" 
       },
       { 
         name: "<6M", 
-        value: totalWallets > 0 ? Math.round((walletsLessThan6Months / totalWallets) * 100) : 0, 
+        value: normalizedLessThan6Months, 
         color: "#eab308" 
       }
     ];
@@ -612,7 +599,7 @@ export const ContractDataProvider = ({ children }) => {
       walletAgeData: walletAgeData,
       medianWalletStats: {
         age: `${avgWalletAgeInYears.toFixed(1)} Years`,
-        netWorth: "$945" // Placeholder - would need external data source
+        netWorth: `$${Math.floor(Math.random() * 900) + 100}` // Random value between $100-$999
       },
       // Use the generated transaction data for charts
       transactionData: transactionTimeSeriesData,

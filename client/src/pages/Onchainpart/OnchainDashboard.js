@@ -86,7 +86,7 @@ export default function OnchainDashboard() {
     demoWalletAgeData[demoWalletAgeData.length - 1].value += (100 - currentSum);
   }
   
-  // Calculate median wallet age based on the distribution
+  // Calculate median wallet age based on the distribution (for demo data)
   const calculateMedianAge = () => {
     // Convert wallet age distribution to actual age in years
     const ageData = [
@@ -103,7 +103,7 @@ export default function OnchainDashboard() {
     return (weightedSum / totalWeight).toFixed(1);
   };
   
-  // Calculate the median age
+  // Calculate the median age for demo data
   const medianWalletAge = calculateMedianAge();
 
   // Sample data for wallet balance distribution
