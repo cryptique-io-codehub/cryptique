@@ -1085,114 +1085,6 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
 
-  // Function to analyze transactions and create a distribution of transaction counts across wallets
-  const analyzeTransactionCountDistribution = (transactions) => {
-    // Create a map to count transactions per wallet
-    const walletTransactionCounts = {};
-    
-    // Count transactions for each wallet (from_address)
-    transactions.forEach(tx => {
-      const wallet = tx.from_address;
-      if (!wallet) return;
-      
-      if (!walletTransactionCounts[wallet]) {
-        walletTransactionCounts[wallet] = 1;
-      } else {
-        walletTransactionCounts[wallet]++;
-      }
-    });
-    
-    // Convert to array of counts for analysis
-    const counts = Object.values(walletTransactionCounts);
-    
-    // If no data, return empty buckets
-    if (counts.length === 0) {
-      return generateEmptyTransactionDistribution();
-    }
-    
-    // Use the adaptive bucketing approach from createAdaptiveTransactionBuckets
-    // Prepare the transaction data in the format expected by the function
-    const txsForBucketing = [];
-    Object.entries(walletTransactionCounts).forEach(([address, count]) => {
-      for (let i = 0; i < count; i++) {
-        txsForBucketing.push({
-          walletAddress: address,
-          value: 0, // We only care about counts, not values
-          methodName: 'transfer' // Default method name
-        });
-      }
-    });
-    
-    // Call the createAdaptiveTransactionBuckets function
-    return createAdaptiveTransactionBuckets(txsForBucketing);
-  };
-  
-  // Use existing helper functions for backward compatibility
-  const createLogarithmicBuckets = (min, max, bucketCount) => {
-    // Use log scale for very skewed distributions
-    const logMin = Math.log(Math.max(1, min)); // Ensure min is at least 1 for log
-    const logMax = Math.log(max);
-    const logRange = (logMax - logMin) / bucketCount;
-    
-    const buckets = [];
-    for (let i = 0; i < bucketCount; i++) {
-      const logLower = logMin + (i * logRange);
-      const logUpper = logMin + ((i + 1) * logRange);
-      
-      // Convert back from log scale
-      const lower = i === 0 ? min : Math.round(Math.exp(logLower));
-      const upper = i === bucketCount - 1 ? max : Math.round(Math.exp(logUpper) - 1);
-      
-      buckets.push({ min: lower, max: upper });
-    }
-    
-    return buckets;
-  };
-  
-  const createLinearBuckets = (min, max, bucketCount) => {
-    const range = max - min;
-    const bucketSize = range / bucketCount;
-    
-    const buckets = [];
-    for (let i = 0; i < bucketCount; i++) {
-      const lower = i === 0 ? min : Math.round(min + (i * bucketSize));
-      const upper = i === bucketCount - 1 ? max : Math.round(min + ((i + 1) * bucketSize) - 1);
-      
-      buckets.push({ min: lower, max: upper });
-    }
-    
-    return buckets;
-  };
-  
-  const formatRangeLabel = (min, max) => {
-    if (min === max) {
-      return `${min}`;
-    } else if (max === Infinity || max > 1000000) {
-      return `${min}+`;
-    } else {
-      return `${min}-${max}`;
-    }
-  };
-  
-  const findBucketIndex = (value, bucketRanges) => {
-    return bucketRanges.findIndex(bucket => 
-      value >= bucket.min && value <= bucket.max
-    );
-  };
-  
-  // Generate empty transaction distribution (fallback)
-  const generateEmptyTransactionDistribution = () => {
-    return [
-      { range: "1-5", percentage: 0 },
-      { range: "6-10", percentage: 0 },
-      { range: "11-20", percentage: 0 },
-      { range: "21-50", percentage: 0 },
-      { range: "51-100", percentage: 0 },
-      { range: "101-500", percentage: 0 },
-      { range: "500+", percentage: 0 }
-    ];
-  };
-
   // New adaptive bucketing function
   const createAdaptiveTransactionBuckets = (transactions) => {
     // If no transactions data, return default buckets
@@ -1200,41 +1092,49 @@ export const ContractDataProvider = ({ children }) => {
       return generateEmptyTransactionDistribution();
     }
 
-    // Step 1: Count transactions per wallet
-    const txCountByWallet = {};
+    // Step 1: Calculate total token value per wallet
+    const walletValueTotals = {};
     transactions.forEach(tx => {
-      if (tx.walletAddress) {
-        txCountByWallet[tx.walletAddress] = (txCountByWallet[tx.walletAddress] || 0) + 1;
+      if (tx.walletAddress && tx.value) {
+        const value = parseFloat(tx.value);
+        if (!isNaN(value)) {
+          walletValueTotals[tx.walletAddress] = (walletValueTotals[tx.walletAddress] || 0) + value;
+        }
       }
     });
 
-    // Step 2: Create a sorted array of transaction counts
-    const txCounts = Object.values(txCountByWallet).sort((a, b) => a - b);
+    // Step 2: Create a sorted array of wallet total values
+    const walletValues = Object.values(walletValueTotals).sort((a, b) => a - b);
+    
+    // If no valid wallet values, return empty buckets
+    if (walletValues.length === 0) {
+      return generateEmptyTransactionDistribution();
+    }
     
     // Step 3: Determine scale (logarithmic or linear) based on distribution
-    const min = txCounts[0] || 1;
-    const max = txCounts[txCounts.length - 1] || 1000;
-    const mean = txCounts.reduce((sum, count) => sum + count, 0) / txCounts.length;
+    const min = walletValues[0] || 0;
+    const max = walletValues[walletValues.length - 1] || 1000;
+    const mean = walletValues.reduce((sum, val) => sum + val, 0) / walletValues.length;
     const useLogarithmic = max > mean * 10; // Use logarithmic scale for wider ranges
     
-    // Step 4: Create 7 buckets with each bucket containing max 20% of addresses
+    // Step 4: Create 7 buckets with each bucket containing max 20% of wallets
     const buckets = [];
-    const bucketSize = Math.ceil(txCounts.length / 7); // Initial size per bucket
-    const maxBucketSize = Math.ceil(txCounts.length * 0.2); // Max 20% per bucket
+    const bucketSize = Math.ceil(walletValues.length / 7); // Initial size per bucket
+    const maxBucketSize = Math.ceil(walletValues.length * 0.2); // Max 20% per bucket
     
     let currentIndex = 0;
     let currentBucketSize = 0;
     let lowerBound = min;
     
     for (let i = 0; i < 7; i++) {
-      // For the last bucket, include all remaining transactions
+      // For the last bucket, include all remaining wallets
       if (i === 6) {
         const upperBound = max;
-        const count = txCounts.length - currentIndex;
-        const percentage = (count / txCounts.length) * 100;
+        const count = walletValues.length - currentIndex;
+        const percentage = (count / walletValues.length) * 100;
         
         buckets.push({
-          range: `${lowerBound}-${upperBound === lowerBound ? lowerBound : upperBound}`,
+          range: formatTokenValueRange(lowerBound, upperBound === lowerBound ? lowerBound : upperBound),
           percentage: Math.round(percentage)
         });
         break;
@@ -1242,42 +1142,41 @@ export const ContractDataProvider = ({ children }) => {
       
       // Calculate dynamic bucket size, ensuring max 20% per bucket
       currentBucketSize = Math.min(bucketSize, maxBucketSize);
-      // For narrower distributions, ensure at least some addresses in each bucket
-      currentBucketSize = Math.max(currentBucketSize, Math.ceil(txCounts.length / 20));
+      // For narrower distributions, ensure at least some wallets in each bucket
+      currentBucketSize = Math.max(currentBucketSize, Math.ceil(walletValues.length / 20));
       
-      const targetIndex = Math.min(currentIndex + currentBucketSize, txCounts.length - 1);
+      const targetIndex = Math.min(currentIndex + currentBucketSize, walletValues.length - 1);
       let upperBound;
       
       if (useLogarithmic) {
         // Logarithmic scale for wide distributions
-        const logMin = Math.log(lowerBound || 1);
-        const logMax = Math.log(max || 1000);
+        const logMin = Math.log(Math.max(0.000001, lowerBound)); // Ensure min is positive for log
+        const logMax = Math.log(Math.max(0.000001, max));
         const bucketFraction = (i + 1) / 7;
         upperBound = Math.exp(logMin + (logMax - logMin) * bucketFraction);
-        upperBound = Math.ceil(upperBound);
       } else {
         // Linear scale for narrower distributions
-        upperBound = txCounts[targetIndex];
+        upperBound = walletValues[targetIndex];
       }
       
       // Count wallets in this range
       let count = 0;
-      while (currentIndex < txCounts.length && txCounts[currentIndex] <= upperBound) {
+      while (currentIndex < walletValues.length && walletValues[currentIndex] <= upperBound) {
         count++;
         currentIndex++;
       }
       
       // Calculate percentage
-      const percentage = (count / txCounts.length) * 100;
+      const percentage = (count / walletValues.length) * 100;
       
       // Create bucket
       buckets.push({
-        range: lowerBound === upperBound ? `${lowerBound}` : `${lowerBound}-${upperBound}`,
+        range: formatTokenValueRange(lowerBound, upperBound),
         percentage: Math.round(percentage)
       });
       
       // Update for next bucket
-      lowerBound = upperBound + 1;
+      lowerBound = upperBound;
     }
     
     // Ensure exactly 7 buckets
@@ -1296,6 +1195,72 @@ export const ContractDataProvider = ({ children }) => {
     }
     
     return buckets;
+  };
+
+  // Helper function to format token value ranges
+  const formatTokenValueRange = (min, max) => {
+    // Format values with appropriate units (K, M, etc.)
+    const formatValue = (val) => {
+      if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+      if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
+      return val.toFixed(2);
+    };
+    
+    if (min === max) {
+      return formatValue(min);
+    } else if (max === Number.MAX_VALUE || max > 1000000000) {
+      return `>${formatValue(min)}`;
+    } else {
+      return `${formatValue(min)}-${formatValue(max)}`;
+    }
+  };
+
+  // Generate empty transaction distribution (fallback)
+  const generateEmptyTransactionDistribution = () => {
+    return [
+      { range: "0-0.10", percentage: 0 },
+      { range: "0.10-1.0", percentage: 0 },
+      { range: "1.0-10", percentage: 0 },
+      { range: "10-100", percentage: 0 },
+      { range: "100-1K", percentage: 0 },
+      { range: "1K-10K", percentage: 0 },
+      { range: ">10K", percentage: 0 }
+    ];
+  };
+
+  // Function to analyze transactions and create a distribution of token values across wallets
+  const analyzeTransactionCountDistribution = (transactions) => {
+    // If no data, return empty buckets
+    if (!transactions || transactions.length === 0) {
+      return generateEmptyTransactionDistribution();
+    }
+    
+    // Step 1: Calculate total transaction volume per wallet
+    const walletTotalValues = {};
+    
+    transactions.forEach(tx => {
+      const wallet = tx.from_address;
+      if (!wallet) return;
+      
+      const value = parseFloat(tx.value_eth) || 0;
+      if (isNaN(value)) return;
+      
+      if (!walletTotalValues[wallet]) {
+        walletTotalValues[wallet] = value;
+      } else {
+        walletTotalValues[wallet] += value;
+      }
+    });
+    
+    // Step 2: Prepare input for the bucketing function
+    const txsForBucketing = Object.entries(walletTotalValues).map(([address, value]) => ({
+      walletAddress: address,
+      value: value,
+      methodName: 'transfer' // Not relevant for this analysis
+    }));
+    
+    // Call the adaptive bucketing function
+    return createAdaptiveTransactionBuckets(txsForBucketing);
   };
 
   // Wallet categorization logic - returns object with calculated percentages
