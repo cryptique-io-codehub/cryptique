@@ -375,7 +375,7 @@ export default function OnchainDashboard() {
     demoTransactionCountData = createAdaptiveTransactionBuckets(dummyTransactions);
   } else {
     // Use actual contract transactions if available
-    demoTransactionCountData = contractData?.transactionCountData || createAdaptiveTransactionBuckets(contractTransactions);
+    demoTransactionCountData = contractData?.tokenDistributionData || createAdaptiveTransactionBuckets(contractTransactions);
   }
 
   // Generate wallet categorization data
@@ -396,7 +396,7 @@ export default function OnchainDashboard() {
   let transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
   const walletAgeData = showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
   const walletBalanceData = showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
-  const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.transactionCountData || demoTransactionCountData);
+  const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.tokenDistributionData || demoTransactionCountData);
 
   // Filter transaction data based on selected time range
   if (!showDemoData && contractData?.transactionData) {
@@ -880,7 +880,7 @@ export default function OnchainDashboard() {
         {/* Transaction Count Distribution */}
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="font-semibold text-lg font-montserrat">Transaction Count Distribution</h2>
+            <h2 className="font-semibold text-lg font-montserrat">Token Distribution</h2>
             <button 
               onClick={() => setShowTransactionDistributionModal(true)}
               className="text-blue-600 hover:text-blue-800 flex items-center text-sm bg-transparent border-none cursor-pointer"
@@ -1249,7 +1249,7 @@ export default function OnchainDashboard() {
               
               {/* Detailed Transaction Distribution */}
               <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                <h3 className="text-lg font-semibold mb-4 font-montserrat">Transaction Count Distribution</h3>
+                <h3 className="text-lg font-semibold mb-4 font-montserrat">Token Distribution</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[600px] border-collapse">
                     <thead>
