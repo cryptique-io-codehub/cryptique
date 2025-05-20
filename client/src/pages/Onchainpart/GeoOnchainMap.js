@@ -215,7 +215,7 @@ const GeoOnchainMap = ({
     <div className="w-full">
       {/* Standardized header text */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold font-montserrat text-center">Users by Country</h2>
+        <h2 className="text-lg font-semibold font-montserrat text-center">Unique Users by Country</h2>
         <div className="relative">
           <select className="bg-gray-50 border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-md text-sm font-poppins appearance-none">
             <option>This Month</option>
@@ -259,7 +259,7 @@ const GeoOnchainMap = ({
         {!hideTopCountries && (
           <div className="w-full md:w-1/3 mt-4 md:mt-0">
             <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
-            <ul className="space-y-3 text-sm text-gray-700 font-poppins">
+            <ul className="space-y-3 text-sm text-gray-700 font-poppins max-h-80 overflow-y-auto pr-2">
               {topCountries.map(({ country, value, web3Users, walletConnections, transactedWallets }) => {
                 const countryCode = country.toUpperCase();
                 const countryName = countryCodeToName[countryCode] || countryCode;

@@ -269,8 +269,6 @@ export default function OnchainTraffic() {
         }
       `}</style>
       
-      <h1 className="text-2xl font-bold mb-8 font-montserrat">Unified Intensity Analytics</h1>
-      
       {/* Data Source Banner */}
       <ChainBanner 
         showDemoData={showDemoData}
@@ -464,7 +462,6 @@ export default function OnchainTraffic() {
         
         {/* Geographic Map - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Geographic User Distribution</h2>
           
           {/* Map and country details side by side - use flex-col on mobile, flex-row on desktop */}
           <div className="flex flex-col lg:flex-row gap-6">
@@ -487,7 +484,7 @@ export default function OnchainTraffic() {
             </div>
             
             {/* Country details section - only shown if a country is selected */}
-            <div className="w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto">
+            <div className={`w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto ${!selectedCountry ? 'hidden lg:hidden' : ''}`}>
               <CountryDetail 
                 countryCode={selectedCountry}
                 analytics={analytics}

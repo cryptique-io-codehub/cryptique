@@ -37,11 +37,7 @@ const countryCodeToName = {
 const CountryDetail = ({ countryCode, analytics, contractData }) => {
   // Return null if no country selected
   if (!countryCode) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Select a country on the map to see details</p>
-      </div>
-    );
+    return null;
   }
   
   // Get the country name
