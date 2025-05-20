@@ -220,25 +220,19 @@ const categorizeWallets = (transactions) => {
   const walletAddresses = Object.keys(walletStats);
   const totalWallets = walletAddresses.length;
   
-  // Airdrop farmers: Exactly 1 transaction with minimal token amount (bottom 10% by volume)
-  // First, collect all wallets with exactly 1 transaction
-  const singleTxWallets = walletAddresses.filter(address => 
-    walletStats[address].transactionCount === 1
-  );
+  // Airdrop farmers: EXACTLY 1 transaction with token value <= 1
+  const airdropFarmers = walletAddresses.filter(address => {
+    const stats = walletStats[address];
+    return stats.transactionCount === 1 && stats.volume <= 1;
+  });
   
-  // Sort them by volume (ascending)
-  const sortedByMinVolume = [...singleTxWallets].sort((a, b) => 
+  // Extract top 10 airdrop farmers (or fewer if there aren't that many)
+  // Sort by lowest volume first (most likely to be pure airdrop farmers)
+  const sortedAirdropFarmers = [...airdropFarmers].sort((a, b) => 
     walletStats[a].volume - walletStats[b].volume
   );
   
-  // Take wallets with exactly 1 transaction and minimal volume (bottom ones)
-  const minimalVolumeThreshold = totalVolume * 0.0001 / totalWallets; // Very small fraction of average
-  const airdropFarmers = sortedByMinVolume.filter(address => 
-    walletStats[address].volume <= minimalVolumeThreshold
-  );
-  
-  // Extract top 10 airdrop farmers (or fewer if there aren't that many)
-  const topAirdropFarmers = sortedByMinVolume.slice(0, Math.min(10, sortedByMinVolume.length))
+  const topAirdropFarmers = sortedAirdropFarmers.slice(0, Math.min(10, sortedAirdropFarmers.length))
     .map(address => ({
       address,
       transactionCount: walletStats[address].transactionCount,
@@ -254,7 +248,7 @@ const categorizeWallets = (transactions) => {
   const whales = sortedByVolume.slice(0, whaleCount);
   
   // Extract top 10 whales
-  const topWhales = sortedByVolume.slice(0, Math.min(10, sortedByVolume.length))
+  const topWhales = whales.slice(0, Math.min(10, whales.length))
     .map(address => ({
       address,
       transactionCount: walletStats[address].transactionCount,
@@ -1429,7 +1423,7 @@ export default function OnchainDashboard() {
                   
                   {/* Airdrop Farmers Tab */}
                   <div className={activeWalletTab === 'airdropFarmers' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Single transaction wallets with minimal volume (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.airdropFarmers ? contractData.walletCategories.airdropFarmers : 32}% of all wallets)</p>
+                    <p className="text-sm mb-3">Wallets with exactly 1 transaction and token value ≤ 1 (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.airdropFarmers ? contractData.walletCategories.airdropFarmers : 32}% of all wallets)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
