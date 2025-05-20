@@ -547,17 +547,17 @@ HTML:
                   </ul>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-  
-        {selectedPage.selectedPage==='onchain-explorer' && <>
-        <SmartContractFilters 
-        contractarray={contractarray} 
-        setcontractarray={setcontractarray}
-        selectedContract={selectedContract}
-        setSelectedContract={setSelectedContract}/>
-        </>}
+                    </div>
+      </div>
+    </div>
+
+    {(selectedPage.selectedPage === 'onchain-explorer' || selectedPage.selectedPage?.includes('onchain')) && <>
+    <SmartContractFilters 
+    contractarray={contractarray} 
+    setcontractarray={setcontractarray}
+    selectedContract={selectedContract}
+    setSelectedContract={setSelectedContract}/>
+    </>}
   
   
         <div className="flex-1">
