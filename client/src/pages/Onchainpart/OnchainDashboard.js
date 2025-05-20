@@ -108,14 +108,13 @@ export default function OnchainDashboard() {
 
   // Sample data for wallet balance distribution
   const demoWalletBalanceData = [
-    { range: "<$100", percentage: 21.9 },
-    { range: "$100-$1K", percentage: 20.3 },
-    { range: "$1K-$10K", percentage: 6.1 },
-    { range: "$10K-$100K", percentage: 21.6 },
-    { range: "$100K-$1M", percentage: 14.8 },
-    { range: "$1M-$10M", percentage: 5.4 },
-    { range: "$10M-$100M", percentage: 7.4 },
-    { range: ">$100M", percentage: 2.5 },
+    { range: "<$100", percentage: 0 },
+    { range: "$100-$500", percentage: 0 },
+    { range: "$500-$1K", percentage: 0 },
+    { range: "$1K-$5K", percentage: 0 },
+    { range: "$5K-$10K", percentage: 0 },
+    { range: "$10K-$100K", percentage: 0 },
+    { range: ">$100K", percentage: 0 },
   ];
 
   // Sample data for wallet transactions count distribution

@@ -24,6 +24,9 @@ export const ContractDataProvider = ({ children }) => {
   
   // Create a ref for demo wallet stats to keep them consistent
   const demoWalletStatsRef = useRef(null);
+  
+  // Create a ref for wallet balance distributions
+  const walletBalanceDistributionRef = useRef({});
 
   // Fetch smart contracts for the current team
   useEffect(() => {
@@ -408,6 +411,9 @@ export const ContractDataProvider = ({ children }) => {
           (3 * normalizedOlderThan2Years)
         ) / 100;
         
+        // Generate wallet balance distribution once
+        const walletBalanceDistribution = generateWalletBalanceDistribution();
+        
         demoWalletStatsRef.current = {
           walletAgeData: [
             { name: "2Y+", value: normalizedOlderThan2Years, color: "#3b82f6" },
@@ -416,7 +422,8 @@ export const ContractDataProvider = ({ children }) => {
             { name: "<6M", value: normalizedLessThan6Months, color: "#eab308" }
           ],
           medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
-          netWorth: Math.floor(Math.random() * 900) + 100 // Random value between $100-$999
+          netWorth: calculateMedianNetWorth(walletBalanceDistribution),
+          walletBalanceData: walletBalanceDistribution
         };
       }
       
@@ -425,8 +432,9 @@ export const ContractDataProvider = ({ children }) => {
         walletAgeData: demoWalletStatsRef.current.walletAgeData,
         medianWalletStats: {
           age: demoWalletStatsRef.current.medianAge,
-          netWorth: `$${demoWalletStatsRef.current.netWorth}`
-        }
+          netWorth: formatDollarAmount(demoWalletStatsRef.current.netWorth)
+        },
+        walletBalanceData: demoWalletStatsRef.current.walletBalanceData
       };
     }
     
@@ -588,6 +596,9 @@ export const ContractDataProvider = ({ children }) => {
         (3 * normalizedOlderThan2Years)
       ) / 100;
       
+      // Generate wallet balance distribution once
+      const walletBalanceDistribution = generateWalletBalanceDistribution();
+      
       // Store the generated values for this contract
       walletStatsByContractRef.current[selectedContract.id] = {
         walletAgeData: [
@@ -597,7 +608,8 @@ export const ContractDataProvider = ({ children }) => {
           { name: "<6M", value: normalizedLessThan6Months, color: "#eab308" }
         ],
         medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
-        netWorth: Math.floor(Math.random() * 900) + 100 // Random value between $100-$999
+        netWorth: calculateMedianNetWorth(walletBalanceDistribution),
+        walletBalanceData: walletBalanceDistribution
       };
     }
     
@@ -654,8 +666,9 @@ export const ContractDataProvider = ({ children }) => {
       walletAgeData: walletAgeData,
       medianWalletStats: {
         age: contractWalletStats.medianAge,
-        netWorth: `$${contractWalletStats.netWorth}`
+        netWorth: formatDollarAmount(contractWalletStats.netWorth)
       },
+      walletBalanceData: contractWalletStats.walletBalanceData,
       // Use the generated transaction data for charts
       transactionData: transactionTimeSeriesData,
       
@@ -944,6 +957,91 @@ export const ContractDataProvider = ({ children }) => {
       clearInterval(intervalId);
     };
   }, []);
+
+  // Function to generate wallet balance distribution with random values within specified ranges
+  const generateWalletBalanceDistribution = () => {
+    // Generate values within specified ranges
+    const lessThan100 = Math.floor(Math.random() * 11) + 30; // 30-40%
+    const between100and500 = Math.floor(Math.random() * 11) + 20; // 20-30%
+    const between500and1000 = Math.floor(Math.random() * 8) + 15; // 15-22%
+    const between1000and5000 = Math.floor(Math.random() * 8) + 10; // 10-17%
+    const between5000and10000 = Math.floor(Math.random() * 5) + 3; // 3-7%
+    const between10000and100000 = Math.floor(Math.random() * 5) + 4; // 4-8%
+    const above100000 = Math.floor(Math.random() * 3) + 1; // 1-3%
+    
+    // Calculate total to normalize
+    const total = lessThan100 + between100and500 + between500and1000 + 
+                  between1000and5000 + between5000and10000 + 
+                  between10000and100000 + above100000;
+    
+    // Normalize to ensure sum is 100%
+    const normalizedValues = [
+      { range: "<$100", percentage: Math.round((lessThan100 / total) * 100) },
+      { range: "$100-$500", percentage: Math.round((between100and500 / total) * 100) },
+      { range: "$500-$1K", percentage: Math.round((between500and1000 / total) * 100) },
+      { range: "$1K-$5K", percentage: Math.round((between1000and5000 / total) * 100) },
+      { range: "$5K-$10K", percentage: Math.round((between5000and10000 / total) * 100) },
+      { range: "$10K-$100K", percentage: Math.round((between10000and100000 / total) * 100) },
+      { range: ">$100K", percentage: Math.round((above100000 / total) * 100) }
+    ];
+    
+    // Ensure the sum is exactly 100%
+    const currentSum = normalizedValues.reduce((sum, item) => sum + item.percentage, 0);
+    if (currentSum !== 100) {
+      // Adjust the largest value to make the sum exactly 100%
+      const largestItemIndex = normalizedValues
+        .reduce((maxIndex, item, index, arr) => 
+          item.percentage > arr[maxIndex].percentage ? index : maxIndex, 0);
+      normalizedValues[largestItemIndex].percentage += (100 - currentSum);
+    }
+    
+    return normalizedValues;
+  };
+
+  // Function to calculate median net worth based on wallet balance distribution
+  const calculateMedianNetWorth = (balanceDistribution) => {
+    // Define representative values for each range
+    const rangeValues = {
+      "<$100": 50,           // Midpoint of 0-100
+      "$100-$500": 300,      // Midpoint of 100-500
+      "$500-$1K": 750,       // Midpoint of 500-1000
+      "$1K-$5K": 3000,       // Midpoint of 1000-5000
+      "$5K-$10K": 7500,      // Midpoint of 5000-10000
+      "$10K-$100K": 55000,   // Midpoint of 10000-100000
+      ">$100K": 150000       // Representative value for >100K
+    };
+    
+    // Calculate weighted average based on distribution percentages
+    let totalWeight = 0;
+    let weightedSum = 0;
+    
+    balanceDistribution.forEach(item => {
+      const value = rangeValues[item.range];
+      if (value) {
+        weightedSum += value * item.percentage;
+        totalWeight += item.percentage;
+      }
+    });
+    
+    if (totalWeight === 0) return 0;
+    
+    // Calculate weighted average
+    const weightedAverage = weightedSum / totalWeight;
+    
+    // Format the result to a reasonable precision
+    return Math.round(weightedAverage);
+  };
+
+  // Function to format a number as a dollar amount
+  const formatDollarAmount = (amount) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(1)}K`;
+    } else {
+      return `$${amount.toLocaleString()}`;
+    }
+  };
 
   return (
     <ContractDataContext.Provider
