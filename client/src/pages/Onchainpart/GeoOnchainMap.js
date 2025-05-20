@@ -245,7 +245,7 @@ const GeoOnchainMap = ({
             color="blue"
             title="Unique Users by Country"
             valueSuffix=" users"
-            size="lg"
+            size={hideTopCountries ? "xl" : "lg"}
             data={mapData}
             onClickFunction={({ countryName, countryCode, countryValue }) => {
               if (setSelectedCountry) {

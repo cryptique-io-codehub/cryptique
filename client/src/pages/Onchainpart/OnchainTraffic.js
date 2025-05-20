@@ -25,34 +25,31 @@ export default function OnchainTraffic() {
 
   // State for analytics data
   const [analytics, setanalytics] = useState({});
-  // Track when contract or website selection changes
+  // Get website ID once on mount
+  const [websiteId, setWebsiteId] = useState(() => localStorage.getItem('idy') || null);
+  // Track when contract selection changes
   const [lastContractId, setLastContractId] = useState(null);
-  const [lastWebsiteId, setLastWebsiteId] = useState(null);
   // Add loading state
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
   
-  // Load analytics data when website selection changes
+  // Check for website ID changes
   useEffect(() => {
-    const websiteId = localStorage.getItem('idy');
+    const currentWebsiteId = localStorage.getItem('idy');
+    if (currentWebsiteId !== websiteId) {
+      setWebsiteId(currentWebsiteId);
+    }
+  }, [websiteId]);
+  
+  // Load analytics data when component mounts or when website/contract selection changes
+  useEffect(() => {
     const currentContractId = selectedContract?.id || null;
     
-    // Check if either website or contract selection has changed
-    const websiteChanged = websiteId !== lastWebsiteId;
+    // Check if contract selection has changed
     const contractChanged = currentContractId !== lastContractId;
     
-    console.log("Selection state:", {
-      websiteId,
-      lastWebsiteId,
-      websiteChanged,
-      currentContractId,
-      lastContractId,
-      contractChanged
-    });
-    
-    // Update last seen IDs
-    setLastWebsiteId(websiteId);
+    // Update last seen contract ID
     setLastContractId(currentContractId);
     
     // Only fetch if we have a website ID
@@ -104,16 +101,10 @@ export default function OnchainTraffic() {
       }
     };
     
-    // Determine when to fetch data
-    if (websiteChanged || (websiteId && !analytics.uniqueVisitors)) {
-      // Fetch new data if website changed or we don't have data yet
-      fetchAnalyticsData();
-    } else if (contractChanged && websiteId) {
-      // If only contract changed, we'll keep the same analytics but match wallets
-      // Re-run wallet matching (handled in FunnelDashboard2 component)
-      console.log("Contract changed, keeping same analytics but will re-match wallets");
-    }
-  }, [selectedContract?.id, localStorage.getItem('idy')]);
+    // Always fetch data when the component mounts or when the website/contract changes
+    fetchAnalyticsData();
+    
+  }, [websiteId, selectedContract?.id]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
@@ -465,7 +456,7 @@ export default function OnchainTraffic() {
           
           {/* Map and country details side by side - use flex-col on mobile, flex-row on desktop */}
           <div className="flex flex-col lg:flex-row gap-6">
-            <div className="w-full lg:w-3/5">
+            <div className={`w-full ${selectedCountry ? 'lg:w-3/5' : 'lg:w-full'}`}>
               <GeoOnchainMap 
                 analytics={analytics}
                 contractData={{
@@ -484,7 +475,7 @@ export default function OnchainTraffic() {
             </div>
             
             {/* Country details section - only shown if a country is selected */}
-            <div className={`w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto ${!selectedCountry ? 'hidden lg:hidden' : ''}`}>
+            <div className={`w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto ${!selectedCountry ? 'hidden' : ''}`}>
               <CountryDetail 
                 countryCode={selectedCountry}
                 analytics={analytics}
