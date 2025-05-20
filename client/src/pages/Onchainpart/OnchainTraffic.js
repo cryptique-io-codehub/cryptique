@@ -46,37 +46,101 @@ export default function OnchainTraffic() {
     // Try to get analytics data from localStorage - specifically for the selected website
     let storedAnalytics = null;
     
-    try {
-      // First try to get website-specific analytics
-      if (currentWebsiteId) {
-        const websiteAnalytics = localStorage.getItem(`analytics_${currentWebsiteId}`);
-        if (websiteAnalytics) {
-          storedAnalytics = JSON.parse(websiteAnalytics);
-          console.log(`Found analytics data for website ${currentWebsiteId}`);
+    const loadAnalyticsData = async () => {
+      try {
+        // First try to get website-specific analytics from storage by idy
+        const websiteId = localStorage.getItem('idy');
+        if (websiteId) {
+          console.log(`Looking for analytics data for website ID ${websiteId}`);
+          
+          // Try both formats of storage key
+          let websiteAnalytics = localStorage.getItem(`analytics_${websiteId}`);
+          if (!websiteAnalytics) {
+            // Try the alternative format with website domain
+            const websiteDomain = localStorage.getItem('selectedWebsite');
+            if (websiteDomain) {
+              websiteAnalytics = localStorage.getItem(`analytics_${websiteDomain}`);
+            }
+          }
+          
+          if (websiteAnalytics) {
+            try {
+              storedAnalytics = JSON.parse(websiteAnalytics);
+              console.log(`Found analytics data for website ${websiteId}`);
+            } catch (parseError) {
+              console.error('Error parsing website analytics:', parseError);
+            }
+          }
         }
-      }
-      
-      // If no website-specific data, try the generic storage
-      if (!storedAnalytics) {
-        const genericAnalytics = localStorage.getItem('analytics_storage');
-        if (genericAnalytics) {
-          storedAnalytics = JSON.parse(genericAnalytics);
-          console.log("Using generic analytics data");
+        
+        // If no website-specific data, try the generic storage
+        if (!storedAnalytics) {
+          const genericAnalytics = localStorage.getItem('analytics_storage');
+          if (genericAnalytics) {
+            try {
+              storedAnalytics = JSON.parse(genericAnalytics);
+              console.log("Using generic analytics data");
+            } catch (parseError) {
+              console.error('Error parsing generic analytics:', parseError);
+            }
+          }
         }
-      }
-      
-      if (storedAnalytics) {
-        setanalytics(storedAnalytics);
-      } else {
-        // No stored analytics, use demo data
+        
+        // If still no analytics, try to fetch it from off-chain analytics route
+        if (!storedAnalytics && websiteId) {
+          try {
+            // You might need to adjust this based on your actual API structure
+            const response = await fetch(`/api/analytics/${websiteId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.analytics) {
+                storedAnalytics = data.analytics;
+                console.log("Fetched analytics data from API");
+              }
+            }
+          } catch (fetchError) {
+            console.error('Error fetching analytics from API:', fetchError);
+          }
+        }
+        
+        if (storedAnalytics) {
+          console.log("Setting analytics data:", storedAnalytics);
+          setanalytics(storedAnalytics);
+        } else {
+          // No stored analytics, use demo data
+          console.log("No real analytics found, using demo data");
+          simulateDemoAnalytics();
+        }
+      } catch (error) {
+        console.error('Error loading analytics data:', error);
+        // Fall back to demo data if loading fails
         simulateDemoAnalytics();
       }
-    } catch (error) {
-      console.error('Error loading analytics data:', error);
-      // Fall back to demo data if loading fails
-      simulateDemoAnalytics();
-    }
+    };
+    
+    loadAnalyticsData();
   }, [selectedContract?.id, contractTransactions?.length]);
+  
+  // Save analytics data to localStorage when it changes
+  useEffect(() => {
+    // Only save if we have meaningful analytics data
+    if (analytics && analytics.uniqueVisitors && analytics.sessions) {
+      try {
+        // Get the current website ID
+        const websiteId = localStorage.getItem('idy');
+        if (websiteId) {
+          // Save to website-specific storage
+          localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(analytics));
+          console.log(`Saved analytics data to localStorage for website ${websiteId}`);
+        }
+        
+        // Also save to generic storage
+        localStorage.setItem('analytics_storage', JSON.stringify(analytics));
+      } catch (error) {
+        console.error('Error saving analytics data to localStorage:', error);
+      }
+    }
+  }, [analytics]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
@@ -106,11 +170,11 @@ export default function OnchainTraffic() {
       }))
     };
     
-    // If we have a selected contract, make some of the demo wallet addresses match transactions
+    // If we have a selected contract, make about 10% of the demo wallet addresses match transactions
     if (contractTransactions && contractTransactions.length > 0 && !showDemoData) {
       console.log("Customizing demo data to match contract transactions");
       
-      // Extract some real wallet addresses from transactions (up to 100)
+      // Extract real wallet addresses from transactions (up to 200)
       const realWalletAddresses = new Set();
       contractTransactions.slice(0, 1000).forEach(tx => {
         if (tx.from_address) {
@@ -122,13 +186,18 @@ export default function OnchainTraffic() {
       
       // Replace about 10% of demo wallet addresses with real ones to show conversion
       if (realAddressArray.length > 0) {
-        const walletCount = Math.min(Math.floor(demoAnalytics.wallets.length * 0.1), realAddressArray.length);
+        // Calculate a percentage based on the number of available addresses
+        // This ensures we have a meaningful number of matches for the funnel
+        const percentage = Math.min(0.1, realAddressArray.length / demoAnalytics.wallets.length);
+        const walletCount = Math.floor(demoAnalytics.wallets.length * percentage);
+        
+        console.log(`Adding ${walletCount} real wallet addresses out of ${realAddressArray.length} available to demo data`);
+        
         for (let i = 0; i < walletCount; i++) {
           if (i < demoAnalytics.wallets.length && i < realAddressArray.length) {
             demoAnalytics.wallets[i].walletAddress = realAddressArray[i];
           }
         }
-        console.log(`Added ${walletCount} real wallet addresses to demo data`);
       }
     }
     
@@ -252,7 +321,9 @@ export default function OnchainTraffic() {
               contractTransactions,
               contractId: selectedContract?.id,
               contract: selectedContract,
-              processedData: contractData
+              processedData: contractData,
+              chainId: selectedContract?.chainId,
+              chainName: selectedContract?.blockchain
             }}
           />
         </div>

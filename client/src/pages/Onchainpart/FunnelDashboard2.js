@@ -28,6 +28,7 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
     console.log("FunnelDashboard - Updating with new data:", {
       analyticsExists: !!analytics,
       sessionsCount: analytics?.sessions?.length,
+      walletsCount: analytics?.wallets?.length,
       contractDataExists: !!contractData,
       contractId: contractData?.contractId,
       contractName: contractData?.contract?.name,
@@ -54,11 +55,26 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
           contractData.contractTransactions.length > 0) {
         // Get unique wallet addresses from the website data
         const websiteWallets = new Set();
-        analytics.wallets.forEach(wallet => {
-          if (wallet.walletAddress && wallet.walletAddress.length > 10) {
-            websiteWallets.add(wallet.walletAddress.toLowerCase());
-          }
-        });
+        
+        // Process both wallets array and any wallets found in sessions
+        // First check the wallets array
+        if (Array.isArray(analytics.wallets)) {
+          analytics.wallets.forEach(wallet => {
+            if (wallet.walletAddress && wallet.walletAddress.length > 10) {
+              websiteWallets.add(wallet.walletAddress.toLowerCase());
+            }
+          });
+        }
+        
+        // Then check sessions for any additional wallets
+        if (Array.isArray(analytics.sessions)) {
+          analytics.sessions.forEach(session => {
+            if (session.wallet && session.wallet.walletAddress && 
+                session.wallet.walletAddress.length > 10) {
+              websiteWallets.add(session.wallet.walletAddress.toLowerCase());
+            }
+          });
+        }
         
         // Get unique wallet addresses from contract transactions
         const contractWallets = new Set();
@@ -77,6 +93,13 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
         
         // Count the intersection of these sets
         if (websiteWallets.size > 0 && contractWallets.size > 0) {
+          // Log some sample wallets for debugging
+          const websiteSamples = Array.from(websiteWallets).slice(0, 3);
+          const contractSamples = Array.from(contractWallets).slice(0, 3);
+          
+          console.log("Sample website wallets:", websiteSamples);
+          console.log("Sample contract wallets:", contractSamples);
+          
           websiteWallets.forEach(address => {
             if (contractWallets.has(address)) {
               walletsTransacted++;
