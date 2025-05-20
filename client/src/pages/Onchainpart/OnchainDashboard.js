@@ -50,6 +50,199 @@ const hasHighWhaleActivity = (transactionData) => {
   return highTransactionPercent > 25;
 };
 
+// Function to create adaptive transaction count buckets with more equal distribution
+const createAdaptiveTransactionBuckets = (transactions, walletCount) => {
+  // If no transactions data, return default buckets
+  if (!transactions || transactions.length === 0) {
+    return [
+      { range: "1-5", percentage: 0 },
+      { range: "6-10", percentage: 0 },
+      { range: "11-20", percentage: 0 },
+      { range: "21-50", percentage: 0 },
+      { range: "51-100", percentage: 0 },
+      { range: "101-500", percentage: 0 },
+      { range: "500+", percentage: 0 }
+    ];
+  }
+
+  // Step 1: Count transactions per wallet
+  const txCountByWallet = {};
+  transactions.forEach(tx => {
+    if (tx.walletAddress) {
+      txCountByWallet[tx.walletAddress] = (txCountByWallet[tx.walletAddress] || 0) + 1;
+    }
+  });
+
+  // Step 2: Create a sorted array of transaction counts
+  const txCounts = Object.values(txCountByWallet).sort((a, b) => a - b);
+  
+  // Step 3: Determine scale (logarithmic or linear) based on distribution
+  const min = txCounts[0] || 1;
+  const max = txCounts[txCounts.length - 1] || 1000;
+  const useLogarithmic = max / min > 100; // Use logarithmic scale for wider ranges
+  
+  // Step 4: Create 7 buckets with each bucket containing max 20% of addresses
+  const buckets = [];
+  const bucketSize = Math.ceil(txCounts.length / 7); // Initial size per bucket
+  const maxBucketSize = Math.ceil(txCounts.length * 0.2); // Max 20% per bucket
+  
+  let currentIndex = 0;
+  let currentBucketSize = 0;
+  let lowerBound = min;
+  
+  for (let i = 0; i < 7; i++) {
+    // For the last bucket, include all remaining transactions
+    if (i === 6) {
+      const upperBound = max;
+      const count = txCounts.length - currentIndex;
+      const percentage = (count / txCounts.length) * 100;
+      
+      buckets.push({
+        range: `${lowerBound}-${upperBound === lowerBound ? lowerBound : upperBound}`,
+        percentage: Math.round(percentage)
+      });
+      break;
+    }
+    
+    // Calculate dynamic bucket size, ensuring max 20% per bucket
+    currentBucketSize = Math.min(bucketSize, maxBucketSize);
+    // For narrower distributions, ensure at least some addresses in each bucket
+    currentBucketSize = Math.max(currentBucketSize, Math.ceil(txCounts.length / 20));
+    
+    const targetIndex = Math.min(currentIndex + currentBucketSize, txCounts.length - 1);
+    let upperBound;
+    
+    if (useLogarithmic) {
+      // Logarithmic scale for wide distributions
+      const logMin = Math.log(lowerBound || 1);
+      const logMax = Math.log(max || 1000);
+      const bucketFraction = (i + 1) / 7;
+      upperBound = Math.exp(logMin + (logMax - logMin) * bucketFraction);
+      upperBound = Math.ceil(upperBound);
+    } else {
+      // Linear scale for narrower distributions
+      upperBound = txCounts[targetIndex];
+    }
+    
+    // Count wallets in this range
+    let count = 0;
+    while (currentIndex < txCounts.length && txCounts[currentIndex] <= upperBound) {
+      count++;
+      currentIndex++;
+    }
+    
+    // Calculate percentage
+    const percentage = (count / txCounts.length) * 100;
+    
+    // Create bucket
+    buckets.push({
+      range: lowerBound === upperBound ? `${lowerBound}` : `${lowerBound}-${upperBound}`,
+      percentage: Math.round(percentage)
+    });
+    
+    // Update for next bucket
+    lowerBound = upperBound + 1;
+  }
+  
+  // Ensure exactly 7 buckets
+  while (buckets.length < 7) {
+    buckets.push({ range: "0", percentage: 0 });
+  }
+  
+  // Normalize percentages to ensure they sum to 100%
+  const totalPercentage = buckets.reduce((sum, bucket) => sum + bucket.percentage, 0);
+  if (totalPercentage !== 100) {
+    // Adjust the largest bucket
+    const largestBucketIndex = buckets.findIndex(b => 
+      b.percentage === Math.max(...buckets.map(bucket => bucket.percentage))
+    );
+    buckets[largestBucketIndex].percentage += (100 - totalPercentage);
+  }
+  
+  return buckets;
+};
+
+// Wallet categorization logic - returns object with calculated percentages
+const categorizeWallets = (transactions, walletBalances) => {
+  // If no data, return default values
+  if (!transactions || transactions.length === 0) {
+    return {
+      airdropFarmers: 32,
+      whales: 7,
+      whalesVolumePercentage: 58,
+      bridgeUsers: 15
+    };
+  }
+  
+  // Step 1: Count transactions and volume per wallet
+  const walletStats = {};
+  let totalVolume = 0;
+  
+  transactions.forEach(tx => {
+    if (!tx.walletAddress) return;
+    
+    if (!walletStats[tx.walletAddress]) {
+      walletStats[tx.walletAddress] = {
+        transactionCount: 0,
+        volume: 0,
+        approvals: 0
+      };
+    }
+    
+    walletStats[tx.walletAddress].transactionCount++;
+    
+    // Track volume
+    if (tx.value) {
+      const txValue = parseFloat(tx.value);
+      walletStats[tx.walletAddress].volume += txValue;
+      totalVolume += txValue;
+    }
+    
+    // Track approval transactions
+    if (tx.methodName && (tx.methodName.toLowerCase().includes('approve') || 
+                          tx.methodName.toLowerCase().includes('bridge') ||
+                          tx.methodName.toLowerCase().includes('permit'))) {
+      walletStats[tx.walletAddress].approvals++;
+    }
+  });
+  
+  // Step 2: Calculate wallet categories
+  const walletAddresses = Object.keys(walletStats);
+  const totalWallets = walletAddresses.length;
+  
+  // Airdrop farmers: Few transactions (1-3) with no significant volume
+  const airdropFarmers = walletAddresses.filter(address => {
+    const stats = walletStats[address];
+    return stats.transactionCount <= 3 && stats.volume < (totalVolume * 0.001 / totalWallets);
+  });
+  
+  // Whales: High volume wallets (top 10% by volume)
+  const sortedByVolume = [...walletAddresses].sort((a, b) => 
+    walletStats[b].volume - walletStats[a].volume
+  );
+  
+  const whaleCount = Math.max(Math.ceil(totalWallets * 0.07), 1); // ~7% of wallets
+  const whales = sortedByVolume.slice(0, whaleCount);
+  
+  // Calculate whale volume percentage
+  const whaleVolume = whales.reduce((sum, address) => sum + walletStats[address].volume, 0);
+  const whalesVolumePercentage = Math.round((whaleVolume / totalVolume) * 100);
+  
+  // Bridge users: High approval transaction ratio
+  const bridgeUsers = walletAddresses.filter(address => {
+    const stats = walletStats[address];
+    return stats.approvals / stats.transactionCount > 0.5; // >50% are approvals
+  });
+  
+  // Calculate percentages
+  return {
+    airdropFarmers: Math.min(Math.round((airdropFarmers.length / totalWallets) * 100), 70),
+    whales: Math.round((whales.length / totalWallets) * 100),
+    whalesVolumePercentage,
+    bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60)
+  };
+};
+
 export default function OnchainDashboard() {
   // Get contract data from context
   const { 
@@ -162,17 +355,42 @@ export default function OnchainDashboard() {
     { range: ">$100K", percentage: 0 },
   ];
 
-  // Sample data for transaction count distribution
-  const demoTransactionCountData = [
-    // This is replaced by data from the context now
-    { range: "1-5", percentage: 0 },
-    { range: "6-10", percentage: 0 },
-    { range: "11-20", percentage: 0 },
-    { range: "21-50", percentage: 0 },
-    { range: "51-100", percentage: 0 },
-    { range: "101-500", percentage: 0 },
-    { range: "500+", percentage: 0 }
-  ];
+  // Generate adaptive transaction count distribution based on actual data
+  let demoTransactionCountData;
+  
+  // For demo data, create a simulated distribution
+  if (showDemoData) {
+    // Create dummy transaction data
+    const dummyTransactions = Array(1000).fill().map((_, i) => {
+      // Create a realistic distribution - many low count wallets, few high count wallets
+      const walletIndex = Math.floor(Math.random() * 200);
+      const count = Math.floor(Math.exp(walletIndex / 25)); // Exponential distribution
+      return { 
+        walletAddress: `0x${(Math.random().toString(16) + '0000000000000000').slice(2, 18)}`,
+        value: Math.random() * 10,
+        methodName: Math.random() > 0.8 ? 'approve' : 'transfer'
+      };
+    });
+    
+    demoTransactionCountData = createAdaptiveTransactionBuckets(dummyTransactions);
+  } else {
+    // Use actual contract transactions if available
+    demoTransactionCountData = contractData?.transactionCountData || createAdaptiveTransactionBuckets(contractTransactions);
+  }
+
+  // Generate wallet categorization data
+  let walletCategories;
+  if (!showDemoData && contractTransactions && contractTransactions.length > 0) {
+    walletCategories = categorizeWallets(contractTransactions);
+  } else {
+    // Demo data
+    walletCategories = {
+      airdropFarmers: 32,
+      whales: 7,
+      whalesVolumePercentage: 58,
+      bridgeUsers: 15
+    };
+  }
 
   // Choose which data to use based on whether we should show demo data
   let transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);

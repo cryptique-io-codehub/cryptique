@@ -28,6 +28,9 @@ export const ContractDataProvider = ({ children }) => {
   // Create a ref for wallet balance distributions
   const walletBalanceDistributionRef = useRef({});
 
+  // Add ref to store wallet categories for each contract
+  const walletCategoriesByContractRef = useRef({});
+
   // Fetch smart contracts for the current team
   useEffect(() => {
     const fetchSmartContracts = async () => {
@@ -375,39 +378,49 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
   
-  // Process contract transactions into a usable format for charts and analytics
+  // Process contract transactions into meaningful data
   const processContractTransactions = () => {
     if (!selectedContract || !contractTransactions || contractTransactions.length === 0) {
-      // For demo data, initialize once and reuse
+      // If no contract/transactions, show demo data
+      console.log("No contract or transactions available - using demo data");
+      
+      // Current date for demo calculations
+      const now = new Date();
+      
+      // If we haven't generated demo data yet, create it once
       if (!demoWalletStatsRef.current) {
-        // Generate wallet age distribution for demo data
-        const lessThan6MonthsPercent = Math.floor(Math.random() * 26) + 25; // 25-50%
-        const sixMonthsTo1YearPercent = Math.floor(Math.random() * 31) + 30; // 30-60%
-        const oneYearTo2YearsPercent = Math.floor(Math.random() * 26) + 25; // 25-50%
-        const olderThan2YearsPercent = Math.floor(Math.random() * 9) + 7; // 7-15%
+        console.log("Generating demo wallet stats...");
         
-        // Normalize percentages to sum to 100%
-        const totalPercent = lessThan6MonthsPercent + sixMonthsTo1YearPercent + 
-                              oneYearTo2YearsPercent + olderThan2YearsPercent;
+        // Generate demo wallet age distribution
+        // These values need to sum to 100 after normalization
+        const lessThan6Months = Math.floor(Math.random() * 26) + 25; // 25-50%
+        const sixMonthsTo1Year = Math.floor(Math.random() * 31) + 30; // 30-60%
+        const oneYearTo2Years = Math.floor(Math.random() * 26) + 25; // 25-50%
+        const olderThan2Years = Math.floor(Math.random() * 9) + 7; // 7-15%
         
-        let normalizedLessThan6Months = Math.round((lessThan6MonthsPercent / totalPercent) * 100);
-        let normalizedSixMonthsTo1Year = Math.round((sixMonthsTo1YearPercent / totalPercent) * 100);
-        let normalizedOneYearTo2Years = Math.round((oneYearTo2YearsPercent / totalPercent) * 100);
-        let normalizedOlderThan2Years = Math.round((olderThan2YearsPercent / totalPercent) * 100);
+        // Calculate total and normalize to ensure they sum to 100%
+        const totalPercentage = lessThan6Months + sixMonthsTo1Year + oneYearTo2Years + olderThan2Years;
         
-        // Ensure they sum to exactly 100%
-        const currentSum = normalizedLessThan6Months + normalizedSixMonthsTo1Year + 
-                          normalizedOneYearTo2Years + normalizedOlderThan2Years;
-                          
-        if (currentSum !== 100) {
-          normalizedOlderThan2Years += (100 - currentSum);
+        const normalizedLessThan6Months = Math.round((lessThan6Months / totalPercentage) * 100);
+        const normalizedSixMonthsTo1Year = Math.round((sixMonthsTo1Year / totalPercentage) * 100);
+        const normalizedOneYearTo2Years = Math.round((oneYearTo2Years / totalPercentage) * 100);
+        let normalizedOlderThan2Years = Math.round((olderThan2Years / totalPercentage) * 100);
+        
+        // Adjust to ensure they sum to exactly 100
+        const adjustedTotal = normalizedLessThan6Months + normalizedSixMonthsTo1Year + 
+                            normalizedOneYearTo2Years + normalizedOlderThan2Years;
+        
+        if (adjustedTotal < 100) {
+          normalizedOlderThan2Years += (100 - adjustedTotal);
+        } else if (adjustedTotal > 100) {
+          normalizedOlderThan2Years -= (adjustedTotal - 100);
         }
         
-        // Calculate median wallet age based on this distribution
+        // Calculate average wallet age for display (weighted average)
         const avgWalletAgeInYears = (
           (0.25 * normalizedLessThan6Months) + 
-          (0.75 * normalizedSixMonthsTo1Year) + 
-          (1.5 * normalizedOneYearTo2Years) + 
+          (0.75 * normalizedSixMonthsTo1Year) +
+          (1.5 * normalizedOneYearTo2Years) +
           (3 * normalizedOlderThan2Years)
         ) / 100;
         
@@ -425,6 +438,14 @@ export const ContractDataProvider = ({ children }) => {
           { range: "500+", percentage: 8.8 }
         ];
         
+        // Generate demo wallet categories
+        const demoWalletCategories = {
+          airdropFarmers: 32,
+          whales: 7,
+          whalesVolumePercentage: 58,
+          bridgeUsers: 15
+        };
+        
         demoWalletStatsRef.current = {
           walletAgeData: [
             { name: "2Y+", value: normalizedOlderThan2Years, color: "#3b82f6" },
@@ -435,7 +456,8 @@ export const ContractDataProvider = ({ children }) => {
           medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
           netWorth: calculateMedianNetWorth(walletBalanceDistribution),
           walletBalanceData: walletBalanceDistribution,
-          transactionCountData: transactionCountDistribution
+          transactionCountData: transactionCountDistribution,
+          walletCategories: demoWalletCategories
         };
       }
       
@@ -447,7 +469,8 @@ export const ContractDataProvider = ({ children }) => {
           netWorth: formatDollarAmount(demoWalletStatsRef.current.netWorth)
         },
         walletBalanceData: demoWalletStatsRef.current.walletBalanceData,
-        transactionCountData: demoWalletStatsRef.current.transactionCountData
+        transactionCountData: demoWalletStatsRef.current.transactionCountData,
+        walletCategories: demoWalletStatsRef.current.walletCategories
       };
     }
     
@@ -647,6 +670,16 @@ export const ContractDataProvider = ({ children }) => {
     console.log(`Generated ${transactionTimeSeriesData.length} daily data points for transaction chart`);
     console.log('Sample of transaction time series data:', transactionTimeSeriesData.slice(0, 3));
     
+    // Generate wallet categories data 
+    let walletCategories;
+    if (!walletCategoriesByContractRef.current[selectedContract.id]) {
+      // Calculate wallet categories
+      walletCategories = categorizeWallets(contractTransactions);
+      walletCategoriesByContractRef.current[selectedContract.id] = walletCategories;
+    } else {
+      walletCategories = walletCategoriesByContractRef.current[selectedContract.id];
+    }
+
     const processedData = {
       contractInfo: {
         address: selectedContract.address,
@@ -688,36 +721,26 @@ export const ContractDataProvider = ({ children }) => {
       },
       walletBalanceData: contractWalletStats.walletBalanceData,
       transactionCountData: contractWalletStats.transactionCountData,
+      // Add wallet categories to the processed data
+      walletCategories: walletCategories,
       // Use the generated transaction data for charts
       transactionData: transactionTimeSeriesData,
-      
-      // Add transaction data for different time ranges
+      // Function to get transaction data for specific time ranges
       getTransactionDataForRange: (timeRange) => {
-        let daysToInclude;
-        let granularity = 'daily';
-        
         switch(timeRange) {
           case '24h':
-            daysToInclude = 1;
-            granularity = 'hourly';
-            break;
+            return transactionTimeSeriesData.slice(-2); // Last ~24 hours
           case '7d':
-            daysToInclude = 7;
-            break;
+            return transactionTimeSeriesData.slice(-8); // Last ~7 days
           case '30d':
-            daysToInclude = 30;
-            break;
+            return transactionTimeSeriesData; // Full 30 days
           case 'quarter':
-            daysToInclude = 90;
-            break;
+            return transactionTimeSeriesData; // Full 30 days (we don't have quarter data)
           case 'year':
-            daysToInclude = 365;
-            break;
+            return transactionTimeSeriesData; // Full 30 days (we don't have year data)
           default:
-            daysToInclude = 30;
+            return transactionTimeSeriesData;
         }
-        
-        return generateDailyTransactionData(contractTransactions, daysToInclude, granularity);
       }
     };
     
@@ -1087,51 +1110,24 @@ export const ContractDataProvider = ({ children }) => {
       return generateEmptyTransactionDistribution();
     }
     
-    // Find min/max/mean
-    const min = Math.min(...counts);
-    const max = Math.max(...counts);
-    
-    // Decide on bucketing strategy based on the data characteristics
-    // If max is very large compared to mean, use logarithmic scale
-    const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
-    const median = [...counts].sort((a, b) => a - b)[Math.floor(counts.length / 2)];
-    
-    console.log(`Transaction count stats: min=${min}, max=${max}, mean=${mean.toFixed(2)}, median=${median}`);
-    
-    // Create 7 bucket ranges
-    let bucketRanges;
-    
-    // If data is very skewed (common in blockchain data), use logarithmic bucketing
-    if (max > mean * 10) {
-      bucketRanges = createLogarithmicBuckets(min, max, 7);
-    } else {
-      bucketRanges = createLinearBuckets(min, max, 7);
-    }
-    
-    // Initialize buckets with zero counts
-    const distribution = bucketRanges.map(range => ({
-      range: formatRangeLabel(range.min, range.max),
-      percentage: 0
-    }));
-    
-    // Assign wallet counts to buckets and calculate percentages
-    counts.forEach(count => {
-      const bucketIndex = findBucketIndex(count, bucketRanges);
-      if (bucketIndex >= 0) {
-        distribution[bucketIndex].percentage++;
+    // Use the adaptive bucketing approach from createAdaptiveTransactionBuckets
+    // Prepare the transaction data in the format expected by the function
+    const txsForBucketing = [];
+    Object.entries(walletTransactionCounts).forEach(([address, count]) => {
+      for (let i = 0; i < count; i++) {
+        txsForBucketing.push({
+          walletAddress: address,
+          value: 0, // We only care about counts, not values
+          methodName: 'transfer' // Default method name
+        });
       }
     });
     
-    // Convert counts to percentages
-    const totalWallets = counts.length;
-    distribution.forEach(bucket => {
-      bucket.percentage = parseFloat(((bucket.percentage / totalWallets) * 100).toFixed(1));
-    });
-    
-    return distribution;
+    // Call the createAdaptiveTransactionBuckets function
+    return createAdaptiveTransactionBuckets(txsForBucketing);
   };
   
-  // Function to create logarithmic bucket ranges
+  // Use existing helper functions for backward compatibility
   const createLogarithmicBuckets = (min, max, bucketCount) => {
     // Use log scale for very skewed distributions
     const logMin = Math.log(Math.max(1, min)); // Ensure min is at least 1 for log
@@ -1153,7 +1149,6 @@ export const ContractDataProvider = ({ children }) => {
     return buckets;
   };
   
-  // Function to create linear bucket ranges
   const createLinearBuckets = (min, max, bucketCount) => {
     const range = max - min;
     const bucketSize = range / bucketCount;
@@ -1169,7 +1164,6 @@ export const ContractDataProvider = ({ children }) => {
     return buckets;
   };
   
-  // Helper to format bucket range labels
   const formatRangeLabel = (min, max) => {
     if (min === max) {
       return `${min}`;
@@ -1180,7 +1174,6 @@ export const ContractDataProvider = ({ children }) => {
     }
   };
   
-  // Helper to find bucket index for a value
   const findBucketIndex = (value, bucketRanges) => {
     return bucketRanges.findIndex(bucket => 
       value >= bucket.min && value <= bucket.max
@@ -1198,6 +1191,211 @@ export const ContractDataProvider = ({ children }) => {
       { range: "101-500", percentage: 0 },
       { range: "500+", percentage: 0 }
     ];
+  };
+
+  // New adaptive bucketing function
+  const createAdaptiveTransactionBuckets = (transactions) => {
+    // If no transactions data, return default buckets
+    if (!transactions || transactions.length === 0) {
+      return generateEmptyTransactionDistribution();
+    }
+
+    // Step 1: Count transactions per wallet
+    const txCountByWallet = {};
+    transactions.forEach(tx => {
+      if (tx.walletAddress) {
+        txCountByWallet[tx.walletAddress] = (txCountByWallet[tx.walletAddress] || 0) + 1;
+      }
+    });
+
+    // Step 2: Create a sorted array of transaction counts
+    const txCounts = Object.values(txCountByWallet).sort((a, b) => a - b);
+    
+    // Step 3: Determine scale (logarithmic or linear) based on distribution
+    const min = txCounts[0] || 1;
+    const max = txCounts[txCounts.length - 1] || 1000;
+    const mean = txCounts.reduce((sum, count) => sum + count, 0) / txCounts.length;
+    const useLogarithmic = max > mean * 10; // Use logarithmic scale for wider ranges
+    
+    // Step 4: Create 7 buckets with each bucket containing max 20% of addresses
+    const buckets = [];
+    const bucketSize = Math.ceil(txCounts.length / 7); // Initial size per bucket
+    const maxBucketSize = Math.ceil(txCounts.length * 0.2); // Max 20% per bucket
+    
+    let currentIndex = 0;
+    let currentBucketSize = 0;
+    let lowerBound = min;
+    
+    for (let i = 0; i < 7; i++) {
+      // For the last bucket, include all remaining transactions
+      if (i === 6) {
+        const upperBound = max;
+        const count = txCounts.length - currentIndex;
+        const percentage = (count / txCounts.length) * 100;
+        
+        buckets.push({
+          range: `${lowerBound}-${upperBound === lowerBound ? lowerBound : upperBound}`,
+          percentage: Math.round(percentage)
+        });
+        break;
+      }
+      
+      // Calculate dynamic bucket size, ensuring max 20% per bucket
+      currentBucketSize = Math.min(bucketSize, maxBucketSize);
+      // For narrower distributions, ensure at least some addresses in each bucket
+      currentBucketSize = Math.max(currentBucketSize, Math.ceil(txCounts.length / 20));
+      
+      const targetIndex = Math.min(currentIndex + currentBucketSize, txCounts.length - 1);
+      let upperBound;
+      
+      if (useLogarithmic) {
+        // Logarithmic scale for wide distributions
+        const logMin = Math.log(lowerBound || 1);
+        const logMax = Math.log(max || 1000);
+        const bucketFraction = (i + 1) / 7;
+        upperBound = Math.exp(logMin + (logMax - logMin) * bucketFraction);
+        upperBound = Math.ceil(upperBound);
+      } else {
+        // Linear scale for narrower distributions
+        upperBound = txCounts[targetIndex];
+      }
+      
+      // Count wallets in this range
+      let count = 0;
+      while (currentIndex < txCounts.length && txCounts[currentIndex] <= upperBound) {
+        count++;
+        currentIndex++;
+      }
+      
+      // Calculate percentage
+      const percentage = (count / txCounts.length) * 100;
+      
+      // Create bucket
+      buckets.push({
+        range: lowerBound === upperBound ? `${lowerBound}` : `${lowerBound}-${upperBound}`,
+        percentage: Math.round(percentage)
+      });
+      
+      // Update for next bucket
+      lowerBound = upperBound + 1;
+    }
+    
+    // Ensure exactly 7 buckets
+    while (buckets.length < 7) {
+      buckets.push({ range: "0", percentage: 0 });
+    }
+    
+    // Normalize percentages to ensure they sum to 100%
+    const totalPercentage = buckets.reduce((sum, bucket) => sum + bucket.percentage, 0);
+    if (totalPercentage !== 100) {
+      // Adjust the largest bucket
+      const largestBucketIndex = buckets.findIndex(b => 
+        b.percentage === Math.max(...buckets.map(bucket => bucket.percentage))
+      );
+      buckets[largestBucketIndex].percentage += (100 - totalPercentage);
+    }
+    
+    return buckets;
+  };
+
+  // Wallet categorization logic - returns object with calculated percentages
+  const categorizeWallets = (transactions) => {
+    // If no data, return default values
+    if (!transactions || transactions.length === 0) {
+      return {
+        airdropFarmers: 32,
+        whales: 7,
+        whalesVolumePercentage: 58,
+        bridgeUsers: 15
+      };
+    }
+    
+    // Step 1: Count transactions and volume per wallet
+    const walletStats = {};
+    let totalVolume = 0;
+    
+    transactions.forEach(tx => {
+      if (!tx.from_address) return;
+      
+      if (!walletStats[tx.from_address]) {
+        walletStats[tx.from_address] = {
+          transactionCount: 0,
+          volume: 0,
+          approvals: 0
+        };
+      }
+      
+      walletStats[tx.from_address].transactionCount++;
+      
+      // Track volume
+      if (tx.value_eth) {
+        const txValue = parseFloat(tx.value_eth);
+        if (!isNaN(txValue)) {
+          walletStats[tx.from_address].volume += txValue;
+          totalVolume += txValue;
+        }
+      }
+      
+      // Track approval transactions
+      if (tx.method_name && (tx.method_name.toLowerCase().includes('approve') || 
+                          tx.method_name.toLowerCase().includes('bridge') ||
+                          tx.method_name.toLowerCase().includes('permit'))) {
+        walletStats[tx.from_address].approvals++;
+      }
+    });
+    
+    // Step 2: Calculate wallet categories
+    const walletAddresses = Object.keys(walletStats);
+    const totalWallets = walletAddresses.length;
+    
+    if (totalWallets === 0) {
+      return {
+        airdropFarmers: 32,
+        whales: 7,
+        whalesVolumePercentage: 58,
+        bridgeUsers: 15
+      };
+    }
+    
+    // Airdrop farmers: Few transactions (1-3) with no significant volume
+    const airdropFarmers = walletAddresses.filter(address => {
+      const stats = walletStats[address];
+      return stats.transactionCount <= 3 && stats.volume < (totalVolume * 0.001 / totalWallets);
+    });
+    
+    // Whales: High volume wallets (top 10% by volume)
+    const sortedByVolume = [...walletAddresses].sort((a, b) => 
+      walletStats[b].volume - walletStats[a].volume
+    );
+    
+    const whaleCount = Math.max(Math.ceil(totalWallets * 0.07), 1); // ~7% of wallets
+    const whales = sortedByVolume.slice(0, whaleCount);
+    
+    // Calculate whale volume percentage
+    const whaleVolume = whales.reduce((sum, address) => {
+      const vol = walletStats[address]?.volume || 0;
+      return sum + vol;
+    }, 0);
+    
+    const whalesVolumePercentage = totalVolume > 0 
+      ? Math.round((whaleVolume / totalVolume) * 100)
+      : 58; // Default if no volume data
+    
+    // Bridge users: High approval transaction ratio
+    const bridgeUsers = walletAddresses.filter(address => {
+      const stats = walletStats[address];
+      return stats.transactionCount > 0 && 
+             stats.approvals > 0 && 
+             (stats.approvals / stats.transactionCount) > 0.5; // >50% are approvals
+    });
+    
+    // Calculate percentages
+    return {
+      airdropFarmers: Math.min(Math.round((airdropFarmers.length / totalWallets) * 100), 70),
+      whales: Math.round((whales.length / totalWallets) * 100),
+      whalesVolumePercentage,
+      bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60)
+    };
   };
 
   return (
