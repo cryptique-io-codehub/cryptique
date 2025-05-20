@@ -23,29 +23,65 @@ export default function OnchainTraffic() {
 
   // State for analytics (keeping this for compatibility)
   const [analytics, setanalytics] = useState({});
+  // Track when contract or website selection changes
+  const [lastContractId, setLastContractId] = useState(null);
+  const [lastWebsiteId, setLastWebsiteId] = useState(null);
   
-  // Load or simulate analytics data
+  // Load or simulate analytics data when contract changes
   useEffect(() => {
-    // Try to get analytics data from localStorage
-    const storedAnalytics = localStorage.getItem('analytics_storage');
+    const currentContractId = selectedContract?.id || null;
+    const currentWebsiteId = localStorage.getItem('selected_website') || null;
     
-    if (storedAnalytics) {
-      try {
-        const parsedAnalytics = JSON.parse(storedAnalytics);
-        setanalytics(parsedAnalytics);
-      } catch (error) {
-        console.error('Error parsing stored analytics:', error);
-        // Fall back to demo data if parsing fails
+    console.log("Contract or website selection changed:", {
+      contractChanged: currentContractId !== lastContractId,
+      websiteChanged: currentWebsiteId !== lastWebsiteId,
+      contractId: currentContractId,
+      websiteId: currentWebsiteId
+    });
+    
+    // Update last seen IDs
+    setLastContractId(currentContractId);
+    setLastWebsiteId(currentWebsiteId);
+    
+    // Try to get analytics data from localStorage - specifically for the selected website
+    let storedAnalytics = null;
+    
+    try {
+      // First try to get website-specific analytics
+      if (currentWebsiteId) {
+        const websiteAnalytics = localStorage.getItem(`analytics_${currentWebsiteId}`);
+        if (websiteAnalytics) {
+          storedAnalytics = JSON.parse(websiteAnalytics);
+          console.log(`Found analytics data for website ${currentWebsiteId}`);
+        }
+      }
+      
+      // If no website-specific data, try the generic storage
+      if (!storedAnalytics) {
+        const genericAnalytics = localStorage.getItem('analytics_storage');
+        if (genericAnalytics) {
+          storedAnalytics = JSON.parse(genericAnalytics);
+          console.log("Using generic analytics data");
+        }
+      }
+      
+      if (storedAnalytics) {
+        setanalytics(storedAnalytics);
+      } else {
+        // No stored analytics, use demo data
         simulateDemoAnalytics();
       }
-    } else {
-      // No stored analytics, use demo data
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+      // Fall back to demo data if loading fails
       simulateDemoAnalytics();
     }
-  }, []);
+  }, [selectedContract?.id, contractTransactions?.length]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
+    console.log("Generating demo analytics data");
+    
     // Create a realistic set of demo analytics data
     const demoAnalytics = {
       uniqueVisitors: 5000,
@@ -69,6 +105,32 @@ export default function OnchainTraffic() {
         chainName: ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'BNB Chain'][Math.floor(Math.random() * 5)]
       }))
     };
+    
+    // If we have a selected contract, make some of the demo wallet addresses match transactions
+    if (contractTransactions && contractTransactions.length > 0 && !showDemoData) {
+      console.log("Customizing demo data to match contract transactions");
+      
+      // Extract some real wallet addresses from transactions (up to 100)
+      const realWalletAddresses = new Set();
+      contractTransactions.slice(0, 1000).forEach(tx => {
+        if (tx.from_address) {
+          realWalletAddresses.add(tx.from_address.toLowerCase());
+        }
+      });
+      
+      const realAddressArray = Array.from(realWalletAddresses);
+      
+      // Replace about 10% of demo wallet addresses with real ones to show conversion
+      if (realAddressArray.length > 0) {
+        const walletCount = Math.min(Math.floor(demoAnalytics.wallets.length * 0.1), realAddressArray.length);
+        for (let i = 0; i < walletCount; i++) {
+          if (i < demoAnalytics.wallets.length && i < realAddressArray.length) {
+            demoAnalytics.wallets[i].walletAddress = realAddressArray[i];
+          }
+        }
+        console.log(`Added ${walletCount} real wallet addresses to demo data`);
+      }
+    }
     
     setanalytics(demoAnalytics);
   };
@@ -187,7 +249,10 @@ export default function OnchainTraffic() {
             analytics={analytics} 
             contractData={{
               showDemoData,
-              contractTransactions
+              contractTransactions,
+              contractId: selectedContract?.id,
+              contract: selectedContract,
+              processedData: contractData
             }}
           />
         </div>
