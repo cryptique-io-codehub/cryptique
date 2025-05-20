@@ -588,7 +588,7 @@ export default function OnchainDashboard() {
             <div>
               <p className="text-xs text-gray-500 mb-1">Age</p>
               <h3 className="text-lg font-bold">
-                {showDemoData ? `${medianWalletAge} Years` : contractData?.medianWalletStats?.age || "0 Years"}
+                {showDemoData && !contractData ? `${medianWalletAge} Years` : contractData?.medianWalletStats?.age || "0 Years"}
               </h3>
             </div>
             <div>
