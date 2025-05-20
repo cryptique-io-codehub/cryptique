@@ -80,6 +80,14 @@ export default function OnchainTraffic() {
           
           // Store the analytics data in state
           setanalytics(response.analytics);
+          console.log("CRITICAL - Set analytics with sessions:", response.analytics.sessions?.length);
+          
+          // Verify the analytics data is valid
+          if (!response.analytics.sessions || !Array.isArray(response.analytics.sessions)) {
+            console.error("ISSUE: Fetched analytics has invalid sessions data");
+          } else {
+            console.log("Fetched analytics has valid sessions array");
+          }
           
           // Also store in localStorage for future use
           try {
@@ -226,151 +234,6 @@ export default function OnchainTraffic() {
     { day: "Day 5", users: 170 }
   ];
 
-  // Process analytics data to get traffic sources information
-  const processTrafficSourcesData = () => {
-    console.log("Running processTrafficSourcesData");
-    
-    if (!analytics?.sessions || !Array.isArray(analytics.sessions) || analytics.sessions.length === 0) {
-      console.log("No sessions data available, returning empty array");
-      return [];
-    }
-    
-    console.log(`Processing ${analytics.sessions.length} sessions for traffic sources data`);
-    
-    // Maps to track data by source
-    const sourceData = new Map();
-    const userFirstSource = {};
-    const userWalletMap = {};
-    
-    // First pass: Determine each user's first source and wallet
-    analytics.sessions.forEach(session => {
-      if (!session || !session.userId) return;
-      
-      const userId = String(session.userId);
-      
-      // Track the first source for each user
-      if (!userFirstSource[userId]) {
-        let source = 'Direct'; // Default source
-        
-        // Determine source from UTM data or referrer
-        if (session.utmData && session.utmData.source) {
-          source = normalizeSource(session.utmData.source);
-        } else if (session.referrer) {
-          source = normalizeSource(session.referrer);
-        }
-        
-        userFirstSource[userId] = source;
-        
-        // Initialize source in map if needed
-        if (!sourceData.has(source)) {
-          sourceData.set(source, {
-            source,
-            impressions: 0,
-            visitors: new Set(),
-            web3Users: new Set(),
-            walletsConnected: new Set(),
-            transactedWallets: new Set(),
-            tvl: 0
-          });
-        }
-        
-        // Count this user as a visitor for their first source
-        sourceData.get(source).visitors.add(userId);
-      }
-      
-      // Track impression for the user's first source
-      const source = userFirstSource[userId];
-      if (source && sourceData.has(source)) {
-        sourceData.get(source).impressions++;
-      }
-    });
-    
-    // Second pass: Process all sessions and attribute activities to first source
-    analytics.sessions.forEach(session => {
-      if (!session || !session.userId) return;
-      
-      const userId = String(session.userId);
-      const firstSource = userFirstSource[userId];
-      
-      if (!firstSource || !sourceData.has(firstSource)) return;
-      
-      // Check if user is a web3 user using the helper function
-      if (isWeb3User(session)) {
-        sourceData.get(firstSource).web3Users.add(userId);
-      }
-      
-      // Track wallet connections
-      const noWalletPhrases = [
-        'No Wallet Detected', 
-        'No Wallet Connected', 
-        'Not Connected', 
-        'No Chain Detected', 
-        'Error'
-      ];
-      
-      if (session.wallet && 
-          session.wallet.walletAddress && 
-          session.wallet.walletAddress.trim() !== '' && 
-          !noWalletPhrases.includes(session.wallet.walletAddress) &&
-          session.wallet.walletAddress.length > 10) {
-        
-        const walletAddress = session.wallet.walletAddress.toLowerCase();
-        userWalletMap[userId] = walletAddress;
-        sourceData.get(firstSource).walletsConnected.add(userId);
-      }
-    });
-    
-    // Process contract data if available
-    if (contractData?.contractTransactions && contractData.contractTransactions.length > 0) {
-      // Extract contract wallet addresses for matching
-      const contractWallets = new Set();
-      
-      contractData.contractTransactions.forEach(tx => {
-        if (tx.from_address) {
-          contractWallets.add(tx.from_address.toLowerCase());
-        }
-      });
-      
-      // Match wallets with transactions and calculate TVL
-      Object.entries(userWalletMap).forEach(([userId, walletAddress]) => {
-        if (contractWallets.has(walletAddress)) {
-          const source = userFirstSource[userId];
-          if (source && sourceData.has(source)) {
-            sourceData.get(source).transactedWallets.add(userId);
-            
-            // Calculate token volume contribution for this wallet
-            let walletVolume = 0;
-            
-            contractData.contractTransactions.forEach(tx => {
-              if (tx.from_address && tx.from_address.toLowerCase() === walletAddress && tx.value_eth) {
-                const value = parseFloat(tx.value_eth);
-                if (!isNaN(value)) {
-                  walletVolume += value;
-                }
-              }
-            });
-            
-            sourceData.get(source).tvl += walletVolume;
-          }
-        }
-      });
-    }
-    
-    // Convert to array format
-    const result = Array.from(sourceData.values()).map(data => ({
-      source: data.source,
-      impressions: data.impressions,
-      visitors: data.visitors.size,
-      web3Users: data.web3Users.size,
-      walletsConnected: data.walletsConnected.size,
-      transactedWallets: data.transactedWallets.size,
-      tvl: Math.round(data.tvl * 100) / 100
-    })).sort((a, b) => b.visitors - a.visitors);
-    
-    console.log(`Processed ${result.length} traffic sources:`, result);
-    return result;
-  };
-
   // Function to normalize source names
   const normalizeSource = (source) => {
     if (!source || typeof source !== 'string' || source.trim() === '') {
@@ -428,10 +291,129 @@ export default function OnchainTraffic() {
     }
   };
 
-  // Calculate processed sources data with useMemo
-  const trafficSourcesMemo = useMemo(() => {
-    return processTrafficSourcesData();
-  }, [analytics?.sessions, contractData?.contractTransactions]);
+  // Load analytics data from localStorage if not available in state
+  const getAnalyticsData = () => {
+    if (analytics?.sessions?.length > 0) {
+      console.log("Using analytics from state");
+      return analytics;
+    }
+    
+    console.log("Attempting to load analytics from localStorage");
+    try {
+      // Try to load from website-specific storage first
+      if (websiteId) {
+        const storedData = localStorage.getItem(`analytics_${websiteId}`);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          if (parsed?.sessions?.length > 0) {
+            console.log("Found valid analytics in localStorage for website:", websiteId);
+            return parsed;
+          }
+        }
+      }
+      
+      // Fall back to generic storage
+      const storedGeneric = localStorage.getItem('analytics_storage');
+      if (storedGeneric) {
+        const parsed = JSON.parse(storedGeneric);
+        if (parsed?.sessions?.length > 0) {
+          console.log("Found valid analytics in generic localStorage");
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading analytics from localStorage:", e);
+    }
+    
+    console.log("No valid analytics found in localStorage");
+    return null;
+  };
+  
+  // Get analytics from either state or localStorage
+  const analyticsData = getAnalyticsData();
+  console.log("Final analytics data source:", 
+    analyticsData === analytics ? "State" : 
+    analyticsData ? "LocalStorage" : 
+    "None");
+  
+  // Process traffic sources using the most reliable analytics source
+  const processTrafficSourcesDirectly = () => {
+    const data = analyticsData;
+    if (!data?.sessions?.length) return [];
+    
+    console.log(`Processing ${data.sessions.length} sessions directly`);
+    
+    // Maps to track data by source
+    const sourceData = new Map();
+    const userFirstSource = {};
+    
+    // First pass: Count unique users per source
+    data.sessions.forEach(session => {
+      if (!session?.userId) return;
+      
+      const userId = String(session.userId);
+      
+      // Only process first occurrence of each user
+      if (!userFirstSource[userId]) {
+        let source = 'Direct';
+        if (session.utmData?.source) source = normalizeSource(session.utmData.source);
+        else if (session.referrer) source = normalizeSource(session.referrer);
+        
+        userFirstSource[userId] = source;
+        
+        if (!sourceData.has(source)) {
+          sourceData.set(source, {
+            source,
+            impressions: 0,
+            visitors: new Set(),
+            web3Users: new Set(),
+            walletsConnected: new Set()
+          });
+        }
+        
+        sourceData.get(source).visitors.add(userId);
+      }
+      
+      // Track impressions for source
+      const source = userFirstSource[userId];
+      if (source) sourceData.get(source).impressions++;
+      
+      // Track web3 users and wallets
+      if (source && isWeb3User(session)) {
+        sourceData.get(source).web3Users.add(userId);
+      }
+      
+      // Check for wallet connection
+      if (source && session.wallet?.walletAddress && 
+          session.wallet.walletAddress.length > 10 &&
+          !session.wallet.walletAddress.includes('No Wallet')) {
+        sourceData.get(source).walletsConnected.add(userId);
+      }
+    });
+    
+    // Convert to array and sort
+    return Array.from(sourceData.values())
+      .map(data => ({
+        source: data.source,
+        impressions: data.impressions,
+        visitors: data.visitors.size,
+        web3Users: data.web3Users.size,
+        walletsConnected: data.walletsConnected.size,
+        transactedWallets: 0, // Will be populated when contract data is available
+        tvl: 0
+      }))
+      .sort((a, b) => b.visitors - a.visitors);
+  };
+  
+  // Always calculate real data if possible
+  const realSourcesData = processTrafficSourcesDirectly();
+  console.log("Directly processed traffic sources:", realSourcesData);
+  
+  // ABSOLUTELY FORCE real data or fall back to demo
+  const trafficSourcesTableData = 
+    realSourcesData.length > 0
+      ? realSourcesData
+      : demoTrafficSourcesTableData;
 
   // Choose which data to use based on whether we should show demo data
   const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
@@ -439,11 +421,14 @@ export default function OnchainTraffic() {
   const trafficQualityData = showDemoData ? demoTrafficQualityData : (contractData?.trafficQualityData || demoTrafficQualityData);
   const timeToConversionData = showDemoData ? demoTimeToConversionData : (contractData?.timeToConversionData || demoTimeToConversionData);
   
-  // Use demo data only if explicitly showing demo data or if we have no real data
-  const trafficSourcesTableData = showDemoData || !trafficSourcesMemo.length 
-    ? demoTrafficSourcesTableData 
-    : trafficSourcesMemo;
-
+  // Add debug logging to identify why demo data is being shown
+  console.log("--- Traffic Sources Table Data Debug ---");
+  console.log("showDemoData:", showDemoData);
+  console.log("trafficSourcesMemo:", realSourcesData);
+  console.log("trafficSourcesMemo.length:", realSourcesData.length);
+  console.log("analytics?.sessions?.length:", analytics?.sessions?.length);
+  console.log("Using demo data:", showDemoData || !realSourcesData.length);
+  
   // Creating the legend items for traffic quality analysis
   const CustomLegend = () => {
     return (
@@ -706,7 +691,7 @@ export default function OnchainTraffic() {
         {/* Traffic Sources Table - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
-          {isLoadingAnalytics && trafficSourcesMemo.length === 0 && (
+          {isLoadingAnalytics && realSourcesData.length === 0 && (
             <div className="py-3 text-center text-gray-500 text-sm">
               <div className="flex justify-center items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
