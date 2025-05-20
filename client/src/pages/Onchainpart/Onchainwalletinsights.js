@@ -73,38 +73,40 @@ export default function Onchainwalletinsights() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Import the fonts in the head */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-        
-        .font-montserrat {
-          font-family: 'Montserrat', sans-serif;
-        }
-        
-        .font-poppins {
-          font-family: 'Poppins', sans-serif;
-        }
-      `}</style>
+    <div className="bg-gray-50 p-4 text-gray-900">
+      {/* Import fonts in the head */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
 
-      {/* Page content section */}
-      <div className="pt-4 pb-6">
-        <h1 className="text-2xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
+      {/* Page title section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
           Wallet Insights {selectedContract ? `for ${selectedContract.name}` : ''}
         </h1>
-        <p className="text-gray-600 font-poppins mt-1">
+        <p className="text-sm text-gray-600 font-poppins mt-1">
           Track and analyze wallet activity across the blockchain
         </p>
       </div>
 
-      <div className="max-w-full bg-white rounded-lg shadow-sm border border-gray-100">
+      <div className="bg-white rounded-lg shadow mb-6">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold font-montserrat" style={{ color: styles.primaryColor }}>
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="font-semibold text-lg font-montserrat" style={{ color: styles.primaryColor }}>
             Connected Wallets
           </h2>
           <button 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
             style={{ 
               backgroundColor: `${styles.primaryColor}10`, 
               color: styles.primaryColor
@@ -120,32 +122,32 @@ export default function Onchainwalletinsights() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b text-sm text-gray-500 font-montserrat">
-                <th className="py-4 px-6 text-left font-medium">Wallet Address</th>
-                <th className="py-4 px-6 text-left font-medium">Total balance (USD)</th>
-                <th className="py-4 px-6 text-left font-medium">Number of Transactions</th>
-                <th className="py-4 px-6 text-left font-medium">First transaction date</th>
-                <th className="py-4 px-6 text-left font-medium">Last transaction date</th>
+              <tr className="border-b">
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Wallet Address</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Total balance (USD)</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Number of Transactions</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">First transaction date</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">Last transaction date</th>
               </tr>
             </thead>
             <tbody className="font-poppins">
               {wallets.map((wallet, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-4 px-6">
+                  <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
-                      <span>{wallet.address}</span>
+                      <span className="text-sm">{wallet.address}</span>
                       <button className="text-gray-400 hover:text-gray-600">
-                        <Copy size={16} />
+                        <Copy size={14} />
                       </button>
                       {wallet.hasAlert && (
-                        <AlertCircle size={16} style={{ color: styles.accentColor }} />
+                        <AlertCircle size={14} style={{ color: styles.accentColor }} />
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-6">{wallet.totalBalance}</td>
-                  <td className="py-4 px-6">{wallet.transactions}</td>
-                  <td className="py-4 px-6">{wallet.firstDate}</td>
-                  <td className="py-4 px-6">{wallet.lastDate}</td>
+                  <td className="py-3 px-4 text-sm">{wallet.totalBalance}</td>
+                  <td className="py-3 px-4 text-sm">{wallet.transactions}</td>
+                  <td className="py-3 px-4 text-sm">{wallet.firstDate}</td>
+                  <td className="py-3 px-4 text-sm">{wallet.lastDate}</td>
                 </tr>
               ))}
             </tbody>
@@ -153,25 +155,25 @@ export default function Onchainwalletinsights() {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-between items-center p-6 text-sm text-gray-500 font-poppins">
-          <div>
+        <div className="flex justify-between items-center p-4 text-sm text-gray-500 font-poppins">
+          <div className="text-xs">
             Showing 1-{walletsPerPage} of {totalWallets.toLocaleString()} matching wallets
           </div>
           <div className="flex items-center space-x-2">
             <button 
-              className="flex items-center border rounded px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white" 
+              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-xs" 
               disabled={currentPage === 1}
               onClick={() => handlePageChange(currentPage - 1)}
               style={{ color: styles.primaryColor }}
             >
-              <ChevronLeft size={16} />
-              Previous
+              <ChevronLeft size={12} />
+              <span className="ml-1">Previous</span>
             </button>
             
             {Array.from({ length: Math.min(4, totalPages) }, (_, i) => i + 1).map(page => (
               <button 
                 key={page}
-                className={`w-8 h-8 rounded flex items-center justify-center ${currentPage === page ? 'font-medium' : 'hover:bg-gray-50'}`}
+                className={`w-7 h-7 rounded flex items-center justify-center text-xs ${currentPage === page ? 'font-medium' : 'hover:bg-gray-50'}`}
                 onClick={() => handlePageChange(page)}
                 style={{ 
                   backgroundColor: currentPage === page ? `${styles.primaryColor}10` : '',
@@ -183,13 +185,13 @@ export default function Onchainwalletinsights() {
             ))}
             
             <button 
-              className="flex items-center border rounded px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-xs"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               style={{ color: styles.primaryColor }}
             >
-              Next
-              <ChevronRight size={16} />
+              <span className="mr-1">Next</span>
+              <ChevronRight size={12} />
             </button>
           </div>
         </div>

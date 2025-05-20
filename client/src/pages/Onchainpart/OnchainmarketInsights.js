@@ -84,26 +84,28 @@ export default function OnchainmarketInsights() {
   }
 
   return (
-    <div className="bg-gray-50 w-full min-h-screen">
-      {/* Import the fonts in the head */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-        
-        .font-montserrat {
-          font-family: 'Montserrat', sans-serif;
-        }
-        
-        .font-poppins {
-          font-family: 'Poppins', sans-serif;
-        }
-      `}</style>
+    <div className="bg-gray-50 p-4 text-gray-900">
+      {/* Import fonts in the head */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
 
-      {/* Page content section */}
-      <div className="pt-4 pb-6">
-        <h1 className="text-2xl font-bold text-gray-800 font-montserrat" style={{ color: styles.primaryColor }}>
+      {/* Page title section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
           Market Insights {selectedContract ? `for ${selectedContract.name}` : ''}
         </h1>
-        <p className="text-gray-600 font-poppins mt-1">
+        <p className="text-sm text-gray-600 font-poppins mt-1">
           Explore market trends and user distribution across blockchains
         </p>
       </div>
@@ -111,19 +113,19 @@ export default function OnchainmarketInsights() {
       {/* User Categories Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {userCategories.map((category, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center hover:shadow-md transition-shadow">
-            <h2 className="text-lg font-bold font-montserrat" style={{ color: styles.primaryColor }}>{category.title}</h2>
-            <p className="text-3xl font-bold mt-2 font-poppins">{formatNumber(category.count)}</p>
-            <p className="text-sm text-gray-500 font-poppins">Users</p>
+          <div key={index} className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+            <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>{category.title}</h2>
+            <p className="text-2xl font-bold mt-1 font-montserrat">{formatNumber(category.count)}</p>
+            <p className="text-xs text-gray-500 font-poppins">Users</p>
           </div>
         ))}
       </div>
 
       {/* Chain Data Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Transaction Volume Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-medium font-montserrat mb-4" style={{ color: styles.primaryColor }}>Total transaction volume by chain</h2>
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="font-semibold text-lg mb-4 font-montserrat" style={{ color: styles.primaryColor }}>Total transaction volume by chain</h2>
           <div className="overflow-y-auto max-h-96">
             <table className="w-full">
               <thead>
@@ -139,9 +141,9 @@ export default function OnchainmarketInsights() {
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>
                         {item.icon}
                       </span>
-                      <span className="font-medium">{item.chain}</span>
+                      <span className="font-medium text-sm">{item.chain}</span>
                     </td>
-                    <td className="py-3 text-right font-medium">{item.volume}</td>
+                    <td className="py-3 text-right font-medium text-sm">{item.volume}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,8 +152,8 @@ export default function OnchainmarketInsights() {
         </div>
 
         {/* Active Users Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-medium font-montserrat mb-4" style={{ color: styles.primaryColor }}>Unique active users by chain</h2>
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="font-semibold text-lg mb-4 font-montserrat" style={{ color: styles.primaryColor }}>Unique active users by chain</h2>
           <div className="overflow-y-auto max-h-96">
             <table className="w-full">
               <thead>
@@ -167,9 +169,9 @@ export default function OnchainmarketInsights() {
                       <span className={`inline-block w-6 h-6 rounded-full mr-3 flex items-center justify-center text-sm ${item.color}`}>
                         {item.icon}
                       </span>
-                      <span className="font-medium">{item.chain}</span>
+                      <span className="font-medium text-sm">{item.chain}</span>
                     </td>
-                    <td className="py-3 text-right font-medium">{formatNumber(item.users)}</td>
+                    <td className="py-3 text-right font-medium text-sm">{formatNumber(item.users)}</td>
                   </tr>
                 ))}
               </tbody>

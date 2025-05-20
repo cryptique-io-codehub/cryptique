@@ -118,55 +118,58 @@ export default function Onchainuserinsights() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Import the fonts in the head */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-        
-        .card-heading {
-          font-family: 'Montserrat', sans-serif;
-          font-weight: 600;
-          color: ${styles.primaryColor};
-        }
-        
-        .card-body {
-          font-family: 'Poppins', sans-serif;
-        }
-      `}</style>
+    <div className="bg-gray-50 p-4 text-gray-900">
+      {/* Import fonts in the head */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          
+          h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+          }
+          
+          body, p, span, div {
+            font-family: 'Poppins', sans-serif;
+          }
+        `}
+      </style>
 
-      {/* Page content section */}
-      <div className="pt-4 pb-6">
-        <h1 className="text-2xl font-bold text-gray-800 font-montserrat" style={{ color: styles.primaryColor }}>
+      {/* Page title section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
           User Insights {selectedContract ? `for ${selectedContract.name}` : ''}
         </h1>
-        <p className="text-gray-600 font-poppins mt-1">
+        <p className="text-sm text-gray-600 font-poppins mt-1">
           Analyze your user behavior patterns and optimize your conversion strategies
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         
         {/* Protocol Explorers */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">Protocol Explorers (%)</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">Users who've interacted with multiple dApps outside of their main</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>Protocol Explorers (%)</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">Users who've interacted with multiple dApps outside of their main</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={protocolExplorerData} 
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 40, bottom: 5 }} // Adjusted left margin
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 100]} />
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={62} // Increased width for labels
-                  tick={{ fontFamily: 'Poppins' }}
-                  label={{ angle: -90, position: 'insideLeft', dx: -10, fontFamily: 'Poppins' }}
+                  width={62}
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  label={{ angle: -90, position: 'insideLeft', dx: -10, fontFamily: 'Poppins', fontSize: 12 }}
                 />
-                <Tooltip />
+                <Tooltip 
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
                 <Bar dataKey="protocol" shape={<CustomBar />} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -174,26 +177,29 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* NFT Diggers */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">NFT Diggers (%)</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">% of NFT users from each traffic channel</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>NFT Diggers (%)</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">% of NFT users from each traffic channel</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={nftDiggerData} 
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 40, bottom: 5 }} // Adjusted left margin
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 100]} />
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={62} // Increased width for labels
-                  tick={{ fontFamily: 'Poppins' }}
-                  label={{ angle: -90, position: 'insideLeft', dx: -10, fontFamily: 'Poppins' }}
+                  width={62}
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  label={{ angle: -90, position: 'insideLeft', dx: -10, fontFamily: 'Poppins', fontSize: 12 }}
                 />
-                <Tooltip />
+                <Tooltip 
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
                 <Bar dataKey="nft" shape={<CustomBar />} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -201,9 +207,9 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* Multichain Power Users */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">Multichain Power Users</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">Users transacting across 3+ chains</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>Multichain Power Users</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">Users transacting across 3+ chains</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -222,16 +228,20 @@ export default function Onchainuserinsights() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+                <Tooltip 
+                  formatter={(value) => [`${value}%`, 'Percentage']}
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
         
         {/* Airdrop Farmers */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">Airdrop Farmers</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">Users with high contact count, low retention, and interaction with airdrops/targeted NFTs</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>Airdrop Farmers</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">Users with high contact count, low retention, and interaction with airdrops/targeted NFTs</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -250,16 +260,20 @@ export default function Onchainuserinsights() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+                <Tooltip 
+                  formatter={(value) => [`${value}%`, 'Percentage']}
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
         
         {/* One-Time vs Retained Users */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">One-Time vs Retained Users</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">Did they come back after first visit? Did they keep using the chain?</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>One-Time vs Retained Users</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">Did they come back after first visit? Did they keep using the chain?</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
@@ -267,13 +281,21 @@ export default function Onchainuserinsights() {
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontFamily: 'Poppins' }} />
-                <YAxis 
-                  label={{ value: 'Users', angle: -90, position: 'insideLeft', fontFamily: 'Poppins' }}
-                  tick={{ fontFamily: 'Poppins' }}
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
                 />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontFamily: 'Poppins' }} />
+                <YAxis 
+                  label={{ value: 'Users', angle: -90, position: 'insideLeft', fontFamily: 'Poppins', fontSize: 12 }}
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
+                <Legend 
+                  wrapperStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                />
                 <Bar dataKey="newUsers" name="New" fill={styles.primaryColor} radius={[4, 4, 0, 0]} />
                 <Bar dataKey="retained" name="Retained" fill={styles.accentColor} radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -282,9 +304,9 @@ export default function Onchainuserinsights() {
         </div>
         
         {/* Whales */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-1 card-heading">Whales (average transaction value)</h2>
-          <p className="text-sm text-gray-500 mb-4 card-body">Source with highest average transaction value</p>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-semibold text-lg mb-2 font-montserrat" style={{ color: styles.primaryColor }}>Whales (average transaction value)</h2>
+          <p className="text-xs text-gray-500 mb-3 font-poppins">Source with highest average transaction value</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
@@ -292,12 +314,18 @@ export default function Onchainuserinsights() {
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontFamily: 'Poppins' }} />
-                <YAxis 
-                  label={{ value: 'Users', angle: -90, position: 'insideLeft', fontFamily: 'Poppins' }}
-                  tick={{ fontFamily: 'Poppins' }}
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
                 />
-                <Tooltip />
+                <YAxis 
+                  label={{ value: 'Users', angle: -90, position: 'insideLeft', fontFamily: 'Poppins', fontSize: 12 }}
+                  tick={{ fontFamily: 'Poppins', fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{ fontFamily: 'Poppins', fontSize: 12 }}
+                  labelStyle={{ fontFamily: 'Montserrat', fontWeight: 600 }}
+                />
                 <Bar dataKey="value" fill={styles.primaryColor} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
