@@ -442,17 +442,20 @@ export default function OnchainDashboard() {
     demoTransactionCountData = contractData?.tokenDistributionData || createAdaptiveTransactionBuckets(contractTransactions);
   }
 
-  // Generate wallet categorization data
+  // Generate wallet categorization data with top wallet lists
   let walletCategories;
   if (!showDemoData && contractTransactions && contractTransactions.length > 0) {
     walletCategories = categorizeWallets(contractTransactions);
   } else {
-    // Demo data
+    // Demo data with empty wallet lists
     walletCategories = {
       airdropFarmers: 32,
       whales: 7,
       whalesVolumePercentage: 58,
-      bridgeUsers: 15
+      bridgeUsers: 15,
+      topAirdropFarmers: [],
+      topWhales: [],
+      topBridgeUsers: []
     };
   }
 
@@ -1378,7 +1381,7 @@ export default function OnchainDashboard() {
                 <div>
                   {/* Whales Tab */}
                   <div className={activeWalletTab === 'whales' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Top wallets by transaction volume (whales represent approximately {!showDemoData && contractData?.walletCategories?.whales ? contractData.walletCategories.whales : 7}% of all wallets but control {!showDemoData && contractData?.walletCategories?.whalesVolumePercentage ? contractData.walletCategories.whalesVolumePercentage : 58}% of volume)</p>
+                    <p className="text-sm mb-3">Top wallets by transaction volume (whales represent approximately {!showDemoData && walletCategories?.whales ? walletCategories.whales : 7}% of all wallets but control {!showDemoData && walletCategories?.whalesVolumePercentage ? walletCategories.whalesVolumePercentage : 58}% of volume)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1390,8 +1393,8 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && contractData?.walletCategories?.topWhales ? (
-                            contractData.walletCategories.topWhales.map((whale, index) => (
+                          {!showDemoData && walletCategories?.topWhales && walletCategories.topWhales.length > 0 ? (
+                            walletCategories.topWhales.map((whale, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
                                   {whale.address.substring(0, 8)}...{whale.address.substring(whale.address.length - 6)}
@@ -1423,7 +1426,7 @@ export default function OnchainDashboard() {
                   
                   {/* Airdrop Farmers Tab */}
                   <div className={activeWalletTab === 'airdropFarmers' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Wallets with exactly 1 transaction and token value ≤ 1 (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.airdropFarmers ? contractData.walletCategories.airdropFarmers : 32}% of all wallets)</p>
+                    <p className="text-sm mb-3">Wallets with exactly 1 transaction and token value ≤ 1 (these wallets represent approximately {!showDemoData && walletCategories?.airdropFarmers ? walletCategories.airdropFarmers : 32}% of all wallets)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1435,8 +1438,8 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && contractData?.walletCategories?.topAirdropFarmers ? (
-                            contractData.walletCategories.topAirdropFarmers.map((farmer, index) => (
+                          {!showDemoData && walletCategories?.topAirdropFarmers && walletCategories.topAirdropFarmers.length > 0 ? (
+                            walletCategories.topAirdropFarmers.map((farmer, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-amber-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
                                   {farmer.address.substring(0, 8)}...{farmer.address.substring(farmer.address.length - 6)}
@@ -1468,7 +1471,7 @@ export default function OnchainDashboard() {
                   
                   {/* Bridge Users Tab */}
                   <div className={activeWalletTab === 'bridgeUsers' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Wallets with high percentage of approvals or zero-value transactions (these wallets represent approximately {!showDemoData && contractData?.walletCategories?.bridgeUsers ? contractData.walletCategories.bridgeUsers : 15}% of all wallets)</p>
+                    <p className="text-sm mb-3">Wallets with high percentage of approvals or zero-value transactions (these wallets represent approximately {!showDemoData && walletCategories?.bridgeUsers ? walletCategories.bridgeUsers : 15}% of all wallets)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1481,8 +1484,8 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && contractData?.walletCategories?.topBridgeUsers ? (
-                            contractData.walletCategories.topBridgeUsers.map((bridgeUser, index) => (
+                          {!showDemoData && walletCategories?.topBridgeUsers && walletCategories.topBridgeUsers.length > 0 ? (
+                            walletCategories.topBridgeUsers.map((bridgeUser, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
                                   {bridgeUser.address.substring(0, 8)}...{bridgeUser.address.substring(bridgeUser.address.length - 6)}

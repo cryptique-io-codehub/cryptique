@@ -560,7 +560,23 @@ export const ContractDataProvider = ({ children }) => {
           airdropFarmers: 32,
           whales: 7,
           whalesVolumePercentage: 58,
-          bridgeUsers: 15
+          bridgeUsers: 15,
+          topAirdropFarmers: Array(10).fill(0).map((_, i) => ({
+            address: `0x${(Math.random().toString(16) + '0000000000000000').slice(2, 18)}`,
+            transactionCount: 1,
+            volume: Math.random() * 0.01
+          })),
+          topWhales: Array(10).fill(0).map((_, i) => ({
+            address: `0x${(Math.random().toString(16) + '0000000000000000').slice(2, 18)}`,
+            transactionCount: Math.floor(Math.random() * 500) + 100,
+            volume: (Math.random() * 50000) + 10000
+          })),
+          topBridgeUsers: Array(10).fill(0).map((_, i) => ({
+            address: `0x${(Math.random().toString(16) + '0000000000000000').slice(2, 18)}`,
+            transactionCount: Math.floor(Math.random() * 20) + 5,
+            approvals: Math.floor(Math.random() * 10) + 3,
+            noValueTxs: Math.floor(Math.random() * 8) + 2
+          }))
         };
         
         demoWalletStatsRef.current = {
@@ -1210,7 +1226,10 @@ export const ContractDataProvider = ({ children }) => {
         airdropFarmers: 32,
         whales: 7,
         whalesVolumePercentage: 58,
-        bridgeUsers: 15
+        bridgeUsers: 15,
+        topAirdropFarmers: [],
+        topWhales: [],
+        topBridgeUsers: []
       };
     }
     
@@ -1223,9 +1242,11 @@ export const ContractDataProvider = ({ children }) => {
       
       if (!walletStats[tx.from_address]) {
         walletStats[tx.from_address] = {
+          address: tx.from_address,
           transactionCount: 0,
           volume: 0,
-          approvals: 0
+          approvals: 0,
+          noValueTxs: 0
         };
       }
       
@@ -1238,6 +1259,9 @@ export const ContractDataProvider = ({ children }) => {
           walletStats[tx.from_address].volume += txValue;
           totalVolume += txValue;
         }
+      } else {
+        // Track transactions without value data (potential bridge transactions)
+        walletStats[tx.from_address].noValueTxs++;
       }
       
       // Track approval transactions
@@ -1257,23 +1281,47 @@ export const ContractDataProvider = ({ children }) => {
         airdropFarmers: 32,
         whales: 7,
         whalesVolumePercentage: 58,
-        bridgeUsers: 15
+        bridgeUsers: 15,
+        topAirdropFarmers: [],
+        topWhales: [],
+        topBridgeUsers: []
       };
     }
     
-    // Airdrop farmers: Few transactions (1-3) with no significant volume
+    // Airdrop farmers: EXACTLY 1 transaction with token value <= 1
     const airdropFarmers = walletAddresses.filter(address => {
       const stats = walletStats[address];
-      return stats.transactionCount <= 3 && stats.volume < (totalVolume * 0.001 / totalWallets);
+      return stats.transactionCount === 1 && stats.volume <= 1;
     });
     
-    // Whales: High volume wallets (top 10% by volume)
+    // Extract top 10 airdrop farmers (or fewer if there aren't that many)
+    // Sort by lowest volume first (most likely to be pure airdrop farmers)
+    const sortedAirdropFarmers = [...airdropFarmers].sort((a, b) => 
+      walletStats[a].volume - walletStats[b].volume
+    );
+    
+    const topAirdropFarmers = sortedAirdropFarmers.slice(0, Math.min(10, sortedAirdropFarmers.length))
+      .map(address => ({
+        address,
+        transactionCount: walletStats[address].transactionCount,
+        volume: walletStats[address].volume
+      }));
+    
+    // Whales: High volume wallets (top 7% by volume)
     const sortedByVolume = [...walletAddresses].sort((a, b) => 
       walletStats[b].volume - walletStats[a].volume
     );
     
     const whaleCount = Math.max(Math.ceil(totalWallets * 0.07), 1); // ~7% of wallets
     const whales = sortedByVolume.slice(0, whaleCount);
+    
+    // Extract top 10 whales
+    const topWhales = whales.slice(0, Math.min(10, whales.length))
+      .map(address => ({
+        address,
+        transactionCount: walletStats[address].transactionCount,
+        volume: walletStats[address].volume
+      }));
     
     // Calculate whale volume percentage
     const whaleVolume = whales.reduce((sum, address) => {
@@ -1285,20 +1333,44 @@ export const ContractDataProvider = ({ children }) => {
       ? Math.round((whaleVolume / totalVolume) * 100)
       : 58; // Default if no volume data
     
-    // Bridge users: High approval transaction ratio
+    // Bridge users: High percentage of transactions that are approvals or have no value
     const bridgeUsers = walletAddresses.filter(address => {
       const stats = walletStats[address];
-      return stats.transactionCount > 0 && 
-             stats.approvals > 0 && 
-             (stats.approvals / stats.transactionCount) > 0.5; // >50% are approvals
+      
+      // Check if wallet has transactions
+      if (stats.transactionCount === 0) return false;
+      
+      // Consider a wallet a bridge user if:
+      // 1. More than 50% of transactions are approvals OR
+      // 2. More than 50% of transactions have no value data
+      return (stats.approvals / stats.transactionCount > 0.5) || 
+             (stats.noValueTxs / stats.transactionCount > 0.5);
     });
+    
+    // Sort bridge users by approval count (descending)
+    const sortedBridgeUsers = [...bridgeUsers].sort((a, b) => 
+      (walletStats[b].approvals + walletStats[b].noValueTxs) - 
+      (walletStats[a].approvals + walletStats[a].noValueTxs)
+    );
+    
+    // Extract top 10 bridge users
+    const topBridgeUsers = sortedBridgeUsers.slice(0, Math.min(10, sortedBridgeUsers.length))
+      .map(address => ({
+        address,
+        transactionCount: walletStats[address].transactionCount,
+        approvals: walletStats[address].approvals,
+        noValueTxs: walletStats[address].noValueTxs
+      }));
     
     // Calculate percentages
     return {
       airdropFarmers: Math.min(Math.round((airdropFarmers.length / totalWallets) * 100), 70),
       whales: Math.round((whales.length / totalWallets) * 100),
       whalesVolumePercentage,
-      bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60)
+      bridgeUsers: Math.min(Math.round((bridgeUsers.length / totalWallets) * 100), 60),
+      topAirdropFarmers,
+      topWhales,
+      topBridgeUsers
     };
   };
 
