@@ -414,6 +414,17 @@ export const ContractDataProvider = ({ children }) => {
         // Generate wallet balance distribution once
         const walletBalanceDistribution = generateWalletBalanceDistribution();
         
+        // Generate demo transaction count distribution (preset values)
+        const transactionCountDistribution = [
+          { range: "1-5", percentage: 22.5 },
+          { range: "6-10", percentage: 18.3 },
+          { range: "11-20", percentage: 15.7 },
+          { range: "21-50", percentage: 12.9 },
+          { range: "51-100", percentage: 11.2 },
+          { range: "101-500", percentage: 10.6 },
+          { range: "500+", percentage: 8.8 }
+        ];
+        
         demoWalletStatsRef.current = {
           walletAgeData: [
             { name: "2Y+", value: normalizedOlderThan2Years, color: "#3b82f6" },
@@ -423,7 +434,8 @@ export const ContractDataProvider = ({ children }) => {
           ],
           medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
           netWorth: calculateMedianNetWorth(walletBalanceDistribution),
-          walletBalanceData: walletBalanceDistribution
+          walletBalanceData: walletBalanceDistribution,
+          transactionCountData: transactionCountDistribution
         };
       }
       
@@ -434,7 +446,8 @@ export const ContractDataProvider = ({ children }) => {
           age: demoWalletStatsRef.current.medianAge,
           netWorth: formatDollarAmount(demoWalletStatsRef.current.netWorth)
         },
-        walletBalanceData: demoWalletStatsRef.current.walletBalanceData
+        walletBalanceData: demoWalletStatsRef.current.walletBalanceData,
+        transactionCountData: demoWalletStatsRef.current.transactionCountData
       };
     }
     
@@ -559,7 +572,7 @@ export const ContractDataProvider = ({ children }) => {
       ? ((volumeLastYear - volumePreviousYear) / volumePreviousYear) * 100 
       : 0;
     
-    // Check if wallet stats for this contract already exist; if so, reuse them
+    // Calculate wallet age distribution
     if (!walletStatsByContractRef.current[selectedContract.id]) {
       // Process wallet age distribution
       // Instead of using actual data, always use proxy data with specified ranges
@@ -599,6 +612,10 @@ export const ContractDataProvider = ({ children }) => {
       // Generate wallet balance distribution once
       const walletBalanceDistribution = generateWalletBalanceDistribution();
       
+      // Generate transaction count distribution
+      // For real contracts, use actual transaction data for distribution
+      const transactionCountDistribution = analyzeTransactionCountDistribution(contractTransactions);
+      
       // Store the generated values for this contract
       walletStatsByContractRef.current[selectedContract.id] = {
         walletAgeData: [
@@ -609,7 +626,8 @@ export const ContractDataProvider = ({ children }) => {
         ],
         medianAge: `${avgWalletAgeInYears.toFixed(1)} Years`,
         netWorth: calculateMedianNetWorth(walletBalanceDistribution),
-        walletBalanceData: walletBalanceDistribution
+        walletBalanceData: walletBalanceDistribution,
+        transactionCountData: transactionCountDistribution
       };
     }
     
@@ -669,6 +687,7 @@ export const ContractDataProvider = ({ children }) => {
         netWorth: formatDollarAmount(contractWalletStats.netWorth)
       },
       walletBalanceData: contractWalletStats.walletBalanceData,
+      transactionCountData: contractWalletStats.transactionCountData,
       // Use the generated transaction data for charts
       transactionData: transactionTimeSeriesData,
       
@@ -1041,6 +1060,144 @@ export const ContractDataProvider = ({ children }) => {
     } else {
       return `$${amount.toLocaleString()}`;
     }
+  };
+
+  // Function to analyze transactions and create a distribution of transaction counts across wallets
+  const analyzeTransactionCountDistribution = (transactions) => {
+    // Create a map to count transactions per wallet
+    const walletTransactionCounts = {};
+    
+    // Count transactions for each wallet (from_address)
+    transactions.forEach(tx => {
+      const wallet = tx.from_address;
+      if (!wallet) return;
+      
+      if (!walletTransactionCounts[wallet]) {
+        walletTransactionCounts[wallet] = 1;
+      } else {
+        walletTransactionCounts[wallet]++;
+      }
+    });
+    
+    // Convert to array of counts for analysis
+    const counts = Object.values(walletTransactionCounts);
+    
+    // If no data, return empty buckets
+    if (counts.length === 0) {
+      return generateEmptyTransactionDistribution();
+    }
+    
+    // Find min/max/mean
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    
+    // Decide on bucketing strategy based on the data characteristics
+    // If max is very large compared to mean, use logarithmic scale
+    const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
+    const median = [...counts].sort((a, b) => a - b)[Math.floor(counts.length / 2)];
+    
+    console.log(`Transaction count stats: min=${min}, max=${max}, mean=${mean.toFixed(2)}, median=${median}`);
+    
+    // Create 7 bucket ranges
+    let bucketRanges;
+    
+    // If data is very skewed (common in blockchain data), use logarithmic bucketing
+    if (max > mean * 10) {
+      bucketRanges = createLogarithmicBuckets(min, max, 7);
+    } else {
+      bucketRanges = createLinearBuckets(min, max, 7);
+    }
+    
+    // Initialize buckets with zero counts
+    const distribution = bucketRanges.map(range => ({
+      range: formatRangeLabel(range.min, range.max),
+      percentage: 0
+    }));
+    
+    // Assign wallet counts to buckets and calculate percentages
+    counts.forEach(count => {
+      const bucketIndex = findBucketIndex(count, bucketRanges);
+      if (bucketIndex >= 0) {
+        distribution[bucketIndex].percentage++;
+      }
+    });
+    
+    // Convert counts to percentages
+    const totalWallets = counts.length;
+    distribution.forEach(bucket => {
+      bucket.percentage = parseFloat(((bucket.percentage / totalWallets) * 100).toFixed(1));
+    });
+    
+    return distribution;
+  };
+  
+  // Function to create logarithmic bucket ranges
+  const createLogarithmicBuckets = (min, max, bucketCount) => {
+    // Use log scale for very skewed distributions
+    const logMin = Math.log(Math.max(1, min)); // Ensure min is at least 1 for log
+    const logMax = Math.log(max);
+    const logRange = (logMax - logMin) / bucketCount;
+    
+    const buckets = [];
+    for (let i = 0; i < bucketCount; i++) {
+      const logLower = logMin + (i * logRange);
+      const logUpper = logMin + ((i + 1) * logRange);
+      
+      // Convert back from log scale
+      const lower = i === 0 ? min : Math.round(Math.exp(logLower));
+      const upper = i === bucketCount - 1 ? max : Math.round(Math.exp(logUpper) - 1);
+      
+      buckets.push({ min: lower, max: upper });
+    }
+    
+    return buckets;
+  };
+  
+  // Function to create linear bucket ranges
+  const createLinearBuckets = (min, max, bucketCount) => {
+    const range = max - min;
+    const bucketSize = range / bucketCount;
+    
+    const buckets = [];
+    for (let i = 0; i < bucketCount; i++) {
+      const lower = i === 0 ? min : Math.round(min + (i * bucketSize));
+      const upper = i === bucketCount - 1 ? max : Math.round(min + ((i + 1) * bucketSize) - 1);
+      
+      buckets.push({ min: lower, max: upper });
+    }
+    
+    return buckets;
+  };
+  
+  // Helper to format bucket range labels
+  const formatRangeLabel = (min, max) => {
+    if (min === max) {
+      return `${min}`;
+    } else if (max === Infinity || max > 1000000) {
+      return `${min}+`;
+    } else {
+      return `${min}-${max}`;
+    }
+  };
+  
+  // Helper to find bucket index for a value
+  const findBucketIndex = (value, bucketRanges) => {
+    return bucketRanges.findIndex(bucket => 
+      value >= bucket.min && value <= bucket.max
+    );
+  };
+  
+  // Generate empty transaction distribution (fallback)
+  const generateEmptyTransactionDistribution = () => {
+    return [
+      { range: "1-5", percentage: 0 },
+      { range: "6-10", percentage: 0 },
+      { range: "11-20", percentage: 0 },
+      { range: "21-50", percentage: 0 },
+      { range: "51-100", percentage: 0 },
+      { range: "101-500", percentage: 0 },
+      { range: "500+", percentage: 0 }
+    ];
   };
 
   return (
