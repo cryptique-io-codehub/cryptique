@@ -551,13 +551,20 @@ HTML:
       </div>
     </div>
 
-    {(selectedPage.selectedPage === 'onchain-explorer' || selectedPage.selectedPage?.includes('onchain')) && <>
-    <SmartContractFilters 
-    contractarray={contractarray} 
-    setcontractarray={setcontractarray}
-    selectedContract={selectedContract}
-    setSelectedContract={setSelectedContract}/>
-    </>}
+    {/* Check selectedPage regardless of whether it's an object or string */}
+    {((typeof selectedPage === 'object' && selectedPage !== null && 
+       (selectedPage.selectedPage === 'onchain-explorer' || selectedPage.selectedPage?.includes('onchain'))) || 
+      (typeof selectedPage === 'string' && 
+       (selectedPage === 'onchain-explorer' || selectedPage === 'Traffic analytics' || 
+        selectedPage === 'User Insights' || selectedPage === 'Market Insights' || 
+        selectedPage === 'Wallet Insights' || selectedPage?.includes('onchain')))) && (
+      <SmartContractFilters 
+        contractarray={contractarray} 
+        setcontractarray={setcontractarray}
+        selectedContract={selectedContract}
+        setSelectedContract={setSelectedContract}
+      />
+    )}
   
   
         <div className="flex-1">
