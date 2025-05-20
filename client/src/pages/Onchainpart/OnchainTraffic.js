@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend, Cell } from "recharts";
 import FunnelDashboard2 from "./FunnelDashboard2";
 import GeoAnalyticsMap from "../Offchainpart/GeoAnalyticsMap";
@@ -23,6 +23,55 @@ export default function OnchainTraffic() {
 
   // State for analytics (keeping this for compatibility)
   const [analytics, setanalytics] = useState({});
+  
+  // Load or simulate analytics data
+  useEffect(() => {
+    // Try to get analytics data from localStorage
+    const storedAnalytics = localStorage.getItem('analytics_storage');
+    
+    if (storedAnalytics) {
+      try {
+        const parsedAnalytics = JSON.parse(storedAnalytics);
+        setanalytics(parsedAnalytics);
+      } catch (error) {
+        console.error('Error parsing stored analytics:', error);
+        // Fall back to demo data if parsing fails
+        simulateDemoAnalytics();
+      }
+    } else {
+      // No stored analytics, use demo data
+      simulateDemoAnalytics();
+    }
+  }, []);
+  
+  // Function to simulate demo analytics data
+  const simulateDemoAnalytics = () => {
+    // Create a realistic set of demo analytics data
+    const demoAnalytics = {
+      uniqueVisitors: 5000,
+      sessions: Array(2000).fill().map((_, i) => ({
+        userId: `user_${Math.floor(Math.random() * 5000)}`,
+        device: `device_${Math.floor(Math.random() * 3000)}`,
+        startTime: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        duration: Math.random() * 600,
+        isBounce: Math.random() > 0.7,
+        hasWeb3: Math.random() > 0.6,
+        walletConnected: Math.random() > 0.7,
+        wallet: Math.random() > 0.3 ? {
+          walletAddress: Math.random() > 0.6 ? `0x${Array(40).fill().map(() => Math.floor(Math.random() * 16).toString(16)).join('')}` : '',
+          walletType: Math.random() > 0.4 ? ['MetaMask', 'Coinbase', 'WalletConnect', 'Trust Wallet'][Math.floor(Math.random() * 4)] : 'Unknown',
+          chainName: Math.random() > 0.4 ? ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'BNB Chain'][Math.floor(Math.random() * 5)] : 'Unknown Chain'
+        } : null
+      })),
+      wallets: Array(900).fill().map((_, i) => ({
+        walletAddress: `0x${Array(40).fill().map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+        walletType: ['MetaMask', 'Coinbase', 'WalletConnect', 'Trust Wallet'][Math.floor(Math.random() * 4)],
+        chainName: ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'BNB Chain'][Math.floor(Math.random() * 5)]
+      }))
+    };
+    
+    setanalytics(demoAnalytics);
+  };
   
   // Get chain-specific information
   const chainName = selectedContract?.blockchain || 'Ethereum';
@@ -134,7 +183,13 @@ export default function OnchainTraffic() {
         {/* Funnel Dashboard - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Conversion Funnel</h2>
-          <FunnelDashboard2/>
+          <FunnelDashboard2 
+            analytics={analytics} 
+            contractData={{
+              showDemoData,
+              contractTransactions
+            }}
+          />
         </div>
         
         {/* Traffic Sources by On-Chain USD Volume - Full Width */}

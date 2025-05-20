@@ -6,38 +6,110 @@ import {
   LabelList, 
   Tooltip
 } from 'recharts';
+import { calculateWeb3Stats } from '../../utils/analyticsHelpers';
 
-const HorizontalFunnelVisualization = () => {
-  // console.log(analytics)
-  // const[analytics,setanalytics]=useState(() => localStorage.getItem('analytics_storage') || {});
-  // useEffect(()=>{
-  // setanalytics(analytics);
-  // },[analytics]);
-  // console.log(analytics);
-  // State to hold the funnel data - can be updated from props or API
-  
-  // Update data when initialData changes (if provided as a prop)
-  // Helper function to get default colors if not provided
+const HorizontalFunnelVisualization = ({ analytics, websiteData, contractData }) => {
+  // State to hold the funnel data
   const [data, setData] = useState([
-    { name: 'Unique Visitors', value:200, fill: '#1D0C46' },
+    { name: 'Unique Visitors', value: 200, fill: '#1D0C46' },
     { name: 'Web3 Users', value: 130, fill: '#8B5CF6' },
     { name: 'Wallets connected', value: 90, fill: '#FFB95A' },
-    { name: 'Wallets recorded', value: 60, fill: '#CAA968' }
-    
+    { name: 'Wallets transacted', value: 60, fill: '#CAA968' }
   ]);
-  const getDefaultColor = (index) => {
-    const defaultColors = ['#1a1053', '#7e57ff', '#ffc168'];
-    return defaultColors[index % defaultColors.length];
-  };
   
-  // Stats calculated from the current data state
-  const conversionRate = data.length >= 3 ? 
-    ((data[data.length-1].value / data[0].value) * 100).toFixed(2) : 
-    0;
-    
-  const web3UsersRate = data.length >= 2 ? 
-    ((data[1].value / data[0].value) * 100).toFixed(2) : 
-    0;
+  // State for conversion metrics
+  const [metrics, setMetrics] = useState({
+    conversion: "0.00",
+    webUsers: "0.00"
+  });
+  
+  // Update data when analytics or contractData changes
+  useEffect(() => {
+    // If we have real data from website analytics, use it
+    if (websiteData?.sessions) {
+      const web3Stats = calculateWeb3Stats(websiteData.sessions, websiteData.uniqueVisitors);
+      
+      // Determine wallets transacted count - wallets that interacted with our contract
+      // This would need to match wallet addresses from sessions with wallet addresses from transactions
+      let walletsTransacted = 0;
+      
+      if (contractData && !contractData.showDemoData && websiteData.wallets) {
+        // Get unique wallet addresses from the website data
+        const websiteWallets = new Set();
+        websiteData.wallets.forEach(wallet => {
+          if (wallet.walletAddress && wallet.walletAddress.length > 10) {
+            websiteWallets.add(wallet.walletAddress.toLowerCase());
+          }
+        });
+        
+        // Get unique wallet addresses from contract transactions
+        const contractWallets = new Set();
+        if (contractData.contractTransactions) {
+          contractData.contractTransactions.forEach(tx => {
+            if (tx.from_address) {
+              contractWallets.add(tx.from_address.toLowerCase());
+            }
+          });
+        }
+        
+        // Count the intersection of these sets
+        if (websiteWallets.size > 0 && contractWallets.size > 0) {
+          websiteWallets.forEach(address => {
+            if (contractWallets.has(address)) {
+              walletsTransacted++;
+            }
+          });
+        }
+      } else {
+        // For demo data, show a reasonable conversion rate
+        walletsTransacted = Math.floor(web3Stats.walletsConnected * 0.66);
+      }
+      
+      // Update funnel data
+      setData([
+        { name: 'Unique Visitors', value: websiteData.uniqueVisitors || 0, fill: '#1D0C46' },
+        { name: 'Web3 Users', value: web3Stats.web3Users || 0, fill: '#8B5CF6' },
+        { name: 'Wallets connected', value: web3Stats.walletsConnected || 0, fill: '#FFB95A' },
+        { name: 'Wallets transacted', value: walletsTransacted || 0, fill: '#CAA968' }
+      ]);
+      
+      // Calculate conversion metrics
+      const conversion = web3Stats.walletsConnected > 0 
+        ? ((walletsTransacted / web3Stats.walletsConnected) * 100).toFixed(2)
+        : "0.00";
+        
+      const webUsers = websiteData.uniqueVisitors > 0 
+        ? ((web3Stats.web3Users / websiteData.uniqueVisitors) * 100).toFixed(2)
+        : "0.00";
+        
+      setMetrics({
+        conversion,
+        webUsers
+      });
+    } else {
+      // For demo data without real analytics
+      const uniqueVisitors = 200;
+      const web3Users = 130;
+      const walletsConnected = 90;
+      const walletsTransacted = 60;
+      
+      setData([
+        { name: 'Unique Visitors', value: uniqueVisitors, fill: '#1D0C46' },
+        { name: 'Web3 Users', value: web3Users, fill: '#8B5CF6' },
+        { name: 'Wallets connected', value: walletsConnected, fill: '#FFB95A' },
+        { name: 'Wallets transacted', value: walletsTransacted, fill: '#CAA968' }
+      ]);
+      
+      // Calculate conversion metrics for demo data
+      const conversion = ((walletsTransacted / walletsConnected) * 100).toFixed(2);
+      const webUsers = ((web3Users / uniqueVisitors) * 100).toFixed(2);
+      
+      setMetrics({
+        conversion,
+        webUsers
+      });
+    }
+  }, [websiteData, contractData]);
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
@@ -46,11 +118,11 @@ const HorizontalFunnelVisualization = () => {
         <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
           <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
             <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{9.09}%</p>
+            <p className="text-xl font-bold">{metrics.conversion}%</p>
           </div>
           <div className="px-4 py-2">
             <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{9.09}%</p>
+            <p className="text-xl font-bold">{metrics.webUsers}%</p>
           </div>
         </div>
       </div>
@@ -59,11 +131,6 @@ const HorizontalFunnelVisualization = () => {
         {/* Custom horizontal funnel using SVG */}
         <div className="w-full h-64 relative">
           <HorizontalFunnel data={data} />
-          
-          {/* Value displayed at the end of the funnel */}
-          <div className="absolute right-2 top-24 text-4xl font-bold">
-            
-          </div>
         </div>
       </div>
       
@@ -98,7 +165,7 @@ const HorizontalFunnel = ({ data }) => {
   const segmentWidth = totalWidth / data.length;
   
   // Calculate heights based on values
-  const maxValue = data[0].value;
+  const maxValue = Math.max(...data.map(d => d.value)) || 1;
   const heights = data.map(d => {
     const ratio = d.value / maxValue;
     return minHeight + (maxHeight - minHeight) * ratio;
@@ -149,47 +216,36 @@ const HorizontalFunnel = ({ data }) => {
       
       {/* Add value labels */}
       {data.map((item, index) => {
-  const x = index * segmentWidth + segmentWidth / 2;
-  const y = height / 2;
+        const x = index * segmentWidth + segmentWidth / 2;
+        const y = height / 2;
 
-  // Determine the text value based on item.name
-  let textValue;
-  if (item.name === 'Unique Visitors') {
-    textValue = 11;
-  } else if (item.name === 'Web3 Users') {
-    textValue = 1;
-  } else if (item.name === 'Wallets connected') {
-    textValue = 1;
-  } else if (item.name === 'Wallets recorded') {
-    textValue = 1;
-  } 
-
-  return (
-    <text 
-      key={`label-${index}`}
-      x={x}
-      y={y}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fill="white"
-      fontWeight="bold"
-    >
-      {textValue}
-    </text>
-  );
-})}
+        return (
+          <text 
+            key={`label-${index}`}
+            x={x}
+            y={y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontWeight="bold"
+          >
+            {item.value || 0}
+          </text>
+        );
+      })}
     </svg>
   );
 };
 
 // Example usage
-const FunnelDashboard2= ({analytics}) => {
-  // console.log(analytics);
+const FunnelDashboard2= ({ analytics, contractData }) => {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">User Funnel Dashboard</h1>
-      <HorizontalFunnelVisualization analytics={analytics}/>
-
+      <h2 className="text-lg font-bold mb-4">User Conversion Funnel</h2>
+      <HorizontalFunnelVisualization 
+        websiteData={analytics} 
+        contractData={contractData}
+      />
     </div>
   );
 };
