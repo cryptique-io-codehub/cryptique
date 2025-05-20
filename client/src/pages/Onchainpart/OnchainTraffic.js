@@ -7,6 +7,7 @@ import { useContractData } from '../../contexts/ContractDataContext';
 import ChainBanner from '../../components/ChainBanner';
 import { getChainConfig } from '../../utils/chainRegistry';
 import sdkApi from '../../utils/sdkApi';
+import { isWeb3User } from '../../utils/analyticsHelpers';
 
 export default function OnchainTraffic() {
   // Get contract data from context
@@ -33,6 +34,8 @@ export default function OnchainTraffic() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  // Add state for processed traffic sources data
+  const [processedSourcesData, setProcessedSourcesData] = useState([]);
   
   // Check for website ID changes
   useEffect(() => {
@@ -277,30 +280,40 @@ export default function OnchainTraffic() {
       if (source && sourceData.has(source)) {
         sourceData.get(source).impressions++;
       }
+    });
+    
+    // Second pass: Process all sessions and attribute activities to first source
+    analytics.sessions.forEach(session => {
+      if (!session || !session.userId) return;
       
-      // Track web3 users
-      if (session.hasWeb3 || (session.wallet && session.wallet.walletType)) {
-        const source = userFirstSource[userId];
-        if (source && sourceData.has(source)) {
-          sourceData.get(source).web3Users.add(userId);
-        }
+      const userId = String(session.userId);
+      const firstSource = userFirstSource[userId];
+      
+      if (!firstSource || !sourceData.has(firstSource)) return;
+      
+      // Check if user is a web3 user using the helper function
+      if (isWeb3User(session)) {
+        sourceData.get(firstSource).web3Users.add(userId);
       }
       
-      // Track wallet for this user if available
-      if (session.wallet && session.wallet.walletAddress && 
+      // Track wallet connections
+      const noWalletPhrases = [
+        'No Wallet Detected', 
+        'No Wallet Connected', 
+        'Not Connected', 
+        'No Chain Detected', 
+        'Error'
+      ];
+      
+      if (session.wallet && 
+          session.wallet.walletAddress && 
           session.wallet.walletAddress.trim() !== '' && 
-          session.wallet.walletAddress.length > 10 &&
-          !['No Wallet Detected', 'No Wallet Connected', 'Not Connected', 
-            'No Chain Detected', 'Error'].includes(session.wallet.walletAddress)) {
+          !noWalletPhrases.includes(session.wallet.walletAddress) &&
+          session.wallet.walletAddress.length > 10) {
         
         const walletAddress = session.wallet.walletAddress.toLowerCase();
         userWalletMap[userId] = walletAddress;
-        
-        // Add to wallet connections for the user's first source
-        const source = userFirstSource[userId];
-        if (source && sourceData.has(source)) {
-          sourceData.get(source).walletsConnected.add(userId);
-        }
+        sourceData.get(firstSource).walletsConnected.add(userId);
       }
     });
     
@@ -419,12 +432,22 @@ export default function OnchainTraffic() {
     }
   };
 
+  // Process traffic sources data when analytics or contract data changes
+  useEffect(() => {
+    if (isLoadingAnalytics || isLoadingTransactions) return;
+    
+    const processedData = processTrafficSourcesData();
+    setProcessedSourcesData(processedData);
+    
+  }, [analytics, contractData, selectedContract?.id, isLoadingAnalytics, isLoadingTransactions]);
+
   // Choose which data to use based on whether we should show demo data
   const funnelData = showDemoData ? demoFunnelData : (contractData?.funnelData || demoFunnelData);
   const trafficSourcesData = showDemoData ? demoTrafficSourcesData : (contractData?.trafficSourcesData || demoTrafficSourcesData);
   const trafficQualityData = showDemoData ? demoTrafficQualityData : (contractData?.trafficQualityData || demoTrafficQualityData);
-  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : processTrafficSourcesData();
   const timeToConversionData = showDemoData ? demoTimeToConversionData : (contractData?.timeToConversionData || demoTimeToConversionData);
+  // Use the state for traffic sources table data instead of calculating it on each render
+  const trafficSourcesTableData = showDemoData ? demoTrafficSourcesTableData : processedSourcesData;
 
   // Creating the legend items for traffic quality analysis
   const CustomLegend = () => {
@@ -703,7 +726,16 @@ export default function OnchainTraffic() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {trafficSourcesTableData.length > 0 ? (
+                  {isLoadingAnalytics || isLoadingTransactions ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
+                          <span>Loading traffic data...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : trafficSourcesTableData.length > 0 ? (
                     trafficSourcesTableData.map((item, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
@@ -718,14 +750,7 @@ export default function OnchainTraffic() {
                   ) : (
                     <tr>
                       <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {isLoadingAnalytics || isLoadingTransactions ? (
-                          <div className="flex justify-center items-center">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-700 mr-2"></div>
-                            <span>Loading data...</span>
-                          </div>
-                        ) : (
-                          'No traffic sources data available'
-                        )}
+                        No traffic sources data available
                       </td>
                     </tr>
                   )}
