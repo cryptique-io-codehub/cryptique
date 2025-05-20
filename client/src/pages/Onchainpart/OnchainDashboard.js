@@ -68,11 +68,43 @@ export default function OnchainDashboard() {
 
   // Updated data for wallet age distribution - matching the image with all 4 segments
   const demoWalletAgeData = [
-    { name: ">2Y", value: 30, color: "#3b82f6" },    // Blue segment - 40%
-    { name: "1Y-2Y", value: 40, color: "#f97316" },  // Orange segment - 60%
-    { name: "6M-1Y", value: 20, color: "#10b981" },   // Green segment - 0%
-    { name: "<6M", value: 10, color: "#eab308" }      // Yellow segment - 0%
+    { name: "<6M", value: Math.floor(Math.random() * 26) + 25, color: "#eab308" },  // 25-50%
+    { name: "6M-1Y", value: Math.floor(Math.random() * 31) + 30, color: "#10b981" }, // 30-60%
+    { name: "1Y-2Y", value: Math.floor(Math.random() * 26) + 25, color: "#f97316" }, // 25-50%
+    { name: "2Y+", value: Math.floor(Math.random() * 9) + 7, color: "#3b82f6" }      // 7-15%
   ];
+  
+  // Normalize the values to ensure they sum to 100%
+  const totalPercentage = demoWalletAgeData.reduce((sum, entry) => sum + entry.value, 0);
+  demoWalletAgeData.forEach(entry => {
+    entry.value = Math.round((entry.value / totalPercentage) * 100);
+  });
+  
+  // Adjust the last entry to ensure the sum is exactly 100%
+  const currentSum = demoWalletAgeData.reduce((sum, entry) => sum + entry.value, 0);
+  if (currentSum !== 100) {
+    demoWalletAgeData[demoWalletAgeData.length - 1].value += (100 - currentSum);
+  }
+  
+  // Calculate median wallet age based on the distribution
+  const calculateMedianAge = () => {
+    // Convert wallet age distribution to actual age in years
+    const ageData = [
+      { ageInYears: 0.25, percentage: demoWalletAgeData.find(d => d.name === "<6M")?.value || 0 }, // 3 months average for <6M
+      { ageInYears: 0.75, percentage: demoWalletAgeData.find(d => d.name === "6M-1Y")?.value || 0 }, // 9 months average for 6M-1Y
+      { ageInYears: 1.5, percentage: demoWalletAgeData.find(d => d.name === "1Y-2Y")?.value || 0 }, // 1.5 years average for 1Y-2Y
+      { ageInYears: 3, percentage: demoWalletAgeData.find(d => d.name === "2Y+")?.value || 0 } // 3 years average for 2Y+
+    ];
+    
+    // Calculate weighted average
+    const totalWeight = ageData.reduce((sum, entry) => sum + entry.percentage, 0);
+    const weightedSum = ageData.reduce((sum, entry) => sum + (entry.ageInYears * entry.percentage), 0);
+    
+    return (weightedSum / totalWeight).toFixed(1);
+  };
+  
+  // Calculate the median age
+  const medianWalletAge = calculateMedianAge();
 
   // Sample data for wallet balance distribution
   const demoWalletBalanceData = [
@@ -556,7 +588,7 @@ export default function OnchainDashboard() {
             <div>
               <p className="text-xs text-gray-500 mb-1">Age</p>
               <h3 className="text-lg font-bold">
-                {showDemoData ? "1.7 Years" : contractData?.medianWalletStats?.age || "0 Years"}
+                {showDemoData ? `${medianWalletAge} Years` : contractData?.medianWalletStats?.age || "0 Years"}
               </h3>
             </div>
             <div>
@@ -710,7 +742,7 @@ export default function OnchainDashboard() {
                       <h4 className="font-semibold">Volume Distribution</h4>
                       <p className="text-gray-700">
                         {!showDemoData && contractData ? (
-                          `The average transaction value is ${formatVolume(parseFloat(contractData.recentVolume.last30Days) / contractData.recentTransactions.last30Days, selectedContract?.tokenSymbol || 'TOKEN')}. ${contractData.walletAgeData.find(w => w.name === ">2Y")?.value > 30 ? 'Long-term users (>2Y) contribute significantly to volume stability.' : 'New users (<6M) drive a substantial portion of recent volume growth.'}`
+                          `The average transaction value is ${formatVolume(parseFloat(contractData.recentVolume.last30Days) / contractData.recentTransactions.last30Days, selectedContract?.tokenSymbol || 'TOKEN')}. ${contractData.walletAgeData.find(w => w.name === "2Y+")?.value > 30 ? 'Long-term users (2Y+) contribute significantly to volume stability.' : 'New users (<6M) drive a substantial portion of recent volume growth.'}`
                         ) : (
                           "20% of users account for 73% of the total transaction volume, indicating a small group of power users. The average transaction size has increased by 15% over the selected period, suggesting growing confidence in the platform."
                         )}

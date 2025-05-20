@@ -544,7 +544,7 @@ export const ContractDataProvider = ({ children }) => {
     // Format wallet age distribution data for the pie chart
     const walletAgeData = [
       { 
-        name: ">2Y", 
+        name: "2Y+", 
         value: totalWallets > 0 ? Math.round((walletsOlderThan2Years / totalWallets) * 100) : 0, 
         color: "#3b82f6" 
       },
