@@ -4,15 +4,21 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./config/database');
+const createRateLimiter = require('./middleware/rateLimiter');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
+// Initialize rate limiters
+const rateLimiters = createRateLimiter();
+
 // CORS configuration - Updated to allow requests from any origin during development
 app.use(cors({
-  origin: '*', // Allow all origins for development
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://app.cryptique.io'] 
+    : '*', // Allow all origins for development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -21,6 +27,9 @@ app.use(cors({
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Apply standard rate limiting to all routes by default
+app.use(rateLimiters.standard);
 
 // Connect to MongoDB with enhanced configuration
 connectDB()
@@ -36,9 +45,9 @@ connectDB()
 const analyticsRoutes = require('./routes/analytics');
 app.use('/api/analytics', analyticsRoutes);
 
-// Stripe routes
+// Stripe routes with authentication rate limiting
 const stripeRoutes = require('./routes/stripe');
-app.use('/api/stripe', stripeRoutes);
+app.use('/api/stripe', rateLimiters.sensitive, stripeRoutes);
 
 // Usage routes for tracking and managing subscription limits
 const usageRoutes = require('./routes/usage');
@@ -58,20 +67,21 @@ app.use('/api/smart-contracts', smartContractRoutes);
 
 // Data retention routes
 const retentionRoutes = require('./routes/retention');
-app.use('/api/retention', retentionRoutes);
+app.use('/api/retention', rateLimiters.sensitive, retentionRoutes);
 
 // Admin routes for managing enterprise configurations
 const enterpriseConfigRoutes = require('./routes/admin/enterpriseConfig');
-app.use('/api/admin/enterprise', enterpriseConfigRoutes);
+app.use('/api/admin/enterprise', rateLimiters.sensitive, enterpriseConfigRoutes);
 
 // Special route handling for Stripe webhooks (needs raw body)
 // IMPORTANT: This is the STANDARDIZED webhook endpoint for Stripe
 // All Stripe webhook events should be configured to send to this endpoint:
 // https://cryptique-backend.vercel.app/api/webhooks/stripe
+// No rate limiting for webhook endpoints as they are called by external services
 const stripeWebhookRoutes = require('./routes/webhooks/stripe');
 app.use('/api/webhooks/stripe', stripeWebhookRoutes);
 
-// Health check endpoint
+// Health check endpoint (no rate limiting)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });

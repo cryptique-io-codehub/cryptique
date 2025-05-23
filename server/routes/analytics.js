@@ -1,18 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
+const createApiClient = require('../utils/apiClient');
+const { defaultCache } = require('../utils/cacheManager');
+const createRateLimiter = require('../middleware/rateLimiter');
 
-// Set backend API URL - use environment variable or default to production
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://cryptique-backend.vercel.app/api';
+// Create API client with dynamic timeouts and retry
+const apiClient = createApiClient();
 
-// Create axios instance for backend API calls
-const backendAPI = axios.create({
-  baseURL: BACKEND_API_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
+// Create rate limiters
+const rateLimiters = createRateLimiter();
+
+// Apply analytics rate limiter to all routes in this router
+router.use(rateLimiters.analytics);
+
+// Cache configuration for different endpoints
+const CACHE_CONFIG = {
+  chart: {
+    ttl: 'medium',   // 30 minutes
+    keyPrefix: 'analytics:chart'
+  },
+  userJourneys: {
+    ttl: 'short',    // 1 minute
+    keyPrefix: 'analytics:user-journeys'
+  },
+  userSessions: {
+    ttl: 'default',  // 5 minutes
+    keyPrefix: 'analytics:user-sessions'
   }
-});
+};
+
+// Helper to create cache keys
+const createCacheKey = (prefix, params) => {
+  return `${prefix}:${Object.entries(params)
+    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+    .map(([key, value]) => `${key}=${value}`)
+    .join(':')}`;
+};
 
 // Get chart data
 router.get('/chart', async (req, res) => {
@@ -25,13 +48,24 @@ router.get('/chart', async (req, res) => {
   console.log(`Chart data requested for site: ${siteId}, timeframe: ${timeframe}`);
   
   try {
-    // Forward request to real backend
-    const response = await backendAPI.get('/analytics/chart', { 
-      params: { siteId, timeframe } 
-    });
+    // Create cache key
+    const cacheKey = createCacheKey(CACHE_CONFIG.chart.keyPrefix, { siteId, timeframe });
     
-    // Return real data
-    res.json(response.data);
+    // Try to get from cache or fetch from backend
+    const data = await defaultCache.wrap(
+      cacheKey,
+      async () => {
+        console.log(`Cache miss for ${cacheKey}, fetching from backend`);
+        const response = await apiClient.fetchQuick('/analytics/chart', { 
+          params: { siteId, timeframe } 
+        });
+        return response.data;
+      },
+      CACHE_CONFIG.chart.ttl
+    );
+    
+    // Return data (either from cache or freshly fetched)
+    res.json(data);
   } catch (error) {
     console.error('Error fetching chart data from backend:', error);
     res.status(error.response?.status || 500).json({
@@ -52,13 +86,26 @@ router.get('/user-journeys', async (req, res) => {
   console.log("User-journeys request received:", { siteId, teamId, timeframe, page, limit });
   
   try {
-    // Forward request to real backend
-    const response = await backendAPI.get('/analytics/user-journeys', { 
-      params: { siteId, teamId, timeframe, page, limit } 
+    // Create cache key
+    const cacheKey = createCacheKey(CACHE_CONFIG.userJourneys.keyPrefix, { 
+      siteId, teamId, timeframe, page, limit 
     });
     
-    // Return real data
-    res.json(response.data);
+    // Try to get from cache or fetch from backend
+    const data = await defaultCache.wrap(
+      cacheKey,
+      async () => {
+        console.log(`Cache miss for ${cacheKey}, fetching from backend`);
+        const response = await apiClient.fetch('/analytics/user-journeys', { 
+          params: { siteId, teamId, timeframe, page, limit } 
+        });
+        return response.data;
+      },
+      CACHE_CONFIG.userJourneys.ttl
+    );
+    
+    // Return data (either from cache or freshly fetched)
+    res.json(data);
   } catch (error) {
     console.error('Error fetching user journeys from backend:', error);
     res.status(error.response?.status || 500).json({
@@ -82,13 +129,24 @@ router.get('/user-sessions', async (req, res) => {
   console.log(`Fetching sessions for user: ${userId}`);
   
   try {
-    // Forward request to real backend
-    const response = await backendAPI.get('/analytics/user-sessions', { 
-      params: { userId } 
-    });
+    // Create cache key
+    const cacheKey = createCacheKey(CACHE_CONFIG.userSessions.keyPrefix, { userId });
     
-    // Return real data
-    res.json(response.data);
+    // Try to get from cache or fetch from backend
+    const data = await defaultCache.wrap(
+      cacheKey,
+      async () => {
+        console.log(`Cache miss for ${cacheKey}, fetching from backend`);
+        const response = await apiClient.fetch('/analytics/user-sessions', { 
+          params: { userId } 
+        });
+        return response.data;
+      },
+      CACHE_CONFIG.userSessions.ttl
+    );
+    
+    // Return data (either from cache or freshly fetched)
+    res.json(data);
   } catch (error) {
     console.error('Error fetching user sessions from backend:', error);
     res.status(error.response?.status || 500).json({
@@ -99,6 +157,7 @@ router.get('/user-sessions', async (req, res) => {
 });
 
 // Process user journeys - convert sessions into user journey data
+// This is a long-running operation, so we use a longer timeout
 router.post('/process-journeys', async (req, res) => {
   const { siteId } = req.body;
   
@@ -112,8 +171,15 @@ router.post('/process-journeys', async (req, res) => {
   console.log(`Processing user journeys for site: ${siteId}`);
   
   try {
-    // Forward request to real backend
-    const response = await backendAPI.post('/analytics/process-journeys', { siteId });
+    // This is a processing operation, not suitable for caching
+    // Use longer timeout for this complex operation
+    const response = await apiClient.fetchComplex('/analytics/process-journeys', {
+      method: 'POST',
+      data: { siteId }
+    });
+    
+    // Invalidate related caches since we've updated the data
+    defaultCache.deletePattern(`${CACHE_CONFIG.userJourneys.keyPrefix}:siteId=${siteId}:*`);
     
     // Return real data with helpful status message
     let responseData = response.data;
@@ -155,19 +221,46 @@ router.post('/process-journeys', async (req, res) => {
   }
 });
 
+// Cache stats endpoint (for monitoring)
+router.get('/cache-stats', (req, res) => {
+  res.json(defaultCache.getStats());
+});
+
+// Clear cache endpoint (for admin use)
+router.post('/clear-cache', rateLimiters.sensitive, (req, res) => {
+  const { pattern } = req.body;
+  
+  if (pattern) {
+    const count = defaultCache.deletePattern(pattern);
+    res.json({ 
+      success: true, 
+      message: `Cleared ${count} cache entries matching pattern: ${pattern}` 
+    });
+  } else {
+    defaultCache.clear();
+    defaultCache.resetStats();
+    res.json({ 
+      success: true, 
+      message: 'Complete cache cleared and stats reset' 
+    });
+  }
+});
+
 // Test endpoint
 router.get('/test', async (req, res) => {
   try {
     // Test connection to real backend
-    const response = await backendAPI.get('/health');
+    const response = await apiClient.fetchQuick('/health');
     res.json({ 
       message: 'Server is working!',
-      backendStatus: response.data 
+      backendStatus: response.data,
+      cacheStats: defaultCache.getStats()
     });
   } catch (error) {
     res.json({ 
       message: 'Server is working but backend connection failed',
-      error: error.message 
+      error: error.message,
+      cacheStats: defaultCache.getStats()
     });
   }
 });
