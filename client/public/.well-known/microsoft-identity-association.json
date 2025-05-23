@@ -3,5 +3,10 @@
     {
       "applicationId": "850772139338"
     }
+  ],
+  "verifiedDomains": [
+    "auth.cryptique.io",
+    "app.cryptique.io",
+    "cryptique.io"
   ]
 } 

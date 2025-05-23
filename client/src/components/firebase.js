@@ -10,7 +10,7 @@ import {getFirestore} from "firebase/firestore"
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyD1VUlSiKwK8H2MyUl8LRwozlMrSBvEPS4",
-  authDomain: "cryptique-login.firebaseapp.com",
+  authDomain: "auth.cryptique.io",
   projectId: "cryptique-login",
   storageBucket: "cryptique-login.firebasestorage.app",
   messagingSenderId: "850772139338",
