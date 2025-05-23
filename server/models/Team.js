@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const { 
+  findWithRetry, 
+  findOneWithRetry, 
+  updateOneWithRetry, 
+  saveWithRetry, 
+  deleteOneWithRetry, 
+  aggregateWithRetry 
+} = require('../utils/dbOperations');
 
 const TeamSchema = new Schema({
   name: {
@@ -135,5 +143,111 @@ TeamSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
+
+// Static methods with retry logic
+TeamSchema.statics = {
+  /**
+   * Find a team by ID with retry
+   * @param {string} id - Team ID
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Team document
+   */
+  findByIdWithRetry: async function(id, options = {}) {
+    return findOneWithRetry(this, { _id: id }, options);
+  },
+
+  /**
+   * Find teams with expired subscriptions for data retention processing
+   * @param {number} gracePeriodDays - Number of days in grace period
+   * @returns {Promise<Array>} - Array of team documents
+   */
+  findTeamsWithExpiredSubscriptionsWithRetry: async function(gracePeriodDays) {
+    const now = new Date();
+    const gracePeriodDate = new Date(now.getTime() - (gracePeriodDays * 24 * 60 * 60 * 1000));
+    
+    return findWithRetry(this, {
+      'subscription.status': { $in: ['inactive', 'pastdue', 'cancelled'] },
+      'subscription.endDate': { $lt: gracePeriodDate },
+      'dataDeletionScheduled': { $exists: false }
+    });
+  },
+  
+  /**
+   * Mark team for data deletion with retry
+   * @param {string} teamId - Team ID
+   * @param {Date} deletionDate - Scheduled deletion date
+   * @returns {Promise<Object>} - Update result
+   */
+  markForDeletionWithRetry: async function(teamId, deletionDate) {
+    return updateOneWithRetry(this, 
+      { _id: teamId },
+      {
+        dataDeletionScheduled: true,
+        dataDeletionDate: deletionDate,
+        dataRetentionNotificationSent: false
+      }
+    );
+  },
+  
+  /**
+   * Find teams scheduled for deletion with retry
+   * @returns {Promise<Array>} - Array of team documents
+   */
+  findTeamsScheduledForDeletionWithRetry: async function() {
+    const now = new Date();
+    return findWithRetry(this, {
+      dataDeletionScheduled: true,
+      dataDeletionDate: { $lt: now }
+    });
+  },
+  
+  /**
+   * Mark team data as deleted with retry
+   * @param {string} teamId - Team ID
+   * @param {Date} backupRetentionDate - Date until backup is retained
+   * @returns {Promise<Object>} - Update result
+   */
+  markDataAsDeletedWithRetry: async function(teamId, backupRetentionDate) {
+    const now = new Date();
+    return updateOneWithRetry(this, 
+      { _id: teamId },
+      {
+        dataDeletionScheduled: false,
+        dataDeleted: true,
+        dataDeletionExecutedDate: now,
+        dataBackupRetentionDate: backupRetentionDate,
+        'usage.websites': 0,
+        'usage.smartContracts': 0,
+        'usage.apiCalls': 0
+      }
+    );
+  },
+  
+  /**
+   * Get dashboard summary for all teams with retry
+   * Useful for admin dashboard
+   * @returns {Promise<Array>} - Aggregation result
+   */
+  getDashboardSummaryWithRetry: async function() {
+    const pipeline = [
+      {
+        $group: {
+          _id: '$subscription.plan',
+          count: { $sum: 1 },
+          activeCount: {
+            $sum: {
+              $cond: [{ $eq: ['$subscription.status', 'active'] }, 1, 0]
+            }
+          },
+          totalWebsites: { $sum: '$usage.websites' },
+          totalSmartContracts: { $sum: '$usage.smartContracts' },
+          totalApiCalls: { $sum: '$usage.apiCalls' }
+        }
+      }
+    ];
+    
+    return aggregateWithRetry(this, pipeline);
+  }
+};
 
 module.exports = mongoose.model('Team', TeamSchema); 

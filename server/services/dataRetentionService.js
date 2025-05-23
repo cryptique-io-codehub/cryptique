@@ -1,5 +1,6 @@
 const Team = require('../models/team');
 const mongoose = require('mongoose');
+const { executeWithRetry } = require('../utils/dbOperations');
 
 /**
  * Data retention policy settings
@@ -18,14 +19,8 @@ const markExpiredDataForDeletion = async () => {
   try {
     const now = new Date();
     
-    // Find teams with expired subscriptions beyond the grace period
-    const teams = await Team.find({
-      'subscription.status': { $in: ['inactive', 'pastdue', 'cancelled'] },
-      'subscription.endDate': { 
-        $lt: new Date(now.getTime() - (RETENTION_POLICY.GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)) 
-      },
-      'dataDeletionScheduled': { $exists: false } // Only mark teams not already scheduled
-    });
+    // Find teams with expired subscriptions beyond the grace period using retry
+    const teams = await Team.findTeamsWithExpiredSubscriptionsWithRetry(RETENTION_POLICY.GRACE_PERIOD_DAYS);
     
     console.log(`Found ${teams.length} teams with expired subscriptions beyond grace period`);
     
@@ -34,13 +29,9 @@ const markExpiredDataForDeletion = async () => {
       now.getTime() + (RETENTION_POLICY.RETENTION_PERIOD_DAYS * 24 * 60 * 60 * 1000)
     );
     
-    // Mark teams for data deletion
+    // Mark teams for data deletion with retry
     for (const team of teams) {
-      await Team.findByIdAndUpdate(team._id, {
-        dataDeletionScheduled: true,
-        dataDeletionDate: deletionDate,
-        dataRetentionNotificationSent: false
-      });
+      await Team.markForDeletionWithRetry(team._id, deletionDate);
       
       console.log(`Marked team ${team._id} (${team.name}) for data deletion on ${deletionDate}`);
       
@@ -66,10 +57,7 @@ const deleteExpiredData = async () => {
     const now = new Date();
     
     // Find teams scheduled for deletion that have passed their deletion date
-    const teams = await Team.find({
-      dataDeletionScheduled: true,
-      dataDeletionDate: { $lt: now }
-    });
+    const teams = await Team.findTeamsScheduledForDeletionWithRetry();
     
     console.log(`Found ${teams.length} teams ready for data deletion`);
     
@@ -80,38 +68,36 @@ const deleteExpiredData = async () => {
       errors: []
     };
     
-    for (const team of teams) {
-      try {
-        // Create backup (in a real implementation)
-        await createDataBackup(team._id);
-        
-        // Delete team data (smart contracts, websites, analytics, etc.)
-        // In a real implementation, you'd delete related models
-        
-        // Keep team record but mark as deleted and remove sensitive data
-        await Team.findByIdAndUpdate(team._id, {
-          dataDeletionScheduled: false,
-          dataDeleted: true,
-          dataDeletionExecutedDate: now,
-          dataBackupRetentionDate: new Date(
+    // Process in batches to prevent memory issues
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < teams.length; i += BATCH_SIZE) {
+      const batch = teams.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${i/BATCH_SIZE + 1} of ${Math.ceil(teams.length/BATCH_SIZE)}`);
+      
+      // Process batch concurrently with limits
+      await Promise.all(batch.map(async (team) => {
+        try {
+          // Create backup (in a real implementation)
+          await createDataBackup(team._id);
+          
+          // Calculate backup retention date
+          const backupRetentionDate = new Date(
             now.getTime() + (RETENTION_POLICY.DATA_BACKUP_PERIOD_DAYS * 24 * 60 * 60 * 1000)
-          ),
-          // Reset usage counters
-          'usage.websites': 0,
-          'usage.smartContracts': 0,
-          'usage.apiCalls': 0,
-          // Keep minimal team info for records
-        });
-        
-        results.deletedTeams.push(team._id);
-        console.log(`Deleted data for team ${team._id} (${team.name})`);
-      } catch (error) {
-        console.error(`Error deleting data for team ${team._id}:`, error);
-        results.errors.push({
-          teamId: team._id,
-          error: error.message
-        });
-      }
+          );
+          
+          // Delete team data with retry
+          await Team.markDataAsDeletedWithRetry(team._id, backupRetentionDate);
+          
+          results.deletedTeams.push(team._id);
+          console.log(`Deleted data for team ${team._id} (${team.name})`);
+        } catch (error) {
+          console.error(`Error deleting data for team ${team._id}:`, error);
+          results.errors.push({
+            teamId: team._id,
+            error: error.message
+          });
+        }
+      }));
     }
     
     return results;
@@ -126,14 +112,20 @@ const deleteExpiredData = async () => {
  * @param {string} teamId - ID of the team
  */
 const createDataBackup = async (teamId) => {
-  // In a real implementation, this would:
-  // 1. Query all data related to the team
-  // 2. Store it in a backup format (JSON, CSV, etc.)
-  // 3. Upload to secure cold storage
-  // 4. Record the backup reference in a backup tracking system
-  
-  console.log(`Created backup for team ${teamId} data`);
-  return { success: true, backupId: `backup_${teamId}_${Date.now()}` };
+  // Wrap with retry logic
+  return executeWithRetry(
+    async () => {
+      // In a real implementation, this would:
+      // 1. Query all data related to the team
+      // 2. Store it in a backup format (JSON, CSV, etc.)
+      // 3. Upload to secure cold storage
+      // 4. Record the backup reference in a backup tracking system
+      
+      console.log(`Created backup for team ${teamId} data`);
+      return { success: true, backupId: `backup_${teamId}_${Date.now()}` };
+    },
+    { operation_name: `Create backup for team ${teamId}` }
+  );
 };
 
 /**
@@ -142,70 +134,71 @@ const createDataBackup = async (teamId) => {
  * @returns {Object} Status information
  */
 const checkDataRetentionStatus = async (teamId) => {
-  try {
-    const team = await Team.findById(teamId);
-    
-    if (!team) {
-      throw new Error('Team not found');
-    }
-    
-    // If data is already deleted
-    if (team.dataDeleted) {
-      return {
-        status: 'DELETED',
-        deletedAt: team.dataDeletionExecutedDate,
-        backupAvailableUntil: team.dataBackupRetentionDate
-      };
-    }
-    
-    // If data is scheduled for deletion
-    if (team.dataDeletionScheduled) {
-      return {
-        status: 'PENDING_DELETION',
-        scheduledDeletionDate: team.dataDeletionDate,
-        daysUntilDeletion: Math.ceil(
-          (team.dataDeletionDate - new Date()) / (24 * 60 * 60 * 1000)
-        )
-      };
-    }
-    
-    // If subscription is inactive, calculate grace period
-    if (team.subscription.status !== 'active' && team.subscription.endDate) {
-      const endDate = new Date(team.subscription.endDate);
-      const gracePeriodEndDate = new Date(endDate);
-      gracePeriodEndDate.setDate(gracePeriodEndDate.getDate() + RETENTION_POLICY.GRACE_PERIOD_DAYS);
+  // Wrap with retry logic
+  return executeWithRetry(
+    async () => {
+      const team = await Team.findByIdWithRetry(teamId);
       
-      if (new Date() <= gracePeriodEndDate) {
+      if (!team) {
+        throw new Error('Team not found');
+      }
+      
+      // If data is already deleted
+      if (team.dataDeleted) {
         return {
-          status: 'GRACE_PERIOD',
-          gracePeriodEndDate,
-          daysLeftInGracePeriod: Math.ceil(
-            (gracePeriodEndDate - new Date()) / (24 * 60 * 60 * 1000)
-          )
+          status: 'DELETED',
+          deletedAt: team.dataDeletionExecutedDate,
+          backupAvailableUntil: team.dataBackupRetentionDate
         };
-      } else {
-        // In retention period, but not yet marked for deletion
-        // This is an intermediate state before the scheduled task runs
+      }
+      
+      // If data is scheduled for deletion
+      if (team.dataDeletionScheduled) {
         return {
-          status: 'RETENTION_PERIOD',
-          gracePeriodEndDate,
-          retentionPeriodEndDate: new Date(
-            gracePeriodEndDate.getTime() + (RETENTION_POLICY.RETENTION_PERIOD_DAYS * 24 * 60 * 60 * 1000)
+          status: 'PENDING_DELETION',
+          scheduledDeletionDate: team.dataDeletionDate,
+          daysUntilDeletion: Math.ceil(
+            (team.dataDeletionDate - new Date()) / (24 * 60 * 60 * 1000)
           )
         };
       }
-    }
-    
-    // Active subscription
-    return {
-      status: 'ACTIVE',
-      subscriptionStatus: team.subscription.status,
-      subscriptionEndDate: team.subscription.endDate
-    };
-  } catch (error) {
-    console.error('Error checking data retention status:', error);
-    throw error;
-  }
+      
+      // If subscription is inactive, calculate grace period
+      if (team.subscription.status !== 'active' && team.subscription.endDate) {
+        const endDate = new Date(team.subscription.endDate);
+        const gracePeriodEndDate = new Date(endDate);
+        gracePeriodEndDate.setDate(gracePeriodEndDate.getDate() + RETENTION_POLICY.GRACE_PERIOD_DAYS);
+        
+        if (new Date() <= gracePeriodEndDate) {
+          return {
+            status: 'GRACE_PERIOD',
+            gracePeriodEndDate,
+            daysLeftInGracePeriod: Math.ceil(
+              (gracePeriodEndDate - new Date()) / (24 * 60 * 60 * 1000)
+            )
+          };
+        } else {
+          // In retention period, but not yet marked for deletion
+          // This is an intermediate state before the scheduled task runs
+          return {
+            status: 'RETENTION_PERIOD',
+            gracePeriodEndDate,
+            retentionPeriodEndDate: new Date(
+              gracePeriodEndDate.getTime() + (RETENTION_POLICY.RETENTION_PERIOD_DAYS * 24 * 60 * 60 * 1000)
+            )
+          };
+        }
+      }
+      
+      // Active subscription
+      return {
+        status: 'ACTIVE',
+        subscriptionStatus: team.subscription.status,
+        subscriptionEndDate: team.subscription.endDate
+      };
+    },
+    { operation_name: `Check data retention status for team ${teamId}` }
+  );
 };
 
 /**
@@ -213,69 +206,76 @@ const checkDataRetentionStatus = async (teamId) => {
  * @param {string} teamId - ID of the team
  */
 const recoverTeamData = async (teamId) => {
-  try {
-    const team = await Team.findById(teamId);
-    
-    if (!team) {
-      throw new Error('Team not found');
-    }
-    
-    // Check if team data was deleted
-    if (team.dataDeleted) {
-      // If backup is still within retention period
-      if (team.dataBackupRetentionDate && new Date() <= team.dataBackupRetentionDate) {
-        // In a real implementation, you would restore from backup
-        // For this example, we'll just mark the data as recovered
-        
-        await Team.findByIdAndUpdate(teamId, {
-          dataDeleted: false,
-          dataDeletionScheduled: false,
-          dataDeletionDate: null,
-          dataDeletionExecutedDate: null,
-          dataBackupRetentionDate: null,
-          'subscription.status': 'active' // This should be handled by payment process
-        });
+  // Wrap with retry logic
+  return executeWithRetry(
+    async () => {
+      const team = await Team.findByIdWithRetry(teamId);
+      
+      if (!team) {
+        throw new Error('Team not found');
+      }
+      
+      // Check if team data was deleted
+      if (team.dataDeleted) {
+        // If backup is still within retention period
+        if (team.dataBackupRetentionDate && new Date() <= team.dataBackupRetentionDate) {
+          // In a real implementation, you would restore from backup
+          // For this example, we'll just mark the data as recovered
+          
+          await Team.updateOneWithRetry(
+            { _id: teamId },
+            {
+              dataDeleted: false,
+              dataDeletionScheduled: false,
+              dataDeletionDate: null,
+              dataDeletionExecutedDate: null,
+              dataBackupRetentionDate: null,
+              'subscription.status': 'active' // This should be handled by payment process
+            }
+          );
+          
+          return {
+            success: true,
+            message: 'Team data has been recovered from backup',
+            recoveredFrom: 'backup'
+          };
+        } else {
+          // Backup no longer available
+          return {
+            success: false,
+            message: 'Team data backup is no longer available and cannot be recovered',
+            recoveredFrom: null
+          };
+        }
+      }
+      
+      // If data was scheduled for deletion but not yet deleted
+      if (team.dataDeletionScheduled) {
+        await Team.updateOneWithRetry(
+          { _id: teamId },
+          {
+            dataDeletionScheduled: false,
+            dataDeletionDate: null,
+            'subscription.status': 'active' // This should be handled by payment process
+          }
+        );
         
         return {
           success: true,
-          message: 'Team data has been recovered from backup',
-          recoveredFrom: 'backup'
-        };
-      } else {
-        // Backup no longer available
-        return {
-          success: false,
-          message: 'Team data backup is no longer available and cannot be recovered',
-          recoveredFrom: null
+          message: 'Team data retention has been restored',
+          recoveredFrom: 'pending_deletion'
         };
       }
-    }
-    
-    // If data was scheduled for deletion but not yet deleted
-    if (team.dataDeletionScheduled) {
-      await Team.findByIdAndUpdate(teamId, {
-        dataDeletionScheduled: false,
-        dataDeletionDate: null,
-        'subscription.status': 'active' // This should be handled by payment process
-      });
       
+      // Data wasn't deleted or scheduled for deletion
       return {
         success: true,
-        message: 'Team data retention has been restored',
-        recoveredFrom: 'pending_deletion'
+        message: 'Team data is already available',
+        recoveredFrom: null
       };
-    }
-    
-    // Data wasn't deleted or scheduled for deletion
-    return {
-      success: true,
-      message: 'Team data is already available',
-      recoveredFrom: null
-    };
-  } catch (error) {
-    console.error('Error recovering team data:', error);
-    throw error;
-  }
+    },
+    { operation_name: `Recover data for team ${teamId}` }
+  );
 };
 
 module.exports = {

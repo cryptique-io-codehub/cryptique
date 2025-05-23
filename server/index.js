@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const connectDB = require('./config/database');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -21,13 +22,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cryptique', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB with enhanced configuration
+connectDB()
+  .then(() => {
+    console.log('MongoDB connection initialized with pooling and high availability options');
+  })
+  .catch(err => {
+    console.error('Failed to initialize MongoDB connection:', err);
+    process.exit(1);
+  });
 
 // Routes
 const analyticsRoutes = require('./routes/analytics');
