@@ -489,10 +489,21 @@ function LoginForm({ onSignupClick, toggleLoading }) {
 
   const googleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    
+    // Add custom parameters for better security perception
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      login_hint: '',
+      // Use app.cryptique.io domain for auth callback
+      state: encodeURIComponent(JSON.stringify({origin: window.location.origin}))
+    });
+    
     try {
       toggleLoading(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      
+      // Handle successful login
       const response = await axiosInstance.post('/auth/google-login', {
         name: user.displayName,
         email: user.email,

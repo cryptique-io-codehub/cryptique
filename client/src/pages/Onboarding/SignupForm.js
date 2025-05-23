@@ -115,13 +115,24 @@ function SignupForm({ onBackToLogin }) {
 
   const googleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    
+    // Add custom parameters for better security perception
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      login_hint: '',
+      // Use app.cryptique.io domain for auth callback
+      state: encodeURIComponent(JSON.stringify({origin: window.location.origin}))
+    });
+    
     try {
+      setIsLoading(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
       const response = await axiosInstance.post('/auth/google-login', {
           name: user.displayName,
           email: user.email,
+          avatar: user.photoURL,
       });
       const aa=user.email.split('@')[0];
       
@@ -139,6 +150,9 @@ function SignupForm({ onBackToLogin }) {
       }
     } catch (error) {
       console.error('Error during Google login:', error);
+      alert('Google login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
