@@ -4,7 +4,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://*.firebaseapp.com https://*.google.com https://*.googleapis.com https://www.gstatic.com; connect-src 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.cryptique.io; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://*.firebaseapp.com https://*.google.com https://*.googleapis.com; upgrade-insecure-requests;
+  Content-Security-Policy: default-src https:; script-src https: 'self' 'unsafe-inline' https://*.firebaseapp.com https://*.google.com https://*.googleapis.com https://www.gstatic.com; connect-src https: 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.cryptique.io; img-src https: 'self' data: https:; style-src https: 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https: 'self' https://fonts.gstatic.com; frame-src https: https://*.firebaseapp.com https://*.google.com https://*.googleapis.com; upgrade-insecure-requests;
 
 /auth/*
   Access-Control-Allow-Origin: https://auth.cryptique.io
