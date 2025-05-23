@@ -1,0 +1,3 @@
+site-verification: cryptique-login
+domain-verification: app.cryptique.io
+owner-verification: 850772139338 
