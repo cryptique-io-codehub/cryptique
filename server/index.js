@@ -5,9 +5,14 @@ const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./config/database');
 const createRateLimiter = require('./middleware/rateLimiter');
+const cluster = require('cluster');
+const { getConfig } = require('./config/architecture');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+// Get architecture configuration
+const config = getConfig();
 
 const app = express();
 
@@ -41,6 +46,27 @@ connectDB()
     process.exit(1);
   });
 
+// Setup health check endpoint (no rate limiting) - critical for load balancers
+app.get('/api/health', (req, res) => {
+  // Include worker information in clustered environment
+  const health = {
+    status: 'ok',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    pid: process.pid,
+    worker: cluster.isWorker ? {
+      id: cluster.worker?.id,
+      pid: process.pid
+    } : null,
+    memory: process.memoryUsage()
+  };
+  
+  // Check MongoDB connection
+  health.database = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
+  res.json(health);
+});
+
 // Routes
 const analyticsRoutes = require('./routes/analytics');
 app.use('/api/analytics', analyticsRoutes);
@@ -73,6 +99,23 @@ app.use('/api/retention', rateLimiters.sensitive, retentionRoutes);
 const enterpriseConfigRoutes = require('./routes/admin/enterpriseConfig');
 app.use('/api/admin/enterprise', rateLimiters.sensitive, enterpriseConfigRoutes);
 
+// Architecture monitoring routes - for internal/admin use only
+app.use('/api/admin/architecture', rateLimiters.sensitive, (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      mode: config.mode,
+      loadBalancing: config.loadBalancing,
+      features: config.features,
+      circuitBreaker: config.circuitBreaker
+    },
+    worker: cluster.isWorker ? {
+      id: cluster.worker?.id,
+      pid: process.pid
+    } : null
+  });
+});
+
 // Special route handling for Stripe webhooks (needs raw body)
 // IMPORTANT: This is the STANDARDIZED webhook endpoint for Stripe
 // All Stripe webhook events should be configured to send to this endpoint:
@@ -81,15 +124,11 @@ app.use('/api/admin/enterprise', rateLimiters.sensitive, enterpriseConfigRoutes)
 const stripeWebhookRoutes = require('./routes/webhooks/stripe');
 app.use('/api/webhooks/stripe', stripeWebhookRoutes);
 
-// Health check endpoint (no rate limiting)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
-});
-
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'Cryptique Analytics API Server',
+    version: process.env.npm_package_version || require('./package.json').version,
     endpoints: {
       analytics: '/api/analytics/*',
       stripe: '/api/stripe/*',
@@ -102,10 +141,40 @@ app.get('/', (req, res) => {
       webhooks: '/api/webhooks/*',
       health: '/api/health'
     },
-    env: {
-      backend_url: process.env.REACT_APP_API_SERVER_URL || 'Not configured'
+    architecture: {
+      mode: config.mode,
+      clustered: cluster.isWorker
+    },
+    server: {
+      pid: process.pid,
+      worker: cluster.isWorker ? cluster.worker.id : null,
+      uptime: process.uptime()
     }
   });
+});
+
+// Generic error handling middleware with improved details
+app.use((err, req, res, next) => {
+  console.error(`Error processing ${req.method} ${req.path}:`, err);
+  
+  // Determine appropriate status code
+  let statusCode = err.statusCode || 500;
+  
+  // Structure error response
+  const errorResponse = {
+    success: false,
+    error: process.env.NODE_ENV === 'production' 
+      ? 'An error occurred while processing your request' 
+      : err.message || 'Unknown error',
+    code: err.code || 'INTERNAL_ERROR'
+  };
+  
+  // Include stack trace in development
+  if (process.env.NODE_ENV !== 'production' && err.stack) {
+    errorResponse.stack = err.stack;
+  }
+  
+  res.status(statusCode).json(errorResponse);
 });
 
 // Initialize scheduled tasks
@@ -120,15 +189,30 @@ if (process.env.ENABLE_SCHEDULED_TASKS === 'true') {
   console.log('       Alternatively, run them manually with: npm run tasks');
 }
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
 // Start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Backend API URL: ${process.env.BACKEND_API_URL || 'Not configured'}`);
-}); 
+const server = app.listen(PORT, () => {
+  const workerInfo = cluster.isWorker ? `Worker ${cluster.worker.id} (PID: ${process.pid})` : `PID: ${process.pid}`;
+  console.log(`Server is running on port ${PORT} [${workerInfo}]`);
+  console.log(`Architecture mode: ${config.mode}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+  
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+});
+
+module.exports = app; 
