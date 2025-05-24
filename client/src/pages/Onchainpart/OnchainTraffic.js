@@ -39,7 +39,28 @@ export default function OnchainTraffic() {
   useEffect(() => {
     const currentWebsiteId = localStorage.getItem('idy');
     if (currentWebsiteId !== websiteId) {
+      console.log(`Website ID changed from ${websiteId} to ${currentWebsiteId}, refreshing data`);
       setWebsiteId(currentWebsiteId);
+      
+      // Force data refresh when website changes
+      if (currentWebsiteId) {
+        // Refresh analytics data
+        const fetchData = async () => {
+          setIsLoadingAnalytics(true);
+          try {
+            const response = await sdkApi.getAnalytics(currentWebsiteId);
+            if (response && response.analytics) {
+              setanalytics(response.analytics);
+            }
+          } catch (err) {
+            console.error("Error fetching analytics after website change:", err);
+          } finally {
+            setIsLoadingAnalytics(false);
+          }
+        };
+        
+        fetchData();
+      }
     }
   }, [websiteId]);
   

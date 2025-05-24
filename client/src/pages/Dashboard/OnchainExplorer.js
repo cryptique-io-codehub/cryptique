@@ -26,6 +26,28 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     // Import the refreshContracts function from context
     const { refreshContracts } = useContractData();
     
+    // Create a custom event for refreshing contracts from Filters component
+    useEffect(() => {
+      // Create a custom event that can be triggered when website changes
+      window.refreshContractsEvent = new Event('refreshContracts');
+      
+      // Add event listener to refresh contracts when event is dispatched
+      const handleRefreshContracts = () => {
+        console.log("Contract refresh event triggered by website change");
+        if (refreshContracts) {
+          refreshContracts();
+        }
+      };
+      
+      window.addEventListener('refreshContracts', handleRefreshContracts);
+      
+      // Clean up
+      return () => {
+        window.removeEventListener('refreshContracts', handleRefreshContracts);
+        delete window.refreshContractsEvent;
+      };
+    }, [refreshContracts]);
+    
     // Refresh contract data when component mounts or when team changes
     useEffect(() => {
       const loadContractData = async () => {

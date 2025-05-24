@@ -1133,6 +1133,35 @@ export const ContractDataProvider = ({ children }) => {
     };
   }, []);
 
+  // Add website change listener
+  useEffect(() => {
+    // Store current website ID for comparison
+    let currentWebsiteId = localStorage.getItem("idy");
+    
+    // Function to check for website changes
+    const checkWebsiteChange = () => {
+      const newWebsiteId = localStorage.getItem("idy");
+      
+      if (newWebsiteId && newWebsiteId !== currentWebsiteId) {
+        console.log(`Website ID changed in context from ${currentWebsiteId} to ${newWebsiteId}, refreshing contracts`);
+        currentWebsiteId = newWebsiteId;
+        
+        // Reset cached transaction data since we're viewing a new website
+        setContractTransactions([]);
+        
+        // Refresh contract data for the new website
+        refreshContracts();
+      }
+    };
+    
+    // Check for website changes every 2 seconds
+    const intervalId = setInterval(checkWebsiteChange, 2000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   // Function to generate wallet balance distribution with random values within specified ranges
   const generateWalletBalanceDistribution = () => {
     // Generate values within specified ranges

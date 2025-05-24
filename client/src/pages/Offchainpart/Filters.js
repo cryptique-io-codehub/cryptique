@@ -244,6 +244,21 @@ const Filters = ({ websitearray, setWebsitearray,contractarray,setcontractarray,
       setanalytics(new_response.data.analytics);
     }
     
+    // Check if we're in an on-chain page and refresh contract data if needed
+    if (selectedPage && 
+        ((typeof selectedPage === 'object' && selectedPage.selectedPage?.includes('onchain')) || 
+         (typeof selectedPage === 'string' && selectedPage?.includes('onchain')))) {
+      // Refresh contract data from context if available
+      if (window.refreshContractsEvent) {
+        // Dispatch the event to refresh contracts
+        window.dispatchEvent(window.refreshContractsEvent);
+      }
+      
+      // Force refresh website-related contract data
+      // This will cause child components to re-render with the new website selection
+      setcontractarray(prevArray => [...prevArray]);
+    }
+    
     setIsDropdownOpen(false);
   }
 
