@@ -473,224 +473,230 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
 
       {/* Add Campaign Modal */}
       {showAddCampaignModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
-                Create a Campaign
-              </h2>
-              <button 
-                onClick={closeAddCampaignModal}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl relative max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
+                  Create a Campaign
+                </h2>
+                <button 
+                  onClick={closeAddCampaignModal}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
             </div>
             
-            <form onSubmit={handleSubmit} className="font-poppins">
-              <div className="space-y-6">
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Select Website*</label>
+            <div className="flex-1 overflow-y-auto p-6">
+              <form id="campaignForm" onSubmit={handleSubmit} className="font-poppins">
+                <div className="space-y-6">
                   <div>
-                    {isLoading ? (
-                      <div className="w-full p-2 border rounded bg-gray-50">
-                        Loading websites...
+                    <label className="block font-medium text-gray-700 mb-2">Select Website*</label>
+                    <div>
+                      {isLoading ? (
+                        <div className="w-full p-2 border rounded bg-gray-50">
+                          Loading websites...
+                        </div>
+                      ) : error ? (
+                        <div className="w-full p-2 border rounded bg-red-50 text-red-600">
+                          {error}
+                        </div>
+                      ) : (
+                        <select 
+                          name="website"
+                          value={campaignForm.website}
+                          onChange={handleFormChange}
+                          className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                          style={{ focusRing: styles.primaryColor }}
+                          required
+                        >
+                          <option value="">Select a website...</option>
+                          {websitearray.map(website => (
+                            <option key={website.siteId} value={website.siteId}>
+                              {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Campaign Destination*</label>
+                    <div className="flex items-center">
+                      <div className="bg-gray-50 p-2 border rounded-l text-gray-700 min-w-fit">
+                        {campaignForm.domain || 'Select a website'}
                       </div>
-                    ) : error ? (
-                      <div className="w-full p-2 border rounded bg-red-50 text-red-600">
-                        {error}
-                      </div>
-                    ) : (
-                      <select 
-                        name="website"
-                        value={campaignForm.website}
+                      <input 
+                        type="text"
+                        name="path"
+                        value={campaignForm.path}
                         onChange={handleFormChange}
-                        className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                        className="flex-1 p-2 border-y border-r rounded-r focus:outline-none focus:ring-2 transition-shadow"
                         style={{ focusRing: styles.primaryColor }}
+                        placeholder="/path"
                         required
+                      />
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Enter the path after domain (e.g. /page or / for root)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Campaign Name*</label>
+                    <input 
+                      type="text"
+                      name="name"
+                      value={campaignForm.name}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      e.g. summer_sale_2024, black_friday_promo, new_year_campaign
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Source*</label>
+                    <input 
+                      type="text"
+                      name="source"
+                      value={campaignForm.source}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      e.g. newsletter, twitter, google, etc.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Medium*</label>
+                    <input 
+                      type="text"
+                      name="medium"
+                      value={campaignForm.medium}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      e.g. email, social, cpc, etc.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Campaign</label>
+                    <input 
+                      type="text"
+                      name="campaign"
+                      value={campaignForm.campaign}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      placeholder="e.g. summer_sale"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      The campaign name for UTM tracking
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Campaign ID</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-md text-sm font-mono">
+                      {campaignForm.utm_id}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Unique identifier for this campaign (UTM_ID parameter)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Term</label>
+                    <input 
+                      type="text"
+                      name="term"
+                      value={campaignForm.term}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Keywords for your paid search campaigns
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Content</label>
+                    <input 
+                      type="text"
+                      name="content"
+                      value={campaignForm.content}
+                      onChange={handleFormChange}
+                      className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Any call-to-action or headline, e.g. buy-now
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Budget</label>
+                    <div className="flex gap-2">
+                      <select
+                        name="budgetCurrency"
+                        value={campaignForm.budgetCurrency}
+                        onChange={handleFormChange}
+                        className="w-24 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow bg-white"
+                        style={{ focusRing: styles.primaryColor }}
                       >
-                        <option value="">Select a website...</option>
-                        {websitearray.map(website => (
-                          <option key={website.siteId} value={website.siteId}>
-                            {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                        {currencies.map(currency => (
+                          <option key={currency.code} value={currency.code}>
+                            {currency.symbol} {currency.code}
                           </option>
                         ))}
                       </select>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Campaign Destination*</label>
-                  <div className="flex items-center">
-                    <div className="bg-gray-50 p-2 border rounded-l text-gray-700 min-w-fit">
-                      {campaignForm.domain || 'Select a website'}
+                      <input 
+                        type="number"
+                        name="budgetAmount"
+                        value={campaignForm.budgetAmount}
+                        onChange={handleFormChange}
+                        placeholder="Enter amount"
+                        className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                        style={{ focusRing: styles.primaryColor }}
+                        min="0"
+                        step="0.01"
+                      />
                     </div>
-                    <input 
-                      type="text"
-                      name="path"
-                      value={campaignForm.path}
-                      onChange={handleFormChange}
-                      className="flex-1 p-2 border-y border-r rounded-r focus:outline-none focus:ring-2 transition-shadow"
-                      style={{ focusRing: styles.primaryColor }}
-                      placeholder="/path"
-                      required
-                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Optional: Enter your campaign budget with currency
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Enter the path after domain (e.g. /page or / for root)
-                  </p>
-                </div>
 
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Campaign Name*</label>
-                  <input 
-                    type="text"
-                    name="name"
-                    value={campaignForm.name}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                    required
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    e.g. summer_sale_2024, black_friday_promo, new_year_campaign
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Source*</label>
-                  <input 
-                    type="text"
-                    name="source"
-                    value={campaignForm.source}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                    required
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    e.g. newsletter, twitter, google, etc.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Medium*</label>
-                  <input 
-                    type="text"
-                    name="medium"
-                    value={campaignForm.medium}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                    required
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    e.g. email, social, cpc, etc.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Campaign</label>
-                  <input 
-                    type="text"
-                    name="campaign"
-                    value={campaignForm.campaign}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                    placeholder="e.g. summer_sale"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    The campaign name for UTM tracking
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Campaign ID</label>
-                  <div className="bg-gray-50 px-3 py-2 rounded-md text-sm font-mono">
-                    {campaignForm.utm_id}
+                  <div>
+                    <label className="block font-medium text-gray-700 mb-2">Shortened Domain</label>
+                    <div className="w-full p-2 border rounded-md bg-gray-50 text-gray-700">
+                      link.cryptique.io
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Default Cryptique URL shortener domain (custom domains coming soon)
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Unique identifier for this campaign (UTM_ID parameter)
-                  </p>
                 </div>
+              </form>
+            </div>
 
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Term</label>
-                  <input 
-                    type="text"
-                    name="term"
-                    value={campaignForm.term}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Keywords for your paid search campaigns
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Content</label>
-                  <input 
-                    type="text"
-                    name="content"
-                    value={campaignForm.content}
-                    onChange={handleFormChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                    style={{ focusRing: styles.primaryColor }}
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Any call-to-action or headline, e.g. buy-now
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Budget</label>
-                  <div className="flex gap-2">
-                    <select
-                      name="budgetCurrency"
-                      value={campaignForm.budgetCurrency}
-                      onChange={handleFormChange}
-                      className="w-24 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow bg-white"
-                      style={{ focusRing: styles.primaryColor }}
-                    >
-                      {currencies.map(currency => (
-                        <option key={currency.code} value={currency.code}>
-                          {currency.symbol} {currency.code}
-                        </option>
-                      ))}
-                    </select>
-                    <input 
-                      type="number"
-                      name="budgetAmount"
-                      value={campaignForm.budgetAmount}
-                      onChange={handleFormChange}
-                      placeholder="Enter amount"
-                      className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
-                      style={{ focusRing: styles.primaryColor }}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Optional: Enter your campaign budget with currency
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-gray-700 mb-2">Shortened Domain</label>
-                  <div className="w-full p-2 border rounded-md bg-gray-50 text-gray-700">
-                    link.cryptique.io
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Default Cryptique URL shortener domain (custom domains coming soon)
-                  </p>
-                </div>
-              </div>
-              
-              <div className="mt-8 flex justify-end space-x-3">
+            <div className="p-6 border-t border-gray-200 bg-white sticky bottom-0">
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={closeAddCampaignModal}
@@ -700,6 +706,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 </button>
                 <button 
                   type="submit"
+                  form="campaignForm"
                   className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity"
                   style={{ backgroundColor: styles.primaryColor }}
                   disabled={isLoading}
@@ -707,7 +714,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                   {isLoading ? 'Creating...' : 'Create Campaign'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
