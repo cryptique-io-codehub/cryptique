@@ -5,8 +5,10 @@ const {
   runScheduledTasks, 
   runDataRetentionTasks,
   getTaskMetrics,
-  getActiveTasks
+  getActiveTasks,
+  getTaskStatus
 } = require('../tasks/scheduledTasks');
+const { taskOrchestrator, EXECUTOR_MODE } = require('../services/taskOrchestratorService');
 const createRateLimiter = require('../middleware/rateLimiter');
 const proxyService = require('../services/proxyService');
 
@@ -134,25 +136,27 @@ router.post('/:teamId/recover', async (req, res) => {
       });
     }
     
-    // Always use direct access for write operations
-    const result = await dataRetentionService.recoverTeamData(teamId);
+    // Schedule a data recovery task
+    const recoveryTask = await taskOrchestrator.scheduleTask(
+      'data_recovery',
+      { teamId },
+      {
+        priority: 2, // Higher priority
+        impact: 1,  // Low impact
+        lockKey: `data_recovery:${teamId}`,
+        executorMode: process.env.DATA_RECOVERY_EXECUTOR_MODE || EXECUTOR_MODE.IN_PROCESS
+      }
+    );
     
-    if (result.success) {
-      // Clear cache for this team
-      proxyService.clearCache(`/teams/${teamId}`);
-      
-      res.json({
-        success: true,
-        message: result.message,
-        recoveredFrom: result.recoveredFrom
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.message,
-        code: 'RECOVERY_FAILED'
-      });
-    }
+    // Clear cache for this team
+    proxyService.clearCache(`/teams/${teamId}`);
+    
+    res.json({
+      success: true,
+      message: 'Data recovery task scheduled',
+      taskId: recoveryTask.taskId,
+      status: recoveryTask.status
+    });
   } catch (error) {
     const errorResponse = handleError(error, 'recover-team');
     res.status(errorResponse.status).json(errorResponse);
@@ -227,20 +231,57 @@ router.get('/active-tasks', rateLimiters.sensitive, async (req, res) => {
 });
 
 /**
+ * Get status of a specific task (admin only)
+ */
+router.get('/tasks/:taskId', rateLimiters.sensitive, async (req, res) => {
+  try {
+    // Check auth permissions here
+    
+    const { taskId } = req.params;
+    
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Task ID is required',
+        code: 'INVALID_PARAMETER'
+      });
+    }
+    
+    const taskStatus = await getTaskStatus(taskId);
+    
+    if (!taskStatus) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found',
+        code: 'NOT_FOUND'
+      });
+    }
+    
+    res.json({
+      success: true,
+      task: taskStatus
+    });
+  } catch (error) {
+    const errorResponse = handleError(error, 'get-task-status');
+    res.status(errorResponse.status).json(errorResponse);
+  }
+});
+
+/**
  * Trigger data retention tasks manually (admin only)
  */
 router.post('/run-tasks', rateLimiters.sensitive, async (req, res) => {
   try {
     // Check auth permissions here
+    const { executorMode } = req.body;
     
-    // Run tasks in the background
-    runScheduledTasks().catch(error => {
-      console.error('Error running scheduled tasks:', error);
-    });
+    // Run tasks via orchestrator
+    const result = await runScheduledTasks();
     
     res.json({
       success: true,
-      message: 'Data retention tasks scheduled successfully'
+      message: 'Data retention tasks scheduled successfully',
+      result
     });
   } catch (error) {
     const errorResponse = handleError(error, 'run-tasks');
@@ -255,11 +296,13 @@ router.post('/run-direct', rateLimiters.sensitive, async (req, res) => {
   try {
     // Check auth permissions here
     
+    // Warning: This uses the legacy mode without the orchestrator
     const result = await runDataRetentionTasks();
     
     res.json({
       success: true,
-      result
+      result,
+      warning: 'Running in legacy mode without task orchestration'
     });
   } catch (error) {
     const errorResponse = handleError(error, 'run-direct');
@@ -274,7 +317,8 @@ router.get('/performance-config', rateLimiters.sensitive, async (req, res) => {
   try {
     res.json({
       success: true,
-      config: dataRetentionService.PERFORMANCE_CONFIG
+      config: dataRetentionService.PERFORMANCE_CONFIG,
+      orchestratorMetrics: taskOrchestrator.getMetrics()
     });
   } catch (error) {
     const errorResponse = handleError(error, 'get-performance-config');

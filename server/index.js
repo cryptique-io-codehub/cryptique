@@ -116,6 +116,22 @@ app.use('/api/admin/architecture', rateLimiters.sensitive, (req, res) => {
   });
 });
 
+// Task management routes - for monitoring and controlling tasks
+app.use('/api/admin/tasks', rateLimiters.sensitive, (req, res) => {
+  const { taskOrchestrator } = require('./services/taskOrchestratorService');
+  
+  res.json({
+    success: true,
+    metrics: taskOrchestrator.getMetrics(),
+    activeTasks: taskOrchestrator.getActiveTasks(),
+    config: {
+      executorMode: process.env.TASK_EXECUTOR_MODE || 'child_process',
+      maxConcurrentTasks: parseInt(process.env.MAX_CONCURRENT_TASKS || '2', 10),
+      enableResourceControl: process.env.ENABLE_RESOURCE_CONTROL !== 'false'
+    }
+  });
+});
+
 // Special route handling for Stripe webhooks (needs raw body)
 // IMPORTANT: This is the STANDARDIZED webhook endpoint for Stripe
 // All Stripe webhook events should be configured to send to this endpoint:
@@ -188,6 +204,10 @@ if (process.env.ENABLE_SCHEDULED_TASKS === 'true') {
   console.log('Note: Scheduled tasks are disabled. Set ENABLE_SCHEDULED_TASKS=true to enable them.');
   console.log('       Alternatively, run them manually with: npm run tasks');
 }
+
+// Initialize task orchestrator
+const { taskOrchestrator } = require('./services/taskOrchestratorService');
+console.log(`Task orchestrator initialized in ${taskOrchestrator.executorMode} mode`);
 
 // Start server
 const PORT = process.env.PORT || 3001;
