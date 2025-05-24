@@ -29,19 +29,20 @@ export default function Onchainwalletinsights() {
       // Process the transaction data to extract wallet information
       const walletMap = new Map();
       
-      Object.values(contractTransactions).forEach(tx => {
-        if (!tx || !tx.fromAddress) return;
+      // Process transactions array directly since it's not an object
+      contractTransactions.forEach(tx => {
+        if (!tx || !tx.from_address) return;
         
         // Process sender wallet
-        const fromWallet = tx.fromAddress;
+        const fromWallet = tx.from_address;
         if (!walletMap.has(fromWallet)) {
           walletMap.set(fromWallet, {
             address: fromWallet,
             totalSent: 0,
             totalReceived: 0,
             transactions: 0,
-            firstDate: tx.timestamp,
-            lastDate: tx.timestamp,
+            firstDate: tx.block_time,
+            lastDate: tx.block_time,
             allTransactions: [],
             volume: 0, // Track total volume (sent + received)
             uniqueInteractions: new Set(), // Track unique addresses interacted with
@@ -50,67 +51,67 @@ export default function Onchainwalletinsights() {
         
         const walletData = walletMap.get(fromWallet);
         walletData.transactions += 1;
-        const txValue = parseFloat(tx.value) || 0;
+        const txValue = parseFloat(tx.value_eth) || 0;
         walletData.totalSent += txValue;
         walletData.volume += txValue;
-        walletData.uniqueInteractions.add(tx.toAddress);
+        walletData.uniqueInteractions.add(tx.to_address);
         
         // Update first and last transaction dates
-        if (new Date(tx.timestamp) < new Date(walletData.firstDate)) {
-          walletData.firstDate = tx.timestamp;
+        if (new Date(tx.block_time) < new Date(walletData.firstDate)) {
+          walletData.firstDate = tx.block_time;
         }
-        if (new Date(tx.timestamp) > new Date(walletData.lastDate)) {
-          walletData.lastDate = tx.timestamp;
+        if (new Date(tx.block_time) > new Date(walletData.lastDate)) {
+          walletData.lastDate = tx.block_time;
         }
         
         // Keep track of all transactions
         walletData.allTransactions.push({
-          hash: tx.hash,
-          timestamp: tx.timestamp,
+          hash: tx.tx_hash,
+          timestamp: tx.block_time,
           amount: txValue,
           type: 'outgoing',
-          to: tx.toAddress,
-          methodName: tx.methodName || 'transfer'
+          to: tx.to_address,
+          methodName: tx.method_name || 'transfer'
         });
         
         // Also process receiver wallet if different from sender
-        if (tx.toAddress && tx.toAddress !== fromWallet) {
-          if (!walletMap.has(tx.toAddress)) {
-            walletMap.set(tx.toAddress, {
-              address: tx.toAddress,
+        if (tx.to_address && tx.to_address !== fromWallet) {
+          if (!walletMap.has(tx.to_address)) {
+            walletMap.set(tx.to_address, {
+              address: tx.to_address,
               totalSent: 0,
               totalReceived: 0,
               transactions: 0,
-              firstDate: tx.timestamp,
-              lastDate: tx.timestamp,
+              firstDate: tx.block_time,
+              lastDate: tx.block_time,
               allTransactions: [],
               volume: 0,
               uniqueInteractions: new Set(),
             });
           }
           
-          const recipientData = walletMap.get(tx.toAddress);
+          const recipientData = walletMap.get(tx.to_address);
           recipientData.transactions += 1;
           recipientData.totalReceived += txValue;
           recipientData.volume += txValue;
           recipientData.uniqueInteractions.add(fromWallet);
           
           // Update first and last transaction dates
-          if (new Date(tx.timestamp) < new Date(recipientData.firstDate)) {
-            recipientData.firstDate = tx.timestamp;
+          if (new Date(tx.block_time) < new Date(recipientData.firstDate)) {
+            recipientData.firstDate = tx.block_time;
           }
-          if (new Date(tx.timestamp) > new Date(recipientData.lastDate)) {
-            recipientData.lastDate = tx.timestamp;
+          if (new Date(tx.block_time) > new Date(recipientData.lastDate)) {
+            recipientData.lastDate = tx.block_time;
           }
           
           // Keep track of all transactions
           recipientData.allTransactions.push({
-            hash: tx.hash,
-            timestamp: tx.timestamp,
+            hash: tx.tx_hash,
+            timestamp: tx.block_time,
             amount: txValue,
             type: 'incoming',
             from: fromWallet,
-            methodName: tx.methodName || 'transfer'
+            methodName: tx.method_name || 'transfer'
           });
         }
       });
