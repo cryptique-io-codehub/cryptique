@@ -19,7 +19,9 @@ exports.createCampaign = async (req, res) => {
       conversions: 0,
       conversionsValue: 0,
       cac: 0,
-      roi: 0
+      roi: 0,
+      totalDuration: 0,
+      bounces: 0
     };
 
     // Create new campaign
@@ -102,8 +104,6 @@ exports.getCampaigns = async (req, res) => {
       campaign.stats.uniqueWeb3Users = [];
       campaign.stats.uniqueWalletAddresses = [];
 
-      let totalDuration = 0;
-
       // Process each session
       sessions.forEach(session => {
         // Count unique visitors
@@ -111,20 +111,29 @@ exports.getCampaigns = async (req, res) => {
           campaign.stats.uniqueVisitors.push(session.userId);
         }
 
-        // Count unique web3 users (users who have connected a wallet)
-        if (session.wallet?.walletAddress && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
+        // Count unique web3 users (users who have web3 capability detected)
+        if (session.isWeb3User && session.userId && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
           campaign.stats.uniqueWeb3Users.push(session.userId);
         }
 
-        // Count unique wallets
+        // Count unique wallets (only when wallet is actually connected)
         if (session.wallet?.walletAddress && 
+            session.wallet.walletAddress.trim() !== '' && 
+            session.wallet.walletAddress !== 'No Wallet Detected' &&
+            session.wallet.walletAddress !== 'Not Connected' &&
+            session.wallet.walletAddress.length > 10 &&
             !campaign.stats.uniqueWalletAddresses.includes(session.wallet.walletAddress)) {
           campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
         }
 
-        // Add to total duration (convert from seconds to minutes)
-        if (session.duration) {
-          totalDuration += session.duration;
+        // Track duration metrics
+        if (session.duration && typeof session.duration === 'number' && session.duration > 0) {
+          campaign.stats.totalDuration += session.duration;
+        }
+
+        // Track bounce rate
+        if (session.isBounce) {
+          campaign.stats.bounces++;
         }
       });
 
@@ -132,7 +141,13 @@ exports.getCampaigns = async (req, res) => {
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
       campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
-      campaign.stats.visitDuration = sessions.length > 0 ? (totalDuration / sessions.length) / 60 : 0;
+
+      // Calculate duration metrics
+      if (sessions.length > 0) {
+        campaign.stats.averageDuration = campaign.stats.totalDuration / sessions.length; // Average duration in seconds
+        campaign.stats.visitDuration = campaign.stats.averageDuration / 60; // Convert to minutes for backward compatibility
+        campaign.stats.bounceRate = (campaign.stats.bounces / sessions.length) * 100; // Calculate bounce rate as percentage
+      }
 
       // Save updated campaign stats
       await campaign.save();

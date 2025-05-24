@@ -110,6 +110,26 @@ const campaignSchema = new mongoose.Schema({
     roi: {
       type: Number,
       default: 0
+    },
+    visitDuration: {
+      type: Number,
+      default: 0
+    },
+    totalDuration: {
+      type: Number,
+      default: 0
+    },
+    averageDuration: {
+      type: Number,
+      default: 0
+    },
+    bounceRate: {
+      type: Number,
+      default: 0
+    },
+    bounces: {
+      type: Number,
+      default: 0
     }
   },
   sessions: [{
