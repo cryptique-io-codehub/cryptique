@@ -58,6 +58,39 @@ export const isWeb3User = (session) => {
 };
 
 /**
+ * Determines if a session has a connected wallet
+ * @param {Object} session - Session data object
+ * @returns {boolean} - True if the session has a connected wallet
+ */
+export const walletConnected = (session) => {
+  if (!session || !session.wallet) return false;
+  
+  // Negative values that indicate no wallet
+  const noWalletPhrases = [
+    'No Wallet Detected', 
+    'No Wallet Connected', 
+    'Not Connected', 
+    'No Chain Detected', 
+    'Error'
+  ];
+  
+  // Check if wallet address exists and is valid
+  if (session.wallet.walletAddress && 
+      session.wallet.walletAddress.trim() !== '' && 
+      !noWalletPhrases.includes(session.wallet.walletAddress) &&
+      session.wallet.walletAddress.length > 10) {
+    return true;
+  }
+  
+  // Check if wallet is explicitly marked as connected
+  if (session.walletConnected === true) {
+    return true;
+  }
+  
+  return false;
+};
+
+/**
  * Calculates the average session duration from an array of sessions
  * @param {Array} sessions - Array of session objects
  * @returns {number} - Average duration in seconds
