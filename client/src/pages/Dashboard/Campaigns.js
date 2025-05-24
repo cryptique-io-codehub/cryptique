@@ -6,6 +6,16 @@ import axiosInstance from '../../axiosInstance';
 import { v4 as uuidv4 } from 'uuid';
 import { formatDuration } from '../../utils/analyticsHelpers';
 
+// Add styles object at the top level
+const styles = {
+  primaryColor: "#1d0c46", // Deep purple
+  accentColor: "#caa968",  // Gold accent
+  backgroundColor: "#f9fafb",
+  cardBg: "white",
+  textPrimary: "#111827",
+  textSecondary: "#4b5563"
+};
+
 export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [contractarray, setcontractarray] = useState([]);
   const [isCustomExpanded, setIsCustomExpanded] = useState(true);
@@ -288,56 +298,81 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <div className="flex flex-col w-full h-screen">
         <Header className="w-full flex-shrink-0" onMenuClick={onMenuClick} screenSize={screenSize} />
-        <Filters 
-                          websitearray={websitearray}
-                          setWebsitearray={setWebsitearray}
-                          contractarray={contractarray}
-                          setcontractarray={setcontractarray}
-                          analytics={analytics}
-                          setanalytics={setanalytics}
-                          selectedDate={selectedDate} 
-                          setSelectedDate={setSelectedDate} 
-                          selectedWebsite={selectedWebsite} 
-                          setSelectedWebsite={setSelectedWebsite}
-                          selectedFilters={selectedFilters} 
-                          setSelectedFilters={setSelectedFilters}
-                          idy={idy}
-                          setidy={setidy}
-                          selectedPage={selectedPage}
-                          onMenuClick={onMenuClick}
-                          />
-        <div className="bg-gray-50 flex-1 p-4 overflow-auto" onClick={handleClickOutside}>
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-lg font-medium">Campaigns</h1>
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Import fonts in the head */}
+          <style>
+            {`
+              @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+              
+              h1, h2, h3, h4, h5, h6 {
+                font-family: 'Montserrat', sans-serif;
+              }
+              
+              body, p, span, div {
+                font-family: 'Poppins', sans-serif;
+              }
+            `}
+          </style>
+
+          <Filters 
+            websitearray={websitearray}
+            setWebsitearray={setWebsitearray}
+            contractarray={contractarray}
+            setcontractarray={setcontractarray}
+            analytics={analytics}
+            setanalytics={setanalytics}
+            selectedDate={selectedDate} 
+            setSelectedDate={setSelectedDate} 
+            selectedWebsite={selectedWebsite} 
+            setSelectedWebsite={setSelectedWebsite}
+            selectedFilters={selectedFilters} 
+            setSelectedFilters={setSelectedFilters}
+            idy={idy}
+            setidy={setidy}
+            selectedPage={selectedPage}
+            onMenuClick={onMenuClick}
+          />
+          
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
+              Campaigns
+            </h1>
+            <p className="text-sm text-gray-600 font-poppins mt-1">
+              Create and manage your marketing campaigns
+            </p>
+          </div>
+
+          <div className="flex justify-end mb-4">
             <button 
               onClick={openAddCampaignModal}
-              className="bg-indigo-900 text-amber-300 px-4 py-2 rounded-md flex items-center hover:bg-indigo-800 transition-colors"
+              className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity flex items-center"
+              style={{ backgroundColor: styles.primaryColor }}
             >
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="w-4 h-4 mr-2" />
               Add Campaign
             </button>
           </div>
           
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Table header with metrics */}
             <div className="overflow-x-auto">
               <div className="min-w-max">
-                <div className="grid grid-cols-11 text-xs text-gray-500 p-4 border-b bg-gray-50 sticky top-0">
-                  <div className="px-4">CAMPAIGN NAME</div>
-                  <div className="px-4">VISITORS</div>
-                  <div className="px-4">WEB3 USERS</div>
-                  <div className="px-4">UNIQUE WALLETS</div>
-                  <div className="px-4">TRANSACTED USERS</div>
-                  <div className="px-4">VISIT DURATION (MINS)</div>
-                  <div className="px-4">CONVERSIONS</div>
-                  <div className="px-4">CONVERSIONS VALUE</div>
-                  <div className="px-4">BUDGET</div>
+                <div className="grid grid-cols-11 text-xs font-medium text-gray-500 p-4 border-b bg-gray-50 sticky top-0 font-montserrat uppercase tracking-wider">
+                  <div className="px-4">Campaign Name</div>
+                  <div className="px-4">Visitors</div>
+                  <div className="px-4">Web3 Users</div>
+                  <div className="px-4">Unique Wallets</div>
+                  <div className="px-4">Transacted Users</div>
+                  <div className="px-4">Visit Duration (mins)</div>
+                  <div className="px-4">Conversions</div>
+                  <div className="px-4">Conversions Value</div>
+                  <div className="px-4">Budget</div>
                   <div className="px-4">CAC</div>
                   <div className="px-4">ROI</div>
                 </div>
                 
                 {/* Summary row */}
-                <div className="grid grid-cols-11 text-sm p-4 border-b bg-gray-50">
+                <div className="grid grid-cols-11 text-sm p-4 border-b bg-gray-50 font-poppins">
                   <div className="px-4 font-medium">Total</div>
                   <div className="px-4 font-medium">
                     {campaigns.reduce((sum, camp) => sum + (camp.stats.visitors || 0), 0)}
@@ -372,20 +407,20 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 </div>
                 
                 {/* Campaign rows */}
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-[calc(100vh-24rem)] overflow-y-auto font-poppins">
                   {campaigns.map((campaign, index) => (
-                    <div key={campaign._id} className="grid grid-cols-11 text-sm p-3 border-b hover:bg-gray-50 relative min-h-[4rem]">
-                      <div className="flex items-center px-2 relative">
+                    <div key={campaign._id} className="grid grid-cols-11 text-sm p-4 border-b hover:bg-gray-50 transition-colors relative">
+                      <div className="flex items-center px-4 relative">
                         <span>{campaign.name}</span>
-                        <div className="ml-2 flex space-x-1">
+                        <div className="ml-2 flex space-x-2">
                           <button 
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-red-600 transition-colors"
                             onClick={() => handleDeleteCampaign(campaign._id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                           <button 
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
                             onClick={(e) => handleCopyClick(index, e)}
                           >
                             <Copy className="h-4 w-4" />
@@ -395,19 +430,19 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                         {/* Popup menu */}
                         {activePopup === index && (
                           <div 
-                            className="absolute left-0 top-full mt-1 z-10 bg-white shadow-lg rounded border" 
+                            className="absolute left-0 top-full mt-1 z-10 bg-white shadow-lg rounded-md border border-gray-200" 
                             onClick={e => e.stopPropagation()}
                           >
                             <div className="flex flex-col divide-y text-sm">
                               <button 
-                                className="flex items-center px-4 py-2 hover:bg-gray-50 whitespace-nowrap"
+                                className="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'short', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
                                 Copy short URL
                               </button>
                               <button 
-                                className="flex items-center px-4 py-2 hover:bg-gray-50 whitespace-nowrap"
+                                className="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors whitespace-nowrap"
                                 onClick={(e) => handleCopyUrl(campaign, 'long', e)}
                               >
                                 <Copy className="w-4 h-4 mr-2" />
@@ -417,16 +452,16 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           </div>
                         )}
                       </div>
-                      <div className="px-2 flex items-center">{campaign.stats.visitors || '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.web3Users || '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.uniqueWallets || '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.transactedUsers || '-'}</div>
-                      <div className="px-2 flex items-center">{formatDuration(campaign.stats.visitDuration)}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.conversions || '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.cac ? `$${campaign.stats.cac}` : '-'}</div>
-                      <div className="px-2 flex items-center">{campaign.stats.roi ? `${campaign.stats.roi}%` : '-'}</div>
+                      <div className="px-4">{campaign.stats.visitors || '-'}</div>
+                      <div className="px-4">{campaign.stats.web3Users || '-'}</div>
+                      <div className="px-4">{campaign.stats.uniqueWallets || '-'}</div>
+                      <div className="px-4">{campaign.stats.transactedUsers || '-'}</div>
+                      <div className="px-4">{formatDuration(campaign.stats.visitDuration)}</div>
+                      <div className="px-4">{campaign.stats.conversions || '-'}</div>
+                      <div className="px-4">{campaign.stats.conversionsValue ? `$${campaign.stats.conversionsValue}` : '-'}</div>
+                      <div className="px-4">{campaign.budget ? `${campaign.budget.currency} ${campaign.budget.amount}` : '-'}</div>
+                      <div className="px-4">{campaign.stats.cac ? `$${campaign.stats.cac}` : '-'}</div>
+                      <div className="px-4">{campaign.stats.roi ? `${campaign.stats.roi}%` : '-'}</div>
                     </div>
                   ))}
                 </div>
@@ -439,23 +474,24 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       {/* Add Campaign Modal */}
       {showAddCampaignModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 relative">
-            {/* Close (X) button */}
-            <button 
-              onClick={closeAddCampaignModal}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition-colors"
-              aria-label="Close"
-            >
-              <X className="h-6 w-6" />
-            </button>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
+                Create a Campaign
+              </h2>
+              <button 
+                onClick={closeAddCampaignModal}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
             
-            <h2 className="text-2xl font-bold mb-6 text-indigo-900">Create a Campaign</h2>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Select Website*</label>
-                  <div className="col-span-3">
+            <form onSubmit={handleSubmit} className="font-poppins">
+              <div className="space-y-6">
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Select Website*</label>
+                  <div>
                     {isLoading ? (
                       <div className="w-full p-2 border rounded bg-gray-50">
                         Loading websites...
@@ -469,7 +505,8 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                         name="website"
                         value={campaignForm.website}
                         onChange={handleFormChange}
-                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                        style={{ focusRing: styles.primaryColor }}
                         required
                       >
                         <option value="">Select a website...</option>
@@ -482,195 +519,192 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                     )}
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Campaign Destination*</label>
-                  <div className="col-span-3">
-                    <div className="flex items-center">
-                      <div className="bg-gray-50 p-2 border rounded-l text-gray-700 min-w-fit">
-                        {campaignForm.domain || 'Select a website'}
-                      </div>
-                      <input 
-                        type="text"
-                        name="path"
-                        value={campaignForm.path}
-                        onChange={handleFormChange}
-                        className="w-full p-2 border-y border-r rounded-r focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        placeholder="/path"
-                        required
-                      />
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Campaign Destination*</label>
+                  <div className="flex items-center">
+                    <div className="bg-gray-50 p-2 border rounded-l text-gray-700 min-w-fit">
+                      {campaignForm.domain || 'Select a website'}
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Enter the path after domain (e.g. /page or / for root)
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Campaign Name*</label>
-                  <div className="col-span-3">
                     <input 
                       type="text"
-                      name="name"
-                      value={campaignForm.name}
+                      name="path"
+                      value={campaignForm.path}
                       onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="flex-1 p-2 border-y border-r rounded-r focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      placeholder="/path"
                       required
                     />
-                    <p className="mt-1 text-xs text-gray-500">
-                      e.g. summer_sale_2024, black_friday_promo, new_year_campaign
-                    </p>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Source*</label>
-                  <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="source"
-                      value={campaignForm.source}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      required
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      e.g. newsletter, twitter, google, etc.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Medium*</label>
-                  <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="medium"
-                      value={campaignForm.medium}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      required
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      e.g. email, social, cpc, etc.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Campaign</label>
-                  <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="campaign"
-                      value={campaignForm.campaign}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="e.g. summer_sale"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      The campaign name for UTM tracking
-                    </p>
-                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Enter the path after domain (e.g. /page or / for root)
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Campaign ID</label>
-                  <div className="col-span-3">
-                    <div className="bg-gray-100 px-3 py-2 rounded text-sm font-mono">
-                      {campaignForm.utm_id}
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Unique identifier for this campaign (UTM_ID parameter)
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Term</label>
-                  <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="term"
-                      value={campaignForm.term}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Keywords for your paid search campaigns
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Content</label>
-                  <div className="col-span-3">
-                    <input 
-                      type="text"
-                      name="content"
-                      value={campaignForm.content}
-                      onChange={handleFormChange}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Any call-to-action or headline, e.g. buy-now
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Budget</label>
-                  <div className="col-span-3">
-                    <div className="flex gap-2">
-                      <select
-                        name="budgetCurrency"
-                        value={campaignForm.budgetCurrency}
-                        onChange={handleFormChange}
-                        className="w-24 p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-                      >
-                        {currencies.map(currency => (
-                          <option key={currency.code} value={currency.code}>
-                            {currency.symbol} {currency.code}
-                          </option>
-                        ))}
-                      </select>
-                      <input 
-                        type="number"
-                        name="budgetAmount"
-                        value={campaignForm.budgetAmount}
-                        onChange={handleFormChange}
-                        placeholder="Enter amount"
-                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Optional: Enter your campaign budget with currency
-                    </p>
-                  </div>
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Campaign Name*</label>
+                  <input 
+                    type="text"
+                    name="name"
+                    value={campaignForm.name}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                    required
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    e.g. summer_sale_2024, black_friday_promo, new_year_campaign
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-4 items-center">
-                  <label className="text-sm font-medium">Shortened Domain</label>
-                  <div className="col-span-3">
-                    <div className="w-full p-2 border rounded bg-gray-50 text-gray-700">
-                      link.cryptique.io
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Default Cryptique URL shortener domain (custom domains coming soon)
-                    </p>
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Source*</label>
+                  <input 
+                    type="text"
+                    name="source"
+                    value={campaignForm.source}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                    required
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    e.g. newsletter, twitter, google, etc.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Medium*</label>
+                  <input 
+                    type="text"
+                    name="medium"
+                    value={campaignForm.medium}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                    required
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    e.g. email, social, cpc, etc.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Campaign</label>
+                  <input 
+                    type="text"
+                    name="campaign"
+                    value={campaignForm.campaign}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                    placeholder="e.g. summer_sale"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    The campaign name for UTM tracking
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Campaign ID</label>
+                  <div className="bg-gray-50 px-3 py-2 rounded-md text-sm font-mono">
+                    {campaignForm.utm_id}
                   </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Unique identifier for this campaign (UTM_ID parameter)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Term</label>
+                  <input 
+                    type="text"
+                    name="term"
+                    value={campaignForm.term}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Keywords for your paid search campaigns
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Content</label>
+                  <input 
+                    type="text"
+                    name="content"
+                    value={campaignForm.content}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                    style={{ focusRing: styles.primaryColor }}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Any call-to-action or headline, e.g. buy-now
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Budget</label>
+                  <div className="flex gap-2">
+                    <select
+                      name="budgetCurrency"
+                      value={campaignForm.budgetCurrency}
+                      onChange={handleFormChange}
+                      className="w-24 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow bg-white"
+                      style={{ focusRing: styles.primaryColor }}
+                    >
+                      {currencies.map(currency => (
+                        <option key={currency.code} value={currency.code}>
+                          {currency.symbol} {currency.code}
+                        </option>
+                      ))}
+                    </select>
+                    <input 
+                      type="number"
+                      name="budgetAmount"
+                      value={campaignForm.budgetAmount}
+                      onChange={handleFormChange}
+                      placeholder="Enter amount"
+                      className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 transition-shadow"
+                      style={{ focusRing: styles.primaryColor }}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Optional: Enter your campaign budget with currency
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-gray-700 mb-2">Shortened Domain</label>
+                  <div className="w-full p-2 border rounded-md bg-gray-50 text-gray-700">
+                    link.cryptique.io
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Default Cryptique URL shortener domain (custom domains coming soon)
+                  </p>
                 </div>
               </div>
               
-              <div className="mt-8 flex justify-center">
+              <div className="mt-8 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={closeAddCampaignModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
                 <button 
                   type="submit"
-                  className="bg-indigo-900 text-amber-300 font-bold py-3 px-8 rounded-md hover:bg-indigo-800 transition-colors"
+                  className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: styles.primaryColor }}
                   disabled={isLoading}
                 >
-                  Create Campaign
+                  {isLoading ? 'Creating...' : 'Create Campaign'}
                 </button>
               </div>
             </form>
