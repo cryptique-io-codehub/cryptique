@@ -71,11 +71,27 @@ const campaignSchema = new mongoose.Schema({
     uniqueWalletAddresses: [{
       type: String
     }],
+    transactions: [{
+      txHash: String,
+      contractAddress: String,
+      walletAddress: String,
+      value: Number,
+      timestamp: Date,
+      chainId: String,
+      chainName: String
+    }],
     transactedUsers: {
       type: Number,
       default: 0
     },
-    visitDuration: {
+    uniqueTransactedWallets: [{
+      type: String
+    }],
+    totalTransactionValue: {
+      type: Number,
+      default: 0
+    },
+    averageTransactionValue: {
       type: Number,
       default: 0
     },

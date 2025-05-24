@@ -1,6 +1,7 @@
 const Transaction = require("../models/transaction");
 const SmartContract = require("../models/smartContract");
 const Team = require("../models/team");
+const transactionTrackingService = require('../services/transactionTrackingService');
 
 // Get transactions for a contract
 exports.getContractTransactions = async (req, res) => {
@@ -339,6 +340,48 @@ exports.deleteContractTransactions = async (req, res) => {
     res.status(500).json({ 
       message: "Error deleting transactions", 
       error: error.message 
+    });
+  }
+};
+
+exports.processNewTransaction = async (req, res) => {
+  try {
+    const transactionData = req.body;
+    
+    // Save transaction
+    const transaction = new Transaction(transactionData);
+    await transaction.save();
+
+    // Process transaction for campaign attribution
+    await transactionTrackingService.processTransaction(transactionData);
+
+    return res.status(200).json({
+      message: 'Transaction processed successfully',
+      transaction
+    });
+  } catch (error) {
+    console.error('Error processing transaction:', error);
+    return res.status(500).json({
+      message: 'Error processing transaction',
+      error: error.message
+    });
+  }
+};
+
+exports.getCampaignStats = async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    const stats = await transactionTrackingService.getCampaignTransactionStats(campaignId);
+    
+    return res.status(200).json({
+      message: 'Campaign stats retrieved successfully',
+      stats
+    });
+  } catch (error) {
+    console.error('Error getting campaign stats:', error);
+    return res.status(500).json({
+      message: 'Error getting campaign stats',
+      error: error.message
     });
   }
 }; 
