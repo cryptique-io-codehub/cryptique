@@ -111,7 +111,14 @@ app.get('/', (req, res) => {
 // Initialize scheduled tasks
 // In production, this would be handled by a separate process or cron job
 // For development, we'll just log that it needs to be set up
-console.log('Note: Data retention scheduled tasks should be set up with a cron job running tasks/scheduledTasks.js');
+if (process.env.ENABLE_SCHEDULED_TASKS === 'true') {
+  const { setupScheduledTasks } = require('./tasks/scheduledTasks');
+  setupScheduledTasks();
+  console.log('Scheduled tasks initialized');
+} else {
+  console.log('Note: Scheduled tasks are disabled. Set ENABLE_SCHEDULED_TASKS=true to enable them.');
+  console.log('       Alternatively, run them manually with: npm run tasks');
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

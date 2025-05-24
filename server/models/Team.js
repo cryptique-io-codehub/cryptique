@@ -159,16 +159,30 @@ TeamSchema.statics = {
   /**
    * Find teams with expired subscriptions for data retention processing
    * @param {number} gracePeriodDays - Number of days in grace period
+   * @param {Object} options - Pagination options
    * @returns {Promise<Array>} - Array of team documents
    */
-  findTeamsWithExpiredSubscriptionsWithRetry: async function(gracePeriodDays) {
+  findTeamsWithExpiredSubscriptionsWithRetry: async function(gracePeriodDays, options = {}) {
     const now = new Date();
     const gracePeriodDate = new Date(now.getTime() - (gracePeriodDays * 24 * 60 * 60 * 1000));
     
-    return findWithRetry(this, {
+    // Extract pagination options
+    const { skip = 0, limit = 10 } = options;
+    
+    // Build query
+    const query = {
       'subscription.status': { $in: ['inactive', 'pastdue', 'cancelled'] },
       'subscription.endDate': { $lt: gracePeriodDate },
       'dataDeletionScheduled': { $exists: false }
+    };
+
+    // Apply pagination with skip and limit
+    return findWithRetry(this, query, {
+      mongooseOptions: {
+        skip,
+        limit,
+        sort: { 'subscription.endDate': 1 } // Sort by oldest first
+      }
     });
   },
   
@@ -191,13 +205,28 @@ TeamSchema.statics = {
   
   /**
    * Find teams scheduled for deletion with retry
+   * @param {Object} options - Pagination options
    * @returns {Promise<Array>} - Array of team documents
    */
-  findTeamsScheduledForDeletionWithRetry: async function() {
+  findTeamsScheduledForDeletionWithRetry: async function(options = {}) {
     const now = new Date();
-    return findWithRetry(this, {
+    
+    // Extract pagination options
+    const { skip = 0, limit = 10 } = options;
+    
+    // Build query
+    const query = {
       dataDeletionScheduled: true,
       dataDeletionDate: { $lt: now }
+    };
+    
+    // Apply pagination with skip and limit
+    return findWithRetry(this, query, {
+      mongooseOptions: {
+        skip,
+        limit,
+        sort: { dataDeletionDate: 1 } // Process oldest scheduled deletions first
+      }
     });
   },
   
