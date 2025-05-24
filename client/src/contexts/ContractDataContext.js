@@ -95,11 +95,11 @@ export const ContractDataProvider = ({ children }) => {
 
     setShowDemoData(false); // When a contract is selected, use real data
     
-    // PHASE 1: Immediately try to load cached data from localStorage for instant rendering
+    // PHASE 1: Immediately try to load cached data from sessionStorage for instant rendering
     const cachedDataKey = `contract_transactions_${contractId}`;
     let cachedData = null;
     try {
-      const cachedDataString = localStorage.getItem(cachedDataKey);
+      const cachedDataString = sessionStorage.getItem(cachedDataKey);
       if (cachedDataString) {
         cachedData = JSON.parse(cachedDataString);
         if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
@@ -171,48 +171,40 @@ export const ContractDataProvider = ({ children }) => {
         }
       }
       
-      // Cache the fetched data in localStorage with error handling
+      // Store minimal transaction data in sessionStorage
       try {
-        // Check data size first - if it's very large, store a reduced version
-        if (allTransactions.length > 1000) {
-          console.log(`Large dataset (${allTransactions.length} transactions), storing limited cache`);
-          // Only store the most recent 1000 transactions to avoid quota issues
-          const limitedTransactions = allTransactions.slice(0, 1000);
-          localStorage.setItem(cachedDataKey, JSON.stringify(limitedTransactions));
-          console.log(`Cached limited set of ${limitedTransactions.length} transactions`);
-        } else {
-          localStorage.setItem(cachedDataKey, JSON.stringify(allTransactions));
-          console.log(`Cached all ${allTransactions.length} transactions for contract ${contractId}`);
-        }
+        // Only store the most recent 500 transactions with minimal fields
+        const minimalTransactions = allTransactions.slice(0, 500).map(tx => ({
+          tx_hash: tx.tx_hash,
+          from_address: tx.from_address,
+          to_address: tx.to_address,
+          value_eth: tx.value_eth,
+          block_number: tx.block_number,
+          block_time: tx.block_time,
+          chain: tx.chain
+        }));
+        
+        sessionStorage.setItem(cachedDataKey, JSON.stringify(minimalTransactions));
+        console.log(`Cached ${minimalTransactions.length} minimal transactions in sessionStorage`);
       } catch (storageError) {
         console.error("Error caching transaction data:", storageError);
         
-        // If we got a quota error, try with a smaller dataset
-        if (storageError.name === 'QuotaExceededError' || storageError.code === 22) {
-          try {
-            // First clear some space by removing old caches
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && key.startsWith('contract_transactions_') && key !== cachedDataKey) {
-                keysToRemove.push(key);
-              }
-            }
-            
-            // Remove up to 3 other transaction caches
-            for (let i = 0; i < Math.min(3, keysToRemove.length); i++) {
-              console.log(`Removing old cache: ${keysToRemove[i]}`);
-              localStorage.removeItem(keysToRemove[i]);
-            }
-            
-            // Try with 500 transactions
-            const smallerDataset = allTransactions.slice(0, 500);
-            localStorage.setItem(cachedDataKey, JSON.stringify(smallerDataset));
-            console.log(`Cached reduced set of ${smallerDataset.length} transactions after clearing space`);
-          } catch (retryError) {
-            console.error("Still failed to cache even with reduced dataset:", retryError);
-            // Non-fatal error, continue without caching
-          }
+        // If we still get a quota error, try with even fewer transactions
+        try {
+          const veryMinimalTransactions = allTransactions.slice(0, 200).map(tx => ({
+            tx_hash: tx.tx_hash,
+            from_address: tx.from_address,
+            to_address: tx.to_address,
+            value_eth: tx.value_eth,
+            block_number: tx.block_number,
+            block_time: tx.block_time
+          }));
+          
+          sessionStorage.setItem(cachedDataKey, JSON.stringify(veryMinimalTransactions));
+          console.log(`Cached ${veryMinimalTransactions.length} very minimal transactions in sessionStorage`);
+        } catch (retryError) {
+          console.error("Still failed to cache even with minimal dataset:", retryError);
+          // Non-fatal error, continue without caching
         }
       }
       
