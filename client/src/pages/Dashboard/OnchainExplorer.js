@@ -8,7 +8,6 @@ import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 import { useContractData } from "../../contexts/ContractDataContext";
 import preloadData from "../../utils/preloadService";
-import sdkApi from "../../utils/sdkApi";
 
 const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
    const [activeSection, setActiveSection] = useState('Dashboard');
@@ -23,54 +22,16 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedCountry, setSelectedCountry] = useState();
-    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
     
     // Import the refreshContracts function from context
     const { refreshContracts } = useContractData();
-
-    // Function to fetch analytics data
-    const fetchAnalyticsData = async (websiteId) => {
-      if (!websiteId) return;
-      
-      setIsLoadingAnalytics(true);
-      try {
-        // Check cache first
-        const cachedData = localStorage.getItem(`analytics_${websiteId}`);
-        const cachedTimestamp = localStorage.getItem(`analytics_timestamp_${websiteId}`);
-        const now = Date.now();
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
-
-        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp)) < CACHE_DURATION) {
-          console.log("Using cached analytics data");
-          const parsedData = JSON.parse(cachedData);
-          if (parsedData?.sessions?.length > 0) {
-            setanalytics(parsedData);
-            setIsLoadingAnalytics(false);
-            return;
-          }
-        }
-
-        console.log(`Fetching analytics data for website ID: ${websiteId}`);
-        const response = await sdkApi.getAnalytics(websiteId);
-        
-        if (response && response.analytics) {
-          setanalytics(response.analytics);
-          // Cache the data
-          localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(response.analytics));
-          localStorage.setItem(`analytics_timestamp_${websiteId}`, now.toString());
-        }
-      } catch (error) {
-        console.error("Error fetching analytics:", error);
-        setError("Failed to load analytics data");
-      } finally {
-        setIsLoadingAnalytics(false);
-      }
-    };
     
     // Create a custom event for refreshing contracts from Filters component
     useEffect(() => {
+      // Create a custom event that can be triggered when website changes
       window.refreshContractsEvent = new Event('refreshContracts');
       
+      // Add event listener to refresh contracts when event is dispatched
       const handleRefreshContracts = () => {
         console.log("Contract refresh event triggered by website change");
         if (refreshContracts) {
@@ -80,68 +41,56 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       
       window.addEventListener('refreshContracts', handleRefreshContracts);
       
+      // Clean up
       return () => {
         window.removeEventListener('refreshContracts', handleRefreshContracts);
         delete window.refreshContractsEvent;
       };
     }, [refreshContracts]);
     
-    // Load all data when component mounts or when team/website changes
+    // Refresh contract data when component mounts or when team changes
     useEffect(() => {
-      const loadAllData = async () => {
-        console.log("OnchainExplorer mounted, loading all data");
+      const loadContractData = async () => {
+        console.log("OnchainExplorer mounted, refreshing contract data");
         
         try {
-          // Clear any cached data to ensure fresh data
+          // First clear any cached data to ensure fresh data
           sessionStorage.removeItem("preloadedContracts");
           
-          // Load contract data
+          // Then use the context's refresh function
           if (typeof refreshContracts === 'function') {
             await refreshContracts();
           }
           
-          // Run the preload service
+          // Also run the preload service with force refresh
           await preloadData(true);
           
-          // Load analytics data if we have a website ID
-          const websiteId = localStorage.getItem("idy");
-          if (websiteId) {
-            await fetchAnalyticsData(websiteId);
-          }
-          
-          console.log("Successfully loaded all data in OnchainExplorer");
+          console.log("Successfully refreshed contract data on OnchainExplorer mount");
         } catch (error) {
-          console.error("Error loading data in OnchainExplorer:", error);
+          console.error("Error refreshing contract data in OnchainExplorer:", error);
         }
       };
       
-      loadAllData();
+      loadContractData();
       
-      // Set up team change listener
+      // Also set up a listener for team changes
       const currentTeam = localStorage.getItem("selectedTeam");
       
       const checkTeamChange = () => {
         const newTeam = localStorage.getItem("selectedTeam");
         if (newTeam && newTeam !== currentTeam) {
           console.log(`Team changed in OnchainExplorer: ${currentTeam} → ${newTeam}, refreshing data`);
-          loadAllData();
+          loadContractData();
         }
       };
       
+      // Check for team changes
       const intervalId = setInterval(checkTeamChange, 2000);
       
       return () => {
         clearInterval(intervalId);
       };
     }, [refreshContracts]);
-
-    // Listen for website changes
-    useEffect(() => {
-      const websiteId = localStorage.getItem("idy");
-      if (websiteId) {
-        fetchAnalyticsData(websiteId);
-      }
-    }, [idy]);
 
     const navItems = [
       { section: 'On-chain analytics', type: 'header' },
@@ -151,12 +100,10 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       { label: 'Market Insights' },
       { label: 'Wallet Insights' }
     ];
-
-    // Toggle second navigation on mobile
-    const toggleSecondNav = () => {
-      setSecondNavOpen(!secondNavOpen);
-    };
-
+  // Toggle second navigation on mobile
+  const toggleSecondNav = () => {
+    setSecondNavOpen(!secondNavOpen);
+  };
     return (
       <div className="flex h-screen overflow-hidden bg-gray-50">
         {/* Content area with header and flexible content */}
@@ -239,8 +186,9 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     selectedPage={selectedPage}
                     onMenuClick={onMenuClick}
                   />
-                      <OnchainDashboard analytics={analytics} isLoadingAnalytics={isLoadingAnalytics} />
+                      <OnchainDashboard/>
                       </>
+
                     )}
                     
                     {activeSection === 'Traffic analytics' && (
@@ -263,11 +211,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     selectedPage={selectedPage}
                     onMenuClick={onMenuClick}
                   />
-                        <OnchainTraffic 
-                          analytics={analytics} 
-                          isLoadingAnalytics={isLoadingAnalytics}
-                          error={error}
-                        />
+                        <OnchainTraffic/>
                       </>
                     )}
                     
@@ -291,7 +235,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                     selectedPage={selectedPage}
                     onMenuClick={onMenuClick}
                   />
-                        <Onchainuserinsights analytics={analytics} isLoadingAnalytics={isLoadingAnalytics} />
+                        <Onchainuserinsights/>
                       </>
                     )}
                     
@@ -316,7 +260,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                                            onMenuClick={onMenuClick}
                        
                                          />
-                        <OnchainmarketInsights analytics={analytics} isLoadingAnalytics={isLoadingAnalytics} />
+                        <OnchainmarketInsights/>
                       </>
                     )}
 
@@ -341,7 +285,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                                             onMenuClick={onMenuClick}
                         
                                           />
-                        <Onchainwalletinsights analytics={analytics} isLoadingAnalytics={isLoadingAnalytics} />
+                        <Onchainwalletinsights/>
                       </>
                     )}
                   </div>
