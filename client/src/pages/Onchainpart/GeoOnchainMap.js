@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import WorldMap from "react-svg-worldmap";
 import { isWeb3User } from '../../utils/analyticsHelpers';
 
@@ -35,7 +35,89 @@ const countryCodeToName = {
   "SG": "Singapore"
 };
 
-const GeoOnchainMap = ({ 
+// Function to calculate metrics per country including transacted wallets
+const getMetricsPerCountry = (sessions, contractWallets) => {
+  if (!Array.isArray(sessions)) return {};
+  const countryMetrics = new Map();
+
+  sessions.forEach((session) => {
+    // Skip if no country data
+    if (!session.country) return;
+
+    // Normalize country code to uppercase
+    const countryCode = session.country.toUpperCase();
+    
+    // Skip invalid country codes
+    if (!countryCode || countryCode.length !== 2) return;
+    
+    if (!countryMetrics.has(countryCode)) {
+      countryMetrics.set(countryCode, {
+        uniqueUsers: new Set(),
+        web3Users: new Set(),
+        walletConnections: new Set(),
+        transactedWallets: new Set(), // New metric for wallets that transacted with the contract
+        totalSessions: 0
+      });
+    }
+
+    const metrics = countryMetrics.get(countryCode);
+    
+    // Track unique users
+    if (session.userId) {
+      metrics.uniqueUsers.add(session.userId);
+    }
+    
+    // Track web3 users (has web3 wallet but not necessarily connected)
+    if (session.userId && isWeb3User(session)) {
+      metrics.web3Users.add(session.userId);
+    }
+    
+    // Negative values that indicate no wallet
+    const noWalletPhrases = [
+      'No Wallet Detected', 
+      'No Wallet Connected', 
+      'Not Connected', 
+      'No Chain Detected', 
+      'Error'
+    ];
+    
+    // Track wallet connections and check if the wallet has transacted with our contract
+    if (session.userId && session.wallet && 
+        session.wallet.walletAddress && 
+        session.wallet.walletAddress.trim() !== '' && 
+        !noWalletPhrases.includes(session.wallet.walletAddress) &&
+        session.wallet.walletAddress.length > 10) {
+      
+      const walletAddress = session.wallet.walletAddress.toLowerCase();
+      
+      // Add to connected wallets count
+      metrics.walletConnections.add(session.userId);
+      
+      // Check if this wallet has transacted with our contract
+      if (contractWallets.has(walletAddress)) {
+        metrics.transactedWallets.add(session.userId);
+      }
+    }
+    
+    metrics.totalSessions++;
+  });
+
+  // Convert Set objects to counts for the final result
+  const result = {};
+  countryMetrics.forEach((metrics, countryCode) => {
+    result[countryCode] = {
+      uniqueUsers: metrics.uniqueUsers.size,
+      web3Users: metrics.web3Users.size,
+      walletConnections: metrics.walletConnections.size,
+      transactedWallets: metrics.transactedWallets.size,
+      totalSessions: metrics.totalSessions
+    };
+  });
+
+  return result;
+};
+
+const GeoOnchainMap = React.memo(({ 
   analytics, 
   contractData, 
   selectedCountry, 
@@ -50,6 +132,19 @@ const GeoOnchainMap = ({
   const [topCountries, setTopCountries] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Extract contract wallet addresses - memoized to prevent recalculation
+  const contractWallets = useMemo(() => {
+    const wallets = new Set();
+    if (contractData?.contractTransactions) {
+      contractData.contractTransactions.forEach(tx => {
+        if (tx.from_address) {
+          wallets.add(tx.from_address.toLowerCase());
+        }
+      });
+    }
+    return wallets;
+  }, [contractData?.contractTransactions]);
+
   // Process analytics data and contract transactions to calculate metrics per country
   useEffect(() => {
     // Skip if data is loading
@@ -57,19 +152,7 @@ const GeoOnchainMap = ({
     
     setIsProcessing(true);
     
-    // Extract contract wallet addresses
-    const contractWallets = new Set();
-    if (contractData?.contractTransactions) {
-      contractData.contractTransactions.forEach(tx => {
-        if (tx.from_address) {
-          contractWallets.add(tx.from_address.toLowerCase());
-        }
-      });
-    }
-    
-    console.log(`Processed ${contractWallets.size} unique wallet addresses from contract transactions`);
-    
-    // Process sessions data to get country metrics
+    // Process sessions data to get country metrics using the memoized contract wallets
     const processedMetrics = getMetricsPerCountry(analytics?.sessions || [], contractWallets);
     setCountryMetrics(processedMetrics);
     
@@ -98,89 +181,7 @@ const GeoOnchainMap = ({
     
     setTopCountries(sortedCountries);
     setIsProcessing(false);
-  }, [analytics, contractData?.contractTransactions, isLoadingAnalytics, isLoadingTransactions]);
-
-  // Function to calculate metrics per country including transacted wallets
-  const getMetricsPerCountry = (sessions, contractWallets) => {
-    if (!Array.isArray(sessions)) return {};
-    const countryMetrics = new Map();
-
-    sessions.forEach((session) => {
-      // Skip if no country data
-      if (!session.country) return;
-
-      // Normalize country code to uppercase
-      const countryCode = session.country.toUpperCase();
-      
-      // Skip invalid country codes
-      if (!countryCode || countryCode.length !== 2) return;
-      
-      if (!countryMetrics.has(countryCode)) {
-        countryMetrics.set(countryCode, {
-          uniqueUsers: new Set(),
-          web3Users: new Set(),
-          walletConnections: new Set(),
-          transactedWallets: new Set(), // New metric for wallets that transacted with the contract
-          totalSessions: 0
-        });
-      }
-
-      const metrics = countryMetrics.get(countryCode);
-      
-      // Track unique users
-      if (session.userId) {
-        metrics.uniqueUsers.add(session.userId);
-      }
-      
-      // Track web3 users (has web3 wallet but not necessarily connected)
-      if (session.userId && isWeb3User(session)) {
-        metrics.web3Users.add(session.userId);
-      }
-      
-      // Negative values that indicate no wallet
-      const noWalletPhrases = [
-        'No Wallet Detected', 
-        'No Wallet Connected', 
-        'Not Connected', 
-        'No Chain Detected', 
-        'Error'
-      ];
-      
-      // Track wallet connections and check if the wallet has transacted with our contract
-      if (session.userId && session.wallet && 
-          session.wallet.walletAddress && 
-          session.wallet.walletAddress.trim() !== '' && 
-          !noWalletPhrases.includes(session.wallet.walletAddress) &&
-          session.wallet.walletAddress.length > 10) {
-        
-        const walletAddress = session.wallet.walletAddress.toLowerCase();
-        
-        // Add to connected wallets count
-        metrics.walletConnections.add(session.userId);
-        
-        // Check if this wallet has transacted with our contract
-        if (contractWallets.has(walletAddress)) {
-          metrics.transactedWallets.add(session.userId);
-        }
-      }
-      
-      metrics.totalSessions++;
-    });
-
-    // Convert Set objects to counts for the final result
-    const result = {};
-    countryMetrics.forEach((metrics, countryCode) => {
-      result[countryCode] = {
-        uniqueUsers: metrics.uniqueUsers.size,
-        web3Users: metrics.web3Users.size,
-        walletConnections: metrics.walletConnections.size,
-        transactedWallets: metrics.transactedWallets.size,
-        totalSessions: metrics.totalSessions
-      };
-    });
-
-    return result;
-  };
+  }, [analytics?.sessions, contractWallets, isLoadingAnalytics, isLoadingTransactions]);
 
   // Function to get country flag emoji
   const getCountryFlag = (countryCode) => {
@@ -210,6 +211,11 @@ const GeoOnchainMap = ({
       </div>
     );
   }
+
+  // Get country name from code
+  const getCountryName = (code) => {
+    return countryCodeToName[code.toUpperCase()] || code;
+  };
 
   return (
     <div className="w-full">
@@ -248,43 +254,54 @@ const GeoOnchainMap = ({
             size={hideTopCountries ? "xl" : "lg"}
             data={mapData}
             onClickFunction={({ countryName, countryCode, countryValue }) => {
-              if (setSelectedCountry) {
+              if (countryCode && countryValue) {
                 setSelectedCountry(countryCode.toUpperCase());
               }
             }}
           />
         </div>
-
-        {/* Top Countries List - Only show if hideTopCountries is false */}
-        {!hideTopCountries && (
+        
+        {/* Top Countries - only shown when hideTopCountries is false */}
+        {!hideTopCountries && topCountries.length > 0 && (
           <div className="w-full md:w-1/3 mt-4 md:mt-0">
-            <h3 className="text-base font-medium mb-3 font-montserrat">Top Countries</h3>
-            <ul className="space-y-3 text-sm text-gray-700 font-poppins max-h-80 overflow-y-auto pr-2">
-              {topCountries.map(({ country, value, web3Users, walletConnections, transactedWallets }) => {
-                const countryCode = country.toUpperCase();
-                const countryName = countryCodeToName[countryCode] || countryCode;
-                const flagEmoji = getCountryFlag(countryCode);
-                return (
-                  <li key={country} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                    <span className="flex items-center">
-                      <span className="text-xl mr-3">{flagEmoji}</span>
-                      <span className="font-medium">{countryName}</span>
-                    </span>
-                    <div className="flex flex-col space-y-1">
-                      <span className="font-semibold">{value} users</span>
-                      <span className="text-purple-600">{web3Users} web3</span>
-                      <span className="text-green-600">{walletConnections} wallets</span>
-                      <span className="text-amber-600">{transactedWallets} transacted</span>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold mb-3 text-gray-700">Top Countries</h3>
+              <div className="space-y-3">
+                {topCountries.map((country, index) => (
+                  <div 
+                    key={index}
+                    className="bg-white p-3 rounded-md shadow-sm hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => setSelectedCountry(country.country.toUpperCase())}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <span className="text-lg mr-2">
+                          {getCountryFlag(country.country)}
+                        </span>
+                        <span className="font-medium text-gray-800">
+                          {getCountryName(country.country)}
+                        </span>
+                      </div>
+                      <div className="text-sm font-semibold text-gray-600">
+                        {country.value} users
+                      </div>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    <div className="mt-2 flex justify-between text-xs text-gray-500">
+                      <span>Web3: {country.web3Users}</span>
+                      <span>|</span>
+                      <span>Wallets: {country.walletConnections}</span>
+                      <span>|</span>
+                      <span>Transacted: {country.transactedWallets}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
     </div>
   );
-};
+});
 
 export default GeoOnchainMap; 

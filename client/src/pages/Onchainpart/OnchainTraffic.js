@@ -9,6 +9,12 @@ import { getChainConfig } from '../../utils/chainRegistry';
 import sdkApi from '../../utils/sdkApi';
 import { isWeb3User } from '../../utils/analyticsHelpers';
 
+// Create a cache for analytics data to persist across page navigations
+const analyticsCache = {
+  data: {},
+  timestamp: null
+};
+
 export default function OnchainTraffic() {
   // Get contract data from context
   const { 
@@ -25,7 +31,23 @@ export default function OnchainTraffic() {
   const contractData = !showDemoData ? processContractTransactions() : null;
 
   // State for analytics data
-  const [analytics, setanalytics] = useState({});
+  const [analytics, setanalytics] = useState(() => {
+    // Initialize from cache if available and less than 5 minutes old
+    const now = Date.now();
+    const cacheMaxAge = 5 * 60 * 1000; // 5 minutes
+    
+    if (analyticsCache.data && 
+        analyticsCache.timestamp && 
+        (now - analyticsCache.timestamp < cacheMaxAge) &&
+        analyticsCache.data.sessions &&
+        analyticsCache.data.sessions.length > 0) {
+      console.log("Using cached analytics data from previous navigation");
+      return analyticsCache.data;
+    }
+    
+    return {};
+  });
+  
   // Get website ID once on mount
   const [websiteId, setWebsiteId] = useState(() => localStorage.getItem('idy') || null);
   // Track when contract selection changes
@@ -34,12 +56,16 @@ export default function OnchainTraffic() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  // Add flag to prevent unnecessary analytics reloads
+  const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
   
   // Check for website ID changes
   useEffect(() => {
     const currentWebsiteId = localStorage.getItem('idy');
     if (currentWebsiteId !== websiteId) {
       setWebsiteId(currentWebsiteId);
+      // Reset analytics loaded flag when website changes
+      setAnalyticsLoaded(false);
     }
   }, [websiteId]);
   
@@ -53,9 +79,19 @@ export default function OnchainTraffic() {
     // Update last seen contract ID
     setLastContractId(currentContractId);
     
-    // Only fetch if we have a website ID
+    // Only fetch if we have a website ID and analytics haven't been loaded already
     if (!websiteId) {
       console.log("No website ID found, cannot fetch analytics");
+      return;
+    }
+    
+    // Skip fetch if we already have valid cached data
+    if (analyticsLoaded && 
+        analytics && 
+        analytics.sessions && 
+        analytics.sessions.length > 0 && 
+        !contractChanged) {
+      console.log("Using already loaded analytics data, skipping fetch");
       return;
     }
     
@@ -80,6 +116,12 @@ export default function OnchainTraffic() {
           
           // Store the analytics data in state
           setanalytics(response.analytics);
+          // Store in cache
+          analyticsCache.data = response.analytics;
+          analyticsCache.timestamp = Date.now();
+          // Mark as loaded
+          setAnalyticsLoaded(true);
+          
           console.log("CRITICAL - Set analytics with sessions:", response.analytics.sessions?.length);
           
           // Verify the analytics data is valid
@@ -110,11 +152,10 @@ export default function OnchainTraffic() {
       }
     };
     
-    // Always fetch data when the component mounts or when the website/contract changes
     fetchAnalyticsData();
     
-  }, [websiteId, selectedContract?.id]);
-  
+  }, [websiteId, selectedContract?.id, analyticsLoaded, analytics]);
+
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
     console.log("Generating demo analytics data");
@@ -175,6 +216,11 @@ export default function OnchainTraffic() {
     }
     
     setanalytics(demoAnalytics);
+    // Store in cache
+    analyticsCache.data = demoAnalytics;
+    analyticsCache.timestamp = Date.now();
+    // Mark as loaded
+    setAnalyticsLoaded(true);
   };
   
   // Get chain-specific information
@@ -443,32 +489,32 @@ export default function OnchainTraffic() {
     );
   };
 
+  // Use memoized values for visual components to avoid re-processing on each render
+  const memoizedAnalytics = useMemo(() => analytics, [analytics]);
+  
+  // Memoize the processed traffic sources to prevent recalculations
+  const processedTrafficSources = useMemo(() => {
+    return processTrafficSourcesDirectly();
+  }, [analytics, contractTransactions]);
+  
+  // Memoize the traffic sources table data
+  const memoizedTrafficSourcesTableData = useMemo(() => {
+    return processedTrafficSources.length > 0
+      ? processedTrafficSources
+      : demoTrafficSourcesTableData;
+  }, [processedTrafficSources]);
+
   return (
-    <div className="bg-gray-50 min-h-screen p-6 font-poppins">
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500&display=swap');
-        
-        h1, h2, h3, h4, h5, h6 {
-          font-family: 'Montserrat', sans-serif;
-        }
-        
-        body, p, div, span, td, th {
-          font-family: 'Poppins', sans-serif;
-        }
-      `}</style>
-      
-      {/* Data Source Banner */}
+    <div className="w-full space-y-8">
+      {/* Chain Banner */}
       <ChainBanner 
-        showDemoData={showDemoData}
+        contract={selectedContract} 
+        isDemoData={showDemoData}
         isLoading={isLoadingTransactions}
-        isUpdating={updatingTransactions}
+        updatingTransactions={updatingTransactions}
         loadingStatus={loadingStatus}
-        contract={selectedContract}
-        contractData={contractData}
-        transactions={contractTransactions}
       />
       
-      {/* Main layout with reorganized sections */}
       <div className="space-y-8">
         {/* Funnel Dashboard - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -486,7 +532,7 @@ export default function OnchainTraffic() {
             </div>
           ) : (
             <FunnelDashboard2 
-              analytics={analytics} 
+              analytics={memoizedAnalytics} 
               contractData={{
                 showDemoData,
                 contractTransactions,
@@ -501,248 +547,95 @@ export default function OnchainTraffic() {
         </div>
         
         {/* Traffic Sources by On-Chain USD Volume - Full Width */}
-        <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-          <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources by On-Chain USD Volume</h2>
-          <div className="flex-grow w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={trafficSourcesData}
-                margin={{ top: 10, right: 30, left: 80, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  type="number"
-                  domain={[0, 600]}  
-                  ticks={[0, 150, 300, 450, 600]}
-                />
-                <YAxis 
-                  dataKey="source" 
-                  type="category" 
-                  width={80}
-                  tick={{ fontSize: 14, fontFamily: 'Poppins' }} 
-                />
-                <Tooltip contentStyle={{ fontFamily: 'Poppins' }} />
-                <Bar 
-                  dataKey="value" 
-                  barSize={24}
-                  radius={[0, 4, 4, 0]}
-                >
-                  {trafficSourcesData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        
-        {/* Second row - Analysis charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Traffic Quality Analysis */}
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 className="text-lg font-semibold mb-3 font-montserrat">Traffic Quality Analysis</h2>
-            <p className="text-xs text-gray-500 mb-3">Value Per Traffic Source</p>
-            <div className="flex-grow w-full h-full min-h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart
-                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis 
-                    type="number" 
-                    dataKey="engagement" 
-                    name="Engagement" 
-                    unit="%" 
-                    domain={[0, 60]}
-                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
-                    label={{ 
-                      value: 'Engagement %', 
-                      position: 'insideBottom', 
-                      offset: -10,
-                      fontFamily: 'Poppins',
-                      fontSize: 12
-                    }}
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="ltv" 
-                    name="Lifetime Value" 
-                    unit="K" 
-                    domain={[0, 60]}
-                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
-                    label={{ 
-                      value: 'Lifetime Value ($K)', 
-                      angle: -90, 
-                      position: 'insideLeft',
-                      fontFamily: 'Poppins',
-                      fontSize: 12
-                    }}
-                  />
-                  <ZAxis range={[60, 400]} />
-                  <Tooltip 
-                    cursor={{ strokeDasharray: '3 3' }}
-                    contentStyle={{ fontFamily: 'Poppins' }}
-                    formatter={(value, name) => [
-                      `${value}${name === 'Engagement' ? '%' : 'K'}`, 
-                      name
-                    ]}
-                  />
-                  <Scatter 
-                    name="Traffic Sources" 
-                    data={trafficQualityData} 
-                    fill="#8884d8"
-                  >
-                    {trafficQualityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-            <CustomLegend />
-          </div>
-          
-          {/* Time to Conversion */}
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col">
-            <h2 className="text-lg font-semibold mb-3 font-montserrat">Time to Conversion</h2>
-            <p className="text-xs text-gray-500 mb-3">From Link Click to Chain Transaction</p>
-            <div className="flex-grow w-full h-full min-h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={timeToConversionData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis 
-                    dataKey="day" 
-                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
-                    label={{ 
-                      value: 'Time to Conversion', 
-                      position: 'insideBottom', 
-                      offset: -10, 
-                      fontFamily: 'Poppins',
-                      fontSize: 12
-                    }}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12, fontFamily: 'Poppins' }}
-                    label={{ 
-                      value: 'Number of Users', 
-                      angle: -90, 
-                      position: 'insideLeft',
-                      fontFamily: 'Poppins',
-                      fontSize: 12
-                    }}
-                  />
-                  <Tooltip contentStyle={{ fontFamily: 'Poppins' }} />
-                  <Bar 
-                    dataKey="users" 
-                    fill={chainColor}
-                    name="Users"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-        
-        {/* Geographic Map - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
-          
-          {/* Map and country details side by side - use flex-col on mobile, flex-row on desktop */}
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className={`w-full ${selectedCountry ? 'lg:w-3/5' : 'lg:w-full'}`}>
-              <GeoOnchainMap 
-                analytics={analytics}
+          <h2 className="text-lg font-semibold mb-4 font-montserrat">Visitors by Country</h2>
+          <div className="flex flex-col space-y-4">
+            {selectedCountry ? (
+              <CountryDetail 
+                countryCode={selectedCountry} 
+                analytics={memoizedAnalytics} 
                 contractData={{
                   showDemoData,
                   contractTransactions,
-                  contractId: selectedContract?.id,
-                  contract: selectedContract,
-                  processedData: contractData
+                  contractId: selectedContract?.id
+                }}
+                onBack={() => setSelectedCountry(null)}
+              />
+            ) : (
+              <GeoOnchainMap 
+                analytics={memoizedAnalytics} 
+                contractData={{
+                  showDemoData,
+                  contractTransactions,
+                  contractId: selectedContract?.id
                 }}
                 selectedCountry={selectedCountry}
                 setSelectedCountry={setSelectedCountry}
-                hideTopCountries={selectedCountry !== null}
                 isLoadingAnalytics={isLoadingAnalytics}
-                isLoadingTransactions={isLoadingTransactions || updatingTransactions}
+                isLoadingTransactions={isLoadingTransactions}
               />
-            </div>
-            
-            {/* Country details section - only shown if a country is selected */}
-            <div className={`w-full lg:w-2/5 bg-gray-50 rounded-lg p-4 h-96 overflow-auto ${!selectedCountry ? 'hidden' : ''}`}>
-              <CountryDetail 
-                countryCode={selectedCountry}
-                analytics={analytics}
-                contractData={{
-                  showDemoData,
-                  contractTransactions,
-                  contractId: selectedContract?.id,
-                  contract: selectedContract,
-                  processedData: contractData
-                }}
-              />
-            </div>
+            )}
           </div>
         </div>
         
         {/* Traffic Sources Table - Full Width */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4 font-montserrat">Traffic Sources</h2>
-          {isLoadingAnalytics && realSourcesData.length === 0 && (
-            <div className="py-3 text-center text-gray-500 text-sm">
-              <div className="flex justify-center items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
-                <span>Loading analytics data...</span>
-              </div>
+          {isLoadingAnalytics ? (
+            <div className="flex items-center justify-center p-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+              <span className="ml-3 text-gray-600">Loading analytics data...</span>
             </div>
-          )}
-          <div className="overflow-x-auto">
-            <div className="max-h-96 overflow-y-auto">
+          ) : (
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impressions</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Visitors</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Web3 Users</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Connected</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallets Transacted</th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVL ({selectedContract?.tokenSymbol || 'Token'})</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Visitors
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Impressions
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Web3 Users
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Wallets Connected
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Transacted Wallets
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {trafficSourcesTableData.length > 0 ? (
-                    trafficSourcesTableData.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.source}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.impressions}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.visitors}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.web3Users}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.walletsConnected}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.transactedWallets || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{item.tvl || 0}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        No traffic sources data available
+                  {memoizedTrafficSourcesTableData.map((source, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {source.source}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.visitors || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.impressions || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.web3Users || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.walletsConnected || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.transactedWallets || 0}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-          {selectedContract && isLoadingTransactions && (
-            <div className="text-center text-xs text-gray-500 mt-3">
-              <div className="flex justify-center items-center">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-700 mr-2"></div>
-                <span>Updating transaction data...</span>
-              </div>
             </div>
           )}
         </div>
