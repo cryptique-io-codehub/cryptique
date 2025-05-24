@@ -605,45 +605,31 @@ export default function Onchainwalletinsights() {
   }
 
   return (
-    <div className="bg-gray-50 p-4 text-gray-900">
-      {/* Import fonts in the head */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
-          
-          h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-          }
-          
-          body, p, span, div {
-            font-family: 'Poppins', sans-serif;
-          }
-        `}
-      </style>
-
-      {/* Page title section */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
-          Wallet Insights {selectedContract ? `for ${selectedContract.name}` : ''}
-        </h1>
-        <p className="text-sm text-gray-600 font-poppins mt-1">
-          Track and analyze wallet activity for your smart contract
-        </p>
+    <div className="bg-gray-100 min-h-screen p-4">
+      {/* Page header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Wallet Insights</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Track and analyze wallet activity for your smart contract
+          </p>
+        </div>
       </div>
 
+      {/* Success/Error message */}
+      {message && (
+        <div className={`mb-4 p-3 rounded-md ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {message}
+        </div>
+      )}
+
       {/* Filters Section */}
-      <div className="bg-white rounded-lg shadow mb-6">
+      <div className="bg-white rounded-lg shadow-md mb-6">
         <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="font-semibold text-lg font-montserrat" style={{ color: styles.primaryColor }}>
-            Filters
-          </h2>
+          <h2 className="font-semibold text-lg text-gray-800">Filters</h2>
           <button
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100"
             onClick={() => setShowFilters(!showFilters)}
-            style={{ 
-              backgroundColor: `${styles.primaryColor}10`, 
-              color: styles.primaryColor
-            }}
           >
             {showFilters ? 'Hide Filters' : 'Show Filters'}
             <ChevronDown
@@ -665,7 +651,7 @@ export default function Onchainwalletinsights() {
                   type="number"
                   value={filters.totalSpent.min}
                   onChange={(e) => handleFilterChange('totalSpent', { ...filters.totalSpent, min: Number(e.target.value) })}
-                  className="w-32 px-3 py-2 border rounded-md"
+                  className="w-32 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Min"
                 />
                 <span>to</span>
@@ -673,7 +659,7 @@ export default function Onchainwalletinsights() {
                   type="number"
                   value={filters.totalSpent.max}
                   onChange={(e) => handleFilterChange('totalSpent', { ...filters.totalSpent, max: Number(e.target.value) })}
-                  className="w-32 px-3 py-2 border rounded-md"
+                  className="w-32 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Max"
                 />
               </div>
@@ -689,7 +675,7 @@ export default function Onchainwalletinsights() {
                   type="number"
                   value={filters.transactions.min}
                   onChange={(e) => handleFilterChange('transactions', { ...filters.transactions, min: Number(e.target.value) })}
-                  className="w-32 px-3 py-2 border rounded-md"
+                  className="w-32 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Min"
                 />
                 <span>to</span>
@@ -697,7 +683,7 @@ export default function Onchainwalletinsights() {
                   type="number"
                   value={filters.transactions.max}
                   onChange={(e) => handleFilterChange('transactions', { ...filters.transactions, max: Number(e.target.value) })}
-                  className="w-32 px-3 py-2 border rounded-md"
+                  className="w-32 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Max"
                 />
               </div>
@@ -713,14 +699,14 @@ export default function Onchainwalletinsights() {
                   type="date"
                   value={formatDateForInput(filters.dateRange.start)}
                   onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, start: e.target.value })}
-                  className="w-40 px-3 py-2 border rounded-md"
+                  className="w-40 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
                 <span>to</span>
                 <input
                   type="date"
                   value={formatDateForInput(filters.dateRange.end)}
                   onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, end: e.target.value })}
-                  className="w-40 px-3 py-2 border rounded-md"
+                  className="w-40 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -737,11 +723,196 @@ export default function Onchainwalletinsights() {
                     transactions: { min: 0, max: Math.max(...walletsData.map(w => w.transactions)) },
                     dateRange: { start: null, end: null }
                   })}
-                  className="text-sm text-indigo-600 hover:text-indigo-800"
+                  className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Reset Filters
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main wallet list table */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {/* Table Header */}
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="font-semibold text-lg text-gray-800">
+            Top Active Wallets {selectedContract ? `for ${selectedContract.name}` : ''}
+          </h2>
+          <button 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            <Download size={16} />
+            Export wallets
+            <span className="text-xs ml-1 opacity-70">{totalWalletsCount.toLocaleString()}</span>
+          </button>
+        </div>
+
+        {/* Loading State */}
+        {isLoading || isLoadingTransactions ? (
+          <div className="p-6 text-center">
+            <div className="animate-spin mx-auto h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+            <p className="text-gray-500">Loading wallet insights...</p>
+          </div>
+        ) : walletsData.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-semibold mb-1 text-gray-700">No Wallet Data Available</h3>
+            <p className="text-gray-500 text-sm">
+              {selectedContract 
+                ? 'There are no transactions for this contract yet, or the data is still loading.'
+                : 'Please select a smart contract to view wallet insights.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('address')}
+                  >
+                    <div className="flex items-center">
+                      Wallet Address
+                      {sortConfig.key === 'address' && (
+                        <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('totalSent')}
+                  >
+                    <div className="flex items-center">
+                      Total Spent
+                      {sortConfig.key === 'totalSent' && (
+                        <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('transactions')}
+                  >
+                    <div className="flex items-center">
+                      Transactions
+                      {sortConfig.key === 'transactions' && (
+                        <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('firstDate')}
+                  >
+                    <div className="flex items-center">
+                      First Transaction
+                      {sortConfig.key === 'firstDate' && (
+                        <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('lastDate')}
+                  >
+                    <div className="flex items-center">
+                      Last Transaction
+                      {sortConfig.key === 'lastDate' && (
+                        <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Details
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {currentWallets.map((wallet, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-900">{formatAddress(wallet.address)}</span>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <Copy size={14} />
+                        </button>
+                        {wallet.hasAlert && (
+                          <AlertCircle size={14} className="text-yellow-500" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatValueWithSymbol(wallet.totalSent)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {wallet.transactions.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {wallet.formattedFirstDate}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {wallet.formattedLastDate}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button 
+                        className="px-3 py-1 text-sm rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        onClick={() => openWalletDetail(wallet)}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && walletsData.length > 0 && (
+          <div className="flex justify-between items-center p-4 border-t">
+            <div className="text-sm text-gray-500">
+              Showing {indexOfFirstWallet + 1}-{Math.min(indexOfLastWallet, totalWalletsCount)} of {totalWalletsCount.toLocaleString()} wallets
+            </div>
+            <div className="flex items-center space-x-1">
+              <button 
+                className="flex items-center px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-blue-600"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                <ChevronLeft size={16} className="mr-1" />
+                Previous
+              </button>
+              
+              {pageNumbers.map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 text-gray-400">...</span>
+                ) : (
+                  <button 
+                    key={page}
+                    className={`w-8 h-8 rounded flex items-center justify-center text-sm ${
+                      currentPage === page 
+                        ? 'bg-blue-50 text-blue-600 font-medium' 
+                        : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                    onClick={() => typeof page === 'number' && handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+              
+              <button 
+                className="flex items-center px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-blue-600"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+                <ChevronRight size={16} className="ml-1" />
+              </button>
             </div>
           </div>
         )}
@@ -1145,185 +1316,6 @@ export default function Onchainwalletinsights() {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Main wallet list table */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="font-semibold text-lg font-montserrat" style={{ color: styles.primaryColor }}>
-            Top Active Wallets {selectedContract ? `for ${selectedContract.name}` : ''}
-          </h2>
-          <button 
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
-            style={{ 
-              backgroundColor: `${styles.primaryColor}10`, 
-              color: styles.primaryColor
-            }}
-          >
-            <Download size={16} />
-            Export wallets
-            <span className="text-xs ml-1 opacity-70">{totalWalletsCount.toLocaleString()}</span>
-          </button>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th 
-                  className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('address')}
-                >
-                  <div className="flex items-center">
-                    Wallet Address
-                    {sortConfig.key === 'address' && (
-                      <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('totalSent')}
-                >
-                  <div className="flex items-center">
-                    Total Spent
-                    {sortConfig.key === 'totalSent' && (
-                      <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('transactions')}
-                >
-                  <div className="flex items-center">
-                    Transactions
-                    {sortConfig.key === 'transactions' && (
-                      <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('firstDate')}
-                >
-                  <div className="flex items-center">
-                    First Transaction
-                    {sortConfig.key === 'firstDate' && (
-                      <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('lastDate')}
-                >
-                  <div className="flex items-center">
-                    Last Transaction
-                    {sortConfig.key === 'lastDate' && (
-                      <ChevronDown size={14} className={sortConfig.direction === 'desc' ? 'ml-1' : 'ml-1 transform rotate-180'} />
-                    )}
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider font-montserrat">
-                  Details
-                </th>
-              </tr>
-            </thead>
-            <tbody className="font-poppins">
-              {currentWallets.map((wallet, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm">{formatAddress(wallet.address)}</span>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <Copy size={14} />
-                      </button>
-                      {wallet.hasAlert && (
-                        <AlertCircle size={14} style={{ color: styles.accentColor }} />
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-sm">
-                    {formatValueWithSymbol(wallet.totalSent)}
-                  </td>
-                  <td className="py-3 px-4 text-sm">{wallet.transactions.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-sm">{wallet.formattedFirstDate}</td>
-                  <td className="py-3 px-4 text-sm">{wallet.formattedLastDate}</td>
-                  <td className="py-3 px-4 text-sm">
-                    <button 
-                      className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      onClick={() => openWalletDetail(wallet)}
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center p-4 text-sm text-gray-500 font-poppins">
-          <div className="text-xs">
-            Showing {indexOfFirstWallet + 1}-{Math.min(indexOfLastWallet, totalWalletsCount)} of {totalWalletsCount.toLocaleString()} wallets
-          </div>
-          <div className="flex items-center space-x-1">
-            <button 
-              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-xs" 
-              disabled={currentPage === 1}
-              onClick={() => handlePageChange(currentPage - 1)}
-              style={{ color: styles.primaryColor }}
-            >
-              <ChevronLeft size={12} />
-              <span className="ml-1">Previous</span>
-            </button>
-            
-            {pageNumbers.map((page, index) => (
-              page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-2">...</span>
-              ) : (
-              <button 
-                key={page}
-                  className={`w-7 h-7 rounded flex items-center justify-center text-xs ${currentPage === page ? 'font-medium' : 'hover:bg-gray-50'}`}
-                  onClick={() => typeof page === 'number' && handlePageChange(page)}
-                  style={{ 
-                    backgroundColor: currentPage === page ? `${styles.primaryColor}10` : '',
-                    color: currentPage === page ? styles.primaryColor : ''
-                  }}
-              >
-                {page}
-              </button>
-              )
-            ))}
-            
-            <button 
-              className="flex items-center border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white text-xs"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || totalPages === 0}
-              style={{ color: styles.primaryColor }}
-            >
-              <span className="mr-1">Next</span>
-              <ChevronRight size={12} />
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* No wallets message if empty */}
-      {walletsData.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Wallet Data Available</h3>
-          <p className="text-gray-500 text-sm">
-            {selectedContract 
-              ? 'There are no transactions for this contract yet, or the data is still loading.'
-              : 'Please select a smart contract to view wallet insights.'}
-          </p>
         </div>
       )}
     </div>
