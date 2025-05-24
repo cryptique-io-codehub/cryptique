@@ -578,6 +578,18 @@ export default function Onchainwalletinsights() {
     }
   }
 
+  // Handle page change for pagination
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      // Scroll to top of the table when page changes
+      const tableElement = document.querySelector('.wallet-table');
+      if (tableElement) {
+        tableElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   // Show loading state when transactions are loading
   if (isLoading || isLoadingTransactions) {
     return (
