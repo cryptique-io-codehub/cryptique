@@ -8,20 +8,22 @@ export default function Onchainwalletinsights() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeWalletDetail, setActiveWalletDetail] = useState(null);
   const [walletsData, setWalletsData] = useState([]);
+  const [filteredWallets, setFilteredWallets] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'transactions', direction: 'desc' });
   const [walletMetrics, setWalletMetrics] = useState(null);
   const [isCalculatingMetrics, setIsCalculatingMetrics] = useState(false);
-  const [copySuccess, setCopySuccess] = useState('');
-  const [exportLoading, setExportLoading] = useState(false);
+  
+  // Filter states
   const [filters, setFilters] = useState({
-    totalSpent: { min: 0, max: 0 },
-    transactions: { min: 0, max: 0 },
-    dateRange: { start: '', end: '' }
+    totalSpent: { min: 0, max: 1000000 },
+    transactions: { min: 0, max: 1000 },
+    dateRange: {
+      start: null,
+      end: null
+    }
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [filteredWallets, setFilteredWallets] = useState([]);
-  const [isFiltering, setIsFiltering] = useState(false);
-  
+
   // Get contract data from context
   const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
   
@@ -162,51 +164,6 @@ export default function Onchainwalletinsights() {
       setIsLoading(false);
     }
   }, [contractTransactions, isLoadingTransactions, sortConfig]);
-
-  // Calculate max values for sliders when wallet data changes
-  useEffect(() => {
-    if (walletsData.length > 0) {
-      const maxSpent = Math.max(...walletsData.map(w => w.totalSent));
-      const maxTx = Math.max(...walletsData.map(w => w.transactions));
-      const minDate = Math.min(...walletsData.map(w => new Date(w.firstDate).getTime()));
-      const maxDate = Math.max(...walletsData.map(w => new Date(w.lastDate).getTime()));
-
-      setFilters(prev => ({
-        totalSpent: { min: 0, max: maxSpent },
-        transactions: { min: 0, max: maxTx },
-        dateRange: {
-          start: new Date(minDate).toISOString().split('T')[0],
-          end: new Date(maxDate).toISOString().split('T')[0]
-        }
-      }));
-    }
-  }, [walletsData]);
-
-  // Apply filters to wallet data
-  useEffect(() => {
-    setIsFiltering(true);
-    const filtered = walletsData.filter(wallet => {
-      const meetsSpentCriteria = wallet.totalSent >= filters.totalSpent.min && 
-                                wallet.totalSent <= filters.totalSpent.max;
-      
-      const meetsTxCriteria = wallet.transactions >= filters.transactions.min && 
-                             wallet.transactions <= filters.transactions.max;
-      
-      const walletFirstDate = new Date(wallet.firstDate);
-      const walletLastDate = new Date(wallet.lastDate);
-      const filterStartDate = filters.dateRange.start ? new Date(filters.dateRange.start) : null;
-      const filterEndDate = filters.dateRange.end ? new Date(filters.dateRange.end) : null;
-      
-      const meetsDateCriteria = (!filterStartDate || walletFirstDate >= filterStartDate) && 
-                               (!filterEndDate || walletLastDate <= filterEndDate);
-      
-      return meetsSpentCriteria && meetsTxCriteria && meetsDateCriteria;
-    });
-    
-    setFilteredWallets(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-    setIsFiltering(false);
-  }, [filters, walletsData]);
 
   const sortWallets = (wallets) => {
     return [...wallets].sort((a, b) => {
@@ -478,28 +435,78 @@ export default function Onchainwalletinsights() {
     setActiveWalletDetail(null);
   };
 
-  // Get current page wallets from filtered data instead of all data
+  // Apply filters to wallets
+  useEffect(() => {
+    if (!walletsData.length) {
+      setFilteredWallets([]);
+      return;
+    }
+
+    let filtered = [...walletsData];
+
+    // Apply total spent filter
+    filtered = filtered.filter(wallet => 
+      wallet.totalSent >= filters.totalSpent.min && 
+      wallet.totalSent <= filters.totalSpent.max
+    );
+
+    // Apply transactions filter
+    filtered = filtered.filter(wallet => 
+      wallet.transactions >= filters.transactions.min && 
+      wallet.transactions <= filters.transactions.max
+    );
+
+    // Apply date range filter
+    if (filters.dateRange.start && filters.dateRange.end) {
+      const startDate = new Date(filters.dateRange.start);
+      const endDate = new Date(filters.dateRange.end);
+      filtered = filtered.filter(wallet => {
+        const firstDate = new Date(wallet.firstDate);
+        const lastDate = new Date(wallet.lastDate);
+        return firstDate >= startDate && lastDate <= endDate;
+      });
+    }
+
+    setFilteredWallets(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [walletsData, filters]);
+
+  // Calculate max values for sliders when wallet data changes
+  useEffect(() => {
+    if (walletsData.length > 0) {
+      const maxSpent = Math.max(...walletsData.map(w => w.totalSent));
+      const maxTx = Math.max(...walletsData.map(w => w.transactions));
+      
+      setFilters(prev => ({
+        ...prev,
+        totalSpent: { min: 0, max: maxSpent },
+        transactions: { min: 0, max: maxTx }
+      }));
+    }
+  }, [walletsData]);
+
+  // Handle filter changes
+  const handleFilterChange = (type, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
+
+  // Format date for input fields
+  const formatDateForInput = (date) => {
+    if (!date) return '';
+    return new Date(date).toISOString().split('T')[0];
+  };
+
+  // Get current page wallets from filtered data
   const totalWalletsCount = filteredWallets.length;
   const walletsPerPage = 50;
   const totalPages = Math.ceil(totalWalletsCount / walletsPerPage);
   const indexOfLastWallet = currentPage * walletsPerPage;
   const indexOfFirstWallet = indexOfLastWallet - walletsPerPage;
   const currentWallets = filteredWallets.slice(indexOfFirstWallet, indexOfLastWallet);
-
-  // Helper function to format large numbers for display
-  const formatLargeNumber = (num) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    // Automatically scroll to the top of the table when changing pages
-    window.scrollTo(0, 0);
-  };
   
-  // Get current page wallets
   const pageNumbers = [];
   if (totalPages <= 7) {
     // If we have 7 or fewer pages, show all page numbers
@@ -533,66 +540,6 @@ export default function Onchainwalletinsights() {
       pageNumbers.push(totalPages);
     }
   }
-
-  // Function to handle address copying
-  const handleCopyAddress = async (address) => {
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopySuccess(address);
-      // Reset success message after 2 seconds
-      setTimeout(() => setCopySuccess(''), 2000);
-    } catch (err) {
-      console.error('Failed to copy address:', err);
-    }
-  };
-
-  // Function to export wallet data
-  const handleExportData = async () => {
-    try {
-      setExportLoading(true);
-
-      // Prepare data for export
-      const exportData = filteredWallets.map(wallet => ({
-        address: wallet.address,
-        totalTransactions: wallet.transactions,
-        totalVolume: wallet.volume,
-        totalSent: wallet.totalSent,
-        totalReceived: wallet.totalReceived,
-        netAmount: wallet.netAmount,
-        firstTransaction: wallet.formattedFirstDate,
-        lastTransaction: wallet.formattedLastDate,
-        uniqueInteractions: wallet.uniqueInteractionsCount,
-        avgTransactionValue: wallet.avgTransactionValue,
-        hasRiskFlag: wallet.hasAlert
-      }));
-
-      // Create Blob and download link
-      const jsonString = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      
-      // Set filename with contract name/symbol and date
-      const date = new Date().toISOString().split('T')[0];
-      const contractIdentifier = selectedContract ? 
-        (selectedContract.name || selectedContract.symbol || selectedContract.address) : 
-        'wallets';
-      link.href = url;
-      link.download = `${contractIdentifier}_wallet_insights_${date}.json`;
-      
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error exporting data:', error);
-    } finally {
-      setExportLoading(false);
-    }
-  };
 
   // Show loading state when transactions are loading
   if (isLoading || isLoadingTransactions) {
@@ -635,206 +582,116 @@ export default function Onchainwalletinsights() {
         </p>
       </div>
 
-      {/* Filter section */}
-      <div className="mb-6 bg-white rounded-lg shadow">
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow mb-6">
         <div className="p-4 border-b flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <button
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                showFilters ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-gray-100'
-              }`}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <ChevronDown
-                size={16}
-                className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
-              />
-              Filters
-              {(filters.totalSpent.min > 0 || 
-                filters.totalSpent.max < filters.totalSpent.max || 
-                filters.transactions.min > 0 || 
-                filters.transactions.max < filters.transactions.max || 
-                filters.dateRange.start || 
-                filters.dateRange.end) && (
-                <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
-                  Active
-                </span>
-              )}
-            </button>
-            {(filters.totalSpent.min > 0 || 
-              filters.totalSpent.max < filters.totalSpent.max || 
-              filters.transactions.min > 0 || 
-              filters.transactions.max < filters.transactions.max || 
-              filters.dateRange.start || 
-              filters.dateRange.end) && (
-              <button
-                className="text-sm text-gray-500 hover:text-gray-700"
-                onClick={() => setFilters({
-                  totalSpent: { min: 0, max: Math.max(...walletsData.map(w => w.totalSent)) },
-                  transactions: { min: 0, max: Math.max(...walletsData.map(w => w.transactions)) },
-                  dateRange: { start: '', end: '' }
-                })}
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-          <div className="text-sm text-gray-500">
-            {isFiltering ? (
-              <span className="flex items-center gap-2">
-                <Loader2 size={14} className="animate-spin" />
-                Filtering...
-              </span>
-            ) : (
-              <span>Showing {filteredWallets.length.toLocaleString()} wallets</span>
-            )}
-          </div>
+          <h2 className="font-semibold text-lg font-montserrat" style={{ color: styles.primaryColor }}>
+            Filters
+          </h2>
+          <button
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
+            onClick={() => setShowFilters(!showFilters)}
+            style={{ 
+              backgroundColor: `${styles.primaryColor}10`, 
+              color: styles.primaryColor
+            }}
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+            <ChevronDown
+              size={16}
+              className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            />
+          </button>
         </div>
 
         {showFilters && (
           <div className="p-4 space-y-6">
-            {/* Total Spent Range */}
+            {/* Total Spent Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Total Spent Range ({selectedContract?.tokenSymbol || 'tokens'})
               </label>
               <div className="flex items-center gap-4">
                 <input
-                  type="range"
-                  min={0}
-                  max={filters.totalSpent.max}
+                  type="number"
                   value={filters.totalSpent.min}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    totalSpent: { ...prev.totalSpent, min: Number(e.target.value) }
-                  }))}
-                  className="w-full"
+                  onChange={(e) => handleFilterChange('totalSpent', { ...filters.totalSpent, min: Number(e.target.value) })}
+                  className="w-32 px-3 py-2 border rounded-md"
+                  placeholder="Min"
                 />
+                <span>to</span>
                 <input
-                  type="range"
-                  min={0}
-                  max={filters.totalSpent.max}
+                  type="number"
                   value={filters.totalSpent.max}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    totalSpent: { ...prev.totalSpent, max: Number(e.target.value) }
-                  }))}
-                  className="w-full"
+                  onChange={(e) => handleFilterChange('totalSpent', { ...filters.totalSpent, max: Number(e.target.value) })}
+                  className="w-32 px-3 py-2 border rounded-md"
+                  placeholder="Max"
                 />
-                <div className="flex gap-2 items-center min-w-[200px]">
-                  <input
-                    type="number"
-                    value={filters.totalSpent.min}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      totalSpent: { ...prev.totalSpent, min: Number(e.target.value) }
-                    }))}
-                    className="w-24 px-2 py-1 border rounded"
-                  />
-                  <span>to</span>
-                  <input
-                    type="number"
-                    value={filters.totalSpent.max}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      totalSpent: { ...prev.totalSpent, max: Number(e.target.value) }
-                    }))}
-                    className="w-24 px-2 py-1 border rounded"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0</span>
-                <span>{formatLargeNumber(filters.totalSpent.max)}</span>
               </div>
             </div>
 
-            {/* Transaction Count Range */}
+            {/* Number of Transactions Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Number of Transactions
               </label>
               <div className="flex items-center gap-4">
                 <input
-                  type="range"
-                  min={0}
-                  max={filters.transactions.max}
+                  type="number"
                   value={filters.transactions.min}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    transactions: { ...prev.transactions, min: Number(e.target.value) }
-                  }))}
-                  className="w-full"
+                  onChange={(e) => handleFilterChange('transactions', { ...filters.transactions, min: Number(e.target.value) })}
+                  className="w-32 px-3 py-2 border rounded-md"
+                  placeholder="Min"
                 />
+                <span>to</span>
                 <input
-                  type="range"
-                  min={0}
-                  max={filters.transactions.max}
+                  type="number"
                   value={filters.transactions.max}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    transactions: { ...prev.transactions, max: Number(e.target.value) }
-                  }))}
-                  className="w-full"
+                  onChange={(e) => handleFilterChange('transactions', { ...filters.transactions, max: Number(e.target.value) })}
+                  className="w-32 px-3 py-2 border rounded-md"
+                  placeholder="Max"
                 />
-                <div className="flex gap-2 items-center min-w-[200px]">
-                  <input
-                    type="number"
-                    value={filters.transactions.min}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      transactions: { ...prev.transactions, min: Number(e.target.value) }
-                    }))}
-                    className="w-24 px-2 py-1 border rounded"
-                  />
-                  <span>to</span>
-                  <input
-                    type="number"
-                    value={filters.transactions.max}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      transactions: { ...prev.transactions, max: Number(e.target.value) }
-                    }))}
-                    className="w-24 px-2 py-1 border rounded"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0</span>
-                <span>{formatLargeNumber(filters.transactions.max)}</span>
               </div>
             </div>
 
-            {/* Date Range */}
+            {/* Date Range Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Activity Date Range
               </label>
               <div className="flex items-center gap-4">
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm text-gray-500">From</span>
-                  <input
-                    type="date"
-                    value={filters.dateRange.start}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      dateRange: { ...prev.dateRange, start: e.target.value }
-                    }))}
-                    className="px-2 py-1 border rounded"
-                  />
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm text-gray-500">To</span>
-                  <input
-                    type="date"
-                    value={filters.dateRange.end}
-                    onChange={(e) => setFilters(prev => ({
-                      ...prev,
-                      dateRange: { ...prev.dateRange, end: e.target.value }
-                    }))}
-                    className="px-2 py-1 border rounded"
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={formatDateForInput(filters.dateRange.start)}
+                  onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, start: e.target.value })}
+                  className="w-40 px-3 py-2 border rounded-md"
+                />
+                <span>to</span>
+                <input
+                  type="date"
+                  value={formatDateForInput(filters.dateRange.end)}
+                  onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, end: e.target.value })}
+                  className="w-40 px-3 py-2 border rounded-md"
+                />
+              </div>
+            </div>
+
+            {/* Filter Summary */}
+            <div className="pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Showing {filteredWallets.length} out of {walletsData.length} wallets
+                </p>
+                <button
+                  onClick={() => setFilters({
+                    totalSpent: { min: 0, max: Math.max(...walletsData.map(w => w.totalSent)) },
+                    transactions: { min: 0, max: Math.max(...walletsData.map(w => w.transactions)) },
+                    dateRange: { start: null, end: null }
+                  })}
+                  className="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                  Reset Filters
+                </button>
               </div>
             </div>
           </div>
@@ -853,11 +710,10 @@ export default function Onchainwalletinsights() {
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm font-poppins">{activeWalletDetail.address}</p>
                   <button 
-                    className={`text-gray-400 hover:text-gray-600 transition-colors ${
-                      copySuccess === activeWalletDetail.address ? 'text-green-500' : ''
-                    }`}
-                    onClick={() => handleCopyAddress(activeWalletDetail.address)}
-                    title={copySuccess === activeWalletDetail.address ? 'Copied!' : 'Copy address'}
+                    className="text-gray-400 hover:text-gray-600"
+                    onClick={() => {
+                      navigator.clipboard.writeText(activeWalletDetail.address);
+                    }}
                   >
                     <Copy size={14} />
                   </button>
@@ -921,9 +777,7 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Total Purchases: </span>
-                      <span className="font-medium">
-                        {walletMetrics.tradingStats?.totalPurchases?.toLocaleString() || '0'}
-                      </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.totalPurchases.toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -933,9 +787,7 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Total Sales: </span>
-                      <span className="font-medium">
-                        {walletMetrics.tradingStats?.totalSales?.toLocaleString() || '0'}
-                      </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.totalSales.toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -945,9 +797,7 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Success Rate: </span>
-                      <span className="font-medium">
-                        {(walletMetrics.tradingStats?.successRate || 0).toFixed(1)}%
-                      </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.successRate.toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
@@ -960,27 +810,19 @@ export default function Onchainwalletinsights() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Largest Transaction</p>
-                      <p className="text-sm font-medium">
-                        {formatValueWithSymbol(walletMetrics.tradingStats?.largestTransaction || 0)}
-                      </p>
+                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.largestTransaction)}</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Average Transaction</p>
-                      <p className="text-sm font-medium">
-                        {formatValueWithSymbol(walletMetrics.tradingStats?.avgTransactionValue || 0)}
-                      </p>
+                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.avgTransactionValue)}</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Total Profit</p>
-                      <p className="text-sm font-medium text-green-600">
-                        +{formatValueWithSymbol(walletMetrics.tradingStats?.totalProfit || 0)}
-                      </p>
+                      <p className="text-sm font-medium text-green-600">+{formatValueWithSymbol(walletMetrics.tradingStats.totalProfit)}</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Total Loss</p>
-                      <p className="text-sm font-medium text-red-600">
-                        -{formatValueWithSymbol(walletMetrics.tradingStats?.totalLoss || 0)}
-                      </p>
+                      <p className="text-sm font-medium text-red-600">-{formatValueWithSymbol(walletMetrics.tradingStats.totalLoss)}</p>
                     </div>
                   </div>
                 </div>
@@ -1070,7 +912,7 @@ export default function Onchainwalletinsights() {
                       <h4 className="text-sm font-medium mb-2">Time of Day Activity</h4>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={(walletMetrics.activityPatterns?.hours || new Array(24).fill(0)).map((count, hour) => ({ hour, count }))}>
+                          <BarChart data={walletMetrics.activityPatterns.hours.map((count, hour) => ({ hour, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
                               dataKey="hour" 
@@ -1087,14 +929,14 @@ export default function Onchainwalletinsights() {
                         </ResponsiveContainer>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        Peak activity at {walletMetrics.activityPatterns?.peakHour || 0}:00
+                        Peak activity at {walletMetrics.activityPatterns.peakHour}:00
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium mb-2">Day of Week Activity</h4>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={(walletMetrics.activityPatterns?.days || new Array(7).fill(0)).map((count, day) => ({ day, count }))}>
+                          <BarChart data={walletMetrics.activityPatterns.days.map((count, day) => ({ day, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
                               dataKey="day" 
@@ -1111,7 +953,7 @@ export default function Onchainwalletinsights() {
                         </ResponsiveContainer>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][walletMetrics.activityPatterns?.peakDay || 0]}s
+                        Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][walletMetrics.activityPatterns.peakDay]}s
                       </p>
                     </div>
                   </div>
@@ -1133,7 +975,7 @@ export default function Onchainwalletinsights() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(walletMetrics.methodStats || []).map((method, index) => (
+                        {walletMetrics.methodStats.map((method, index) => (
                           <tr key={index} className="border-b">
                             <td className="py-2 px-4 text-sm">{method.method}</td>
                             <td className="py-2 px-4 text-sm">{method.count.toLocaleString()}</td>
@@ -1141,13 +983,6 @@ export default function Onchainwalletinsights() {
                             <td className="py-2 px-4 text-sm">{method.percentage.toFixed(1)}%</td>
                           </tr>
                         ))}
-                        {(!walletMetrics.methodStats || walletMetrics.methodStats.length === 0) && (
-                          <tr>
-                            <td colSpan="4" className="py-4 px-4 text-sm text-center text-gray-500">
-                              Calculating method statistics...
-                            </td>
-                          </tr>
-                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1250,23 +1085,15 @@ export default function Onchainwalletinsights() {
             Top Active Wallets {selectedContract ? `for ${selectedContract.name}` : ''}
           </h2>
           <button 
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              exportLoading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-opacity-80'
-            }`}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
             style={{ 
               backgroundColor: `${styles.primaryColor}10`, 
               color: styles.primaryColor
             }}
-            onClick={handleExportData}
-            disabled={exportLoading}
           >
-            {exportLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
+            <Download size={16} />
             Export wallets
-            <span className="text-xs ml-1 opacity-70">{filteredWallets.length.toLocaleString()}</span>
+            <span className="text-xs ml-1 opacity-70">{totalWalletsCount.toLocaleString()}</span>
           </button>
         </div>
 
@@ -1341,13 +1168,7 @@ export default function Onchainwalletinsights() {
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm">{formatAddress(wallet.address)}</span>
-                      <button 
-                        className={`text-gray-400 hover:text-gray-600 transition-colors ${
-                          copySuccess === wallet.address ? 'text-green-500' : ''
-                        }`}
-                        onClick={() => handleCopyAddress(wallet.address)}
-                        title={copySuccess === wallet.address ? 'Copied!' : 'Copy address'}
-                      >
+                      <button className="text-gray-400 hover:text-gray-600">
                         <Copy size={14} />
                       </button>
                       {wallet.hasAlert && (
@@ -1423,16 +1244,14 @@ export default function Onchainwalletinsights() {
       </div>
       
       {/* No wallets message if empty */}
-      {filteredWallets.length === 0 && (
+      {walletsData.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Matching Wallets</h3>
+          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Wallet Data Available</h3>
           <p className="text-gray-500 text-sm">
-            {walletsData.length > 0 
-              ? 'No wallets match the current filter criteria. Try adjusting your filters.'
-              : selectedContract 
-                ? 'There are no transactions for this contract yet, or the data is still loading.'
-                : 'Please select a smart contract to view wallet insights.'}
+            {selectedContract 
+              ? 'There are no transactions for this contract yet, or the data is still loading.'
+              : 'Please select a smart contract to view wallet insights.'}
           </p>
         </div>
       )}
