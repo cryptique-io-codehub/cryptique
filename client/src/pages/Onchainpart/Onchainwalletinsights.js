@@ -1133,7 +1133,7 @@ export default function Onchainwalletinsights() {
                         </tr>
                       </thead>
                       <tbody>
-                        {walletMetrics.methodStats.map((method, index) => (
+                        {(walletMetrics.methodStats || []).map((method, index) => (
                           <tr key={index} className="border-b">
                             <td className="py-2 px-4 text-sm">{method.method}</td>
                             <td className="py-2 px-4 text-sm">{method.count.toLocaleString()}</td>
@@ -1141,6 +1141,13 @@ export default function Onchainwalletinsights() {
                             <td className="py-2 px-4 text-sm">{method.percentage.toFixed(1)}%</td>
                           </tr>
                         ))}
+                        {(!walletMetrics.methodStats || walletMetrics.methodStats.length === 0) && (
+                          <tr>
+                            <td colSpan="4" className="py-4 px-4 text-sm text-center text-gray-500">
+                              Calculating method statistics...
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
