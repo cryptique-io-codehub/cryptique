@@ -233,13 +233,39 @@ export default function Onchainwalletinsights() {
         try {
           // Basic metrics (fast to calculate)
           const basicMetrics = {
-            totalTransactions: wallet.transactions,
-            firstTransaction: wallet.formattedFirstDate,
-            lastTransaction: wallet.formattedLastDate,
-            totalInflow: wallet.totalReceived,
-            totalOutflow: wallet.totalSent,
-            netAmount: wallet.netAmount,
-            totalVolume: wallet.volume
+            totalTransactions: wallet.transactions || 0,
+            firstTransaction: wallet.formattedFirstDate || '',
+            lastTransaction: wallet.formattedLastDate || '',
+            totalInflow: wallet.totalReceived || 0,
+            totalOutflow: wallet.totalSent || 0,
+            netAmount: wallet.netAmount || 0,
+            totalVolume: wallet.volume || 0,
+            activityChart: [],
+            dailyActivityChart: [],
+            methodStats: [],
+            tradingStats: {
+              totalPurchases: 0,
+              totalSales: 0,
+              largestTransaction: 0,
+              smallestTransaction: 0,
+              profitableTrades: 0,
+              unprofitableTrades: 0,
+              totalProfit: 0,
+              totalLoss: 0,
+              avgTransactionValue: wallet.avgTransactionValue || 0,
+              successRate: 0
+            },
+            activityPatterns: {
+              hours: new Array(24).fill(0),
+              days: new Array(7).fill(0),
+              peakHour: 0,
+              peakDay: 0
+            },
+            interactionMetrics: {
+              uniqueCounterparties: wallet.uniqueInteractions?.size || 0,
+              averageInteractionFrequency: 0,
+              repeatInteractionRate: 0
+            }
           };
           
           // Update state with basic metrics first
@@ -267,7 +293,11 @@ export default function Onchainwalletinsights() {
               
               for (let i = startIndex; i < endIndex; i++) {
                 const tx = wallet.allTransactions[i];
+                if (!tx) continue;
+
                 const date = new Date(tx.timestamp);
+                if (isNaN(date.getTime())) continue;
+
                 const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
                 const dayKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
                 
@@ -301,35 +331,37 @@ export default function Onchainwalletinsights() {
                   };
                 }
                 
+                const txAmount = parseFloat(tx.amount) || 0;
+                
                 // Update aggregations
                 if (tx.type === 'incoming') {
-                  monthlyData[monthKey].inflow += tx.amount;
-                  dailyData[dayKey].inflow += tx.amount;
+                  monthlyData[monthKey].inflow += txAmount;
+                  dailyData[dayKey].inflow += txAmount;
                   totalPurchases++;
-                  monthlyData[monthKey].uniqueCounterparties.add(tx.from);
+                  if (tx.from) monthlyData[monthKey].uniqueCounterparties.add(tx.from);
                 } else {
-                  monthlyData[monthKey].outflow += tx.amount;
-                  dailyData[dayKey].outflow += tx.amount;
+                  monthlyData[monthKey].outflow += txAmount;
+                  dailyData[dayKey].outflow += txAmount;
                   totalSales++;
-                  monthlyData[monthKey].uniqueCounterparties.add(tx.to);
+                  if (tx.to) monthlyData[monthKey].uniqueCounterparties.add(tx.to);
                 }
                 
                 monthlyData[monthKey].transactions += 1;
                 dailyData[dayKey].transactions += 1;
                 methodStats[method].count += 1;
-                methodStats[method].volume += tx.amount;
+                methodStats[method].volume += txAmount;
                 
                 // Track largest and smallest transactions
-                if (tx.amount > largestTransaction) {
-                  largestTransaction = tx.amount;
+                if (txAmount > largestTransaction) {
+                  largestTransaction = txAmount;
                 }
-                if (tx.amount < smallestTransaction && tx.amount > 0) {
-                  smallestTransaction = tx.amount;
+                if (txAmount < smallestTransaction && txAmount > 0) {
+                  smallestTransaction = txAmount;
                 }
                 
                 // Calculate profit/loss (simplified)
-                if (tx.type === 'outgoing' && tx.amount > 0) {
-                  const profit = tx.amount - (wallet.avgTransactionValue || 0);
+                if (tx.type === 'outgoing' && txAmount > 0) {
+                  const profit = txAmount - (wallet.avgTransactionValue || 0);
                   if (profit > 0) {
                     profitableTrades++;
                     totalProfit += profit;
@@ -349,7 +381,7 @@ export default function Onchainwalletinsights() {
                   .sort((a, b) => a.month.localeCompare(b.month))
                   .map(data => ({
                     ...data,
-                    uniqueCounterparties: data.uniqueCounterparties.size
+                    uniqueCounterparties: data.uniqueCounterparties?.size || 0
                   }));
                 
                 const dailyChartData = Object.values(dailyData)
@@ -360,14 +392,17 @@ export default function Onchainwalletinsights() {
                 const activityHours = new Array(24).fill(0);
                 const activityDays = new Array(7).fill(0);
                 wallet.allTransactions.forEach(tx => {
+                  if (!tx || !tx.timestamp) return;
                   const date = new Date(tx.timestamp);
-                  activityHours[date.getHours()]++;
-                  activityDays[date.getDay()]++;
+                  if (!isNaN(date.getTime())) {
+                    activityHours[date.getHours()]++;
+                    activityDays[date.getDay()]++;
+                  }
                 });
                 
                 // Calculate interaction metrics
-                const uniqueInteractions = wallet.uniqueInteractions.size;
-                const interactionFrequency = wallet.transactions / uniqueInteractions;
+                const uniqueInteractions = wallet.uniqueInteractions?.size || 0;
+                const interactionFrequency = uniqueInteractions > 0 ? wallet.transactions / uniqueInteractions : 0;
                 
                 const detailedMetrics = {
                   ...basicMetrics,
@@ -378,7 +413,7 @@ export default function Onchainwalletinsights() {
                       method,
                       count: stats.count,
                       volume: stats.volume,
-                      percentage: (stats.count / wallet.transactions) * 100
+                      percentage: wallet.transactions > 0 ? (stats.count / wallet.transactions) * 100 : 0
                     }))
                     .sort((a, b) => b.count - a.count),
                   tradingStats: {
@@ -390,8 +425,10 @@ export default function Onchainwalletinsights() {
                     unprofitableTrades,
                     totalProfit,
                     totalLoss,
-                    avgTransactionValue: wallet.avgTransactionValue,
-                    successRate: (profitableTrades / (profitableTrades + unprofitableTrades)) * 100 || 0
+                    avgTransactionValue: wallet.avgTransactionValue || 0,
+                    successRate: (profitableTrades + unprofitableTrades) > 0 
+                      ? (profitableTrades / (profitableTrades + unprofitableTrades)) * 100 
+                      : 0
                   },
                   activityPatterns: {
                     hours: activityHours,
@@ -402,7 +439,7 @@ export default function Onchainwalletinsights() {
                   interactionMetrics: {
                     uniqueCounterparties: uniqueInteractions,
                     averageInteractionFrequency: interactionFrequency,
-                    repeatInteractionRate: (wallet.transactions / uniqueInteractions)
+                    repeatInteractionRate: uniqueInteractions > 0 ? wallet.transactions / uniqueInteractions : 0
                   }
                 };
                 
@@ -836,32 +873,38 @@ export default function Onchainwalletinsights() {
                     </h3>
                     <div className="bg-white border border-gray-100 rounded-lg p-4" style={{ height: '240px' }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={walletMetrics.activityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="month" 
-                            tick={{ fontFamily: 'Poppins', fontSize: 10 }}
-                            tickFormatter={(tick) => {
-                              const [year, month] = tick.split('-');
-                              return `${month}/${year.slice(2)}`;
-                            }}
-                          />
-                          <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
-                          <Tooltip 
-                            contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
-                            formatter={(value, name) => {
-                              return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : name === 'outflow' ? 'Spent' : 'Interactions'];
-                            }}
-                            labelFormatter={(label) => {
-                              const [year, month] = label.split('-');
-                              const date = new Date(parseInt(year), parseInt(month) - 1);
-                              return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                            }}
-                          />
-                          <Bar dataKey="inflow" name="Inflow" fill={styles.primaryColor} />
-                          <Bar dataKey="outflow" name="Outflow" fill={styles.accentColor} />
-                          <Bar dataKey="uniqueCounterparties" name="Unique Interactions" fill="#94a3b8" />
-                        </BarChart>
+                        {walletMetrics && walletMetrics.activityChart && walletMetrics.activityChart.length > 0 ? (
+                          <BarChart data={walletMetrics.activityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="month" 
+                              tick={{ fontFamily: 'Poppins', fontSize: 10 }}
+                              tickFormatter={(tick) => {
+                                const [year, month] = tick.split('-');
+                                return `${month}/${year.slice(2)}`;
+                              }}
+                            />
+                            <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
+                            <Tooltip 
+                              contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
+                              formatter={(value, name) => {
+                                return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : name === 'outflow' ? 'Spent' : 'Interactions'];
+                              }}
+                              labelFormatter={(label) => {
+                                const [year, month] = label.split('-');
+                                const date = new Date(parseInt(year), parseInt(month) - 1);
+                                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                              }}
+                            />
+                            <Bar dataKey="inflow" name="Inflow" fill={styles.primaryColor} />
+                            <Bar dataKey="outflow" name="Outflow" fill={styles.accentColor} />
+                            <Bar dataKey="uniqueCounterparties" name="Unique Interactions" fill="#94a3b8" />
+                          </BarChart>
+                        ) : (
+                          <div className="h-full flex items-center justify-center text-gray-400">
+                            No activity data available
+                          </div>
+                        )}
                       </ResponsiveContainer>
                     </div>
                   </div>
