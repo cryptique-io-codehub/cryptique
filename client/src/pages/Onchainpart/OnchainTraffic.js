@@ -79,6 +79,27 @@ export default function OnchainTraffic() {
       console.log("No website ID found, cannot fetch analytics");
       return;
     }
+
+    // Check if we have valid cached data first
+    const cachedData = localStorage.getItem(`analytics_${websiteId}`);
+    const cachedTimestamp = localStorage.getItem(`analytics_timestamp_${websiteId}`);
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
+    // If we have valid cached data and it's not expired, use it
+    if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp)) < CACHE_DURATION) {
+      console.log("Using cached analytics data");
+      try {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData?.sessions?.length > 0) {
+          setanalytics(parsedData);
+          setIsLoadingAnalytics(false);
+          return;
+        }
+      } catch (e) {
+        console.error("Error parsing cached analytics:", e);
+      }
+    }
     
     const fetchAnalyticsData = async () => {
       setIsLoadingAnalytics(true);
@@ -101,19 +122,11 @@ export default function OnchainTraffic() {
           
           // Store the analytics data in state
           setanalytics(response.analytics);
-          console.log("CRITICAL - Set analytics with sessions:", response.analytics.sessions?.length);
           
-          // Verify the analytics data is valid
-          if (!response.analytics.sessions || !Array.isArray(response.analytics.sessions)) {
-            console.error("ISSUE: Fetched analytics has invalid sessions data");
-          } else {
-            console.log("Fetched analytics has valid sessions array");
-          }
-          
-          // Also store in localStorage for future use
+          // Cache the data with timestamp
           try {
             localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(response.analytics));
-            localStorage.setItem('analytics_storage', JSON.stringify(response.analytics));
+            localStorage.setItem(`analytics_timestamp_${websiteId}`, now.toString());
           } catch (storageError) {
             console.error("Failed to store analytics in localStorage:", storageError);
           }
@@ -131,8 +144,10 @@ export default function OnchainTraffic() {
       }
     };
     
-    // Always fetch data when the component mounts or when the website/contract changes
-    fetchAnalyticsData();
+    // Only fetch if we don't have valid cached data
+    if (!cachedData || !cachedTimestamp || (now - parseInt(cachedTimestamp)) >= CACHE_DURATION) {
+      fetchAnalyticsData();
+    }
     
   }, [websiteId, selectedContract?.id]);
   
