@@ -89,9 +89,82 @@ const preloadContractTransactions = async (contractId) => {
       const transactions = response.data.transactions;
       console.log(`Preloaded ${transactions.length} transactions for contract ${contractId}`);
       
-      // Cache the transactions
-      localStorage.setItem(cachedDataKey, JSON.stringify(transactions));
-      localStorage.setItem(lastRefreshKey, now.toString());
+      // Try to cache the transactions with storage quota handling
+      try {
+        // If the transaction data is very large, we'll need to handle it specially
+        if (transactions.length > 1000) {
+          console.log(`Large transaction set (${transactions.length} items), using chunked storage approach`);
+          
+          // Option 1: Store only the most recent transactions (last 1000)
+          const recentTransactions = transactions.slice(0, 1000);
+          localStorage.setItem(cachedDataKey, JSON.stringify(recentTransactions));
+          localStorage.setItem(lastRefreshKey, now.toString());
+          console.log(`Cached most recent ${recentTransactions.length} transactions due to storage constraints`);
+        } else {
+          // Normal case - not too many transactions
+          localStorage.setItem(cachedDataKey, JSON.stringify(transactions));
+          localStorage.setItem(lastRefreshKey, now.toString());
+          console.log(`Cached all ${transactions.length} transactions successfully`);
+        }
+      } catch (storageError) {
+        // Handle quota exceeded error
+        console.error(`Storage error while caching transactions: ${storageError.message}`);
+        
+        // Implement a cleanup strategy to make room
+        try {
+          // First, try to prune the data we're trying to save
+          if (transactions.length > 500) {
+            // Store only the 500 most recent transactions
+            const prunedTransactions = transactions.slice(0, 500);
+            localStorage.setItem(cachedDataKey, JSON.stringify(prunedTransactions));
+            localStorage.setItem(lastRefreshKey, now.toString());
+            console.log(`Stored pruned set of ${prunedTransactions.length} transactions after quota error`);
+          } else {
+            // If we have a smaller dataset that still won't fit, we need to clear other items
+            
+            // Strategy: Find other transaction cache entries and remove the oldest ones
+            const keysToCheck = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('contract_transactions_') && key !== cachedDataKey) {
+                const refreshTimeKey = `contract_transactions_refresh_${key.split('_')[2]}`;
+                const refreshTime = parseInt(localStorage.getItem(refreshTimeKey) || "0");
+                keysToCheck.push({ key, refreshTimeKey, refreshTime });
+              }
+            }
+            
+            // Sort by refresh time (oldest first)
+            keysToCheck.sort((a, b) => a.refreshTime - b.refreshTime);
+            
+            // Remove oldest cache entries until we have enough space or run out of entries
+            let entriesRemoved = 0;
+            for (const entry of keysToCheck) {
+              try {
+                localStorage.removeItem(entry.key);
+                localStorage.removeItem(entry.refreshTimeKey);
+                entriesRemoved++;
+                
+                // Try to store our data after each removal
+                try {
+                  localStorage.setItem(cachedDataKey, JSON.stringify(transactions));
+                  localStorage.setItem(lastRefreshKey, now.toString());
+                  console.log(`Successfully stored transactions after removing ${entriesRemoved} old cache entries`);
+                  break; // Successfully stored, exit the loop
+                } catch (innerError) {
+                  // Still not enough space, continue removing
+                  console.log(`Still not enough space after removing ${entriesRemoved} entries, continuing...`);
+                }
+              } catch (removeError) {
+                console.error(`Error removing old cache entry: ${removeError.message}`);
+              }
+            }
+          }
+        } catch (recoveryError) {
+          console.error(`Failed to recover from storage quota error: ${recoveryError.message}`);
+          // At this point we've tried our best, but we can't store the data
+          // The app will just need to refetch when needed
+        }
+      }
       
       return transactions;
     }

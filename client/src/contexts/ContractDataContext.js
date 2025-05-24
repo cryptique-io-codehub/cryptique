@@ -171,13 +171,49 @@ export const ContractDataProvider = ({ children }) => {
         }
       }
       
-      // Cache the fetched data in localStorage
+      // Cache the fetched data in localStorage with error handling
       try {
-        localStorage.setItem(cachedDataKey, JSON.stringify(allTransactions));
-        console.log(`Cached ${allTransactions.length} transactions for contract ${contractId}`);
-      } catch (error) {
-        console.error("Error caching transaction data:", error);
-        // Non-fatal error, continue without caching
+        // Check data size first - if it's very large, store a reduced version
+        if (allTransactions.length > 1000) {
+          console.log(`Large dataset (${allTransactions.length} transactions), storing limited cache`);
+          // Only store the most recent 1000 transactions to avoid quota issues
+          const limitedTransactions = allTransactions.slice(0, 1000);
+          localStorage.setItem(cachedDataKey, JSON.stringify(limitedTransactions));
+          console.log(`Cached limited set of ${limitedTransactions.length} transactions`);
+        } else {
+          localStorage.setItem(cachedDataKey, JSON.stringify(allTransactions));
+          console.log(`Cached all ${allTransactions.length} transactions for contract ${contractId}`);
+        }
+      } catch (storageError) {
+        console.error("Error caching transaction data:", storageError);
+        
+        // If we got a quota error, try with a smaller dataset
+        if (storageError.name === 'QuotaExceededError' || storageError.code === 22) {
+          try {
+            // First clear some space by removing old caches
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('contract_transactions_') && key !== cachedDataKey) {
+                keysToRemove.push(key);
+              }
+            }
+            
+            // Remove up to 3 other transaction caches
+            for (let i = 0; i < Math.min(3, keysToRemove.length); i++) {
+              console.log(`Removing old cache: ${keysToRemove[i]}`);
+              localStorage.removeItem(keysToRemove[i]);
+            }
+            
+            // Try with 500 transactions
+            const smallerDataset = allTransactions.slice(0, 500);
+            localStorage.setItem(cachedDataKey, JSON.stringify(smallerDataset));
+            console.log(`Cached reduced set of ${smallerDataset.length} transactions after clearing space`);
+          } catch (retryError) {
+            console.error("Still failed to cache even with reduced dataset:", retryError);
+            // Non-fatal error, continue without caching
+          }
+        }
       }
       
       // Update state with fresh data
