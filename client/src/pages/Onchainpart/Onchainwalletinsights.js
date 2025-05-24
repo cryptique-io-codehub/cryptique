@@ -900,7 +900,16 @@ export default function Onchainwalletinsights() {
                             <Tooltip 
                               contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
                               formatter={(value, name) => {
-                                return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : name === 'outflow' ? 'Spent' : 'Interactions'];
+                                switch(name) {
+                                  case 'inflow':
+                                    return [formatValueWithSymbol(value), 'Tokens Received'];
+                                  case 'outflow':
+                                    return [formatValueWithSymbol(value), 'Tokens Spent'];
+                                  case 'uniqueCounterparties':
+                                    return [value, 'Unique Wallets'];
+                                  default:
+                                    return [value, name];
+                                }
                               }}
                               labelFormatter={(label) => {
                                 const [year, month] = label.split('-');
@@ -908,9 +917,9 @@ export default function Onchainwalletinsights() {
                                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                               }}
                             />
-                            <Bar dataKey="inflow" name="Inflow" fill={styles.primaryColor} />
-                            <Bar dataKey="outflow" name="Outflow" fill={styles.accentColor} />
-                            <Bar dataKey="uniqueCounterparties" name="Unique Interactions" fill="#94a3b8" />
+                            <Bar dataKey="inflow" name="inflow" fill={styles.primaryColor} />
+                            <Bar dataKey="outflow" name="outflow" fill={styles.accentColor} />
+                            <Bar dataKey="uniqueCounterparties" name="uniqueCounterparties" fill="#94a3b8" />
                           </BarChart>
                         ) : (
                           <div className="h-full flex items-center justify-center text-gray-400">
@@ -942,15 +951,22 @@ export default function Onchainwalletinsights() {
                           <Tooltip 
                             contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
                             formatter={(value, name) => {
-                              return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : 'Spent'];
+                              switch(name) {
+                                case 'inflow':
+                                  return [formatValueWithSymbol(value), 'Tokens Received'];
+                                case 'outflow':
+                                  return [formatValueWithSymbol(value), 'Tokens Spent'];
+                                default:
+                                  return [value, name];
+                              }
                             }}
                             labelFormatter={(label) => {
                               const date = new Date(label);
                               return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                             }}
                           />
-                          <Area type="monotone" dataKey="inflow" name="Inflow" stroke={styles.primaryColor} fill={`${styles.primaryColor}20`} />
-                          <Area type="monotone" dataKey="outflow" name="Outflow" stroke={styles.accentColor} fill={`${styles.accentColor}20`} />
+                          <Area type="monotone" dataKey="inflow" name="inflow" stroke={styles.primaryColor} fill={`${styles.primaryColor}20`} />
+                          <Area type="monotone" dataKey="outflow" name="outflow" stroke={styles.accentColor} fill={`${styles.accentColor}20`} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
