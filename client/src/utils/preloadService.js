@@ -1,185 +1,55 @@
 import axiosInstance from '../axiosInstance';
 
 /**
- * Main preload function to fetch all necessary data on app startup
- * This will preload websites, contracts, and basic transaction data
+ * Preloads important dropdown data when a user logs in
+ * This improves the user experience by fetching frequently used data ahead of time
+ * @param {boolean} forceRefresh - Whether to force refresh all data even if cached
+ * @param {string} teamId - Optional team ID to load data for (defaults to selectedTeam from localStorage)
  */
-const preloadData = async (forceRefresh = false) => {
+const preloadData = async (forceRefresh = false, teamId = null) => {
   try {
-    const teamId = localStorage.getItem("selectedTeam");
-    if (!teamId) {
+    const selectedTeam = teamId || localStorage.getItem("selectedTeam");
+    if (!selectedTeam) {
       console.log("No team selected, skipping preload");
       return;
     }
+
+    console.log("Preloading website and contract data for team:", selectedTeam);
     
-    console.log(`Starting preload for team: ${teamId}`);
+    // Check if we've recently refreshed (within 10 seconds) to avoid rate limiting
+    const now = Date.now();
+    const lastPreloadTime = parseInt(sessionStorage.getItem("lastPreloadTime") || "0");
     
-    // Load all data in parallel for faster initialization
-    const [websites, contracts] = await Promise.all([
-      preloadWebsites(teamId, forceRefresh),
-      preloadSmartContracts(teamId, forceRefresh)
+    if (!forceRefresh && now - lastPreloadTime < 10000) {
+      console.log("Preload throttled - too recent. Using existing data.");
+      return;
+    }
+    
+    // If forceRefresh is true, clear existing cached data
+    if (forceRefresh) {
+      console.log("Force refresh requested, clearing existing data");
+      sessionStorage.removeItem("preloadedWebsites");
+      sessionStorage.removeItem("preloadedContracts");
+    }
+    
+    // Fetch websites and smart contracts in parallel
+    await Promise.all([
+      preloadWebsites(selectedTeam),
+      preloadSmartContracts(selectedTeam)
     ]);
     
-    // Once we have contracts, preload basic transaction data for the most recently used contracts
-    if (contracts && contracts.length > 0) {
-      // Try to get the currently selected contract
-      const selectedContractId = localStorage.getItem("selectedContractId");
-      
-      // If there's a selected contract, prioritize that one for preloading
-      if (selectedContractId) {
-        console.log(`Preloading transactions for previously selected contract: ${selectedContractId}`);
-        preloadContractTransactions(selectedContractId);
-      } else if (contracts.length > 0) {
-        // Otherwise preload the first contract
-        console.log(`No previously selected contract, preloading first contract: ${contracts[0].id}`);
-        preloadContractTransactions(contracts[0].id);
-      }
-      
-      // In the background, also preload the rest of the top 3 contracts
-      setTimeout(() => {
-        const contractsToPreload = contracts.slice(0, 3).filter(c => c.id !== selectedContractId);
-        
-        console.log(`Background preloading ${contractsToPreload.length} additional contracts`);
-        contractsToPreload.forEach(contract => {
-          preloadContractTransactions(contract.id);
-        });
-      }, 2000); // Delay to avoid overwhelming API
-    }
-    
-    return { websites, contracts };
+    // Update last preload time
+    sessionStorage.setItem("lastPreloadTime", now.toString());
+    console.log("Preloading completed");
   } catch (error) {
-    console.error("Error in preload service:", error);
-    return { websites: [], contracts: [] };
-  }
-};
-
-/**
- * Preload transaction data for a specific contract
- */
-const preloadContractTransactions = async (contractId) => {
-  if (!contractId) return [];
-  
-  try {
-    console.log(`Preloading transactions for contract: ${contractId}`);
-    
-    // Check if we have cached data and it's recent (last 30 minutes)
-    const cachedDataKey = `contract_transactions_${contractId}`;
-    const lastRefreshKey = `contract_transactions_refresh_${contractId}`;
-    const lastRefreshTime = parseInt(localStorage.getItem(lastRefreshKey) || "0");
-    const now = Date.now();
-    
-    // If we have recently cached data, don't fetch again
-    if (now - lastRefreshTime < 30 * 60 * 1000) { // 30 minutes
-      const cachedData = localStorage.getItem(cachedDataKey);
-      if (cachedData) {
-        console.log(`Using cached transaction data for contract ${contractId} (< 30 minutes old)`);
-        return JSON.parse(cachedData);
-      }
-    }
-    
-    // Fetch first batch of transactions only (for speed)
-    const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-      params: { 
-        limit: 5000,
-        page: 1
-      }
-    });
-    
-    if (response.data && response.data.transactions) {
-      const transactions = response.data.transactions;
-      console.log(`Preloaded ${transactions.length} transactions for contract ${contractId}`);
-      
-      // Try to cache the transactions with storage quota handling
-      try {
-        // If the transaction data is very large, we'll need to handle it specially
-        if (transactions.length > 1000) {
-          console.log(`Large transaction set (${transactions.length} items), using chunked storage approach`);
-          
-          // Option 1: Store only the most recent transactions (last 1000)
-          const recentTransactions = transactions.slice(0, 1000);
-          localStorage.setItem(cachedDataKey, JSON.stringify(recentTransactions));
-          localStorage.setItem(lastRefreshKey, now.toString());
-          console.log(`Cached most recent ${recentTransactions.length} transactions due to storage constraints`);
-        } else {
-          // Normal case - not too many transactions
-          localStorage.setItem(cachedDataKey, JSON.stringify(transactions));
-          localStorage.setItem(lastRefreshKey, now.toString());
-          console.log(`Cached all ${transactions.length} transactions successfully`);
-        }
-      } catch (storageError) {
-        // Handle quota exceeded error
-        console.error(`Storage error while caching transactions: ${storageError.message}`);
-        
-        // Implement a cleanup strategy to make room
-        try {
-          // First, try to prune the data we're trying to save
-          if (transactions.length > 500) {
-            // Store only the 500 most recent transactions
-            const prunedTransactions = transactions.slice(0, 500);
-            localStorage.setItem(cachedDataKey, JSON.stringify(prunedTransactions));
-            localStorage.setItem(lastRefreshKey, now.toString());
-            console.log(`Stored pruned set of ${prunedTransactions.length} transactions after quota error`);
-          } else {
-            // If we have a smaller dataset that still won't fit, we need to clear other items
-            
-            // Strategy: Find other transaction cache entries and remove the oldest ones
-            const keysToCheck = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && key.startsWith('contract_transactions_') && key !== cachedDataKey) {
-                const refreshTimeKey = `contract_transactions_refresh_${key.split('_')[2]}`;
-                const refreshTime = parseInt(localStorage.getItem(refreshTimeKey) || "0");
-                keysToCheck.push({ key, refreshTimeKey, refreshTime });
-              }
-            }
-            
-            // Sort by refresh time (oldest first)
-            keysToCheck.sort((a, b) => a.refreshTime - b.refreshTime);
-            
-            // Remove oldest cache entries until we have enough space or run out of entries
-            let entriesRemoved = 0;
-            for (const entry of keysToCheck) {
-              try {
-                localStorage.removeItem(entry.key);
-                localStorage.removeItem(entry.refreshTimeKey);
-                entriesRemoved++;
-                
-                // Try to store our data after each removal
-                try {
-                  localStorage.setItem(cachedDataKey, JSON.stringify(transactions));
-                  localStorage.setItem(lastRefreshKey, now.toString());
-                  console.log(`Successfully stored transactions after removing ${entriesRemoved} old cache entries`);
-                  break; // Successfully stored, exit the loop
-                } catch (innerError) {
-                  // Still not enough space, continue removing
-                  console.log(`Still not enough space after removing ${entriesRemoved} entries, continuing...`);
-                }
-              } catch (removeError) {
-                console.error(`Error removing old cache entry: ${removeError.message}`);
-              }
-            }
-          }
-        } catch (recoveryError) {
-          console.error(`Failed to recover from storage quota error: ${recoveryError.message}`);
-          // At this point we've tried our best, but we can't store the data
-          // The app will just need to refetch when needed
-        }
-      }
-      
-      return transactions;
-    }
-    
-    return [];
-  } catch (error) {
-    console.error(`Error preloading transactions for contract ${contractId}:`, error);
-    return [];
+    console.error("Error preloading data:", error);
   }
 };
 
 /**
  * Preloads website data for the selected team
  */
-const preloadWebsites = async (teamId, forceRefresh = false) => {
+const preloadWebsites = async (teamId) => {
   try {
     console.log("Preloading websites for team:", teamId);
     
@@ -188,8 +58,8 @@ const preloadWebsites = async (teamId, forceRefresh = false) => {
     const lastWebsitesRefreshTime = parseInt(sessionStorage.getItem("lastWebsitesRefreshTime") || "0");
     const now = Date.now();
     
-    // If we have cached data, it's less than 5 minutes old, and we're not forcing refresh, use it
-    if (cachedWebsites && now - lastWebsitesRefreshTime < 300000 && !forceRefresh) {
+    // If we have cached data and it's less than 5 minutes old, use it
+    if (cachedWebsites && now - lastWebsitesRefreshTime < 300000) {
       console.log("Using cached website data (< 5 minutes old)");
       return JSON.parse(cachedWebsites);
     }
@@ -212,8 +82,6 @@ const preloadWebsites = async (teamId, forceRefresh = false) => {
       
       return response.data.websites;
     }
-    
-    return [];
   } catch (error) {
     console.error("Error preloading websites:", error);
     return [];
@@ -223,7 +91,7 @@ const preloadWebsites = async (teamId, forceRefresh = false) => {
 /**
  * Preloads smart contract data for the selected team
  */
-const preloadSmartContracts = async (teamId, forceRefresh = false) => {
+const preloadSmartContracts = async (teamId) => {
   try {
     console.log("Preloading smart contracts for team:", teamId);
     
@@ -232,8 +100,8 @@ const preloadSmartContracts = async (teamId, forceRefresh = false) => {
     const lastContractsRefreshTime = parseInt(sessionStorage.getItem("lastContractsRefreshTime") || "0");
     const now = Date.now();
     
-    // If we have cached data, it's less than 5 minutes old, and we're not forcing refresh, use it
-    if (cachedContracts && now - lastContractsRefreshTime < 300000 && !forceRefresh) {
+    // If we have cached data and it's less than 5 minutes old, use it
+    if (cachedContracts && now - lastContractsRefreshTime < 300000) {
       console.log("Using cached contracts data (< 5 minutes old)");
       return JSON.parse(cachedContracts);
     }
@@ -257,8 +125,6 @@ const preloadSmartContracts = async (teamId, forceRefresh = false) => {
       console.log(`Successfully preloaded ${contracts.length} contracts`);
       return contracts;
     }
-    
-    return [];
   } catch (error) {
     console.error("Error preloading contracts:", error);
     return [];

@@ -102,7 +102,6 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [loadingStatus, setLoadingStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [processingStep, setProcessingStep] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const teamRef = useRef(null);
   
   // For backwards compatibility with existing code
@@ -230,67 +229,12 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   }, [setcontractarray]);
 
   // Function to handle contract selection that works with both props and context
-  const handleSelectContract = async (contractId) => {
-    try {
-      if (contractId === contextSelectedContract?.id) {
-        console.log("Contract already selected, skipping update");
-        return;
-      }
-      
-      // First, find the contract in our array
-      const contract = contractarray.find(c => c.id === contractId);
-      if (!contract) {
-        console.error(`Contract not found: ${contractId}`);
-        return;
-      }
-      
-      console.log(`Selected contract: ${contract.name || contract.address}`);
-      
-      // Update the selected contract state immediately for instant UI feedback
-      propSetSelectedContract(contract);
-      
-      // Store selection in localStorage for persistence
-      localStorage.setItem("selectedContractId", contractId);
-      
-      // Check if we have cached transaction data for this contract
-      const cachedDataKey = `contract_transactions_${contractId}`;
-      let cachedData = null;
-      try {
-        const cachedDataString = localStorage.getItem(cachedDataKey);
-        if (cachedDataString) {
-          cachedData = JSON.parse(cachedDataString);
-          console.log(`Found cached transaction data for contract ${contractId}`);
-        }
-      } catch (error) {
-        console.error("Error reading cached transaction data:", error);
-      }
-      
-      // Close the dropdown
-      setShowDropdown(false);
-      
-      // If we have a context handler, use it (this will load from cache and update in background)
-      if (typeof handleContractChange === 'function') {
-        console.log("Using context handler to load contract data");
-        handleContractChange(contractId);
-      } else {
-        console.log("No context handler available, fetching data directly");
-        // Fallback to direct API call if no context handler
-        setIsLoading(true);
-        
-        try {
-          const response = await axiosInstance.get(`/transactions/contract/${contractId}`);
-          if (response.data && response.data.transactions) {
-            console.log(`Loaded ${response.data.transactions.length} transactions`);
-          }
-        } catch (error) {
-          console.error("Error loading contract transactions:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    } catch (error) {
-      console.error("Error in handleSelectContract:", error);
-    }
+  const handleSelectContract = async (contract) => {
+    // Update the context (this will also fetch transactions)
+    handleContractChange(contract.id);
+    
+    // Close the dropdown
+    setShowDropdown(false);
   };
 
   const handleDropdownToggle = () => {
@@ -1113,7 +1057,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       <div 
                         key={contract.id} 
                         className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleSelectContract(contract.id)}
+                        onClick={() => handleSelectContract(contract)}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center">

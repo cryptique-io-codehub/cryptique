@@ -51,49 +51,23 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
     // Refresh contract data when component mounts or when team changes
     useEffect(() => {
       const loadContractData = async () => {
-        console.log("OnchainExplorer mounted, preloading data");
+        console.log("OnchainExplorer mounted, refreshing contract data");
         
         try {
-          // Use the preload service to load all necessary data
-          // This will load websites and contracts, and also preload some transaction data
-          const preloadedData = await preloadData(false); // Don't force refresh on initial load
+          // First clear any cached data to ensure fresh data
+          sessionStorage.removeItem("preloadedContracts");
           
-          // If we got preloaded contracts, set them in state
-          if (preloadedData?.contracts?.length > 0) {
-            setcontractarray(preloadedData.contracts);
-          } else {
-            // If preloading didn't work, manually refresh
-            if (typeof refreshContracts === 'function') {
-              await refreshContracts();
-            }
-          }
-          
-          // Similarly handle websites
-          if (preloadedData?.websites?.length > 0) {
-            setWebsitearray(preloadedData.websites);
-            
-            // Find selected website if any
-            const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
-            if (savedWebsiteDomain) {
-              const currentWebsite = preloadedData.websites.find(
-                website => website.Domain === savedWebsiteDomain
-              );
-              
-              if (currentWebsite) {
-                console.log("Setting selected website from preloaded data:", currentWebsite);
-                setSelectedWebsite(currentWebsite);
-              }
-            }
-          }
-          
-          console.log("Successfully preloaded data in OnchainExplorer");
-        } catch (error) {
-          console.error("Error preloading data in OnchainExplorer:", error);
-          
-          // Fallback to traditional loading
+          // Then use the context's refresh function
           if (typeof refreshContracts === 'function') {
             await refreshContracts();
           }
+          
+          // Also run the preload service with force refresh
+          await preloadData(true);
+          
+          console.log("Successfully refreshed contract data on OnchainExplorer mount");
+        } catch (error) {
+          console.error("Error refreshing contract data in OnchainExplorer:", error);
         }
       };
       

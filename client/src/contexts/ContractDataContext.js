@@ -95,35 +95,8 @@ export const ContractDataProvider = ({ children }) => {
 
     setShowDemoData(false); // When a contract is selected, use real data
     
-    // PHASE 1: Immediately try to load cached data from sessionStorage for instant rendering
-    const cachedDataKey = `contract_transactions_${contractId}`;
-    let cachedData = null;
     try {
-      const cachedDataString = sessionStorage.getItem(cachedDataKey);
-      if (cachedDataString) {
-        cachedData = JSON.parse(cachedDataString);
-        if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
-          console.log(`Loaded ${cachedData.length} cached transactions for contract ${contractId}`);
-          setContractTransactions(cachedData);
-          // Don't return here - continue loading fresh data in the background
-        }
-      }
-    } catch (error) {
-      console.error("Error loading cached transaction data:", error);
-      // Continue with API fetch if cache loading fails
-    }
-    
-    // PHASE 2: Fetch fresh data from API (even if we loaded from cache)
-    try {
-      // Only show loading indicator if we don't have cached data
-      if (!cachedData || cachedData.length === 0) {
-        setIsLoadingTransactions(true);
-      } else {
-        // If we have cached data, still indicate background refresh
-        setUpdatingTransactions(true);
-        setLoadingStatus('Refreshing transaction data in background...');
-      }
-      
+      setIsLoadingTransactions(true);
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
@@ -171,44 +144,6 @@ export const ContractDataProvider = ({ children }) => {
         }
       }
       
-      // Store minimal transaction data in sessionStorage
-      try {
-        // Only store the most recent 500 transactions with minimal fields
-        const minimalTransactions = allTransactions.slice(0, 500).map(tx => ({
-          tx_hash: tx.tx_hash,
-          from_address: tx.from_address,
-          to_address: tx.to_address,
-          value_eth: tx.value_eth,
-          block_number: tx.block_number,
-          block_time: tx.block_time,
-          chain: tx.chain
-        }));
-        
-        sessionStorage.setItem(cachedDataKey, JSON.stringify(minimalTransactions));
-        console.log(`Cached ${minimalTransactions.length} minimal transactions in sessionStorage`);
-      } catch (storageError) {
-        console.error("Error caching transaction data:", storageError);
-        
-        // If we still get a quota error, try with even fewer transactions
-        try {
-          const veryMinimalTransactions = allTransactions.slice(0, 200).map(tx => ({
-            tx_hash: tx.tx_hash,
-            from_address: tx.from_address,
-            to_address: tx.to_address,
-            value_eth: tx.value_eth,
-            block_number: tx.block_number,
-            block_time: tx.block_time
-          }));
-          
-          sessionStorage.setItem(cachedDataKey, JSON.stringify(veryMinimalTransactions));
-          console.log(`Cached ${veryMinimalTransactions.length} very minimal transactions in sessionStorage`);
-        } catch (retryError) {
-          console.error("Still failed to cache even with minimal dataset:", retryError);
-          // Non-fatal error, continue without caching
-        }
-      }
-      
-      // Update state with fresh data
       setContractTransactions(allTransactions);
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       
@@ -221,16 +156,8 @@ export const ContractDataProvider = ({ children }) => {
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
-      
-      // If we have cached data, keep showing it instead of falling back to demo
-      if (cachedData && cachedData.length > 0) {
-        console.log("API request failed, but using cached data");
-        // We already set this earlier, so no need to set again
-      } else {
-        setShowDemoData(true); // Fallback to demo data on error only if no cache
-      }
-      
-      return cachedData || [];
+      setShowDemoData(true); // Fallback to demo data on error
+      return [];
     } finally {
       setIsLoadingTransactions(false);
     }
@@ -406,20 +333,6 @@ export const ContractDataProvider = ({ children }) => {
                   console.log(`${index + 1}. TX Hash: ${tx.tx_hash.substring(0, 12)}... | Block: ${tx.block_number} | Value: ${tx.value_eth}`);
                 });
                 console.log('==========================================');
-                
-                // Update the cached data in sessionStorage instead of localStorage to avoid quota issues
-                try {
-                  const cachedDataKey = `contract_transactions_${contract.id}`;
-                  
-                  // Store limited data in sessionStorage (most recent 2000 transactions)
-                  // This avoids exceeding the storage quota while still providing a good user experience
-                  const limitedTransactions = updatedTransactions.slice(0, 2000);
-                  sessionStorage.setItem(cachedDataKey, JSON.stringify(limitedTransactions));
-                  console.log(`Updated sessionStorage cache with ${limitedTransactions.length} transactions`);
-                } catch (storageError) {
-                  console.error("Error updating sessionStorage cache:", storageError);
-                  // Non-fatal error, continue without caching
-                }
               }
             } catch (error) {
               console.error("Error fetching newly saved transactions:", error);
