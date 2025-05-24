@@ -49,64 +49,17 @@ export default function OnchainTraffic() {
   // Check for website ID changes
   useEffect(() => {
     const currentWebsiteId = localStorage.getItem('idy');
+    
     if (currentWebsiteId !== websiteId) {
       console.log(`Website ID changed from ${websiteId} to ${currentWebsiteId}, refreshing data`);
       localStorage.setItem('idy', currentWebsiteId);
       
       // Force data refresh when website changes
       if (currentWebsiteId) {
-        // Refresh analytics data
         getAnalytics(currentWebsiteId);
       }
     }
   }, [websiteId]);
-  
-  // Load analytics data when component mounts or when website/contract selection changes
-  useEffect(() => {
-    const currentContractId = selectedContract?.id || null;
-    
-    // Check if contract selection has changed
-    const contractChanged = currentContractId !== lastContractId;
-    
-    // Update last seen contract ID
-    setLastContractId(currentContractId);
-    
-    // Only fetch if we have a website ID
-    if (!websiteId) {
-      console.log("No website ID found, cannot fetch analytics");
-      return;
-    }
-
-    // Check if we have valid cached data first
-    const cachedData = localStorage.getItem(`analytics_${websiteId}`);
-    const cachedTimestamp = localStorage.getItem(`analytics_timestamp_${websiteId}`);
-    const now = Date.now();
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
-
-    // If we have valid cached data and it's not expired, use it
-    if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp)) < CACHE_DURATION) {
-      console.log("Using cached analytics data");
-      try {
-        const parsedData = JSON.parse(cachedData);
-        if (parsedData?.sessions?.length > 0) {
-          getAnalytics(websiteId);
-          return;
-        }
-      } catch (e) {
-        console.error("Error parsing cached analytics:", e);
-      }
-    }
-    
-    const fetchAnalyticsData = async () => {
-      getAnalytics(websiteId);
-    };
-    
-    // Only fetch if we don't have valid cached data
-    if (!cachedData || !cachedTimestamp || (now - parseInt(cachedTimestamp)) >= CACHE_DURATION) {
-      fetchAnalyticsData();
-    }
-    
-  }, [websiteId, selectedContract?.id]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
