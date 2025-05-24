@@ -48,62 +48,12 @@ const GeoOnchainMap = ({
   const [countryMetrics, setCountryMetrics] = useState({});
   const [mapData, setMapData] = useState([]);
   const [topCountries, setTopCountries] = useState([]);
-  // Initialize isProcessing based on cache availability
-  const [isProcessing, setIsProcessing] = useState(() => {
-    try {
-      const contractId = contractData?.contractId || 'default';
-      const cacheKey = `onchain_map_data_${contractId}`;
-      return !sessionStorage.getItem(cacheKey); // Only show processing if no cache exists
-    } catch (e) {
-      console.error("Error checking map cache:", e);
-      return true; // Default to processing if we can't check cache
-    }
-  });
-
-  // Helper function to retrieve cached map data
-  const getCachedMapData = (contractId) => {
-    try {
-      const cacheKey = `onchain_map_data_${contractId || 'default'}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        if (parsed) {
-          console.log("Using cached map data");
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.error("Error retrieving cached map data:", error);
-    }
-    return null;
-  };
-
-  // Helper function to cache map data
-  const cacheMapData = (contractId, data) => {
-    try {
-      const cacheKey = `onchain_map_data_${contractId || 'default'}`;
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      console.log("Cached map data");
-    } catch (error) {
-      console.error("Error caching map data:", error);
-    }
-  };
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Process analytics data and contract transactions to calculate metrics per country
   useEffect(() => {
     // Skip if data is loading
     if (isLoadingAnalytics || isLoadingTransactions) return;
-    
-    // Check for cached data first
-    const contractId = contractData?.contractId;
-    const cachedData = getCachedMapData(contractId);
-    
-    if (cachedData) {
-      setCountryMetrics(cachedData.countryMetrics || {});
-      setMapData(cachedData.mapData || []);
-      setTopCountries(cachedData.topCountries || []);
-      return;
-    }
     
     setIsProcessing(true);
     
@@ -148,15 +98,7 @@ const GeoOnchainMap = ({
     
     setTopCountries(sortedCountries);
     setIsProcessing(false);
-    
-    // Cache the results
-    cacheMapData(contractId, {
-      countryMetrics: processedMetrics,
-      mapData: transformedMapData,
-      topCountries: sortedCountries
-    });
-    
-  }, [analytics, contractData?.contractTransactions, contractData?.contractId, isLoadingAnalytics, isLoadingTransactions]);
+  }, [analytics, contractData?.contractTransactions, isLoadingAnalytics, isLoadingTransactions]);
 
   // Function to calculate metrics per country including transacted wallets
   const getMetricsPerCountry = (sessions, contractWallets) => {

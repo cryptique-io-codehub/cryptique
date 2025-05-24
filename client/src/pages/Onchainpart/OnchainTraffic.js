@@ -30,24 +30,10 @@ export default function OnchainTraffic() {
   const [websiteId, setWebsiteId] = useState(() => localStorage.getItem('idy') || null);
   // Track when contract selection changes
   const [lastContractId, setLastContractId] = useState(null);
-  // Add loading state - check for cached data to avoid showing loading indicator initially
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(() => {
-    // Check if we have cached data
-    try {
-      const websiteId = localStorage.getItem('idy');
-      if (websiteId) {
-        const cacheKey = `onchain_analytics_${websiteId}_default`;
-        return !sessionStorage.getItem(cacheKey); // Only show loading if no cache exists
-      }
-    } catch (e) {
-      console.error("Error checking cache:", e);
-    }
-    return true; // Default to loading if we can't check cache
-  });
+  // Add loading state
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
-  // Flag to track initial data load
-  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   
   // Check for website ID changes
   useEffect(() => {
@@ -56,35 +42,6 @@ export default function OnchainTraffic() {
       setWebsiteId(currentWebsiteId);
     }
   }, [websiteId]);
-  
-  // Helper function to get cached analytics data from sessionStorage
-  const getCachedAnalytics = (websiteId, contractId) => {
-    try {
-      const cacheKey = `onchain_analytics_${websiteId}_${contractId || 'default'}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        if (parsed && parsed.sessions && parsed.sessions.length > 0) {
-          console.log(`Retrieved cached analytics data for website: ${websiteId}, contract: ${contractId}`);
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.error("Error retrieving cached analytics:", error);
-    }
-    return null;
-  };
-
-  // Helper function to cache analytics data in sessionStorage
-  const cacheAnalytics = (websiteId, contractId, data) => {
-    try {
-      const cacheKey = `onchain_analytics_${websiteId}_${contractId || 'default'}`;
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      console.log(`Cached analytics data for website: ${websiteId}, contract: ${contractId}`);
-    } catch (error) {
-      console.error("Error caching analytics:", error);
-    }
-  };
   
   // Load analytics data when component mounts or when website/contract selection changes
   useEffect(() => {
@@ -99,22 +56,6 @@ export default function OnchainTraffic() {
     // Only fetch if we have a website ID
     if (!websiteId) {
       console.log("No website ID found, cannot fetch analytics");
-      return;
-    }
-
-    // Try to load from cache first if we're not changing contracts
-    if (!contractChanged && initialDataLoaded) {
-      console.log("Contract hasn't changed and initial data loaded, using cached data");
-      return;
-    }
-    
-    // Check for cached data before fetching
-    const cachedData = getCachedAnalytics(websiteId, currentContractId);
-    if (cachedData && !contractChanged) {
-      console.log("Using cached analytics data");
-      setanalytics(cachedData);
-      setInitialDataLoaded(true);
-      setIsLoadingAnalytics(false); // Ensure loading state is false when using cached data
       return;
     }
     
@@ -139,11 +80,7 @@ export default function OnchainTraffic() {
           
           // Store the analytics data in state
           setanalytics(response.analytics);
-          setInitialDataLoaded(true);
           console.log("CRITICAL - Set analytics with sessions:", response.analytics.sessions?.length);
-          
-          // Cache the analytics data
-          cacheAnalytics(websiteId, currentContractId, response.analytics);
           
           // Verify the analytics data is valid
           if (!response.analytics.sessions || !Array.isArray(response.analytics.sessions)) {
@@ -176,25 +113,7 @@ export default function OnchainTraffic() {
     // Always fetch data when the component mounts or when the website/contract changes
     fetchAnalyticsData();
     
-  }, [websiteId, selectedContract?.id, lastContractId, initialDataLoaded]);
-  
-  // Save processed data for visualizations in sessionStorage to persist between navigations
-  useEffect(() => {
-    if (analytics?.sessions?.length > 0) {
-      // Process all visualizations once and cache the results
-      const processedData = {
-        trafficSources: processTrafficSourcesDirectly(),
-        // Add more processed data for other visualizations as needed
-      };
-      
-      try {
-        sessionStorage.setItem('onchain_processed_visualizations', JSON.stringify(processedData));
-        console.log("Cached processed visualization data");
-      } catch (error) {
-        console.error("Error caching processed visualization data:", error);
-      }
-    }
-  }, [analytics]);
+  }, [websiteId, selectedContract?.id]);
   
   // Function to simulate demo analytics data
   const simulateDemoAnalytics = () => {
@@ -419,21 +338,6 @@ export default function OnchainTraffic() {
   
   // Process traffic sources using the most reliable analytics source
   const processTrafficSourcesDirectly = () => {
-    // Check for cached processed data first
-    try {
-      const cachedProcessedData = sessionStorage.getItem('onchain_processed_visualizations');
-      if (cachedProcessedData) {
-        const parsed = JSON.parse(cachedProcessedData);
-        if (parsed && parsed.trafficSources && parsed.trafficSources.length > 0) {
-          console.log("Using cached processed traffic sources data");
-          return parsed.trafficSources;
-        }
-      }
-    } catch (error) {
-      console.error("Error retrieving cached traffic sources:", error);
-    }
-    
-    // If no cached data, process from scratch
     const data = analyticsData;
     if (!data?.sessions?.length) return [];
     

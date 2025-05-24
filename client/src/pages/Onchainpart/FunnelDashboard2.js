@@ -31,18 +31,6 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
     walletsPercentage: "0.00"
   });
   
-  // State to track if data is loading
-  const [isLoadingFunnel, setIsLoadingFunnel] = useState(() => {
-    try {
-      // Check if we have cached funnel data
-      const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
-      return !sessionStorage.getItem(cacheKey); // Only show loading if no cache exists
-    } catch (e) {
-      console.error("Error checking funnel cache:", e);
-      return true; // Default to loading if we can't check cache
-    }
-  });
-  
   // Update data when analytics or contractData changes
   useEffect(() => {
     console.log("FunnelDashboard - Updating with new data:", {
@@ -57,27 +45,6 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
       processedDataExists: !!contractData?.processedData,
       showDemoData: contractData?.showDemoData
     });
-    
-    setIsLoadingFunnel(true);
-    
-    // Check for cached funnel data first
-    try {
-      const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        if (parsed && parsed.data && parsed.web3Stats && parsed.metrics) {
-          console.log("Using cached funnel data");
-          setData(parsed.data);
-          setWeb3Stats(parsed.web3Stats);
-          setMetrics(parsed.metrics);
-          setIsLoadingFunnel(false);
-          return;
-        }
-      }
-    } catch (error) {
-      console.error("Error retrieving cached funnel data:", error);
-    }
     
     // If we have real data from website analytics, use it
     if (analytics?.sessions) {
@@ -178,25 +145,10 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
         ? ((calculatedWeb3Stats.web3Users / analytics.uniqueVisitors) * 100).toFixed(2)
         : "0.00";
         
-      const newMetrics = {
+      setMetrics({
         conversion,
         webUsers
-      };
-      
-      setMetrics(newMetrics);
-      
-      // Cache the funnel data
-      try {
-        const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: newData,
-          web3Stats: calculatedWeb3Stats,
-          metrics: newMetrics
-        }));
-        console.log("Cached funnel data");
-      } catch (error) {
-        console.error("Error caching funnel data:", error);
-      }
+      });
     } else {
       // For demo data without real analytics
       const uniqueVisitors = 200;
@@ -204,97 +156,67 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
       const walletsConnected = 90;
       const walletsTransacted = 60;
       
-      const newData = [
+      setData([
         { name: 'Unique Visitors', value: uniqueVisitors, fill: '#1D0C46' },
         { name: 'Web3 Users', value: web3Users, fill: '#8B5CF6' },
         { name: 'Wallets connected', value: walletsConnected, fill: '#FFB95A' },
         { name: 'Wallets transacted', value: walletsTransacted, fill: '#CAA968' }
-      ];
-      
-      setData(newData);
+      ]);
       
       // Set demo Web3 stats
-      const newWeb3Stats = {
+      setWeb3Stats({
         web3Users,
         web3Percentage: ((web3Users / uniqueVisitors) * 100).toFixed(2),
         walletsConnected,
         walletsPercentage: ((walletsConnected / uniqueVisitors) * 100).toFixed(2)
-      };
-      
-      setWeb3Stats(newWeb3Stats);
+      });
       
       // Calculate conversion metrics for demo data
       const conversion = ((walletsTransacted / walletsConnected) * 100).toFixed(2);
       const webUsers = ((web3Users / uniqueVisitors) * 100).toFixed(2);
       
-      const newMetrics = {
+      setMetrics({
         conversion,
         webUsers
-      };
-      
-      setMetrics(newMetrics);
-      
-      // Cache demo data too
-      try {
-        const cacheKey = 'onchain_funnel_data_demo';
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: newData,
-          web3Stats: newWeb3Stats,
-          metrics: newMetrics
-        }));
-      } catch (error) {
-        console.error("Error caching demo funnel data:", error);
-      }
+      });
     }
-    
-    setIsLoadingFunnel(false);
   }, [analytics, contractData, contractData?.contractTransactions]);
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
-      {/* Show loading indicator when data is loading */}
-      {isLoadingFunnel ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
-          <span className="ml-3 text-gray-600">Loading funnel data...</span>
+      {/* Stats display */}
+      <div className="flex justify-end w-full mb-6">
+        <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
+          <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
+            <p className="text-sm">Conversion</p>
+            <p className="text-xl font-bold">{metrics.conversion}%</p>
+          </div>
+          <div className="px-4 py-2">
+            <p className="text-sm">Web3 users</p>
+            <p className="text-xl font-bold">{metrics.webUsers}%</p>
+          </div>
         </div>
-      ) : (
-        <>
-          {/* Stats display */}
-          <div className="flex justify-end w-full mb-6">
-            <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
-              <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
-                <p className="text-sm">Conversion</p>
-                <p className="text-xl font-bold">{metrics.conversion}%</p>
-              </div>
-              <div className="px-4 py-2">
-                <p className="text-sm">Web3 users</p>
-                <p className="text-xl font-bold">{metrics.webUsers}%</p>
-              </div>
-            </div>
-          </div>
+      </div>
 
-          <div className="flex">
-            {/* Custom horizontal funnel using SVG */}
-            <div className="w-full h-64 relative">
-              <HorizontalFunnel data={data} analytics={analytics} web3Stats={web3Stats} />
-            </div>
+      <div className="flex">
+        {/* Custom horizontal funnel using SVG */}
+        <div className="w-full h-64 relative">
+          <HorizontalFunnel data={data} analytics={analytics} web3Stats={web3Stats} />
+        </div>
+      </div>
+      
+      {/* Labels below the chart */}
+      <div className="flex flex-col mt-4 space-y-2">
+        {data.map((item, index) => (
+          <div key={item.name} className="flex items-center">
+            <div 
+              className="w-4 h-4 mr-2" 
+              style={{ backgroundColor: item.fill }}
+            ></div>
+            <p className="text-sm">{item.name}</p>
           </div>
-          
-          {/* Labels below the chart */}
-          <div className="flex flex-col mt-4 space-y-2">
-            {data.map((item, index) => (
-              <div key={item.name} className="flex items-center">
-                <div 
-                  className="w-4 h-4 mr-2" 
-                  style={{ backgroundColor: item.fill }}
-                ></div>
-                <p className="text-sm">{item.name}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+        ))}
+      </div>
     </div>
   );
 };
