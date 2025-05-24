@@ -9,6 +9,18 @@ export default function Onchainwalletinsights() {
   const [activeWalletDetail, setActiveWalletDetail] = useState(null);
   const [walletsData, setWalletsData] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'transactions', direction: 'desc' });
+  const [walletMetrics, setWalletMetrics] = useState(null);
+  const [isCalculatingMetrics, setIsCalculatingMetrics] = useState(false);
+  const [copySuccess, setCopySuccess] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    totalSpent: { min: 0, max: 0 },
+    transactions: { min: 0, max: 0 },
+    dateRange: { start: '', end: '' }
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filteredWallets, setFilteredWallets] = useState([]);
+  const [isFiltering, setIsFiltering] = useState(false);
   
   // Get contract data from context
   const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
@@ -151,6 +163,51 @@ export default function Onchainwalletinsights() {
     }
   }, [contractTransactions, isLoadingTransactions, sortConfig]);
 
+  // Calculate max values for sliders when wallet data changes
+  useEffect(() => {
+    if (walletsData.length > 0) {
+      const maxSpent = Math.max(...walletsData.map(w => w.totalSent));
+      const maxTx = Math.max(...walletsData.map(w => w.transactions));
+      const minDate = Math.min(...walletsData.map(w => new Date(w.firstDate).getTime()));
+      const maxDate = Math.max(...walletsData.map(w => new Date(w.lastDate).getTime()));
+
+      setFilters(prev => ({
+        totalSpent: { min: 0, max: maxSpent },
+        transactions: { min: 0, max: maxTx },
+        dateRange: {
+          start: new Date(minDate).toISOString().split('T')[0],
+          end: new Date(maxDate).toISOString().split('T')[0]
+        }
+      }));
+    }
+  }, [walletsData]);
+
+  // Apply filters to wallet data
+  useEffect(() => {
+    setIsFiltering(true);
+    const filtered = walletsData.filter(wallet => {
+      const meetsSpentCriteria = wallet.totalSent >= filters.totalSpent.min && 
+                                wallet.totalSent <= filters.totalSpent.max;
+      
+      const meetsTxCriteria = wallet.transactions >= filters.transactions.min && 
+                             wallet.transactions <= filters.transactions.max;
+      
+      const walletFirstDate = new Date(wallet.firstDate);
+      const walletLastDate = new Date(wallet.lastDate);
+      const filterStartDate = filters.dateRange.start ? new Date(filters.dateRange.start) : null;
+      const filterEndDate = filters.dateRange.end ? new Date(filters.dateRange.end) : null;
+      
+      const meetsDateCriteria = (!filterStartDate || walletFirstDate >= filterStartDate) && 
+                               (!filterEndDate || walletLastDate <= filterEndDate);
+      
+      return meetsSpentCriteria && meetsTxCriteria && meetsDateCriteria;
+    });
+    
+    setFilteredWallets(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+    setIsFiltering(false);
+  }, [filters, walletsData]);
+
   const sortWallets = (wallets) => {
     return [...wallets].sort((a, b) => {
       if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -206,180 +263,235 @@ export default function Onchainwalletinsights() {
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
   
-  // Calculate wallet metrics for the detail view
-  const calculateWalletMetrics = (wallet) => {
+  // Memoize wallet metrics calculation
+  const calculateWalletMetrics = async (wallet) => {
     if (!wallet || !wallet.allTransactions) return null;
     
-    // Organize transactions by month
-    const monthlyData = {};
-    const dailyData = {};
-    const methodStats = {};
-    let totalPurchases = 0;
-    let totalSales = 0;
-    let largestTransaction = 0;
-    let smallestTransaction = Infinity;
-    let profitableTrades = 0;
-    let unprofitableTrades = 0;
-    let totalProfit = 0;
-    let totalLoss = 0;
+    setIsCalculatingMetrics(true);
     
-    wallet.allTransactions.forEach(tx => {
-      const date = new Date(tx.timestamp);
-      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-      const dayKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-      
-      // Monthly aggregation
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = {
-          month: monthKey,
-          inflow: 0,
-          outflow: 0,
-          transactions: 0,
-          uniqueCounterparties: new Set()
-        };
-      }
-      
-      // Daily aggregation
-      if (!dailyData[dayKey]) {
-        dailyData[dayKey] = {
-          date: dayKey,
-          inflow: 0,
-          outflow: 0,
-          transactions: 0
-        };
-      }
-      
-      // Method statistics
-      const method = tx.methodName || 'transfer';
-      if (!methodStats[method]) {
-        methodStats[method] = {
-          count: 0,
-          volume: 0
-        };
-      }
-      
-      // Update aggregations
-      if (tx.type === 'incoming') {
-        monthlyData[monthKey].inflow += tx.amount;
-        dailyData[dayKey].inflow += tx.amount;
-        totalPurchases++;
-        monthlyData[monthKey].uniqueCounterparties.add(tx.from);
-      } else {
-        monthlyData[monthKey].outflow += tx.amount;
-        dailyData[dayKey].outflow += tx.amount;
-        totalSales++;
-        monthlyData[monthKey].uniqueCounterparties.add(tx.to);
-      }
-      
-      monthlyData[monthKey].transactions += 1;
-      dailyData[dayKey].transactions += 1;
-      methodStats[method].count += 1;
-      methodStats[method].volume += tx.amount;
-      
-      // Track largest and smallest transactions
-      if (tx.amount > largestTransaction) {
-        largestTransaction = tx.amount;
-      }
-      if (tx.amount < smallestTransaction && tx.amount > 0) {
-        smallestTransaction = tx.amount;
-      }
-      
-      // Calculate profit/loss (simplified)
-      if (tx.type === 'outgoing' && tx.amount > 0) {
-        const profit = tx.amount - (wallet.avgTransactionValue || 0);
-        if (profit > 0) {
-          profitableTrades++;
-          totalProfit += profit;
-        } else {
-          unprofitableTrades++;
-          totalLoss += Math.abs(profit);
+    // Return a promise that resolves with the metrics
+    return new Promise((resolve) => {
+      // Use setTimeout to prevent UI blocking
+      setTimeout(() => {
+        try {
+          // Basic metrics (fast to calculate)
+          const basicMetrics = {
+            totalTransactions: wallet.transactions,
+            firstTransaction: wallet.formattedFirstDate,
+            lastTransaction: wallet.formattedLastDate,
+            totalInflow: wallet.totalReceived,
+            totalOutflow: wallet.totalSent,
+            netAmount: wallet.netAmount,
+            totalVolume: wallet.volume
+          };
+          
+          // Update state with basic metrics first
+          setWalletMetrics(basicMetrics);
+          
+          // Calculate detailed metrics in the background
+          setTimeout(() => {
+            // Organize transactions by month
+            const monthlyData = {};
+            const dailyData = {};
+            const methodStats = {};
+            let totalPurchases = 0;
+            let totalSales = 0;
+            let largestTransaction = 0;
+            let smallestTransaction = Infinity;
+            let profitableTrades = 0;
+            let unprofitableTrades = 0;
+            let totalProfit = 0;
+            let totalLoss = 0;
+            
+            // Process transactions in chunks to prevent UI blocking
+            const CHUNK_SIZE = 1000;
+            const processTransactionsInChunks = (startIndex = 0) => {
+              const endIndex = Math.min(startIndex + CHUNK_SIZE, wallet.allTransactions.length);
+              
+              for (let i = startIndex; i < endIndex; i++) {
+                const tx = wallet.allTransactions[i];
+                const date = new Date(tx.timestamp);
+                const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                const dayKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+                
+                // Monthly aggregation
+                if (!monthlyData[monthKey]) {
+                  monthlyData[monthKey] = {
+                    month: monthKey,
+                    inflow: 0,
+                    outflow: 0,
+                    transactions: 0,
+                    uniqueCounterparties: new Set()
+                  };
+                }
+                
+                // Daily aggregation
+                if (!dailyData[dayKey]) {
+                  dailyData[dayKey] = {
+                    date: dayKey,
+                    inflow: 0,
+                    outflow: 0,
+                    transactions: 0
+                  };
+                }
+                
+                // Method statistics
+                const method = tx.methodName || 'transfer';
+                if (!methodStats[method]) {
+                  methodStats[method] = {
+                    count: 0,
+                    volume: 0
+                  };
+                }
+                
+                // Update aggregations
+                if (tx.type === 'incoming') {
+                  monthlyData[monthKey].inflow += tx.amount;
+                  dailyData[dayKey].inflow += tx.amount;
+                  totalPurchases++;
+                  monthlyData[monthKey].uniqueCounterparties.add(tx.from);
+                } else {
+                  monthlyData[monthKey].outflow += tx.amount;
+                  dailyData[dayKey].outflow += tx.amount;
+                  totalSales++;
+                  monthlyData[monthKey].uniqueCounterparties.add(tx.to);
+                }
+                
+                monthlyData[monthKey].transactions += 1;
+                dailyData[dayKey].transactions += 1;
+                methodStats[method].count += 1;
+                methodStats[method].volume += tx.amount;
+                
+                // Track largest and smallest transactions
+                if (tx.amount > largestTransaction) {
+                  largestTransaction = tx.amount;
+                }
+                if (tx.amount < smallestTransaction && tx.amount > 0) {
+                  smallestTransaction = tx.amount;
+                }
+                
+                // Calculate profit/loss (simplified)
+                if (tx.type === 'outgoing' && tx.amount > 0) {
+                  const profit = tx.amount - (wallet.avgTransactionValue || 0);
+                  if (profit > 0) {
+                    profitableTrades++;
+                    totalProfit += profit;
+                  } else {
+                    unprofitableTrades++;
+                    totalLoss += Math.abs(profit);
+                  }
+                }
+              }
+              
+              // If there are more transactions to process, schedule the next chunk
+              if (endIndex < wallet.allTransactions.length) {
+                setTimeout(() => processTransactionsInChunks(endIndex), 0);
+              } else {
+                // All chunks processed, finalize the metrics
+                const chartData = Object.values(monthlyData)
+                  .sort((a, b) => a.month.localeCompare(b.month))
+                  .map(data => ({
+                    ...data,
+                    uniqueCounterparties: data.uniqueCounterparties.size
+                  }));
+                
+                const dailyChartData = Object.values(dailyData)
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .slice(-30); // Last 30 days
+                
+                // Calculate activity patterns
+                const activityHours = new Array(24).fill(0);
+                const activityDays = new Array(7).fill(0);
+                wallet.allTransactions.forEach(tx => {
+                  const date = new Date(tx.timestamp);
+                  activityHours[date.getHours()]++;
+                  activityDays[date.getDay()]++;
+                });
+                
+                // Calculate interaction metrics
+                const uniqueInteractions = wallet.uniqueInteractions.size;
+                const interactionFrequency = wallet.transactions / uniqueInteractions;
+                
+                const detailedMetrics = {
+                  ...basicMetrics,
+                  activityChart: chartData,
+                  dailyActivityChart: dailyChartData,
+                  methodStats: Object.entries(methodStats)
+                    .map(([method, stats]) => ({
+                      method,
+                      count: stats.count,
+                      volume: stats.volume,
+                      percentage: (stats.count / wallet.transactions) * 100
+                    }))
+                    .sort((a, b) => b.count - a.count),
+                  tradingStats: {
+                    totalPurchases,
+                    totalSales,
+                    largestTransaction,
+                    smallestTransaction: smallestTransaction === Infinity ? 0 : smallestTransaction,
+                    profitableTrades,
+                    unprofitableTrades,
+                    totalProfit,
+                    totalLoss,
+                    avgTransactionValue: wallet.avgTransactionValue,
+                    successRate: (profitableTrades / (profitableTrades + unprofitableTrades)) * 100 || 0
+                  },
+                  activityPatterns: {
+                    hours: activityHours,
+                    days: activityDays,
+                    peakHour: activityHours.indexOf(Math.max(...activityHours)),
+                    peakDay: activityDays.indexOf(Math.max(...activityDays))
+                  },
+                  interactionMetrics: {
+                    uniqueCounterparties: uniqueInteractions,
+                    averageInteractionFrequency: interactionFrequency,
+                    repeatInteractionRate: (wallet.transactions / uniqueInteractions)
+                  }
+                };
+                
+                setWalletMetrics(detailedMetrics);
+                setIsCalculatingMetrics(false);
+                resolve(detailedMetrics);
+              }
+            };
+            
+            // Start processing the first chunk
+            processTransactionsInChunks();
+            
+          }, 0);
+        } catch (error) {
+          console.error('Error calculating wallet metrics:', error);
+          setIsCalculatingMetrics(false);
+          resolve(null);
         }
-      }
+      }, 0);
     });
-    
-    // Convert to array and sort by date
-    const chartData = Object.values(monthlyData)
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map(data => ({
-        ...data,
-        uniqueCounterparties: data.uniqueCounterparties.size
-      }));
-    
-    const dailyChartData = Object.values(dailyData)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-30); // Last 30 days
-    
-    // Calculate total volume (sum of inflow and outflow)
-    const totalVolume = wallet.volume;
-    
-    // Calculate activity patterns
-    const activityHours = new Array(24).fill(0);
-    const activityDays = new Array(7).fill(0);
-    wallet.allTransactions.forEach(tx => {
-      const date = new Date(tx.timestamp);
-      activityHours[date.getHours()]++;
-      activityDays[date.getDay()]++;
-    });
-    
-    // Calculate interaction metrics
-    const uniqueInteractions = wallet.uniqueInteractions.size;
-    const interactionFrequency = wallet.transactions / uniqueInteractions;
-    
-    return {
-      totalTransactions: wallet.transactions,
-      firstTransaction: wallet.formattedFirstDate,
-      lastTransaction: wallet.formattedLastDate,
-      totalInflow: wallet.totalReceived,
-      totalOutflow: wallet.totalSent,
-      netAmount: wallet.netAmount,
-      activityChart: chartData,
-      dailyActivityChart: dailyChartData,
-      totalVolume,
-      methodStats: Object.entries(methodStats)
-        .map(([method, stats]) => ({
-          method,
-          count: stats.count,
-          volume: stats.volume,
-          percentage: (stats.count / wallet.transactions) * 100
-        }))
-        .sort((a, b) => b.count - a.count),
-      tradingStats: {
-        totalPurchases,
-        totalSales,
-        largestTransaction,
-        smallestTransaction: smallestTransaction === Infinity ? 0 : smallestTransaction,
-        profitableTrades,
-        unprofitableTrades,
-        totalProfit,
-        totalLoss,
-        avgTransactionValue: wallet.avgTransactionValue,
-        successRate: (profitableTrades / (profitableTrades + unprofitableTrades)) * 100 || 0
-      },
-      activityPatterns: {
-        hours: activityHours,
-        days: activityDays,
-        peakHour: activityHours.indexOf(Math.max(...activityHours)),
-        peakDay: activityDays.indexOf(Math.max(...activityDays))
-      },
-      interactionMetrics: {
-        uniqueCounterparties: uniqueInteractions,
-        averageInteractionFrequency: interactionFrequency,
-        repeatInteractionRate: (wallet.transactions / uniqueInteractions)
-      }
-    };
   };
   
-  const openWalletDetail = (wallet) => {
+  const openWalletDetail = async (wallet) => {
     setActiveWalletDetail(wallet);
+    setWalletMetrics(null); // Reset metrics
+    await calculateWalletMetrics(wallet);
   };
   
   const closeWalletDetail = () => {
     setActiveWalletDetail(null);
   };
 
-  const totalWalletsCount = walletsData.length;
+  // Get current page wallets from filtered data instead of all data
+  const totalWalletsCount = filteredWallets.length;
   const walletsPerPage = 50;
   const totalPages = Math.ceil(totalWalletsCount / walletsPerPage);
+  const indexOfLastWallet = currentPage * walletsPerPage;
+  const indexOfFirstWallet = indexOfLastWallet - walletsPerPage;
+  const currentWallets = filteredWallets.slice(indexOfFirstWallet, indexOfLastWallet);
+
+  // Helper function to format large numbers for display
+  const formatLargeNumber = (num) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -388,10 +500,6 @@ export default function Onchainwalletinsights() {
   };
   
   // Get current page wallets
-  const indexOfLastWallet = currentPage * walletsPerPage;
-  const indexOfFirstWallet = indexOfLastWallet - walletsPerPage;
-  const currentWallets = walletsData.slice(indexOfFirstWallet, indexOfLastWallet);
-  
   const pageNumbers = [];
   if (totalPages <= 7) {
     // If we have 7 or fewer pages, show all page numbers
@@ -425,6 +533,66 @@ export default function Onchainwalletinsights() {
       pageNumbers.push(totalPages);
     }
   }
+
+  // Function to handle address copying
+  const handleCopyAddress = async (address) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopySuccess(address);
+      // Reset success message after 2 seconds
+      setTimeout(() => setCopySuccess(''), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
+    }
+  };
+
+  // Function to export wallet data
+  const handleExportData = async () => {
+    try {
+      setExportLoading(true);
+
+      // Prepare data for export
+      const exportData = filteredWallets.map(wallet => ({
+        address: wallet.address,
+        totalTransactions: wallet.transactions,
+        totalVolume: wallet.volume,
+        totalSent: wallet.totalSent,
+        totalReceived: wallet.totalReceived,
+        netAmount: wallet.netAmount,
+        firstTransaction: wallet.formattedFirstDate,
+        lastTransaction: wallet.formattedLastDate,
+        uniqueInteractions: wallet.uniqueInteractionsCount,
+        avgTransactionValue: wallet.avgTransactionValue,
+        hasRiskFlag: wallet.hasAlert
+      }));
+
+      // Create Blob and download link
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set filename with contract name/symbol and date
+      const date = new Date().toISOString().split('T')[0];
+      const contractIdentifier = selectedContract ? 
+        (selectedContract.name || selectedContract.symbol || selectedContract.address) : 
+        'wallets';
+      link.href = url;
+      link.download = `${contractIdentifier}_wallet_insights_${date}.json`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   // Show loading state when transactions are loading
   if (isLoading || isLoadingTransactions) {
@@ -467,6 +635,212 @@ export default function Onchainwalletinsights() {
         </p>
       </div>
 
+      {/* Filter section */}
+      <div className="mb-6 bg-white rounded-lg shadow">
+        <div className="p-4 border-b flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <button
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                showFilters ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-gray-100'
+              }`}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <ChevronDown
+                size={16}
+                className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              />
+              Filters
+              {(filters.totalSpent.min > 0 || 
+                filters.totalSpent.max < filters.totalSpent.max || 
+                filters.transactions.min > 0 || 
+                filters.transactions.max < filters.transactions.max || 
+                filters.dateRange.start || 
+                filters.dateRange.end) && (
+                <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
+                  Active
+                </span>
+              )}
+            </button>
+            {(filters.totalSpent.min > 0 || 
+              filters.totalSpent.max < filters.totalSpent.max || 
+              filters.transactions.min > 0 || 
+              filters.transactions.max < filters.transactions.max || 
+              filters.dateRange.start || 
+              filters.dateRange.end) && (
+              <button
+                className="text-sm text-gray-500 hover:text-gray-700"
+                onClick={() => setFilters({
+                  totalSpent: { min: 0, max: Math.max(...walletsData.map(w => w.totalSent)) },
+                  transactions: { min: 0, max: Math.max(...walletsData.map(w => w.transactions)) },
+                  dateRange: { start: '', end: '' }
+                })}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+          <div className="text-sm text-gray-500">
+            {isFiltering ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Filtering...
+              </span>
+            ) : (
+              <span>Showing {filteredWallets.length.toLocaleString()} wallets</span>
+            )}
+          </div>
+        </div>
+
+        {showFilters && (
+          <div className="p-4 space-y-6">
+            {/* Total Spent Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Spent Range ({selectedContract?.tokenSymbol || 'tokens'})
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={0}
+                  max={filters.totalSpent.max}
+                  value={filters.totalSpent.min}
+                  onChange={(e) => setFilters(prev => ({
+                    ...prev,
+                    totalSpent: { ...prev.totalSpent, min: Number(e.target.value) }
+                  }))}
+                  className="w-full"
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={filters.totalSpent.max}
+                  value={filters.totalSpent.max}
+                  onChange={(e) => setFilters(prev => ({
+                    ...prev,
+                    totalSpent: { ...prev.totalSpent, max: Number(e.target.value) }
+                  }))}
+                  className="w-full"
+                />
+                <div className="flex gap-2 items-center min-w-[200px]">
+                  <input
+                    type="number"
+                    value={filters.totalSpent.min}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      totalSpent: { ...prev.totalSpent, min: Number(e.target.value) }
+                    }))}
+                    className="w-24 px-2 py-1 border rounded"
+                  />
+                  <span>to</span>
+                  <input
+                    type="number"
+                    value={filters.totalSpent.max}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      totalSpent: { ...prev.totalSpent, max: Number(e.target.value) }
+                    }))}
+                    className="w-24 px-2 py-1 border rounded"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0</span>
+                <span>{formatLargeNumber(filters.totalSpent.max)}</span>
+              </div>
+            </div>
+
+            {/* Transaction Count Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Transactions
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={0}
+                  max={filters.transactions.max}
+                  value={filters.transactions.min}
+                  onChange={(e) => setFilters(prev => ({
+                    ...prev,
+                    transactions: { ...prev.transactions, min: Number(e.target.value) }
+                  }))}
+                  className="w-full"
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={filters.transactions.max}
+                  value={filters.transactions.max}
+                  onChange={(e) => setFilters(prev => ({
+                    ...prev,
+                    transactions: { ...prev.transactions, max: Number(e.target.value) }
+                  }))}
+                  className="w-full"
+                />
+                <div className="flex gap-2 items-center min-w-[200px]">
+                  <input
+                    type="number"
+                    value={filters.transactions.min}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      transactions: { ...prev.transactions, min: Number(e.target.value) }
+                    }))}
+                    className="w-24 px-2 py-1 border rounded"
+                  />
+                  <span>to</span>
+                  <input
+                    type="number"
+                    value={filters.transactions.max}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      transactions: { ...prev.transactions, max: Number(e.target.value) }
+                    }))}
+                    className="w-24 px-2 py-1 border rounded"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0</span>
+                <span>{formatLargeNumber(filters.transactions.max)}</span>
+              </div>
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Activity Date Range
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm text-gray-500">From</span>
+                  <input
+                    type="date"
+                    value={filters.dateRange.start}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      dateRange: { ...prev.dateRange, start: e.target.value }
+                    }))}
+                    className="px-2 py-1 border rounded"
+                  />
+                </div>
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm text-gray-500">To</span>
+                  <input
+                    type="date"
+                    value={filters.dateRange.end}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      dateRange: { ...prev.dateRange, end: e.target.value }
+                    }))}
+                    className="px-2 py-1 border rounded"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Wallet detail view (modal) */}
       {activeWalletDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -479,10 +853,11 @@ export default function Onchainwalletinsights() {
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm font-poppins">{activeWalletDetail.address}</p>
                   <button 
-                    className="text-gray-400 hover:text-gray-600"
-                    onClick={() => {
-                      navigator.clipboard.writeText(activeWalletDetail.address);
-                    }}
+                    className={`text-gray-400 hover:text-gray-600 transition-colors ${
+                      copySuccess === activeWalletDetail.address ? 'text-green-500' : ''
+                    }`}
+                    onClick={() => handleCopyAddress(activeWalletDetail.address)}
+                    title={copySuccess === activeWalletDetail.address ? 'Copied!' : 'Copy address'}
                   >
                     <Copy size={14} />
                   </button>
@@ -504,341 +879,344 @@ export default function Onchainwalletinsights() {
               </button>
             </div>
             
-            {/* Wallet metrics */}
-            {(() => {
-              const metrics = calculateWalletMetrics(activeWalletDetail);
-              if (!metrics) return <div className="p-4">No data available</div>;
-              
-              return (
-                <div className="p-4">
-                  {/* Overview Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Total Transactions</p>
-                      <p className="text-xl font-semibold font-montserrat">{metrics.totalTransactions.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">First Activity</p>
-                      <p className="text-sm font-semibold font-montserrat">{metrics.firstTransaction}</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Last Activity</p>
-                      <p className="text-sm font-semibold font-montserrat">{metrics.lastTransaction}</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Total Volume</p>
-                      <p className="text-sm font-semibold font-montserrat">
-                        {formatValueWithSymbol(metrics.totalVolume)}
-                      </p>
+            {/* Show loading state while calculating metrics */}
+            {isCalculatingMetrics && !walletMetrics && (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin mr-2" style={{ color: styles.primaryColor }} />
+                <p className="text-gray-600">Calculating wallet metrics...</p>
+              </div>
+            )}
+            
+            {/* Show metrics as they become available */}
+            {walletMetrics && (
+              <div className="p-4">
+                {/* Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Transactions</p>
+                    <p className="text-xl font-semibold font-montserrat">{walletMetrics.totalTransactions.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">First Activity</p>
+                    <p className="text-sm font-semibold font-montserrat">{walletMetrics.firstTransaction}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Last Activity</p>
+                    <p className="text-sm font-semibold font-montserrat">{walletMetrics.lastTransaction}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Volume</p>
+                    <p className="text-sm font-semibold font-montserrat">
+                      {formatValueWithSymbol(walletMetrics.totalVolume)}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Trading Statistics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Tokens Received</p>
+                    <p className="text-xl font-semibold text-green-600 font-montserrat">
+                      {formatValueWithSymbol(walletMetrics.totalInflow)}
+                    </p>
+                    <div className="mt-2 text-xs">
+                      <span className="text-gray-500">Total Purchases: </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.totalPurchases.toLocaleString()}</span>
                     </div>
                   </div>
-                  
-                  {/* Trading Statistics */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Total Tokens Received</p>
-                      <p className="text-xl font-semibold text-green-600 font-montserrat">
-                        {formatValueWithSymbol(metrics.totalInflow)}
-                      </p>
-                      <div className="mt-2 text-xs">
-                        <span className="text-gray-500">Total Purchases: </span>
-                        <span className="font-medium">{metrics.tradingStats.totalPurchases.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Total Tokens Spent</p>
-                      <p className="text-xl font-semibold text-red-600 font-montserrat">
-                        {formatValueWithSymbol(metrics.totalOutflow)}
-                      </p>
-                      <div className="mt-2 text-xs">
-                        <span className="text-gray-500">Total Sales: </span>
-                        <span className="font-medium">{metrics.tradingStats.totalSales.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Net Position</p>
-                      <p className={`text-xl font-semibold font-montserrat ${metrics.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatValueWithSymbol(metrics.netAmount)}
-                      </p>
-                      <div className="mt-2 text-xs">
-                        <span className="text-gray-500">Success Rate: </span>
-                        <span className="font-medium">{metrics.tradingStats.successRate.toFixed(1)}%</span>
-                      </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Tokens Spent</p>
+                    <p className="text-xl font-semibold text-red-600 font-montserrat">
+                      {formatValueWithSymbol(walletMetrics.totalOutflow)}
+                    </p>
+                    <div className="mt-2 text-xs">
+                      <span className="text-gray-500">Total Sales: </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.totalSales.toLocaleString()}</span>
                     </div>
                   </div>
-                  
-                  {/* Trading Performance */}
-                  <div className="mb-6">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Net Position</p>
+                    <p className={`text-xl font-semibold font-montserrat ${walletMetrics.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatValueWithSymbol(walletMetrics.netAmount)}
+                    </p>
+                    <div className="mt-2 text-xs">
+                      <span className="text-gray-500">Success Rate: </span>
+                      <span className="font-medium">{walletMetrics.tradingStats.successRate.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Trading Performance */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                    Trading Performance
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Largest Transaction</p>
+                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.largestTransaction)}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Average Transaction</p>
+                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.avgTransactionValue)}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Total Profit</p>
+                      <p className="text-sm font-medium text-green-600">+{formatValueWithSymbol(walletMetrics.tradingStats.totalProfit)}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Total Loss</p>
+                      <p className="text-sm font-medium text-red-600">-{formatValueWithSymbol(walletMetrics.tradingStats.totalLoss)}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Activity Charts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* Monthly Activity */}
+                  <div>
                     <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                      Trading Performance
+                      Monthly Activity
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Largest Transaction</p>
-                        <p className="text-sm font-medium">{formatValueWithSymbol(metrics.tradingStats.largestTransaction)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Average Transaction</p>
-                        <p className="text-sm font-medium">{formatValueWithSymbol(metrics.tradingStats.avgTransactionValue)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Total Profit</p>
-                        <p className="text-sm font-medium text-green-600">+{formatValueWithSymbol(metrics.tradingStats.totalProfit)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Total Loss</p>
-                        <p className="text-sm font-medium text-red-600">-{formatValueWithSymbol(metrics.tradingStats.totalLoss)}</p>
-                      </div>
+                    <div className="bg-white border border-gray-100 rounded-lg p-4" style={{ height: '240px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={walletMetrics.activityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="month" 
+                            tick={{ fontFamily: 'Poppins', fontSize: 10 }}
+                            tickFormatter={(tick) => {
+                              const [year, month] = tick.split('-');
+                              return `${month}/${year.slice(2)}`;
+                            }}
+                          />
+                          <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
+                          <Tooltip 
+                            contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
+                            formatter={(value, name) => {
+                              return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : name === 'outflow' ? 'Spent' : 'Interactions'];
+                            }}
+                            labelFormatter={(label) => {
+                              const [year, month] = label.split('-');
+                              const date = new Date(parseInt(year), parseInt(month) - 1);
+                              return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                            }}
+                          />
+                          <Bar dataKey="inflow" name="Inflow" fill={styles.primaryColor} />
+                          <Bar dataKey="outflow" name="Outflow" fill={styles.accentColor} />
+                          <Bar dataKey="uniqueCounterparties" name="Unique Interactions" fill="#94a3b8" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
                   
-                  {/* Activity Charts */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    {/* Monthly Activity */}
-                    <div>
-                      <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                        Monthly Activity
-                      </h3>
-                      <div className="bg-white border border-gray-100 rounded-lg p-4" style={{ height: '240px' }}>
+                  {/* Daily Activity (Last 30 Days) */}
+                  <div>
+                    <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                      Daily Activity (Last 30 Days)
+                    </h3>
+                    <div className="bg-white border border-gray-100 rounded-lg p-4" style={{ height: '240px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={walletMetrics.dailyActivityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontFamily: 'Poppins', fontSize: 10 }}
+                            tickFormatter={(tick) => {
+                              const [, , day] = tick.split('-');
+                              return day;
+                            }}
+                          />
+                          <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
+                          <Tooltip 
+                            contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
+                            formatter={(value, name) => {
+                              return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : 'Spent'];
+                            }}
+                            labelFormatter={(label) => {
+                              const date = new Date(label);
+                              return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                            }}
+                          />
+                          <Area type="monotone" dataKey="inflow" name="Inflow" stroke={styles.primaryColor} fill={`${styles.primaryColor}20`} />
+                          <Area type="monotone" dataKey="outflow" name="Outflow" stroke={styles.accentColor} fill={`${styles.accentColor}20`} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Activity Patterns */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                    Activity Patterns
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium mb-2">Time of Day Activity</h4>
+                      <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={metrics.activityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <BarChart data={walletMetrics.activityPatterns.hours.map((count, hour) => ({ hour, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
-                              dataKey="month" 
-                              tick={{ fontFamily: 'Poppins', fontSize: 10 }}
-                              tickFormatter={(tick) => {
-                                const [year, month] = tick.split('-');
-                                return `${month}/${year.slice(2)}`;
-                              }}
+                              dataKey="hour" 
+                              tick={{ fontSize: 10 }}
+                              tickFormatter={(hour) => `${hour}:00`}
                             />
-                            <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 10 }} />
                             <Tooltip 
-                              contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
-                              formatter={(value, name) => {
-                                return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : name === 'outflow' ? 'Spent' : 'Interactions'];
-                              }}
-                              labelFormatter={(label) => {
-                                const [year, month] = label.split('-');
-                                const date = new Date(parseInt(year), parseInt(month) - 1);
-                                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                              }}
+                              formatter={(value) => [`${value} transactions`, 'Activity']}
+                              labelFormatter={(hour) => `${hour}:00 - ${(hour + 1) % 24}:00`}
                             />
-                            <Bar dataKey="inflow" name="Inflow" fill={styles.primaryColor} />
-                            <Bar dataKey="outflow" name="Outflow" fill={styles.accentColor} />
-                            <Bar dataKey="uniqueCounterparties" name="Unique Interactions" fill="#94a3b8" />
+                            <Bar dataKey="count" fill={styles.primaryColor} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Peak activity at {walletMetrics.activityPatterns.peakHour}:00
+                      </p>
                     </div>
-                    
-                    {/* Daily Activity (Last 30 Days) */}
-                    <div>
-                      <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                        Daily Activity (Last 30 Days)
-                      </h3>
-                      <div className="bg-white border border-gray-100 rounded-lg p-4" style={{ height: '240px' }}>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium mb-2">Day of Week Activity</h4>
+                      <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={metrics.dailyActivityChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <BarChart data={walletMetrics.activityPatterns.days.map((count, day) => ({ day, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
-                              dataKey="date" 
-                              tick={{ fontFamily: 'Poppins', fontSize: 10 }}
-                              tickFormatter={(tick) => {
-                                const [, , day] = tick.split('-');
-                                return day;
-                              }}
+                              dataKey="day" 
+                              tick={{ fontSize: 10 }}
+                              tickFormatter={(day) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]}
                             />
-                            <YAxis tick={{ fontFamily: 'Poppins', fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 10 }} />
                             <Tooltip 
-                              contentStyle={{ fontFamily: 'Poppins', fontSize: 11 }}
-                              formatter={(value, name) => {
-                                return [formatValueWithSymbol(value), name === 'inflow' ? 'Received' : 'Spent'];
-                              }}
-                              labelFormatter={(label) => {
-                                const date = new Date(label);
-                                return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                              }}
+                              formatter={(value) => [`${value} transactions`, 'Activity']}
+                              labelFormatter={(day) => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day]}
                             />
-                            <Area type="monotone" dataKey="inflow" name="Inflow" stroke={styles.primaryColor} fill={`${styles.primaryColor}20`} />
-                            <Area type="monotone" dataKey="outflow" name="Outflow" stroke={styles.accentColor} fill={`${styles.accentColor}20`} />
-                          </AreaChart>
+                            <Bar dataKey="count" fill={styles.accentColor} />
+                          </BarChart>
                         </ResponsiveContainer>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][walletMetrics.activityPatterns.peakDay]}s
+                      </p>
                     </div>
                   </div>
-                  
-                  {/* Activity Patterns */}
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                      Activity Patterns
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">Time of Day Activity</h4>
-                        <div className="h-40">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={metrics.activityPatterns.hours.map((count, hour) => ({ hour, count }))}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="hour" 
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(hour) => `${hour}:00`}
-                              />
-                              <YAxis tick={{ fontSize: 10 }} />
-                              <Tooltip 
-                                formatter={(value) => [`${value} transactions`, 'Activity']}
-                                labelFormatter={(hour) => `${hour}:00 - ${(hour + 1) % 24}:00`}
-                              />
-                              <Bar dataKey="count" fill={styles.primaryColor} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Peak activity at {metrics.activityPatterns.peakHour}:00
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">Day of Week Activity</h4>
-                        <div className="h-40">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={metrics.activityPatterns.days.map((count, day) => ({ day, count }))}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="day" 
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(day) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]}
-                              />
-                              <YAxis tick={{ fontSize: 10 }} />
-                              <Tooltip 
-                                formatter={(value) => [`${value} transactions`, 'Activity']}
-                                labelFormatter={(day) => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day]}
-                              />
-                              <Bar dataKey="count" fill={styles.accentColor} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][metrics.activityPatterns.peakDay]}s
-                        </p>
-                      </div>
+                </div>
+                
+                {/* Method Distribution */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                    Transaction Methods
+                  </h3>
+                  <div className="bg-white border border-gray-100 rounded-lg overflow-hidden">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">% of Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {walletMetrics.methodStats.map((method, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="py-2 px-4 text-sm">{method.method}</td>
+                            <td className="py-2 px-4 text-sm">{method.count.toLocaleString()}</td>
+                            <td className="py-2 px-4 text-sm">{formatValueWithSymbol(method.volume)}</td>
+                            <td className="py-2 px-4 text-sm">{method.percentage.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                {/* Interaction Metrics */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                    Interaction Analysis
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Unique Counterparties</p>
+                      <p className="text-lg font-medium">{walletMetrics.interactionMetrics.uniqueCounterparties.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Avg. Interactions per Address</p>
+                      <p className="text-lg font-medium">{walletMetrics.interactionMetrics.averageInteractionFrequency.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Repeat Interaction Rate</p>
+                      <p className="text-lg font-medium">{walletMetrics.interactionMetrics.repeatInteractionRate.toFixed(2)}x</p>
                     </div>
                   </div>
-                  
-                  {/* Method Distribution */}
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                      Transaction Methods
-                    </h3>
-                    <div className="bg-white border border-gray-100 rounded-lg overflow-hidden">
+                </div>
+                
+                {/* Transaction History */}
+                <div>
+                  <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
+                    Transaction History
+                  </h3>
+                  <div className="bg-white border border-gray-100 rounded-lg overflow-hidden">
+                    <div className="max-h-[500px] overflow-y-auto">
                       <table className="min-w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 sticky top-0">
                           <tr>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">% of Total</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Hash</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">From/To</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {metrics.methodStats.map((method, index) => (
-                            <tr key={index} className="border-b">
-                              <td className="py-2 px-4 text-sm">{method.method}</td>
-                              <td className="py-2 px-4 text-sm">{method.count.toLocaleString()}</td>
-                              <td className="py-2 px-4 text-sm">{formatValueWithSymbol(method.volume)}</td>
-                              <td className="py-2 px-4 text-sm">{method.percentage.toFixed(1)}%</td>
-                            </tr>
-                          ))}
+                          {activeWalletDetail.allTransactions
+                            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                            .map((tx, index) => (
+                              <tr key={index} className="border-b hover:bg-gray-50">
+                                <td className="py-2 px-4">
+                                  <div className="flex items-center space-x-2">
+                                    <a 
+                                      href={`https://etherscan.io/tx/${tx.hash}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                                    >
+                                      {formatAddress(tx.hash)}
+                                    </a>
+                                    <ExternalLink size={12} className="text-gray-400" />
+                                  </div>
+                                </td>
+                                <td className="py-2 px-4 text-xs">
+                                  {formatDate(tx.timestamp)}
+                                </td>
+                                <td className="py-2 px-4">
+                                  <span className={`px-2 py-1 rounded text-xs ${tx.type === 'incoming' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {tx.type === 'incoming' ? 'Received' : 'Sent'}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-4 text-xs">
+                                  {tx.type === 'incoming' ? (
+                                    <span>From: {formatAddress(tx.from)}</span>
+                                  ) : (
+                                    <span>To: {formatAddress(tx.to)}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-4 text-right text-xs font-medium">
+                                  <span className={tx.type === 'incoming' ? 'text-green-600' : 'text-red-600'}>
+                                    {tx.type === 'incoming' ? '+' : '-'} {formatValueWithSymbol(tx.amount)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                  
-                  {/* Interaction Metrics */}
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                      Interaction Analysis
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Unique Counterparties</p>
-                        <p className="text-lg font-medium">{metrics.interactionMetrics.uniqueCounterparties.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Avg. Interactions per Address</p>
-                        <p className="text-lg font-medium">{metrics.interactionMetrics.averageInteractionFrequency.toFixed(2)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Repeat Interaction Rate</p>
-                        <p className="text-lg font-medium">{metrics.interactionMetrics.repeatInteractionRate.toFixed(2)}x</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Transaction History */}
-                  <div>
-                    <h3 className="font-semibold text-md mb-3 font-montserrat" style={{ color: styles.primaryColor }}>
-                      Transaction History
-                    </h3>
-                    <div className="bg-white border border-gray-100 rounded-lg overflow-hidden">
-                      <div className="max-h-[500px] overflow-y-auto">
-                        <table className="min-w-full">
-                          <thead className="bg-gray-50 sticky top-0">
-                            <tr>
-                              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Hash</th>
-                              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">From/To</th>
-                              <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeWalletDetail.allTransactions
-                              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                              .map((tx, index) => (
-                                <tr key={index} className="border-b hover:bg-gray-50">
-                                  <td className="py-2 px-4">
-                                    <div className="flex items-center space-x-2">
-                                      <a 
-                                        href={`https://etherscan.io/tx/${tx.hash}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-indigo-600 hover:text-indigo-800"
-                                      >
-                                        {formatAddress(tx.hash)}
-                                      </a>
-                                      <ExternalLink size={12} className="text-gray-400" />
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-4 text-xs">
-                                    {formatDate(tx.timestamp)}
-                                  </td>
-                                  <td className="py-2 px-4">
-                                    <span className={`px-2 py-1 rounded text-xs ${tx.type === 'incoming' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                      {tx.type === 'incoming' ? 'Received' : 'Sent'}
-                                    </span>
-                                  </td>
-                                  <td className="py-2 px-4 text-xs">
-                                    {tx.type === 'incoming' ? (
-                                      <span>From: {formatAddress(tx.from)}</span>
-                                    ) : (
-                                      <span>To: {formatAddress(tx.to)}</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-xs font-medium">
-                                    <span className={tx.type === 'incoming' ? 'text-green-600' : 'text-red-600'}>
-                                      {tx.type === 'incoming' ? '+' : '-'} {formatValueWithSymbol(tx.amount)}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -851,15 +1229,23 @@ export default function Onchainwalletinsights() {
             Top Active Wallets {selectedContract ? `for ${selectedContract.name}` : ''}
           </h2>
           <button 
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              exportLoading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-opacity-80'
+            }`}
             style={{ 
               backgroundColor: `${styles.primaryColor}10`, 
               color: styles.primaryColor
             }}
+            onClick={handleExportData}
+            disabled={exportLoading}
           >
-            <Download size={16} />
+            {exportLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
             Export wallets
-            <span className="text-xs ml-1 opacity-70">{totalWalletsCount.toLocaleString()}</span>
+            <span className="text-xs ml-1 opacity-70">{filteredWallets.length.toLocaleString()}</span>
           </button>
         </div>
 
@@ -934,7 +1320,13 @@ export default function Onchainwalletinsights() {
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm">{formatAddress(wallet.address)}</span>
-                      <button className="text-gray-400 hover:text-gray-600">
+                      <button 
+                        className={`text-gray-400 hover:text-gray-600 transition-colors ${
+                          copySuccess === wallet.address ? 'text-green-500' : ''
+                        }`}
+                        onClick={() => handleCopyAddress(wallet.address)}
+                        title={copySuccess === wallet.address ? 'Copied!' : 'Copy address'}
+                      >
                         <Copy size={14} />
                       </button>
                       {wallet.hasAlert && (
@@ -1010,14 +1402,16 @@ export default function Onchainwalletinsights() {
       </div>
       
       {/* No wallets message if empty */}
-      {walletsData.length === 0 && (
+      {filteredWallets.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Wallet Data Available</h3>
+          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Matching Wallets</h3>
           <p className="text-gray-500 text-sm">
-            {selectedContract 
-              ? 'There are no transactions for this contract yet, or the data is still loading.'
-              : 'Please select a smart contract to view wallet insights.'}
+            {walletsData.length > 0 
+              ? 'No wallets match the current filter criteria. Try adjusting your filters.'
+              : selectedContract 
+                ? 'There are no transactions for this contract yet, or the data is still loading.'
+                : 'Please select a smart contract to view wallet insights.'}
           </p>
         </div>
       )}
