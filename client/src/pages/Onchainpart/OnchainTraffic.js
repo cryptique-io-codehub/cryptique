@@ -30,8 +30,20 @@ export default function OnchainTraffic() {
   const [websiteId, setWebsiteId] = useState(() => localStorage.getItem('idy') || null);
   // Track when contract selection changes
   const [lastContractId, setLastContractId] = useState(null);
-  // Add loading state
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  // Add loading state - check for cached data to avoid showing loading indicator initially
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(() => {
+    // Check if we have cached data
+    try {
+      const websiteId = localStorage.getItem('idy');
+      if (websiteId) {
+        const cacheKey = `onchain_analytics_${websiteId}_default`;
+        return !sessionStorage.getItem(cacheKey); // Only show loading if no cache exists
+      }
+    } catch (e) {
+      console.error("Error checking cache:", e);
+    }
+    return true; // Default to loading if we can't check cache
+  });
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
   // Flag to track initial data load
@@ -102,6 +114,7 @@ export default function OnchainTraffic() {
       console.log("Using cached analytics data");
       setanalytics(cachedData);
       setInitialDataLoaded(true);
+      setIsLoadingAnalytics(false); // Ensure loading state is false when using cached data
       return;
     }
     

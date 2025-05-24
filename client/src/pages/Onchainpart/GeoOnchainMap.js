@@ -48,7 +48,17 @@ const GeoOnchainMap = ({
   const [countryMetrics, setCountryMetrics] = useState({});
   const [mapData, setMapData] = useState([]);
   const [topCountries, setTopCountries] = useState([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Initialize isProcessing based on cache availability
+  const [isProcessing, setIsProcessing] = useState(() => {
+    try {
+      const contractId = contractData?.contractId || 'default';
+      const cacheKey = `onchain_map_data_${contractId}`;
+      return !sessionStorage.getItem(cacheKey); // Only show processing if no cache exists
+    } catch (e) {
+      console.error("Error checking map cache:", e);
+      return true; // Default to processing if we can't check cache
+    }
+  });
 
   // Helper function to retrieve cached map data
   const getCachedMapData = (contractId) => {

@@ -31,6 +31,18 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
     walletsPercentage: "0.00"
   });
   
+  // State to track if data is loading
+  const [isLoadingFunnel, setIsLoadingFunnel] = useState(() => {
+    try {
+      // Check if we have cached funnel data
+      const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
+      return !sessionStorage.getItem(cacheKey); // Only show loading if no cache exists
+    } catch (e) {
+      console.error("Error checking funnel cache:", e);
+      return true; // Default to loading if we can't check cache
+    }
+  });
+  
   // Update data when analytics or contractData changes
   useEffect(() => {
     console.log("FunnelDashboard - Updating with new data:", {
@@ -46,6 +58,8 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
       showDemoData: contractData?.showDemoData
     });
     
+    setIsLoadingFunnel(true);
+    
     // Check for cached funnel data first
     try {
       const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
@@ -57,6 +71,7 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
           setData(parsed.data);
           setWeb3Stats(parsed.web3Stats);
           setMetrics(parsed.metrics);
+          setIsLoadingFunnel(false);
           return;
         }
       }
@@ -231,43 +246,55 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
         console.error("Error caching demo funnel data:", error);
       }
     }
+    
+    setIsLoadingFunnel(false);
   }, [analytics, contractData, contractData?.contractTransactions]);
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
-      {/* Stats display */}
-      <div className="flex justify-end w-full mb-6">
-        <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
-          <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
-            <p className="text-sm">Conversion</p>
-            <p className="text-xl font-bold">{metrics.conversion}%</p>
-          </div>
-          <div className="px-4 py-2">
-            <p className="text-sm">Web3 users</p>
-            <p className="text-xl font-bold">{metrics.webUsers}%</p>
-          </div>
+      {/* Show loading indicator when data is loading */}
+      {isLoadingFunnel ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+          <span className="ml-3 text-gray-600">Loading funnel data...</span>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Stats display */}
+          <div className="flex justify-end w-full mb-6">
+            <div className="flex space-x-4 p-4 bg-gray-900 text-white rounded-lg">
+              <div className="px-4 py-2 bg-amber-200 text-gray-900 rounded">
+                <p className="text-sm">Conversion</p>
+                <p className="text-xl font-bold">{metrics.conversion}%</p>
+              </div>
+              <div className="px-4 py-2">
+                <p className="text-sm">Web3 users</p>
+                <p className="text-xl font-bold">{metrics.webUsers}%</p>
+              </div>
+            </div>
+          </div>
 
-      <div className="flex">
-        {/* Custom horizontal funnel using SVG */}
-        <div className="w-full h-64 relative">
-          <HorizontalFunnel data={data} analytics={analytics} web3Stats={web3Stats} />
-        </div>
-      </div>
-      
-      {/* Labels below the chart */}
-      <div className="flex flex-col mt-4 space-y-2">
-        {data.map((item, index) => (
-          <div key={item.name} className="flex items-center">
-            <div 
-              className="w-4 h-4 mr-2" 
-              style={{ backgroundColor: item.fill }}
-            ></div>
-            <p className="text-sm">{item.name}</p>
+          <div className="flex">
+            {/* Custom horizontal funnel using SVG */}
+            <div className="w-full h-64 relative">
+              <HorizontalFunnel data={data} analytics={analytics} web3Stats={web3Stats} />
+            </div>
           </div>
-        ))}
-      </div>
+          
+          {/* Labels below the chart */}
+          <div className="flex flex-col mt-4 space-y-2">
+            {data.map((item, index) => (
+              <div key={item.name} className="flex items-center">
+                <div 
+                  className="w-4 h-4 mr-2" 
+                  style={{ backgroundColor: item.fill }}
+                ></div>
+                <p className="text-sm">{item.name}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };
