@@ -81,8 +81,32 @@ export default function OnchainTraffic() {
     }
     
     const fetchAnalyticsData = async () => {
-      setIsLoadingAnalytics(true);
-      setAnalyticsError(null);
+      // First, try to get cached analytics data to show immediately
+      const cachedDataKey = `analytics_${websiteId}`;
+      let cachedData = null;
+      
+      try {
+        const cachedString = localStorage.getItem(cachedDataKey);
+        if (cachedString) {
+          cachedData = JSON.parse(cachedString);
+          if (cachedData && cachedData.sessions && Array.isArray(cachedData.sessions)) {
+            console.log(`Using cached analytics data for website ${websiteId}`);
+            setanalytics(cachedData);
+            // Don't set loading to false here, continue with background refresh
+          }
+        }
+      } catch (error) {
+        console.error("Error reading cached analytics data:", error);
+        // Continue with API fetch
+      }
+      
+      // Only show loading indicator if we don't have cached data
+      if (!cachedData || !cachedData.sessions) {
+        setIsLoadingAnalytics(true);
+      } else {
+        // If we have cached data, set loading to a different state to indicate background refresh
+        setAnalyticsError(null);
+      }
       
       try {
         console.log(`Fetching analytics data for website ID: ${websiteId}`);
@@ -91,9 +115,11 @@ export default function OnchainTraffic() {
         if (response.subscriptionError) {
           console.error("Subscription error:", response.message);
           setAnalyticsError(response.message);
-          setanalytics({});
+          if (!cachedData) {
+            setanalytics({});
+          }
         } else if (response && response.analytics) {
-          console.log("Successfully fetched analytics data:", {
+          console.log("Successfully fetched fresh analytics data:", {
             uniqueVisitors: response.analytics.uniqueVisitors,
             sessionsCount: response.analytics.sessions?.length,
             walletsCount: response.analytics.wallets?.length
@@ -112,7 +138,7 @@ export default function OnchainTraffic() {
           
           // Also store in localStorage for future use
           try {
-            localStorage.setItem(`analytics_${websiteId}`, JSON.stringify(response.analytics));
+            localStorage.setItem(cachedDataKey, JSON.stringify(response.analytics));
             localStorage.setItem('analytics_storage', JSON.stringify(response.analytics));
           } catch (storageError) {
             console.error("Failed to store analytics in localStorage:", storageError);
@@ -120,12 +146,16 @@ export default function OnchainTraffic() {
         } else {
           console.error("Invalid response format:", response);
           setAnalyticsError("Invalid analytics data format");
-          simulateDemoAnalytics();
+          if (!cachedData) {
+            simulateDemoAnalytics();
+          }
         }
       } catch (error) {
         console.error("Error fetching analytics data:", error);
         setAnalyticsError("Failed to load analytics data");
-        simulateDemoAnalytics();
+        if (!cachedData) {
+          simulateDemoAnalytics();
+        }
       } finally {
         setIsLoadingAnalytics(false);
       }
@@ -133,7 +163,6 @@ export default function OnchainTraffic() {
     
     // Always fetch data when the component mounts or when the website/contract changes
     fetchAnalyticsData();
-    
   }, [websiteId, selectedContract?.id]);
   
   // Function to simulate demo analytics data

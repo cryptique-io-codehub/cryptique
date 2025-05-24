@@ -95,8 +95,35 @@ export const ContractDataProvider = ({ children }) => {
 
     setShowDemoData(false); // When a contract is selected, use real data
     
+    // PHASE 1: Immediately try to load cached data from localStorage for instant rendering
+    const cachedDataKey = `contract_transactions_${contractId}`;
+    let cachedData = null;
     try {
-      setIsLoadingTransactions(true);
+      const cachedDataString = localStorage.getItem(cachedDataKey);
+      if (cachedDataString) {
+        cachedData = JSON.parse(cachedDataString);
+        if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+          console.log(`Loaded ${cachedData.length} cached transactions for contract ${contractId}`);
+          setContractTransactions(cachedData);
+          // Don't return here - continue loading fresh data in the background
+        }
+      }
+    } catch (error) {
+      console.error("Error loading cached transaction data:", error);
+      // Continue with API fetch if cache loading fails
+    }
+    
+    // PHASE 2: Fetch fresh data from API (even if we loaded from cache)
+    try {
+      // Only show loading indicator if we don't have cached data
+      if (!cachedData || cachedData.length === 0) {
+        setIsLoadingTransactions(true);
+      } else {
+        // If we have cached data, still indicate background refresh
+        setUpdatingTransactions(true);
+        setLoadingStatus('Refreshing transaction data in background...');
+      }
+      
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
@@ -144,6 +171,16 @@ export const ContractDataProvider = ({ children }) => {
         }
       }
       
+      // Cache the fetched data in localStorage
+      try {
+        localStorage.setItem(cachedDataKey, JSON.stringify(allTransactions));
+        console.log(`Cached ${allTransactions.length} transactions for contract ${contractId}`);
+      } catch (error) {
+        console.error("Error caching transaction data:", error);
+        // Non-fatal error, continue without caching
+      }
+      
+      // Update state with fresh data
       setContractTransactions(allTransactions);
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       
@@ -156,8 +193,16 @@ export const ContractDataProvider = ({ children }) => {
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
-      setShowDemoData(true); // Fallback to demo data on error
-      return [];
+      
+      // If we have cached data, keep showing it instead of falling back to demo
+      if (cachedData && cachedData.length > 0) {
+        console.log("API request failed, but using cached data");
+        // We already set this earlier, so no need to set again
+      } else {
+        setShowDemoData(true); // Fallback to demo data on error only if no cache
+      }
+      
+      return cachedData || [];
     } finally {
       setIsLoadingTransactions(false);
     }
