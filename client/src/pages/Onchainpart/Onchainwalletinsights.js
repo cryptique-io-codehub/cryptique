@@ -921,7 +921,9 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Total Purchases: </span>
-                      <span className="font-medium">{walletMetrics.tradingStats.totalPurchases.toLocaleString()}</span>
+                      <span className="font-medium">
+                        {walletMetrics.tradingStats?.totalPurchases?.toLocaleString() || '0'}
+                      </span>
                     </div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -931,7 +933,9 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Total Sales: </span>
-                      <span className="font-medium">{walletMetrics.tradingStats.totalSales.toLocaleString()}</span>
+                      <span className="font-medium">
+                        {walletMetrics.tradingStats?.totalSales?.toLocaleString() || '0'}
+                      </span>
                     </div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -941,7 +945,9 @@ export default function Onchainwalletinsights() {
                     </p>
                     <div className="mt-2 text-xs">
                       <span className="text-gray-500">Success Rate: </span>
-                      <span className="font-medium">{walletMetrics.tradingStats.successRate.toFixed(1)}%</span>
+                      <span className="font-medium">
+                        {(walletMetrics.tradingStats?.successRate || 0).toFixed(1)}%
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -954,19 +960,27 @@ export default function Onchainwalletinsights() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Largest Transaction</p>
-                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.largestTransaction)}</p>
+                      <p className="text-sm font-medium">
+                        {formatValueWithSymbol(walletMetrics.tradingStats?.largestTransaction || 0)}
+                      </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Average Transaction</p>
-                      <p className="text-sm font-medium">{formatValueWithSymbol(walletMetrics.tradingStats.avgTransactionValue)}</p>
+                      <p className="text-sm font-medium">
+                        {formatValueWithSymbol(walletMetrics.tradingStats?.avgTransactionValue || 0)}
+                      </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Total Profit</p>
-                      <p className="text-sm font-medium text-green-600">+{formatValueWithSymbol(walletMetrics.tradingStats.totalProfit)}</p>
+                      <p className="text-sm font-medium text-green-600">
+                        +{formatValueWithSymbol(walletMetrics.tradingStats?.totalProfit || 0)}
+                      </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Total Loss</p>
-                      <p className="text-sm font-medium text-red-600">-{formatValueWithSymbol(walletMetrics.tradingStats.totalLoss)}</p>
+                      <p className="text-sm font-medium text-red-600">
+                        -{formatValueWithSymbol(walletMetrics.tradingStats?.totalLoss || 0)}
+                      </p>
                     </div>
                   </div>
                 </div>
