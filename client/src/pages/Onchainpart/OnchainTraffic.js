@@ -9,6 +9,11 @@ import { getChainConfig } from '../../utils/chainRegistry';
 import sdkApi from '../../utils/sdkApi';
 import { isWeb3User } from '../../utils/analyticsHelpers';
 
+// Create a session-level cache for processed data to avoid reprocessing on navigation
+const SESSION_ANALYTICS_KEY = 'onchain_traffic_analytics';
+const SESSION_PROCESSED_DATA_KEY = 'onchain_traffic_processed_data';
+const SESSION_SOURCES_DATA_KEY = 'onchain_traffic_sources_data';
+
 export default function OnchainTraffic() {
   // Get contract data from context
   const { 
@@ -25,7 +30,21 @@ export default function OnchainTraffic() {
   const contractData = !showDemoData ? processContractTransactions() : null;
 
   // State for analytics data
-  const [analytics, setanalytics] = useState({});
+  const [analytics, setanalytics] = useState(() => {
+    // Try to load from session storage first to maintain state between navigations
+    try {
+      const sessionData = sessionStorage.getItem(SESSION_ANALYTICS_KEY);
+      if (sessionData) {
+        const parsed = JSON.parse(sessionData);
+        console.log("Restored analytics data from session storage");
+        return parsed;
+      }
+    } catch (e) {
+      console.error("Error loading analytics from session storage:", e);
+    }
+    return {};
+  });
+  
   // Get website ID once on mount
   const [websiteId, setWebsiteId] = useState(() => localStorage.getItem('idy') || null);
   // Track when contract selection changes
@@ -34,6 +53,21 @@ export default function OnchainTraffic() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  
+  // Add state for processed sources data with session storage initialization
+  const [processedSourcesData, setProcessedSourcesData] = useState(() => {
+    try {
+      const sessionData = sessionStorage.getItem(SESSION_SOURCES_DATA_KEY);
+      if (sessionData) {
+        const parsed = JSON.parse(sessionData);
+        console.log("Restored traffic sources data from session storage");
+        return parsed;
+      }
+    } catch (e) {
+      console.error("Error loading traffic sources from session storage:", e);
+    }
+    return [];
+  });
   
   // Check for website ID changes
   useEffect(() => {
@@ -51,6 +85,13 @@ export default function OnchainTraffic() {
             const response = await sdkApi.getAnalytics(currentWebsiteId);
             if (response && response.analytics) {
               setanalytics(response.analytics);
+              
+              // Save to session storage for persistence between navigations
+              try {
+                sessionStorage.setItem(SESSION_ANALYTICS_KEY, JSON.stringify(response.analytics));
+              } catch (storageError) {
+                console.error("Error saving analytics to session storage:", storageError);
+              }
             }
           } catch (err) {
             console.error("Error fetching analytics after website change:", err);
@@ -63,6 +104,30 @@ export default function OnchainTraffic() {
       }
     }
   }, [websiteId]);
+  
+  // Save processed contract data to session storage when it changes
+  useEffect(() => {
+    if (contractData) {
+      try {
+        // Store minimal version to avoid quota issues
+        const minimalData = {
+          contractInfo: contractData.contractInfo,
+          summary: contractData.summary,
+          recentTransactions: contractData.recentTransactions,
+          recentVolume: contractData.recentVolume,
+          walletAgeData: contractData.walletAgeData,
+          medianWalletStats: contractData.medianWalletStats,
+          walletCategories: contractData.walletCategories,
+          // Exclude transactionData which can be large
+        };
+        
+        sessionStorage.setItem(SESSION_PROCESSED_DATA_KEY, JSON.stringify(minimalData));
+        console.log("Saved processed contract data to session storage");
+      } catch (error) {
+        console.error("Error saving contract data to session storage:", error);
+      }
+    }
+  }, [contractData]);
   
   // Load analytics data when component mounts or when website/contract selection changes
   useEffect(() => {
@@ -81,30 +146,53 @@ export default function OnchainTraffic() {
     }
     
     const fetchAnalyticsData = async () => {
-      // First, try to get cached analytics data to show immediately
-      const cachedDataKey = `analytics_${websiteId}`;
-      let cachedData = null;
-      
+      // First, check if we have data in session storage (for navigation persistence)
+      let sessionData = null;
       try {
-        const cachedString = localStorage.getItem(cachedDataKey);
-        if (cachedString) {
-          cachedData = JSON.parse(cachedString);
-          if (cachedData && cachedData.sessions && Array.isArray(cachedData.sessions)) {
-            console.log(`Using cached analytics data for website ${websiteId}`);
-            setanalytics(cachedData);
-            // Don't set loading to false here, continue with background refresh
+        const sessionDataStr = sessionStorage.getItem(SESSION_ANALYTICS_KEY);
+        if (sessionDataStr) {
+          sessionData = JSON.parse(sessionDataStr);
+          if (sessionData && sessionData.sessions && Array.isArray(sessionData.sessions)) {
+            console.log("Using analytics data from session storage");
+            setanalytics(sessionData);
+            // We'll still refresh in the background
           }
         }
       } catch (error) {
-        console.error("Error reading cached analytics data:", error);
-        // Continue with API fetch
+        console.error("Error reading analytics from session storage:", error);
       }
       
-      // Only show loading indicator if we don't have cached data
-      if (!cachedData || !cachedData.sessions) {
+      // First, try to get cached data to show immediately
+      const cachedDataKey = `analytics_${websiteId}`;
+      let cachedData = null;
+      
+      if (!sessionData) {
+        try {
+          const cachedString = localStorage.getItem(cachedDataKey);
+          if (cachedString) {
+            cachedData = JSON.parse(cachedString);
+            if (cachedData && cachedData.sessions && Array.isArray(cachedData.sessions)) {
+              console.log(`Using cached analytics data for website ${websiteId}`);
+              setanalytics(cachedData);
+              
+              // Also save to session storage for persistence
+              try {
+                sessionStorage.setItem(SESSION_ANALYTICS_KEY, cachedString);
+              } catch (sessionError) {
+                console.error("Error saving to session storage:", sessionError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error reading cached analytics data:", error);
+        }
+      }
+      
+      // Only show loading indicator if we don't have cached or session data
+      if (!cachedData && !sessionData) {
         setIsLoadingAnalytics(true);
       } else {
-        // If we have cached data, set loading to a different state to indicate background refresh
+        // If we have cached/session data, set loading to a different state to indicate background refresh
         setAnalyticsError(null);
       }
       
@@ -115,9 +203,6 @@ export default function OnchainTraffic() {
         if (response.subscriptionError) {
           console.error("Subscription error:", response.message);
           setAnalyticsError(response.message);
-          if (!cachedData) {
-            setanalytics({});
-          }
         } else if (response && response.analytics) {
           console.log("Successfully fetched fresh analytics data:", {
             uniqueVisitors: response.analytics.uniqueVisitors,
@@ -136,24 +221,40 @@ export default function OnchainTraffic() {
             console.log("Fetched analytics has valid sessions array");
           }
           
-          // Also store in localStorage for future use
+          // Also store in session storage for future use (for navigation persistence)
           try {
-            localStorage.setItem(cachedDataKey, JSON.stringify(response.analytics));
-            localStorage.setItem('analytics_storage', JSON.stringify(response.analytics));
+            sessionStorage.setItem(SESSION_ANALYTICS_KEY, JSON.stringify(response.analytics));
+          } catch (sessionStorageError) {
+            console.error("Failed to store analytics in session storage:", sessionStorageError);
+          }
+          
+          // Try to store in localStorage as well, but this may fail due to quota
+          try {
+            // Only store minimal data in localStorage to avoid quota issues
+            const minimalAnalytics = {
+              uniqueVisitors: response.analytics.uniqueVisitors,
+              // Include only the first 200 sessions and 200 wallets to avoid quota issues
+              sessions: response.analytics.sessions?.slice(0, 200) || [],
+              wallets: response.analytics.wallets?.slice(0, 200) || []
+            };
+            
+            localStorage.setItem(cachedDataKey, JSON.stringify(minimalAnalytics));
+            localStorage.setItem('analytics_storage', JSON.stringify(minimalAnalytics));
           } catch (storageError) {
-            console.error("Failed to store analytics in localStorage:", storageError);
+            console.error("Failed to store analytics in localStorage (quota exceeded):", storageError);
+            // Non-fatal error, we already have the data in memory and session storage
           }
         } else {
           console.error("Invalid response format:", response);
           setAnalyticsError("Invalid analytics data format");
-          if (!cachedData) {
+          if (!cachedData && !sessionData) {
             simulateDemoAnalytics();
           }
         }
       } catch (error) {
         console.error("Error fetching analytics data:", error);
         setAnalyticsError("Failed to load analytics data");
-        if (!cachedData) {
+        if (!cachedData && !sessionData) {
           simulateDemoAnalytics();
         }
       } finally {
@@ -163,10 +264,30 @@ export default function OnchainTraffic() {
     
     // Always fetch data when the component mounts or when the website/contract changes
     fetchAnalyticsData();
-  }, [websiteId, selectedContract?.id]);
+    
+    // Also check session storage for persisted traffic sources data
+    const loadTrafficSourcesData = () => {
+      if (processedSourcesData.length === 0) {
+        try {
+          const sessionData = sessionStorage.getItem(SESSION_SOURCES_DATA_KEY);
+          if (sessionData) {
+            const parsed = JSON.parse(sessionData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log("Restored traffic sources data from session storage");
+              setProcessedSourcesData(parsed);
+            }
+          }
+        } catch (e) {
+          console.error("Error loading traffic sources from session storage:", e);
+        }
+      }
+    };
+    
+    loadTrafficSourcesData();
+  }, [websiteId, selectedContract?.id, lastContractId, processedSourcesData.length, simulateDemoAnalytics]);
   
   // Function to simulate demo analytics data
-  const simulateDemoAnalytics = () => {
+  function simulateDemoAnalytics() {
     console.log("Generating demo analytics data");
     
     // Create a realistic set of demo analytics data
@@ -225,7 +346,14 @@ export default function OnchainTraffic() {
     }
     
     setanalytics(demoAnalytics);
-  };
+    
+    // Also store in session storage for persistence between navigations
+    try {
+      sessionStorage.setItem(SESSION_ANALYTICS_KEY, JSON.stringify(demoAnalytics));
+    } catch (e) {
+      console.error("Error storing demo analytics in session storage:", e);
+    }
+  }
   
   // Get chain-specific information
   const chainName = selectedContract?.blockchain || 'Ethereum';
@@ -341,16 +469,26 @@ export default function OnchainTraffic() {
     }
   };
 
-  // Load analytics data from localStorage if not available in state
+  // Load analytics data from session storage first, then localStorage if needed
   const getAnalyticsData = () => {
     if (analytics?.sessions?.length > 0) {
       console.log("Using analytics from state");
       return analytics;
     }
     
-    console.log("Attempting to load analytics from localStorage");
+    console.log("Attempting to load analytics from storage");
     try {
-      // Try to load from website-specific storage first
+      // First try session storage (should be most up-to-date)
+      const sessionData = sessionStorage.getItem(SESSION_ANALYTICS_KEY);
+      if (sessionData) {
+        const parsed = JSON.parse(sessionData);
+        if (parsed?.sessions?.length > 0) {
+          console.log("Found valid analytics in session storage");
+          return parsed;
+        }
+      }
+      
+      // Try website-specific local storage next
       if (websiteId) {
         const storedData = localStorage.getItem(`analytics_${websiteId}`);
         if (storedData) {
@@ -372,22 +510,28 @@ export default function OnchainTraffic() {
         }
       }
     } catch (e) {
-      console.error("Error reading analytics from localStorage:", e);
+      console.error("Error reading analytics from storage:", e);
     }
     
-    console.log("No valid analytics found in localStorage");
+    console.log("No valid analytics found in storage");
     return null;
   };
   
-  // Get analytics from either state or localStorage
+  // Get analytics from either state or storage
   const analyticsData = getAnalyticsData();
   console.log("Final analytics data source:", 
     analyticsData === analytics ? "State" : 
-    analyticsData ? "LocalStorage" : 
+    analyticsData ? "Storage" : 
     "None");
   
   // Process traffic sources using the most reliable analytics source
   const processTrafficSourcesDirectly = () => {
+    // If we already have processed data in state and it's valid, use it
+    if (processedSourcesData.length > 0) {
+      console.log("Using previously processed traffic sources data from state");
+      return processedSourcesData;
+    }
+    
     const data = analyticsData;
     if (!data?.sessions?.length) return [];
     
@@ -442,7 +586,7 @@ export default function OnchainTraffic() {
     });
     
     // Convert to array and sort
-    return Array.from(sourceData.values())
+    const result = Array.from(sourceData.values())
       .map(data => ({
         source: data.source,
         impressions: data.impressions,
@@ -453,6 +597,17 @@ export default function OnchainTraffic() {
         tvl: 0
       }))
       .sort((a, b) => b.visitors - a.visitors);
+    
+    // Save to state and session storage for persistence
+    setProcessedSourcesData(result);
+    try {
+      sessionStorage.setItem(SESSION_SOURCES_DATA_KEY, JSON.stringify(result));
+      console.log("Saved processed traffic sources data to session storage");
+    } catch (error) {
+      console.error("Error saving traffic sources to session storage:", error);
+    }
+    
+    return result;
   };
   
   // Always calculate real data if possible

@@ -414,6 +414,20 @@ export const ContractDataProvider = ({ children }) => {
                   console.log(`${index + 1}. TX Hash: ${tx.tx_hash.substring(0, 12)}... | Block: ${tx.block_number} | Value: ${tx.value_eth}`);
                 });
                 console.log('==========================================');
+                
+                // Update the cached data in sessionStorage instead of localStorage to avoid quota issues
+                try {
+                  const cachedDataKey = `contract_transactions_${contract.id}`;
+                  
+                  // Store limited data in sessionStorage (most recent 2000 transactions)
+                  // This avoids exceeding the storage quota while still providing a good user experience
+                  const limitedTransactions = updatedTransactions.slice(0, 2000);
+                  sessionStorage.setItem(cachedDataKey, JSON.stringify(limitedTransactions));
+                  console.log(`Updated sessionStorage cache with ${limitedTransactions.length} transactions`);
+                } catch (storageError) {
+                  console.error("Error updating sessionStorage cache:", storageError);
+                  // Non-fatal error, continue without caching
+                }
               }
             } catch (error) {
               console.error("Error fetching newly saved transactions:", error);
