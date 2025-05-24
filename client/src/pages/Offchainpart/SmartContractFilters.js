@@ -102,6 +102,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [loadingStatus, setLoadingStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [processingStep, setProcessingStep] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const teamRef = useRef(null);
   
   // For backwards compatibility with existing code
@@ -231,7 +232,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   // Function to handle contract selection that works with both props and context
   const handleSelectContract = async (contractId) => {
     try {
-      if (contractId === selectedContract?.id) {
+      if (contractId === contextSelectedContract?.id) {
         console.log("Contract already selected, skipping update");
         return;
       }
@@ -246,7 +247,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       console.log(`Selected contract: ${contract.name || contract.address}`);
       
       // Update the selected contract state immediately for instant UI feedback
-      setSelectedContract(contract);
+      propSetSelectedContract(contract);
       
       // Store selection in localStorage for persistence
       localStorage.setItem("selectedContractId", contractId);
