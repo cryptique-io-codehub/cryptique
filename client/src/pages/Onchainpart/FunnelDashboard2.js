@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ResponsiveContainer, 
   FunnelChart, 
@@ -31,87 +31,117 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
     walletsPercentage: "0.00"
   });
   
-  // Memoize the calculated web3 stats to prevent recalculations
-  const calculatedWeb3Stats = useMemo(() => {
-    if (analytics?.sessions) {
-      return calculateWeb3Stats(analytics.sessions, analytics.uniqueVisitors);
-    }
-    return {
-      web3Users: 0,
-      web3Percentage: "0.00",
-      walletsConnected: 0,
-      walletsPercentage: "0.00"
-    };
-  }, [analytics?.sessions, analytics?.uniqueVisitors]);
-  
-  // Memoize the calculation of wallets transacted
-  const walletsTransacted = useMemo(() => {
-    // Determine wallets transacted count - wallets that interacted with our contract
-    let transactedCount = 0;
-    
-    // Only try to match real data if we have a selected contract and it's not demo data
-    if (contractData && 
-        !contractData.showDemoData && 
-        contractData.contractId &&
-        contractData.contractTransactions && 
-        contractData.contractTransactions.length > 0 &&
-        analytics) {
-      
-      // Get unique wallet addresses from the website data
-      const websiteWallets = new Set();
-      
-      // Process both wallets array and any wallets found in sessions
-      // First check the wallets array
-      if (Array.isArray(analytics.wallets)) {
-        analytics.wallets.forEach(wallet => {
-          if (wallet.walletAddress && wallet.walletAddress.length > 10) {
-            websiteWallets.add(wallet.walletAddress.toLowerCase());
-          }
-        });
-      }
-      
-      // Then check sessions for any additional wallets
-      if (Array.isArray(analytics.sessions)) {
-        analytics.sessions.forEach(session => {
-          if (session.wallet && session.wallet.walletAddress && 
-              session.wallet.walletAddress.length > 10) {
-            websiteWallets.add(session.wallet.walletAddress.toLowerCase());
-          }
-        });
-      }
-      
-      // Get unique wallet addresses from contract transactions
-      const contractWallets = new Set();
-      if (contractData.contractTransactions) {
-        contractData.contractTransactions.forEach(tx => {
-          if (tx.from_address) {
-            contractWallets.add(tx.from_address.toLowerCase());
-          }
-        });
-      }
-      
-      // Count the intersection of these sets
-      if (websiteWallets.size > 0 && contractWallets.size > 0) {
-        websiteWallets.forEach(address => {
-          if (contractWallets.has(address)) {
-            transactedCount++;
-          }
-        });
-      }
-    } else {
-      // For demo data, show a reasonable conversion rate
-      transactedCount = Math.floor(calculatedWeb3Stats.walletsConnected * 0.66);
-    }
-    
-    return transactedCount;
-  }, [analytics, contractData, calculatedWeb3Stats.walletsConnected]);
-  
   // Update data when analytics or contractData changes
   useEffect(() => {
+    console.log("FunnelDashboard - Updating with new data:", {
+      analyticsExists: !!analytics,
+      uniqueVisitors: analytics?.uniqueVisitors,
+      sessionsCount: analytics?.sessions?.length,
+      walletsCount: analytics?.wallets?.length,
+      contractDataExists: !!contractData,
+      contractId: contractData?.contractId,
+      contractName: contractData?.contract?.name,
+      contractTransactionsCount: contractData?.contractTransactions?.length,
+      processedDataExists: !!contractData?.processedData,
+      showDemoData: contractData?.showDemoData
+    });
+    
+    // Check for cached funnel data first
+    try {
+      const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        if (parsed && parsed.data && parsed.web3Stats && parsed.metrics) {
+          console.log("Using cached funnel data");
+          setData(parsed.data);
+          setWeb3Stats(parsed.web3Stats);
+          setMetrics(parsed.metrics);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error retrieving cached funnel data:", error);
+    }
+    
     // If we have real data from website analytics, use it
     if (analytics?.sessions) {
-      // Set web3Stats from the memoized calculation
+      // Calculate Web3 stats using the analytics helper
+      const calculatedWeb3Stats = calculateWeb3Stats(analytics.sessions, analytics.uniqueVisitors);
       setWeb3Stats(calculatedWeb3Stats);
+      
+      console.log("Web3 stats calculated:", calculatedWeb3Stats);
+      
+      // Determine wallets transacted count - wallets that interacted with our contract
+      // This would need to match wallet addresses from sessions with wallet addresses from transactions
+      let walletsTransacted = 0;
+      
+      // Only try to match real data if we have a selected contract and it's not demo data
+      if (contractData && 
+          !contractData.showDemoData && 
+          contractData.contractId &&
+          contractData.contractTransactions && 
+          contractData.contractTransactions.length > 0) {
+        // Get unique wallet addresses from the website data
+        const websiteWallets = new Set();
+        
+        // Process both wallets array and any wallets found in sessions
+        // First check the wallets array
+        if (Array.isArray(analytics.wallets)) {
+          analytics.wallets.forEach(wallet => {
+            if (wallet.walletAddress && wallet.walletAddress.length > 10) {
+              websiteWallets.add(wallet.walletAddress.toLowerCase());
+            }
+          });
+        }
+        
+        // Then check sessions for any additional wallets
+        if (Array.isArray(analytics.sessions)) {
+          analytics.sessions.forEach(session => {
+            if (session.wallet && session.wallet.walletAddress && 
+                session.wallet.walletAddress.length > 10) {
+              websiteWallets.add(session.wallet.walletAddress.toLowerCase());
+            }
+          });
+        }
+        
+        // Get unique wallet addresses from contract transactions
+        const contractWallets = new Set();
+        if (contractData.contractTransactions) {
+          contractData.contractTransactions.forEach(tx => {
+            if (tx.from_address) {
+              contractWallets.add(tx.from_address.toLowerCase());
+            }
+          });
+        }
+        
+        console.log("Wallet matching stats:", {
+          websiteWalletsCount: websiteWallets.size,
+          contractWalletsCount: contractWallets.size
+        });
+        
+        // Count the intersection of these sets
+        if (websiteWallets.size > 0 && contractWallets.size > 0) {
+          // Log some sample wallets for debugging
+          const websiteSamples = Array.from(websiteWallets).slice(0, 3);
+          const contractSamples = Array.from(contractWallets).slice(0, 3);
+          
+          console.log("Sample website wallets:", websiteSamples);
+          console.log("Sample contract wallets:", contractSamples);
+          
+          websiteWallets.forEach(address => {
+            if (contractWallets.has(address)) {
+              walletsTransacted++;
+            }
+          });
+        }
+        
+        console.log("Wallets transacted count:", walletsTransacted);
+      } else {
+        // For demo data, show a reasonable conversion rate
+        walletsTransacted = Math.floor(calculatedWeb3Stats.walletsConnected * 0.66);
+        console.log("Using demo conversion rate, wallets transacted:", walletsTransacted);
+      }
       
       // Update funnel data - use calculated values directly for better accuracy
       const newData = [
@@ -121,6 +151,7 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
         { name: 'Wallets transacted', value: walletsTransacted || 0, fill: '#CAA968' }
       ];
       
+      console.log("Setting new funnel data:", newData);
       setData(newData);
       
       // Calculate conversion metrics
@@ -132,10 +163,25 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
         ? ((calculatedWeb3Stats.web3Users / analytics.uniqueVisitors) * 100).toFixed(2)
         : "0.00";
         
-      setMetrics({
+      const newMetrics = {
         conversion,
         webUsers
-      });
+      };
+      
+      setMetrics(newMetrics);
+      
+      // Cache the funnel data
+      try {
+        const cacheKey = `onchain_funnel_data_${contractData?.contractId || 'default'}`;
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          data: newData,
+          web3Stats: calculatedWeb3Stats,
+          metrics: newMetrics
+        }));
+        console.log("Cached funnel data");
+      } catch (error) {
+        console.error("Error caching funnel data:", error);
+      }
     } else {
       // For demo data without real analytics
       const uniqueVisitors = 200;
@@ -143,31 +189,49 @@ const HorizontalFunnelVisualization = ({ analytics, contractData }) => {
       const walletsConnected = 90;
       const walletsTransacted = 60;
       
-      setData([
+      const newData = [
         { name: 'Unique Visitors', value: uniqueVisitors, fill: '#1D0C46' },
         { name: 'Web3 Users', value: web3Users, fill: '#8B5CF6' },
         { name: 'Wallets connected', value: walletsConnected, fill: '#FFB95A' },
         { name: 'Wallets transacted', value: walletsTransacted, fill: '#CAA968' }
-      ]);
+      ];
+      
+      setData(newData);
       
       // Set demo Web3 stats
-      setWeb3Stats({
+      const newWeb3Stats = {
         web3Users,
         web3Percentage: ((web3Users / uniqueVisitors) * 100).toFixed(2),
         walletsConnected,
         walletsPercentage: ((walletsConnected / uniqueVisitors) * 100).toFixed(2)
-      });
+      };
+      
+      setWeb3Stats(newWeb3Stats);
       
       // Calculate conversion metrics for demo data
       const conversion = ((walletsTransacted / walletsConnected) * 100).toFixed(2);
       const webUsers = ((web3Users / uniqueVisitors) * 100).toFixed(2);
       
-      setMetrics({
+      const newMetrics = {
         conversion,
         webUsers
-      });
+      };
+      
+      setMetrics(newMetrics);
+      
+      // Cache demo data too
+      try {
+        const cacheKey = 'onchain_funnel_data_demo';
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          data: newData,
+          web3Stats: newWeb3Stats,
+          metrics: newMetrics
+        }));
+      } catch (error) {
+        console.error("Error caching demo funnel data:", error);
+      }
     }
-  }, [analytics, contractData, calculatedWeb3Stats, walletsTransacted]);
+  }, [analytics, contractData, contractData?.contractTransactions]);
 
   return (
     <div className="flex flex-col w-full max-w-5xl p-6 bg-white rounded-lg shadow">
@@ -310,14 +374,17 @@ const HorizontalFunnel = ({ data, analytics, web3Stats }) => {
   );
 };
 
-// Wrap the component with React.memo to prevent unnecessary re-renders
-const FunnelDashboard2 = React.memo(({ analytics, contractData }) => {
+// Example usage
+const FunnelDashboard2 = ({ analytics, contractData }) => {
   return (
-    <HorizontalFunnelVisualization 
-      analytics={analytics} 
-      contractData={contractData} 
-    />
+    <div>
+      <h2 className="text-lg font-bold mb-4">User Conversion Funnel</h2>
+      <HorizontalFunnelVisualization 
+        analytics={analytics} 
+        contractData={contractData}
+      />
+    </div>
   );
-});
+};
 
 export default FunnelDashboard2;
