@@ -1070,7 +1070,7 @@ export default function Onchainwalletinsights() {
                       <h4 className="text-sm font-medium mb-2">Time of Day Activity</h4>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={walletMetrics.activityPatterns.hours.map((count, hour) => ({ hour, count }))}>
+                          <BarChart data={(walletMetrics.activityPatterns?.hours || new Array(24).fill(0)).map((count, hour) => ({ hour, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
                               dataKey="hour" 
@@ -1087,14 +1087,14 @@ export default function Onchainwalletinsights() {
                         </ResponsiveContainer>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        Peak activity at {walletMetrics.activityPatterns.peakHour}:00
+                        Peak activity at {walletMetrics.activityPatterns?.peakHour || 0}:00
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium mb-2">Day of Week Activity</h4>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={walletMetrics.activityPatterns.days.map((count, day) => ({ day, count }))}>
+                          <BarChart data={(walletMetrics.activityPatterns?.days || new Array(7).fill(0)).map((count, day) => ({ day, count }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis 
                               dataKey="day" 
@@ -1111,7 +1111,7 @@ export default function Onchainwalletinsights() {
                         </ResponsiveContainer>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][walletMetrics.activityPatterns.peakDay]}s
+                        Most active on {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][walletMetrics.activityPatterns?.peakDay || 0]}s
                       </p>
                     </div>
                   </div>
