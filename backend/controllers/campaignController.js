@@ -436,14 +436,17 @@ exports.getCampaignMetrics = async (req, res) => {
       ...(campaign.utm_id && { 'utmData.utm_id': campaign.utm_id })
     }).sort({ startTime: -1 });
 
+    // Initialize transactions array if it doesn't exist
+    const transactions = campaign.stats.transactions || [];
+
     // Process transaction activity
-    const transactionActivity = processTransactionActivity(campaign.stats.transactions);
+    const transactionActivity = processTransactionActivity(transactions);
 
     // Process contract performance
-    const contractPerformance = processContractPerformance(campaign.stats.transactions);
+    const contractPerformance = processContractPerformance(transactions);
 
     // Calculate user journey metrics
-    const userJourney = calculateUserJourney(sessions, campaign.stats.transactions);
+    const userJourney = calculateUserJourney(sessions, transactions);
 
     return res.status(200).json({
       message: "Campaign metrics fetched successfully",
@@ -461,7 +464,7 @@ exports.getCampaignMetrics = async (req, res) => {
 };
 
 // Helper function to process transaction activity
-function processTransactionActivity(transactions) {
+function processTransactionActivity(transactions = []) {
   // Group transactions by date
   const activityByDate = transactions.reduce((acc, tx) => {
     const date = new Date(tx.timestamp).toISOString().split('T')[0];
@@ -484,7 +487,7 @@ function processTransactionActivity(transactions) {
 }
 
 // Helper function to process contract performance
-function processContractPerformance(transactions) {
+function processContractPerformance(transactions = []) {
   // Group transactions by contract
   const contractStats = transactions.reduce((acc, tx) => {
     if (!acc[tx.contractAddress]) {
@@ -509,7 +512,7 @@ function processContractPerformance(transactions) {
 }
 
 // Helper function to calculate user journey metrics
-function calculateUserJourney(sessions, transactions) {
+function calculateUserJourney(sessions = [], transactions = []) {
   const transactedUsers = new Set(transactions.map(tx => tx.walletAddress));
   const transactedSessions = sessions.filter(session => 
     session.wallet && transactedUsers.has(session.wallet.walletAddress)

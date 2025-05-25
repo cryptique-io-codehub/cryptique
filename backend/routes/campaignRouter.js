@@ -12,6 +12,9 @@ router.get('/site/:siteId', verifyToken, campaignController.getCampaigns);
 // Update campaign stats (no auth required - called by SDK)
 router.post('/:campaignId/stats', campaignController.updateCampaignStats);
 
+// Get detailed campaign metrics (requires authentication)
+router.get('/:campaignId/metrics', verifyToken, campaignController.getCampaignMetrics);
+
 // Delete a campaign (requires authentication)
 router.delete('/:campaignId', verifyToken, campaignController.deleteCampaign);
 
