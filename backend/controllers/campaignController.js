@@ -132,22 +132,17 @@ exports.getCampaigns = async (req, res) => {
         }
 
         // Validate and track unique wallet connections
-        const walletAddress = session.wallet?.walletAddress;
-        const isWalletConnected = session.wallet?.isConnected === true && 
-                                 session.wallet?.connectionStatus === 'connected' && 
-                                 session.wallet?.lastConnected && 
-                                 new Date(session.wallet.lastConnected) <= new Date(session.endTime || session.startTime);
-
-        if (isWalletConnected) {
-          const normalizedAddress = isValidAndNormalizedAddress(walletAddress);
+        if (isWalletConnected(session)) {
+          const normalizedAddress = isValidAndNormalizedAddress(session.wallet.walletAddress);
           if (normalizedAddress && !campaign.stats.uniqueWalletAddresses.includes(normalizedAddress)) {
             console.log('\nTracking new unique wallet:', {
               sessionId: session._id,
-              originalAddress: walletAddress,
+              originalAddress: session.wallet.walletAddress,
               normalizedAddress: normalizedAddress,
-              connectionStatus: session.wallet.connectionStatus,
-              lastConnected: session.wallet.lastConnected,
-              sessionTime: session.endTime || session.startTime
+              walletType: session.wallet.walletType,
+              chainName: session.wallet.chainName,
+              isWeb3User: session.isWeb3User,
+              walletConnected: session.walletConnected
             });
             
             campaign.stats.uniqueWalletAddresses.push(normalizedAddress);
@@ -257,7 +252,11 @@ exports.updateCampaignStats = async (req, res) => {
       userId: session.userId,
       utmData: session.utmData,
       duration: session.duration,
-      walletAddress: session.wallet?.walletAddress
+      walletAddress: session.wallet?.walletAddress,
+      walletType: session.wallet?.walletType,
+      chainName: session.wallet?.chainName,
+      isWeb3User: session.isWeb3User,
+      walletConnected: session.walletConnected
     });
 
     // Initialize arrays if they don't exist
@@ -282,22 +281,17 @@ exports.updateCampaignStats = async (req, res) => {
     }
 
     // Validate and track unique wallet connections
-    const walletAddress = session.wallet?.walletAddress;
-    const isWalletConnected = session.wallet?.isConnected === true && 
-                             session.wallet?.connectionStatus === 'connected' && 
-                             session.wallet?.lastConnected && 
-                             new Date(session.wallet.lastConnected) <= new Date(session.endTime || session.startTime);
-
-    if (isWalletConnected) {
-      const normalizedAddress = isValidAndNormalizedAddress(walletAddress);
+    if (isWalletConnected(session)) {
+      const normalizedAddress = isValidAndNormalizedAddress(session.wallet.walletAddress);
       if (normalizedAddress && !campaign.stats.uniqueWalletAddresses.includes(normalizedAddress)) {
         console.log('\nTracking new unique wallet:', {
           sessionId: session._id,
-          originalAddress: walletAddress,
+          originalAddress: session.wallet.walletAddress,
           normalizedAddress: normalizedAddress,
-          connectionStatus: session.wallet.connectionStatus,
-          lastConnected: session.wallet.lastConnected,
-          sessionTime: session.endTime || session.startTime
+          walletType: session.wallet.walletType,
+          chainName: session.wallet.chainName,
+          isWeb3User: session.isWeb3User,
+          walletConnected: session.walletConnected
         });
         
         campaign.stats.uniqueWalletAddresses.push(normalizedAddress);
@@ -373,4 +367,37 @@ function isValidAndNormalizedAddress(address) {
                  address !== '0x0000000000000000000000000000000000000000';
                  
   return isValid ? address : false;
+}
+
+// Helper function to check if wallet is connected
+function isWalletConnected(session) {
+  if (!session?.wallet) return false;
+
+  // List of values that indicate no wallet
+  const noWalletPhrases = [
+    'No Wallet Detected',
+    'No Wallet Connected',
+    'Not Connected',
+    'No Chain Detected',
+    'Error',
+    ''
+  ];
+
+  // Check if wallet address is valid and connected
+  const hasValidAddress = session.wallet.walletAddress && 
+                         !noWalletPhrases.includes(session.wallet.walletAddress.trim()) &&
+                         session.wallet.walletAddress.length > 40;
+
+  // Check if wallet type indicates a real wallet
+  const hasValidWalletType = session.wallet.walletType && 
+                            !noWalletPhrases.includes(session.wallet.walletType.trim());
+
+  // Check if chain name indicates connection
+  const hasValidChain = session.wallet.chainName && 
+                       !noWalletPhrases.includes(session.wallet.chainName.trim());
+
+  // Additional check for walletConnected flag if it exists
+  const isExplicitlyConnected = session.walletConnected === true;
+
+  return (hasValidAddress && (hasValidWalletType || hasValidChain)) || isExplicitlyConnected;
 } 

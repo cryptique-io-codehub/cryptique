@@ -381,7 +381,7 @@ exports.getCampaignStats = async (req, res) => {
     console.error('Error getting campaign stats:', error);
     return res.status(500).json({
       message: 'Error getting campaign stats',
-      error: error.message
+      error: error.message 
     });
   }
 }; 
