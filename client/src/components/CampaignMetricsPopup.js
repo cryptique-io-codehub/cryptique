@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { X } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
-import { formatNumber, formatCurrency, formatDuration } from '../../utils/formatters';
+import { formatNumber, formatCurrency, formatDuration } from '../utils/formatters.js';
 
 const CampaignMetricsPopup = ({ isOpen, onClose, metrics, campaign }) => {
   if (!metrics) return null;
