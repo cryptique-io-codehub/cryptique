@@ -472,27 +472,27 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Total Visitors</p>
-                    <p className="text-2xl font-semibold">{campaignMetrics.overview.visitors}</p>
+                    <p className="text-2xl font-semibold">{campaignMetrics.overview?.visitors || 0}</p>
                     <p className="text-xs text-gray-500 mt-2">From campaign traffic</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Web3 Users</p>
-                    <p className="text-2xl font-semibold">{campaignMetrics.overview.web3Users}</p>
+                    <p className="text-2xl font-semibold">{campaignMetrics.overview?.web3Users || 0}</p>
                     <p className="text-xs text-gray-500 mt-2">Users with Web3 capability</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Unique Wallets</p>
-                    <p className="text-2xl font-semibold">{campaignMetrics.overview.uniqueWallets}</p>
+                    <p className="text-2xl font-semibold">{campaignMetrics.overview?.uniqueWallets || 0}</p>
                     <p className="text-xs text-gray-500 mt-2">Connected wallets</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Total Value</p>
-                    <p className="text-2xl font-semibold">${campaignMetrics.overview.totalTransactionValue.toFixed(2)}</p>
+                    <p className="text-2xl font-semibold">${(campaignMetrics.overview?.totalTransactionValue || 0).toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-2">Total transaction volume</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">ROI</p>
-                    <p className="text-2xl font-semibold">{campaignMetrics.overview.roi}%</p>
+                    <p className="text-2xl font-semibold">{campaignMetrics.overview?.roi || 0}%</p>
                     <p className="text-xs text-gray-500 mt-2">Return on investment</p>
                   </div>
                 </div>
@@ -503,34 +503,34 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Total Conversions</p>
-                      <p className="text-2xl font-semibold">{campaignMetrics.conversionMetrics.overall.totalConversions}</p>
+                      <p className="text-2xl font-semibold">{campaignMetrics.conversionMetrics?.overall?.totalConversions || 0}</p>
                       <p className="text-xs text-gray-500 mt-2">
-                        {campaignMetrics.conversionMetrics.overall.conversionRate.toFixed(2)}% conversion rate
+                        {(campaignMetrics.conversionMetrics?.overall?.conversionRate || 0).toFixed(2)}% conversion rate
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Average Value</p>
                       <p className="text-2xl font-semibold">
-                        ${campaignMetrics.conversionMetrics.overall.averageValue.toFixed(2)}
+                        ${(campaignMetrics.conversionMetrics?.overall?.averageValue || 0).toFixed(2)}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">Per conversion</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">New User Conversions</p>
                       <p className="text-2xl font-semibold">
-                        {campaignMetrics.conversionMetrics.byUserType.newUsers.conversions}
+                        {campaignMetrics.conversionMetrics?.byUserType?.newUsers?.conversions || 0}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        ${campaignMetrics.conversionMetrics.byUserType.newUsers.value.toFixed(2)} value
+                        ${(campaignMetrics.conversionMetrics?.byUserType?.newUsers?.value || 0).toFixed(2)} value
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Returning User Conversions</p>
                       <p className="text-2xl font-semibold">
-                        {campaignMetrics.conversionMetrics.byUserType.returningUsers.conversions}
+                        {campaignMetrics.conversionMetrics?.byUserType?.returningUsers?.conversions || 0}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        ${campaignMetrics.conversionMetrics.byUserType.returningUsers.value.toFixed(2)} value
+                        ${(campaignMetrics.conversionMetrics?.byUserType?.returningUsers?.value || 0).toFixed(2)} value
                       </p>
                     </div>
                   </div>
@@ -552,28 +552,28 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {campaignMetrics.teamContracts.map((contract, index) => (
+                        {(campaignMetrics.teamContracts || []).map((contract, index) => (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
-                                <div className="text-sm font-medium text-gray-900">{contract.name}</div>
-                                <div className="text-xs text-gray-500">{contract.address}</div>
+                                <div className="text-sm font-medium text-gray-900">{contract.name || 'Unknown'}</div>
+                                <div className="text-xs text-gray-500">{contract.address || 'N/A'}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{contract.chainName}</div>
+                              <div className="text-sm text-gray-900">{contract.chainName || 'Unknown'}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {contract.metrics.transactions}
+                              {contract.metrics?.transactions || 0}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {contract.metrics.uniqueUsers}
+                              {contract.metrics?.uniqueUsers || 0}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              ${contract.metrics.totalVolume.toFixed(2)}
+                              ${(contract.metrics?.totalVolume || 0).toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              ${contract.metrics.averageValue.toFixed(2)}
+                              ${(contract.metrics?.averageValue || 0).toFixed(2)}
                             </td>
                           </tr>
                         ))}
@@ -595,11 +595,11 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {Object.entries(campaignMetrics.conversionMetrics.bySource).map(([source, data], index) => (
+                        {Object.entries(campaignMetrics.conversionMetrics?.bySource || {}).map(([source, data], index) => (
                           <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{source}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.conversions}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${data.value.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{source || 'Unknown'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data?.conversions || 0}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(data?.value || 0).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -612,7 +612,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                   <h3 className="text-lg font-semibold mb-4">Transaction Activity</h3>
                   <div className="bg-white border rounded-lg p-4" style={{ height: '300px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaignMetrics.transactionActivity}>
+                      <AreaChart data={campaignMetrics.transactionActivity || []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
@@ -634,15 +634,15 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Avg. Time to Transaction</p>
-                      <p className="text-xl font-semibold">{formatDuration(campaignMetrics.userJourney?.avgTimeToTransaction)}</p>
+                      <p className="text-xl font-semibold">{formatDuration(campaignMetrics.userJourney?.avgTimeToTransaction || 0)}</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Conversion Rate</p>
-                      <p className="text-xl font-semibold">{campaignMetrics.userJourney?.conversionRate}%</p>
+                      <p className="text-xl font-semibold">{(campaignMetrics.userJourney?.conversionRate || 0).toFixed(2)}%</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 mb-1">Bounce Rate</p>
-                      <p className="text-xl font-semibold">{campaignMetrics.userJourney?.bounceRate}%</p>
+                      <p className="text-xl font-semibold">{(campaignMetrics.userJourney?.bounceRate || 0).toFixed(2)}%</p>
                     </div>
                   </div>
                 </div>
