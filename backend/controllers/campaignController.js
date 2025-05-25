@@ -635,20 +635,34 @@ exports.getCampaignMetrics = async (req, res) => {
       });
     }
 
+    console.log('Processing metrics for campaign:', {
+      id: campaign._id,
+      name: campaign.name,
+      hasTransactions: Boolean(campaign.stats?.transactions),
+      transactionsCount: campaign.stats?.transactions?.length || 0
+    });
+
     // Get all sessions for this campaign
     const sessions = await Session.find({
       'utmData.campaign': campaign.campaign,
       ...(campaign.utm_id && { 'utmData.utm_id': campaign.utm_id })
     }).sort({ startTime: -1 });
 
+    console.log('Found sessions:', {
+      count: sessions.length,
+      campaignName: campaign.name,
+      utmCampaign: campaign.campaign,
+      utmId: campaign.utm_id
+    });
+
     // Initialize transactions array if it doesn't exist
-    const transactions = campaign.stats.transactions || [];
+    const transactions = campaign.stats?.transactions || [];
 
     // Process transaction activity
     const transactionActivity = processTransactionActivity(transactions);
 
     // Process contract performance
-    const contractPerformance = processContractPerformance(transactions, campaign.contracts);
+    const contractPerformance = processContractPerformance(transactions, campaign.contracts || []);
 
     // Calculate user journey metrics
     const userJourney = calculateUserJourney(sessions, transactions);
@@ -659,10 +673,17 @@ exports.getCampaignMetrics = async (req, res) => {
       roi: campaign.budget?.amount > 0
         ? ((transactions.reduce((sum, tx) => sum + (tx.value || 0), 0) - campaign.budget.amount) / campaign.budget.amount) * 100
         : 0,
-      cac: transactedUsers.size > 0 && campaign.budget?.amount
-        ? campaign.budget.amount / transactedUsers.size
+      cac: userJourney.funnel.transactors > 0 && campaign.budget?.amount
+        ? campaign.budget.amount / userJourney.funnel.transactors
         : 0
     };
+
+    console.log('Processed metrics:', {
+      transactionActivityCount: transactionActivity.length,
+      contractPerformanceCount: contractPerformance.length,
+      hasUserJourney: Boolean(userJourney),
+      totalValue: campaignPerformance.totalValue
+    });
 
     return res.status(200).json({
       message: "Campaign metrics fetched successfully",
@@ -675,7 +696,8 @@ exports.getCampaignMetrics = async (req, res) => {
     console.error("Error getting campaign metrics:", error);
     return res.status(500).json({
       message: "Error getting campaign metrics",
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }; 
