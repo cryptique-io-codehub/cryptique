@@ -417,12 +417,13 @@ function isWalletConnected(session) {
   return (hasValidAddress && (hasValidWalletType || hasValidChain)) || isExplicitlyConnected;
 }
 
-// Get campaign metrics
+// Get detailed campaign metrics
 exports.getCampaignMetrics = async (req, res) => {
   try {
     const { campaignId } = req.params;
-    const campaign = await Campaign.findById(campaignId);
     
+    // Get campaign data
+    const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
       return res.status(404).json({
         message: "Campaign not found"
@@ -435,75 +436,20 @@ exports.getCampaignMetrics = async (req, res) => {
       ...(campaign.utm_id && { 'utmData.utm_id': campaign.utm_id })
     }).sort({ startTime: -1 });
 
-    // Process daily visitors
-    const dailyVisitors = new Map();
-    const dailyTransactions = new Map();
-    const contractStats = new Map();
+    // Process transaction activity
+    const transactionActivity = processTransactionActivity(campaign.stats.transactions);
 
-    sessions.forEach(session => {
-      // Process daily visitors
-      const visitDate = new Date(session.startTime).toISOString().split('T')[0];
-      dailyVisitors.set(visitDate, (dailyVisitors.get(visitDate) || 0) + 1);
+    // Process contract performance
+    const contractPerformance = processContractPerformance(campaign.stats.transactions);
 
-      // Process transactions by contract
-      if (session.transactions && session.transactions.length > 0) {
-        session.transactions.forEach(tx => {
-          // Update daily transactions
-          const txDate = new Date(tx.timestamp).toISOString().split('T')[0];
-          dailyTransactions.set(txDate, (dailyTransactions.get(txDate) || 0) + 1);
+    // Calculate user journey metrics
+    const userJourney = calculateUserJourney(sessions, campaign.stats.transactions);
 
-          // Update contract stats
-          if (!contractStats.has(tx.contractAddress)) {
-            contractStats.set(tx.contractAddress, {
-              name: tx.contractName || 'Unknown Contract',
-              address: tx.contractAddress,
-              transactions: 0,
-              uniqueUsers: new Set(),
-              totalValue: 0
-            });
-          }
-
-          const stats = contractStats.get(tx.contractAddress);
-          stats.transactions++;
-          stats.uniqueUsers.add(session.userId);
-          stats.totalValue += tx.value || 0;
-        });
-      }
-    });
-
-    // Convert daily stats to sorted arrays
-    const dailyVisitorsArray = Array.from(dailyVisitors.entries())
-      .map(([date, count]) => ({ date, visitors: count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    const dailyTransactionsArray = Array.from(dailyTransactions.entries())
-      .map(([date, count]) => ({ date, transactions: count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    // Convert contract stats to array and calculate averages
-    const contractPerformance = Array.from(contractStats.values()).map(stats => ({
-      name: stats.name,
-      address: stats.address,
-      transactions: stats.transactions,
-      uniqueUsers: stats.uniqueUsers.size,
-      totalValue: stats.totalValue,
-      avgValue: stats.totalValue / stats.transactions
-    }));
-
-    // Return metrics
     return res.status(200).json({
-      dailyVisitors: dailyVisitorsArray,
-      dailyTransactions: dailyTransactionsArray,
+      message: "Campaign metrics fetched successfully",
+      transactionActivity,
       contractPerformance,
-      overview: {
-        totalVisitors: campaign.stats.visitors,
-        web3Users: campaign.stats.web3Users,
-        uniqueWallets: campaign.stats.uniqueWallets,
-        transactedUsers: campaign.stats.transactedUsers,
-        totalTransactionValue: campaign.stats.totalTransactionValue,
-        averageTransactionValue: campaign.stats.averageTransactionValue,
-        roi: campaign.stats.roi
-      }
+      userJourney
     });
   } catch (error) {
     console.error("Error getting campaign metrics:", error);
@@ -512,4 +458,93 @@ exports.getCampaignMetrics = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};
+
+// Helper function to process transaction activity
+function processTransactionActivity(transactions) {
+  // Group transactions by date
+  const activityByDate = transactions.reduce((acc, tx) => {
+    const date = new Date(tx.timestamp).toISOString().split('T')[0];
+    if (!acc[date]) {
+      acc[date] = {
+        date,
+        transactions: 0,
+        volume: 0
+      };
+    }
+    acc[date].transactions++;
+    acc[date].volume += tx.value || 0;
+    return acc;
+  }, {});
+
+  // Convert to array and sort by date
+  return Object.values(activityByDate).sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+}
+
+// Helper function to process contract performance
+function processContractPerformance(transactions) {
+  // Group transactions by contract
+  const contractStats = transactions.reduce((acc, tx) => {
+    if (!acc[tx.contractAddress]) {
+      acc[tx.contractAddress] = {
+        name: tx.contractAddress,
+        transactions: 0,
+        volume: 0,
+        uniqueUsers: new Set()
+      };
+    }
+    acc[tx.contractAddress].transactions++;
+    acc[tx.contractAddress].volume += tx.value || 0;
+    acc[tx.contractAddress].uniqueUsers.add(tx.walletAddress);
+    return acc;
+  }, {});
+
+  // Convert to array and process unique users
+  return Object.values(contractStats).map(contract => ({
+    ...contract,
+    uniqueUsers: contract.uniqueUsers.size
+  }));
+}
+
+// Helper function to calculate user journey metrics
+function calculateUserJourney(sessions, transactions) {
+  const transactedUsers = new Set(transactions.map(tx => tx.walletAddress));
+  const transactedSessions = sessions.filter(session => 
+    session.wallet && transactedUsers.has(session.wallet.walletAddress)
+  );
+
+  // Calculate average time to first transaction
+  const timeToTransaction = transactedSessions.map(session => {
+    const sessionStart = new Date(session.startTime);
+    const firstTx = transactions.find(tx => 
+      tx.walletAddress === session.wallet.walletAddress
+    );
+    if (!firstTx) return null;
+    return new Date(firstTx.timestamp) - sessionStart;
+  }).filter(time => time !== null);
+
+  const avgTimeToTransaction = timeToTransaction.length > 0
+    ? timeToTransaction.reduce((sum, time) => sum + time, 0) / timeToTransaction.length
+    : 0;
+
+  // Calculate conversion rate
+  const conversionRate = sessions.length > 0
+    ? (transactedUsers.size / sessions.length) * 100
+    : 0;
+
+  // Calculate bounce rate (sessions with duration < 10 seconds)
+  const bounces = sessions.filter(session => 
+    !session.duration || session.duration < 10
+  ).length;
+  const bounceRate = sessions.length > 0
+    ? (bounces / sessions.length) * 100
+    : 0;
+
+  return {
+    avgTimeToTransaction,
+    conversionRate: parseFloat(conversionRate.toFixed(2)),
+    bounceRate: parseFloat(bounceRate.toFixed(2))
+  };
+} 
