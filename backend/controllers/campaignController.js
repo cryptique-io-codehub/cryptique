@@ -415,4 +415,101 @@ function isWalletConnected(session) {
   const isExplicitlyConnected = session.walletConnected === true;
 
   return (hasValidAddress && (hasValidWalletType || hasValidChain)) || isExplicitlyConnected;
-} 
+}
+
+// Get campaign metrics
+exports.getCampaignMetrics = async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    const campaign = await Campaign.findById(campaignId);
+    
+    if (!campaign) {
+      return res.status(404).json({
+        message: "Campaign not found"
+      });
+    }
+
+    // Get all sessions for this campaign
+    const sessions = await Session.find({
+      'utmData.campaign': campaign.campaign,
+      ...(campaign.utm_id && { 'utmData.utm_id': campaign.utm_id })
+    }).sort({ startTime: -1 });
+
+    // Process daily visitors
+    const dailyVisitors = new Map();
+    const dailyTransactions = new Map();
+    const contractStats = new Map();
+
+    sessions.forEach(session => {
+      // Process daily visitors
+      const visitDate = new Date(session.startTime).toISOString().split('T')[0];
+      dailyVisitors.set(visitDate, (dailyVisitors.get(visitDate) || 0) + 1);
+
+      // Process transactions by contract
+      if (session.transactions && session.transactions.length > 0) {
+        session.transactions.forEach(tx => {
+          // Update daily transactions
+          const txDate = new Date(tx.timestamp).toISOString().split('T')[0];
+          dailyTransactions.set(txDate, (dailyTransactions.get(txDate) || 0) + 1);
+
+          // Update contract stats
+          if (!contractStats.has(tx.contractAddress)) {
+            contractStats.set(tx.contractAddress, {
+              name: tx.contractName || 'Unknown Contract',
+              address: tx.contractAddress,
+              transactions: 0,
+              uniqueUsers: new Set(),
+              totalValue: 0
+            });
+          }
+
+          const stats = contractStats.get(tx.contractAddress);
+          stats.transactions++;
+          stats.uniqueUsers.add(session.userId);
+          stats.totalValue += tx.value || 0;
+        });
+      }
+    });
+
+    // Convert daily stats to sorted arrays
+    const dailyVisitorsArray = Array.from(dailyVisitors.entries())
+      .map(([date, count]) => ({ date, visitors: count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const dailyTransactionsArray = Array.from(dailyTransactions.entries())
+      .map(([date, count]) => ({ date, transactions: count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Convert contract stats to array and calculate averages
+    const contractPerformance = Array.from(contractStats.values()).map(stats => ({
+      name: stats.name,
+      address: stats.address,
+      transactions: stats.transactions,
+      uniqueUsers: stats.uniqueUsers.size,
+      totalValue: stats.totalValue,
+      avgValue: stats.totalValue / stats.transactions
+    }));
+
+    // Return metrics
+    return res.status(200).json({
+      dailyVisitors: dailyVisitorsArray,
+      dailyTransactions: dailyTransactionsArray,
+      contractPerformance,
+      overview: {
+        totalVisitors: campaign.stats.visitors,
+        web3Users: campaign.stats.web3Users,
+        uniqueWallets: campaign.stats.uniqueWallets,
+        transactedUsers: campaign.stats.transactedUsers,
+        totalTransactionValue: campaign.stats.totalTransactionValue,
+        averageTransactionValue: campaign.stats.averageTransactionValue,
+        roi: campaign.stats.roi
+      }
+    });
+  } catch (error) {
+    console.error("Error getting campaign metrics:", error);
+    return res.status(500).json({
+      message: "Error getting campaign metrics",
+      error: error.message
+    });
+  }
+}; 
