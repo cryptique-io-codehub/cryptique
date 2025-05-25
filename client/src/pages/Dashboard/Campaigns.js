@@ -34,6 +34,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [activeCampaignDetail, setActiveCampaignDetail] = useState(null);
   const [campaignMetrics, setCampaignMetrics] = useState(null);
   const [isCalculatingMetrics, setIsCalculatingMetrics] = useState(false);
+  const [teamContracts, setTeamContracts] = useState([]);
   
   // Sample data - In a real app, you might fetch this from an API
   const campaignsData = [
@@ -82,6 +83,26 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     };
 
     fetchWebsites();
+  }, []);
+
+  // Fetch team contracts when component mounts
+  useEffect(() => {
+    const fetchTeamContracts = async () => {
+      try {
+        const selectedTeam = localStorage.getItem("selectedTeam");
+        if (!selectedTeam) return;
+
+        const response = await axiosInstance.get(`/smart-contract/team/${selectedTeam}`);
+        if (response.data.contracts) {
+          setTeamContracts(response.data.contracts);
+          setcontractarray(response.data.contracts);
+        }
+      } catch (error) {
+        console.error("Error fetching team contracts:", error);
+      }
+    };
+
+    fetchTeamContracts();
   }, []);
 
   // Add this useEffect to fetch campaigns when component mounts or website changes
@@ -306,13 +327,20 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       const response = await axiosInstance.get(`/campaign/${campaign._id}/metrics`);
       const metrics = response.data;
       
-      // Process metrics for visualization
-      const processedMetrics = {
-        ...metrics,
-        // Add any additional processing here
-      };
+      // Add contract names to metrics
+      if (metrics.teamContracts) {
+        metrics.teamContracts = metrics.teamContracts.map(contractMetric => {
+          const matchingContract = teamContracts.find(
+            c => c.address.toLowerCase() === contractMetric.address.toLowerCase()
+          );
+          return {
+            ...contractMetric,
+            name: matchingContract?.name || contractMetric.name || 'Unknown Contract'
+          };
+        });
+      }
       
-      setCampaignMetrics(processedMetrics);
+      setCampaignMetrics(metrics);
     } catch (error) {
       console.error('Error calculating campaign metrics:', error);
     } finally {
@@ -546,129 +574,40 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contract</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chain</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Users</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. Value</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {(campaignMetrics.teamContracts || []).map((contract, index) => (
-                          <tr key={index} className={`hover:bg-gray-50 ${contract.isActive ? 'bg-green-50' : ''}`}>
+                          <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {contract.name || 'Unknown'}
-                                  {contract.tokenSymbol && (
-                                    <span className="ml-2 text-xs text-gray-500">({contract.tokenSymbol})</span>
-                                  )}
-                                </div>
+                                <div className="text-sm font-medium text-gray-900">{contract.name || 'Unknown'}</div>
                                 <div className="text-xs text-gray-500">{contract.address || 'N/A'}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">{contract.chainName || 'Unknown'}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm text-gray-900">{contract.metrics?.transactions || 0}</div>
-                                <div className="text-xs text-gray-500">
-                                  {Object.entries(contract.metrics?.transactionTypes || {}).map(([type, data], i) => (
-                                    <div key={i}>{type}: {data.count}</div>
-                                  ))}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
-                                {(contract.metrics?.successRate || 0).toFixed(1)}%
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                Avg Gas: {(contract.metrics?.gasMetrics?.averageGasUsed || 0).toLocaleString()}
-                              </div>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {contract.metrics?.transactions || 0}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {contract.metrics?.uniqueUsers || 0}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
-                                ${(contract.metrics?.totalVolume || 0).toFixed(2)}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {Object.entries(contract.metrics?.transactionTypes || {}).map(([type, data], i) => (
-                                  <div key={i}>{type}: ${data.volume.toFixed(2)}</div>
-                                ))}
-                              </div>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              ${(contract.metrics?.totalVolume || 0).toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               ${(contract.metrics?.averageValue || 0).toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                contract.isActive 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {contract.isActive ? 'Active' : 'Inactive'}
-                              </span>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-
-                  {/* Contract Activity Charts */}
-                  {(campaignMetrics.teamContracts || []).filter(c => c.isActive).map((contract, index) => (
-                    <div key={index} className="mt-6">
-                      <h4 className="text-md font-semibold mb-3">{contract.name} Activity</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Transaction Volume Chart */}
-                        <div className="bg-white border rounded-lg p-4" style={{ height: '300px' }}>
-                          <h5 className="text-sm font-medium mb-2">Transaction Volume</h5>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={Object.entries(contract.activity.daily).map(([day, data]) => ({
-                              day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parseInt(day)],
-                              volume: data.volume,
-                              transactions: data.transactions,
-                              users: data.uniqueUsers
-                            }))}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="day" />
-                              <YAxis />
-                              <Tooltip />
-                              <Area 
-                                type="monotone" 
-                                dataKey="volume" 
-                                stroke={styles.primaryColor} 
-                                fill={`${styles.primaryColor}20`} 
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-
-                        {/* Transaction Count Chart */}
-                        <div className="bg-white border rounded-lg p-4" style={{ height: '300px' }}>
-                          <h5 className="text-sm font-medium mb-2">Transaction Count</h5>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={Object.entries(contract.activity.daily).map(([day, data]) => ({
-                              day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parseInt(day)],
-                              transactions: data.transactions,
-                              users: data.uniqueUsers
-                            }))}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="day" />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="transactions" fill={styles.primaryColor} />
-                              <Bar dataKey="users" fill={styles.accentColor} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
 
                 {/* Conversion by Source */}

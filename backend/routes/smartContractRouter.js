@@ -22,6 +22,6 @@ router.post('/', addSmartContract);
 router.delete('/:contractId', deleteSmartContract);
 
 // Update a contract
-router.patch('/:contractId', updateSmartContract);
+router.put('/:contractId', updateSmartContract);
 
 module.exports = router; 

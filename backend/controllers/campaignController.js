@@ -681,94 +681,35 @@ async function getTeamContractsPerformance(siteId, campaign) {
     const Contract = require('../models/contract');
     const contracts = await Contract.find({ teamId: website.teamId });
 
-    // Get all transactions from Transaction model for more detailed data
-    const Transaction = require('../models/transaction');
-    const campaignTransactions = campaign.stats.transactions || [];
-    
-    // Get unique contract addresses from campaign transactions
-    const contractAddresses = new Set(campaignTransactions.map(tx => 
-      tx.contractAddress.toLowerCase()
-    ));
-
     // Process each contract's performance for this campaign
-    const contractsPerformance = await Promise.all(contracts.map(async contract => {
+    const contractsPerformance = contracts.map(contract => {
       // Filter transactions for this contract
-      const contractTransactions = campaignTransactions.filter(tx => 
+      const contractTransactions = (campaign.stats.transactions || []).filter(tx => 
         tx.contractAddress.toLowerCase() === contract.address.toLowerCase()
       );
-
-      // Get additional transaction details from Transaction model
-      const detailedTransactions = await Transaction.find({
-        contractId: contract.contractId,
-        tx_hash: { $in: contractTransactions.map(tx => tx.txHash) }
-      });
-
-      // Merge transaction data
-      const enrichedTransactions = contractTransactions.map(tx => {
-        const detailedTx = detailedTransactions.find(dt => dt.tx_hash === tx.txHash) || {};
-        return {
-          ...tx,
-          gas_used: detailedTx.gas_used,
-          status: detailedTx.status,
-          token_name: detailedTx.token_name,
-          token_symbol: detailedTx.token_symbol,
-          tx_type: detailedTx.tx_type
-        };
-      });
 
       // Calculate metrics
       const uniqueUsers = new Set(contractTransactions.map(tx => tx.walletAddress)).size;
       const totalVolume = contractTransactions.reduce((sum, tx) => sum + (tx.value || 0), 0);
       const averageValue = contractTransactions.length > 0 ? totalVolume / contractTransactions.length : 0;
 
-      // Calculate success rate
-      const successfulTxs = enrichedTransactions.filter(tx => tx.status === 'success').length;
-      const successRate = contractTransactions.length > 0 
-        ? (successfulTxs / contractTransactions.length) * 100 
-        : 0;
-
-      // Calculate gas metrics
-      const totalGasUsed = enrichedTransactions.reduce((sum, tx) => sum + (tx.gas_used || 0), 0);
-      const avgGasUsed = contractTransactions.length > 0 ? totalGasUsed / contractTransactions.length : 0;
-
-      // Group transactions by type
-      const txByType = enrichedTransactions.reduce((acc, tx) => {
-        const type = tx.tx_type || 'unknown';
-        if (!acc[type]) acc[type] = { count: 0, volume: 0 };
-        acc[type].count++;
-        acc[type].volume += tx.value || 0;
-        return acc;
-      }, {});
-
       return {
         name: contract.name,
         address: contract.address,
         chainId: contract.chainId,
         chainName: contract.chainName,
-        tokenSymbol: contract.tokenSymbol,
         metrics: {
           transactions: contractTransactions.length,
           uniqueUsers,
           totalVolume,
-          averageValue,
-          successRate,
-          gasMetrics: {
-            totalGasUsed,
-            averageGasUsed: avgGasUsed
-          },
-          transactionTypes: txByType
+          averageValue
         },
-        activity: processContractActivity(contractTransactions),
-        isActive: contractAddresses.has(contract.address.toLowerCase())
+        // Add time-based metrics
+        activity: processContractActivity(contractTransactions)
       };
-    }));
-
-    // Sort contracts by activity (most active first)
-    return contractsPerformance.sort((a, b) => {
-      if (a.isActive && !b.isActive) return -1;
-      if (!a.isActive && b.isActive) return 1;
-      return b.metrics.transactions - a.metrics.transactions;
     });
+
+    return contractsPerformance;
   } catch (error) {
     console.error('Error getting team contracts performance:', error);
     return [];
@@ -780,8 +721,7 @@ function processContractActivity(transactions) {
   const activity = {
     hourly: {},
     daily: {},
-    weekly: {},
-    monthly: {}
+    weekly: {}
   };
 
   transactions.forEach(tx => {
@@ -789,53 +729,27 @@ function processContractActivity(transactions) {
     const hour = date.getHours();
     const day = date.getDay();
     const week = Math.floor(date.getDate() / 7);
-    const month = date.getMonth();
 
     // Hourly
     if (!activity.hourly[hour]) {
-      activity.hourly[hour] = { transactions: 0, volume: 0, uniqueUsers: new Set() };
+      activity.hourly[hour] = { transactions: 0, volume: 0 };
     }
     activity.hourly[hour].transactions++;
     activity.hourly[hour].volume += tx.value || 0;
-    activity.hourly[hour].uniqueUsers.add(tx.walletAddress);
 
     // Daily
     if (!activity.daily[day]) {
-      activity.daily[day] = { transactions: 0, volume: 0, uniqueUsers: new Set() };
+      activity.daily[day] = { transactions: 0, volume: 0 };
     }
     activity.daily[day].transactions++;
     activity.daily[day].volume += tx.value || 0;
-    activity.daily[day].uniqueUsers.add(tx.walletAddress);
 
     // Weekly
     if (!activity.weekly[week]) {
-      activity.weekly[week] = { transactions: 0, volume: 0, uniqueUsers: new Set() };
+      activity.weekly[week] = { transactions: 0, volume: 0 };
     }
     activity.weekly[week].transactions++;
     activity.weekly[week].volume += tx.value || 0;
-    activity.weekly[week].uniqueUsers.add(tx.walletAddress);
-
-    // Monthly
-    if (!activity.monthly[month]) {
-      activity.monthly[month] = { transactions: 0, volume: 0, uniqueUsers: new Set() };
-    }
-    activity.monthly[month].transactions++;
-    activity.monthly[month].volume += tx.value || 0;
-    activity.monthly[month].uniqueUsers.add(tx.walletAddress);
-  });
-
-  // Convert Sets to counts for serialization
-  Object.values(activity.hourly).forEach(data => {
-    data.uniqueUsers = data.uniqueUsers.size;
-  });
-  Object.values(activity.daily).forEach(data => {
-    data.uniqueUsers = data.uniqueUsers.size;
-  });
-  Object.values(activity.weekly).forEach(data => {
-    data.uniqueUsers = data.uniqueUsers.size;
-  });
-  Object.values(activity.monthly).forEach(data => {
-    data.uniqueUsers = data.uniqueUsers.size;
   });
 
   return activity;
