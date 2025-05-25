@@ -21,7 +21,8 @@ exports.createCampaign = async (req, res) => {
       cac: 0,
       roi: 0,
       totalDuration: 0,
-      bounces: 0
+      bounces: 0,
+      sessionDurations: new Map()
     };
 
     // Create new campaign
@@ -149,58 +150,53 @@ exports.getCampaigns = async (req, res) => {
           }
         }
 
+        // Track duration metrics (only for campaign sessions)
+        if (session.duration && typeof session.duration === 'number' && session.duration > 0) {
+          // Store the session duration in a map keyed by session ID to avoid double counting
+          if (!campaign.stats.sessionDurations) {
+            campaign.stats.sessionDurations = new Map();
+          }
+          
+          if (!campaign.stats.sessionDurations.has(session._id.toString())) {
+            campaign.stats.sessionDurations.set(session._id.toString(), session.duration);
+            console.log('\nTracking duration for campaign session:', {
+              sessionId: session._id,
+              duration: session.duration,
+              startTime: session.startTime,
+              endTime: session.endTime || session.lastActivity,
+              utmCampaign: session.utmData?.campaign,
+              utmId: session.utmData?.utm_id
+            });
+          }
+        }
+
         // Track bounce rate (only for campaign sessions)
-        const duration = getValidSessionDuration(session);
-        const isBounce = duration === null || (duration < 30 && (!session.pagesViewed || session.pagesViewed <= 1));
-        
-        if (isBounce) {
+        if (session.isBounce) {
           campaign.stats.bounces++;
-        } else if (duration !== null) {
-          // Only add duration for non-bounce sessions
-          campaign.stats.totalDuration += duration;
-          console.log('\nAdding duration from campaign session:', {
-            sessionId: session._id,
-            duration: duration,
-            pagesViewed: session.pagesViewed,
-            startTime: session.startTime,
-            endTime: session.endTime,
-            lastActivity: session.lastActivity,
-            isBounce: isBounce
-          });
         }
       });
+
+      // Calculate duration metrics
+      const sessionDurations = campaign.stats.sessionDurations ? Array.from(campaign.stats.sessionDurations.values()) : [];
+      if (sessionDurations.length > 0) {
+        campaign.stats.totalDuration = sessionDurations.reduce((sum, duration) => sum + duration, 0);
+        campaign.stats.averageDuration = campaign.stats.totalDuration / sessionDurations.length;
+        campaign.stats.visitDuration = campaign.stats.averageDuration;
+        campaign.stats.bounceRate = (campaign.stats.bounces / sessionDurations.length) * 100;
+
+        console.log('\nCampaign Duration Metrics:', {
+          totalDuration: campaign.stats.totalDuration + ' seconds',
+          averageDuration: campaign.stats.averageDuration + ' seconds',
+          visitDuration: campaign.stats.visitDuration + ' seconds',
+          uniqueSessions: sessionDurations.length,
+          bounceRate: campaign.stats.bounceRate + '%'
+        });
+      }
 
       // Update campaign stats
       campaign.stats.visitors = campaign.stats.uniqueVisitors.length;
       campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
-
-      // Calculate duration metrics
-      const nonBounceSessionCount = campaign.stats.visitors - campaign.stats.bounces;
-
-      if (nonBounceSessionCount > 0) {
-        // Calculate average duration only for non-bounce sessions
-        campaign.stats.averageDuration = Math.round(campaign.stats.totalDuration / nonBounceSessionCount);
-        campaign.stats.visitDuration = campaign.stats.averageDuration;
-      } else {
-        campaign.stats.averageDuration = 0;
-        campaign.stats.visitDuration = 0;
-      }
-
-      // Calculate bounce rate as percentage of total visitors
-      campaign.stats.bounceRate = campaign.stats.visitors > 0 
-        ? Math.round((campaign.stats.bounces / campaign.stats.visitors) * 100) 
-        : 0;
-
-      console.log('\nCampaign Duration Metrics:', {
-        totalDuration: campaign.stats.totalDuration + ' seconds',
-        averageDuration: campaign.stats.averageDuration + ' seconds',
-        visitDuration: campaign.stats.visitDuration + ' seconds',
-        totalVisitors: campaign.stats.visitors,
-        bounces: campaign.stats.bounces,
-        nonBounceSessionCount: nonBounceSessionCount,
-        bounceRate: campaign.stats.bounceRate + '%'
-      });
 
       // Save updated campaign stats
       await campaign.save();
@@ -315,48 +311,25 @@ exports.updateCampaignStats = async (req, res) => {
       }
     }
 
-    // Track bounce rate and duration
-    const duration = getValidSessionDuration(session);
-    const isBounce = duration === null || (duration < 30 && (!session.pagesViewed || session.pagesViewed <= 1));
-    
-    // Update bounce count if needed
-    const wasBounce = campaign.stats.bounces > 0;
-    if (isBounce && !wasBounce) {
-      campaign.stats.bounces++;
-      statsUpdated = true;
-    } else if (!isBounce) {
-      // Update duration for non-bounce sessions
-      campaign.stats.totalDuration = (campaign.stats.totalDuration || 0) + duration;
-      statsUpdated = true;
+    // Update duration metrics
+    if (session.duration && typeof session.duration === 'number' && session.duration > 0) {
+      // Store the session duration in a map keyed by session ID to avoid double counting
+      if (!campaign.stats.sessionDurations) {
+        campaign.stats.sessionDurations = new Map();
+      }
+      
+      if (!campaign.stats.sessionDurations.has(session._id.toString())) {
+        campaign.stats.sessionDurations.set(session._id.toString(), session.duration);
+        console.log('\nTracking duration for campaign session:', {
+          sessionId: session._id,
+          duration: session.duration,
+          startTime: session.startTime,
+          endTime: session.endTime || session.lastActivity,
+          utmCampaign: session.utmData?.campaign,
+          utmId: session.utmData?.utm_id
+        });
+      }
     }
-
-    // Recalculate averages
-    const nonBounceSessionCount = campaign.stats.visitors - campaign.stats.bounces;
-    
-    if (nonBounceSessionCount > 0) {
-      campaign.stats.averageDuration = Math.round(campaign.stats.totalDuration / nonBounceSessionCount);
-      campaign.stats.visitDuration = campaign.stats.averageDuration;
-    } else {
-      campaign.stats.averageDuration = 0;
-      campaign.stats.visitDuration = 0;
-    }
-
-    // Calculate bounce rate
-    campaign.stats.bounceRate = campaign.stats.visitors > 0 
-      ? Math.round((campaign.stats.bounces / campaign.stats.visitors) * 100)
-      : 0;
-
-    console.log('\nUpdated Campaign Duration Metrics:', {
-      sessionDuration: duration + ' seconds',
-      totalDuration: campaign.stats.totalDuration + ' seconds',
-      averageDuration: campaign.stats.averageDuration + ' seconds',
-      visitDuration: campaign.stats.visitDuration + ' seconds',
-      totalVisitors: campaign.stats.visitors,
-      bounces: campaign.stats.bounces,
-      nonBounceSessionCount: nonBounceSessionCount,
-      bounceRate: campaign.stats.bounceRate + '%',
-      isBounce: isBounce
-    });
 
     // Save changes if any updates were made
     if (statsUpdated) {
@@ -442,38 +415,4 @@ function isWalletConnected(session) {
   const isExplicitlyConnected = session.walletConnected === true;
 
   return (hasValidAddress && (hasValidWalletType || hasValidChain)) || isExplicitlyConnected;
-}
-
-// Helper function to get valid session duration
-function getValidSessionDuration(session) {
-  if (!session) return null;
-
-  // For active sessions, calculate duration up to now
-  if (!session.endTime && session.lastActivity) {
-    const now = new Date();
-    const startTime = new Date(session.startTime);
-    const lastActivity = new Date(session.lastActivity);
-    
-    // If last activity was too long ago (e.g., 30 minutes), consider session ended
-    if (now - lastActivity > 30 * 60 * 1000) {
-      return Math.floor((lastActivity - startTime) / 1000);
-    }
-    
-    // Otherwise calculate duration up to now
-    return Math.floor((now - startTime) / 1000);
-  }
-
-  // For completed sessions, use the stored duration
-  if (typeof session.duration === 'number' && session.duration >= 0) {
-    return session.duration;
-  }
-
-  // If no duration but have start and end times, calculate it
-  if (session.startTime && session.endTime) {
-    const startTime = new Date(session.startTime);
-    const endTime = new Date(session.endTime);
-    return Math.floor((endTime - startTime) / 1000);
-  }
-
-  return null;
 } 
