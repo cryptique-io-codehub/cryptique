@@ -6,6 +6,7 @@ import axiosInstance from '../../axiosInstance';
 import { v4 as uuidv4 } from 'uuid';
 import { formatDuration } from '../../utils/analyticsHelpers';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import CampaignMetricsPopup from '../../components/CampaignMetricsPopup';
 
 // Add styles object at the top level
 const styles = {
@@ -34,6 +35,9 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [activeCampaignDetail, setActiveCampaignDetail] = useState(null);
   const [campaignMetrics, setCampaignMetrics] = useState(null);
   const [isCalculatingMetrics, setIsCalculatingMetrics] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+  const [isMetricsPopupOpen, setIsMetricsPopupOpen] = useState(false);
   
   // Sample data - In a real app, you might fetch this from an API
   const campaignsData = [
@@ -331,6 +335,18 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     setCampaignMetrics(null);
   };
 
+  const handleViewMetrics = async (campaign) => {
+    try {
+      setSelectedCampaign(campaign);
+      const response = await axiosInstance.get(`/campaign/${campaign._id}/metrics`);
+      setMetrics(response.data);
+      setIsMetricsPopupOpen(true);
+    } catch (error) {
+      console.error('Error calculating campaign metrics:', error);
+      // Handle error appropriately
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <div className="flex flex-col w-full h-screen">
@@ -416,7 +432,7 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
                       <div className="px-4 flex space-x-2">
                         <button 
                           className="px-3 py-1 text-xs rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors"
-                          onClick={() => openCampaignDetail(campaign)}
+                          onClick={() => handleViewMetrics(campaign)}
                         >
                           View Details
                         </button>
@@ -811,6 +827,18 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
           </div>
         </div>
       )}
+
+      {/* Campaign Metrics Popup */}
+      <CampaignMetricsPopup
+        isOpen={isMetricsPopupOpen}
+        onClose={() => {
+          setIsMetricsPopupOpen(false);
+          setSelectedCampaign(null);
+          setMetrics(null);
+        }}
+        metrics={metrics}
+        campaign={selectedCampaign}
+      />
     </div>
   );
 }
