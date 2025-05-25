@@ -106,36 +106,66 @@ exports.getCampaigns = async (req, res) => {
 
       // Process each session
       sessions.forEach(session => {
-        // Count unique visitors
+        // Verify this is a campaign-originated session
+        const isCampaignSession = session.utmData?.campaign === campaign.campaign && 
+                                 (!campaign.utm_id || session.utmData?.utm_id === campaign.utm_id);
+
+        if (!isCampaignSession) {
+          console.log('\nSkipping non-campaign session:', {
+            sessionId: session._id,
+            sessionUtm: session.utmData?.campaign,
+            campaignUtm: campaign.campaign,
+            sessionUtmId: session.utmData?.utm_id,
+            campaignUtmId: campaign.utm_id
+          });
+          return; // Skip this session
+        }
+
+        // Count unique visitors (only from campaign traffic)
         if (session.userId && !campaign.stats.uniqueVisitors.includes(session.userId)) {
           campaign.stats.uniqueVisitors.push(session.userId);
         }
 
-        // First check if user has web3 capability
-        if (session.isWeb3User && session.userId) {
-          // Count unique web3 users
-          if (!campaign.stats.uniqueWeb3Users.includes(session.userId)) {
-            campaign.stats.uniqueWeb3Users.push(session.userId);
-          }
+        // Track web3 capability separately from wallet connection
+        if (session.isWeb3User && session.userId && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
+          campaign.stats.uniqueWeb3Users.push(session.userId);
+        }
 
-          // Only count wallets for web3 users who have actually connected their wallet
-          if (session.wallet?.walletAddress && 
-              session.wallet.isConnected === true && // Explicitly check if wallet is connected
-              session.wallet.walletAddress.trim() !== '' && 
-              session.wallet.walletAddress !== 'No Wallet Detected' &&
-              session.wallet.walletAddress !== 'Not Connected' &&
-              session.wallet.walletAddress.length > 40 && // Ethereum addresses are 42 chars
-              !campaign.stats.uniqueWalletAddresses.includes(session.wallet.walletAddress)) {
-            campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
+        // Validate and track unique wallet connections
+        const walletAddress = session.wallet?.walletAddress;
+        const isWalletConnected = session.wallet?.isConnected === true && 
+                                 session.wallet?.connectionStatus === 'connected' && 
+                                 session.wallet?.lastConnected && 
+                                 new Date(session.wallet.lastConnected) <= new Date(session.endTime || session.startTime);
+
+        if (isWalletConnected) {
+          const normalizedAddress = isValidAndNormalizedAddress(walletAddress);
+          if (normalizedAddress && !campaign.stats.uniqueWalletAddresses.includes(normalizedAddress)) {
+            console.log('\nTracking new unique wallet:', {
+              sessionId: session._id,
+              originalAddress: walletAddress,
+              normalizedAddress: normalizedAddress,
+              connectionStatus: session.wallet.connectionStatus,
+              lastConnected: session.wallet.lastConnected,
+              sessionTime: session.endTime || session.startTime
+            });
+            
+            campaign.stats.uniqueWalletAddresses.push(normalizedAddress);
           }
         }
 
-        // Track duration metrics
+        // Track duration metrics (only for campaign sessions)
         if (session.duration && typeof session.duration === 'number' && session.duration > 0) {
           campaign.stats.totalDuration += session.duration;
+          console.log('\nAdding duration from campaign session:', {
+            sessionId: session._id,
+            duration: session.duration,
+            utmCampaign: session.utmData?.campaign,
+            utmId: session.utmData?.utm_id
+          });
         }
 
-        // Track bounce rate
+        // Track bounce rate (only for campaign sessions)
         if (session.isBounce) {
           campaign.stats.bounces++;
         }
@@ -147,18 +177,19 @@ exports.getCampaigns = async (req, res) => {
       campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
 
       // Calculate duration metrics
-      if (sessions.length > 0) {
+      if (campaign.stats.visitors > 0) { // Use visitors count since we now only count campaign visitors
         // All durations stored in seconds internally
-        campaign.stats.averageDuration = campaign.stats.totalDuration / sessions.length;
+        campaign.stats.averageDuration = campaign.stats.totalDuration / campaign.stats.visitors;
         campaign.stats.visitDuration = campaign.stats.averageDuration; // Keep in seconds for consistency
-        campaign.stats.bounceRate = (campaign.stats.bounces / sessions.length) * 100;
+        campaign.stats.bounceRate = (campaign.stats.bounces / campaign.stats.visitors) * 100;
 
-        console.log('\nDuration Metrics:');
-        console.log('- Total Duration:', campaign.stats.totalDuration, 'seconds');
-        console.log('- Average Duration:', campaign.stats.averageDuration, 'seconds');
-        console.log('- Visit Duration:', campaign.stats.visitDuration, 'seconds');
-        console.log('- Sessions:', sessions.length);
-        console.log('- Bounce Rate:', campaign.stats.bounceRate, '%');
+        console.log('\nCampaign Duration Metrics:', {
+          totalDuration: campaign.stats.totalDuration + ' seconds',
+          averageDuration: campaign.stats.averageDuration + ' seconds',
+          visitDuration: campaign.stats.visitDuration + ' seconds',
+          campaignVisitors: campaign.stats.visitors,
+          bounceRate: campaign.stats.bounceRate + '%'
+        });
       }
 
       // Save updated campaign stats
@@ -202,20 +233,32 @@ exports.updateCampaignStats = async (req, res) => {
       });
     }
 
-    // Log session for debugging
-    console.log(`\nUpdating stats for campaign "${campaign.name}" with new session:`);
-    console.log('- Session ID:', session._id);
-    console.log('- User ID:', session.userId);
-    console.log('- UTM Data:', session.utmData);
-    console.log('- Duration (seconds):', session.duration);
-    console.log('- Wallet:', session.wallet?.walletAddress);
+    // Verify this is a campaign-originated session
+    const isCampaignSession = session.utmData?.campaign === campaign.campaign && 
+                             (!campaign.utm_id || session.utmData?.utm_id === campaign.utm_id);
 
-    // Verify this session belongs to this campaign
-    if (session.utmData?.campaign !== campaign.campaign) {
+    if (!isCampaignSession) {
+      console.log('\nSkipping stats update for non-campaign session:', {
+        sessionId: session._id,
+        sessionUtm: session.utmData?.campaign,
+        campaignUtm: campaign.campaign,
+        sessionUtmId: session.utmData?.utm_id,
+        campaignUtmId: campaign.utm_id
+      });
       return res.status(400).json({
         message: "Session does not belong to this campaign"
       });
     }
+
+    // Log session for debugging
+    console.log('\nUpdating stats for campaign session:', {
+      campaignName: campaign.name,
+      sessionId: session._id,
+      userId: session.userId,
+      utmData: session.utmData,
+      duration: session.duration,
+      walletAddress: session.wallet?.walletAddress
+    });
 
     // Initialize arrays if they don't exist
     if (!campaign.stats.uniqueVisitors) campaign.stats.uniqueVisitors = [];
@@ -231,36 +274,50 @@ exports.updateCampaignStats = async (req, res) => {
       statsUpdated = true;
     }
 
-    // Update unique web3 users
-    if (session.wallet?.walletAddress && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
+    // Track web3 capability
+    if (session.isWeb3User && session.userId && !campaign.stats.uniqueWeb3Users.includes(session.userId)) {
       campaign.stats.uniqueWeb3Users.push(session.userId);
       campaign.stats.web3Users = campaign.stats.uniqueWeb3Users.length;
       statsUpdated = true;
     }
 
-    // Update unique wallets
-    if (session.wallet?.walletAddress && 
-        !campaign.stats.uniqueWalletAddresses.includes(session.wallet.walletAddress)) {
-      campaign.stats.uniqueWalletAddresses.push(session.wallet.walletAddress);
-      campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
-      statsUpdated = true;
+    // Validate and track unique wallet connections
+    const walletAddress = session.wallet?.walletAddress;
+    const isWalletConnected = session.wallet?.isConnected === true && 
+                             session.wallet?.connectionStatus === 'connected' && 
+                             session.wallet?.lastConnected && 
+                             new Date(session.wallet.lastConnected) <= new Date(session.endTime || session.startTime);
+
+    if (isWalletConnected) {
+      const normalizedAddress = isValidAndNormalizedAddress(walletAddress);
+      if (normalizedAddress && !campaign.stats.uniqueWalletAddresses.includes(normalizedAddress)) {
+        console.log('\nTracking new unique wallet:', {
+          sessionId: session._id,
+          originalAddress: walletAddress,
+          normalizedAddress: normalizedAddress,
+          connectionStatus: session.wallet.connectionStatus,
+          lastConnected: session.wallet.lastConnected,
+          sessionTime: session.endTime || session.startTime
+        });
+        
+        campaign.stats.uniqueWalletAddresses.push(normalizedAddress);
+        campaign.stats.uniqueWallets = campaign.stats.uniqueWalletAddresses.length;
+        statsUpdated = true;
+      }
     }
 
-    // Update visit duration in updateCampaignStats
-    if (session.duration) {
-      // Update total duration
+    // Update duration metrics
+    if (session.duration && typeof session.duration === 'number' && session.duration > 0) {
       campaign.stats.totalDuration += session.duration;
+      campaign.stats.averageDuration = campaign.stats.totalDuration / campaign.stats.visitors;
+      campaign.stats.visitDuration = campaign.stats.averageDuration;
       
-      // Recalculate average duration (all in seconds)
-      const totalSessions = campaign.stats.visitors || 1; // Prevent division by zero
-      campaign.stats.averageDuration = campaign.stats.totalDuration / totalSessions;
-      campaign.stats.visitDuration = campaign.stats.averageDuration; // Keep in seconds
-      
-      console.log('\nUpdated Duration Metrics:');
-      console.log('- New Session Duration:', session.duration, 'seconds');
-      console.log('- Total Duration:', campaign.stats.totalDuration, 'seconds');
-      console.log('- Average Duration:', campaign.stats.averageDuration, 'seconds');
-      console.log('- Total Sessions:', totalSessions);
+      console.log('\nUpdated Campaign Duration Metrics:', {
+        newSessionDuration: session.duration + ' seconds',
+        totalDuration: campaign.stats.totalDuration + ' seconds',
+        averageDuration: campaign.stats.averageDuration + ' seconds',
+        campaignVisitors: campaign.stats.visitors
+      });
       
       statsUpdated = true;
     }
@@ -300,4 +357,20 @@ exports.deleteCampaign = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};
+
+// Helper function to validate and normalize Ethereum address
+function isValidAndNormalizedAddress(address) {
+  if (!address) return false;
+  
+  // Remove whitespace and convert to lowercase
+  address = address.trim().toLowerCase();
+  
+  // Basic Ethereum address validation
+  const isValid = address.startsWith('0x') && 
+                 address.length === 42 && 
+                 /^0x[0-9a-f]{40}$/.test(address) &&
+                 address !== '0x0000000000000000000000000000000000000000';
+                 
+  return isValid ? address : false;
+} 
