@@ -35,7 +35,6 @@ export default function CampaignList({ campaigns = [] }) {
     setCampaignMetrics(null);
 
     try {
-      // TODO: Fetch detailed campaign metrics here
       const metrics = await fetchCampaignMetrics(campaign.id);
       setCampaignMetrics(metrics);
     } catch (error) {
@@ -111,7 +110,7 @@ export default function CampaignList({ campaigns = [] }) {
                           color: styles.primaryColor
                         }}
                       >
-                        View Details
+                        More Details
                       </button>
                     </td>
                   </tr>
@@ -165,52 +164,37 @@ export default function CampaignList({ campaigns = [] }) {
                 {/* Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Visitors</p>
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Visit Duration</p>
                     <p className="text-xl font-semibold font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.totalVisitors)}
+                      {formatNumber(Math.round(campaignMetrics.overview?.visitDuration / 60))} mins
                     </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Web3 Users</p>
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Conversions</p>
                     <p className="text-xl font-semibold font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.web3Users)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {calculatePercentage(campaignMetrics.overview?.web3Users, campaignMetrics.overview?.totalVisitors)}% of visitors
+                      {formatNumber(campaignMetrics.overview?.conversions)}
                     </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Unique Wallets</p>
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Conversions Value</p>
                     <p className="text-xl font-semibold font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.uniqueWallets)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {calculatePercentage(campaignMetrics.overview?.uniqueWallets, campaignMetrics.overview?.web3Users)}% of web3 users
+                      {formatNumber(campaignMetrics.overview?.conversionsValue)} ETH
                     </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Transacted Users</p>
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">Budget</p>
                     <p className="text-xl font-semibold font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.transactedUsers)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {calculatePercentage(campaignMetrics.overview?.transactedUsers, campaignMetrics.overview?.uniqueWallets)}% conversion
+                      {formatNumber(activeCampaign.budget?.amount)} {activeCampaign.budget?.currency || 'USD'}
                     </p>
                   </div>
                 </div>
 
-                {/* Transaction Statistics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Performance Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Total Transaction Value</p>
-                    <p className="text-xl font-semibold text-green-600 font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.totalTransactionValue)} ETH
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1 font-poppins">Average Transaction Value</p>
+                    <p className="text-xs text-gray-500 mb-1 font-poppins">CAC (Cost per Acquisition)</p>
                     <p className="text-xl font-semibold font-montserrat">
-                      {formatNumber(campaignMetrics.overview?.averageTransactionValue)} ETH
+                      {formatNumber(campaignMetrics.overview?.cac)} {activeCampaign.budget?.currency || 'USD'}
                     </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">

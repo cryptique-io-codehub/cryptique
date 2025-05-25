@@ -111,20 +111,15 @@ const campaignSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    sessionDurations: {
-      type: Map,
-      of: Number,
-      default: new Map()
+    visitDuration: {
+      type: Number,
+      default: 0
     },
     totalDuration: {
       type: Number,
       default: 0
     },
     averageDuration: {
-      type: Number,
-      default: 0
-    },
-    visitDuration: {
       type: Number,
       default: 0
     },
@@ -154,20 +149,7 @@ const campaignSchema = new mongoose.Schema({
 // Update the updatedAt timestamp before saving
 campaignSchema.pre('save', function(next) {
   this.updatedAt = new Date();
-  
-  // Convert sessionDurations Map to Object for MongoDB storage
-  if (this.stats.sessionDurations instanceof Map) {
-    this.stats.sessionDurations = Object.fromEntries(this.stats.sessionDurations);
-  }
-  
   next();
-});
-
-// Convert sessionDurations back to Map after retrieving from MongoDB
-campaignSchema.post('init', function(doc) {
-  if (this.stats.sessionDurations && !(this.stats.sessionDurations instanceof Map)) {
-    this.stats.sessionDurations = new Map(Object.entries(this.stats.sessionDurations));
-  }
 });
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
