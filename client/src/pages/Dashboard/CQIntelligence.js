@@ -1710,16 +1710,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Generate analytics summary
       const analyticsSummary = generateAnalyticsSummary(userMessage);
       
-      // Call our backend API
-      const response = await axiosInstance.post('/ai/intelligence/query', {
+      // Format the request payload
+      const payload = {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,
         minScore: 0.7,
         selectedSites: selectedSites.map(site => site.siteId),
-        selectedContracts: selectedContracts ? [selectedContracts] : [],
+        selectedContracts: selectedContracts.map(contract => contract.id), // Ensure we're sending an array of IDs
         analyticsSummary
-      });
+      };
+
+      console.log('Sending request with payload:', payload);
+
+      // Call our backend API
+      const response = await axiosInstance.post('/api/ai/intelligence/query', payload);
 
       if (!response.data) {
         throw new Error('No response data received from backend');
@@ -1734,10 +1739,33 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }]);
     } catch (err) {
       console.error('Error in handleSend:', err);
-      setError('Failed to get response. Please try again.');
+      
+      // More detailed error handling
+      let errorMessage = 'Failed to get response. Please try again.';
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Response error data:', err.response.data);
+        console.error('Response error status:', err.response.status);
+        console.error('Response error headers:', err.response.headers);
+        
+        if (err.response.status === 404) {
+          errorMessage = 'The API endpoint could not be found. Please check the server configuration.';
+        } else if (err.response.status === 401) {
+          errorMessage = 'Authentication error. Please try logging in again.';
+        } else if (err.response.status === 400) {
+          errorMessage = 'Invalid request. Please check your input and try again.';
+        }
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.error('No response received:', err.request);
+        errorMessage = 'No response received from the server. Please check your internet connection.';
+      }
+      
+      setError(errorMessage);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
+        content: 'I apologize, but I encountered an error while processing your request. ' + errorMessage,
         timestamp: new Date().toISOString()
       }]);
     } finally {
@@ -2423,15 +2451,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   <span>Loading website analytics...</span>
                 </div>
               )}
-              {isLoadingTransactions && (
+              {isLoadingContracts && (
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-                  <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
+                  <span>Loading available contracts...</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContracts.length > 0 && contractTransactions.length > 0 && (
+              {!isLoadingContracts && selectedContracts.length > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>{contractTransactions.length} transactions loaded for {selectedContracts.length} selected contract{selectedContracts.length !== 1 ? 's' : ''}</span>
+                  <span>{selectedContracts.length} contract{selectedContracts.length !== 1 ? 's' : ''} selected</span>
                 </div>
               )}
             </div>
