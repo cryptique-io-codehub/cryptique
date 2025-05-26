@@ -98,7 +98,7 @@ const Dashboard = () => {
         const teamId = selectedTeam;
         if (!teamId) return;
 
-        const response = await axiosInstance.get(`/website/team/${teamId}`);
+        const response = await axiosInstance.get(`/api/website/team/${teamId}`);
         
         if (response.data && response.data.websites) {
           const websites = response.data.websites;
@@ -123,7 +123,7 @@ const Dashboard = () => {
             
             try {
               // Fetch campaign data for the first website
-              const campaignResponse = await axiosInstance.get(`/campaign/site/${firstWebsite.siteId}`);
+              const campaignResponse = await axiosInstance.get(`/api/campaign/site/${firstWebsite.siteId}`);
               if (campaignResponse && campaignResponse.data && campaignResponse.data.campaigns) {
                 campaignCount = campaignResponse.data.campaigns.length;
               }

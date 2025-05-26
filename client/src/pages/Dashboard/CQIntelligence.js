@@ -63,7 +63,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
+        const response = await axiosInstance.get(`/api/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites.length > 0) {
           setWebsiteArray(response.data.websites);
@@ -98,7 +98,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         return;
       }
 
-      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
+      const response = await axiosInstance.get(`/api/contracts/team/${selectedTeam}`);
       
       if (response.data && response.data.contracts) {
         // Format contract data
@@ -142,7 +142,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       while (hasMore) {
         console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
+        const response = await axiosInstance.get(`/api/transactions/contract/${contractId}`, {
           params: { 
             limit: pageSize,
             page: page
@@ -1711,7 +1711,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary(userMessage);
       
       // Call our backend API with selected contracts
-      const response = await axiosInstance.post('/api/ai/intelligence/query', {
+      const response = await axiosInstance.post('/api/intelligence/query', {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,
