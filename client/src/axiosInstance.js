@@ -7,56 +7,43 @@ console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: baseURL,  // Remove '/api' from here as it's already in the routes
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
-    // Adding additional headers that might help with CORS
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    // Add CORS headers
+    'Access-Control-Allow-Origin': 'https://app.cryptique.io',
+    'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
   },
-  maxContentLength: 50 * 1024 * 1024, // 50MB
-  maxBodyLength: 50 * 1024 * 1024, // 50MB
-  // Set withCredentials based on environment
-  withCredentials: false, // Changed to false by default
-  // Add timeout configuration
-  timeout: 60000 // 60 seconds timeout
+  maxContentLength: 50 * 1024 * 1024,
+  maxBodyLength: 50 * 1024 * 1024,
+  withCredentials: true, // Enable credentials for CORS
+  timeout: 60000
 });
 
-// Add request interceptor to dynamically get the token before each request
+// Add request interceptor
 axiosInstance.interceptors.request.use(
   config => {
     // Log requests for debugging
     console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Check if this is an analytics endpoint that's causing CORS issues
-    if (config.url && (
-      config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/')
-    )) {
-      // For these endpoints, explicitly set withCredentials to false
-      config.withCredentials = false;
-    } else {
-      // For all other endpoints, including team routes, use credentials
-      config.withCredentials = true;
-    }
-    
-    // Get token dynamically on each request - not from closure
-    // Try both accessToken and token, as different parts of the app might use different keys
+    // Get token dynamically
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Special handling for team routes
-    if (config.url && config.url.includes('/team/')) {
-      // Ensure content type is always set correctly for all team routes
-      config.headers['Content-Type'] = 'application/json';
-      
-      // Ensure Authorization header is set for team routes
-      if (token && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
+    // Add CORS headers to every request
+    config.headers['Access-Control-Allow-Origin'] = 'https://app.cryptique.io';
     
+    // Handle preflight OPTIONS requests
+    if (config.method.toLowerCase() === 'options') {
+      config.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,PATCH,OPTIONS';
+      config.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+      config.headers['Access-Control-Max-Age'] = '3600';
+    }
+
     return config;
   },
   error => {
@@ -65,7 +52,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle common errors
+// Add response interceptor
 axiosInstance.interceptors.response.use(
   response => {
     console.log(`API Response: ${response.status} from ${response.config.url}`, {
@@ -76,12 +63,24 @@ axiosInstance.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
     
+    // Log detailed error information
     console.error('API Response Error:', {
       url: originalRequest?.url,
       status: error.response?.status,
       message: error.message,
-      data: error.response?.data 
+      data: error.response?.data,
+      headers: error.response?.headers
     });
+
+    // Handle CORS errors specifically
+    if (error.message === 'Network Error' || (error.response && error.response.status === 0)) {
+      console.error('CORS or Network Error detected. Please check backend CORS configuration.');
+      // You might want to notify the user about the CORS issue
+      return Promise.reject({
+        ...error,
+        message: 'Unable to connect to the server. Please check your connection or contact support.'
+      });
+    }
     
     // Handle 401 errors (token expired)
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
@@ -92,29 +91,23 @@ axiosInstance.interceptors.response.use(
         const refreshResponse = await axios.post(
           `${baseURL}/api/auth/refresh-token`, 
           {}, 
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers: {
+              'Access-Control-Allow-Origin': 'https://app.cryptique.io'
+            }
+          }
         );
         
         if (refreshResponse.data.accessToken) {
-          // Save the new access token
           localStorage.setItem("accessToken", refreshResponse.data.accessToken);
-          
-          // Update the original request with the new token
           originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.accessToken}`;
-          
-          // Retry the original request
           return axiosInstance(originalRequest);
         }
       } catch (refreshError) {
         console.log("Token refresh failed:", refreshError);
-        
-        // If refresh token also fails, logout the user
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("User");
-        localStorage.removeItem("selectedTeam");
-        localStorage.removeItem("selectedWebsite");
-        
-        // Redirect to login page if not already there
+        // Handle logout
+        localStorage.clear();
         if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
           window.location.href = '/login';
         }
@@ -123,35 +116,14 @@ axiosInstance.interceptors.response.use(
     
     // Implement retry logic for network errors
     if (error.message === 'Network Error' && !originalRequest._retry) {
-      console.log('Network error detected, retrying...');
       originalRequest._retry = true;
-      
-      // Add a small delay before retrying
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Return a new request
       return axiosInstance(originalRequest);
-    }
-    
-    // Log the error for debugging
-    console.error("API Error:", error.message);
-    
-    if (error.response && error.response.status === 401) {
-      // Handle unauthorized access
-      console.log("Unauthorized access, please login again");
-      
-      // Redirect to login page if unauthorized
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("User");
-        localStorage.removeItem("selectedTeam");
-        localStorage.removeItem("selectedWebsite");
-        window.location.href = '/login';
-      }
     }
     
     return Promise.reject(error);
   }
 );
 
+export default axiosInstance;
 export default axiosInstance;
