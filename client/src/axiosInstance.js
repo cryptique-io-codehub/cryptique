@@ -1,52 +1,66 @@
 import axios from 'axios';
 
 // Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://localhost:3001';
 
 console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: baseURL,
+  baseURL: baseURL + '/api',
   headers: {
     'Content-Type': 'application/json',
+    // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
-  withCredentials: true,
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
+  // Set withCredentials based on environment
+  withCredentials: false, // Changed to false by default
+  // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
 
-// Add request interceptor to handle credentials based on endpoint
+// Add request interceptor to dynamically get the token before each request
 axiosInstance.interceptors.request.use(
   config => {
-    // Get the current origin
-    const origin = window.location.origin;
+    // Log requests for debugging
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Add origin to headers for CORS
-    config.headers['Origin'] = origin;
-    
-    // SDK endpoints don't need credentials
-    if (config.url.startsWith('/api/sdk/')) {
+    // Check if this is an analytics endpoint that's causing CORS issues
+    if (config.url && (
+      config.url.includes('/sdk/analytics/') ||
+      config.url.includes('/intelligence/')
+    )) {
+      // For these endpoints, explicitly set withCredentials to false
       config.withCredentials = false;
+    } else {
+      // For all other endpoints, including team routes, use credentials
+      config.withCredentials = true;
     }
     
-    // Add authorization header if token exists
-    const token = localStorage.getItem('token');
+    // Get token dynamically on each request - not from closure
+    // Try both accessToken and token, as different parts of the app might use different keys
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Add team ID if available
-    const selectedTeam = localStorage.getItem('selectedTeam');
-    if (selectedTeam) {
-      config.headers['x-team-id'] = selectedTeam;
+    // Special handling for team routes
+    if (config.url && config.url.includes('/team/')) {
+      // Ensure content type is always set correctly for all team routes
+      config.headers['Content-Type'] = 'application/json';
+      
+      // Ensure Authorization header is set for team routes
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
     return config;
   },
   error => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );

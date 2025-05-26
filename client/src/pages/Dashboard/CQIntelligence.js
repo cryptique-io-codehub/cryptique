@@ -63,20 +63,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        if (!selectedTeam) {
-          console.log("No team selected");
-          return;
-        }
-        const response = await axiosInstance.get(`/api/websites/${selectedTeam}`);
+        const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
-        if (response.status === 200 && response.data && response.data.length > 0) {
-          setWebsiteArray(response.data);
+        if (response.status === 200 && response.data.websites.length > 0) {
+          setWebsiteArray(response.data.websites);
           // Select all websites by default
-          setSelectedSites(response.data);
+          setSelectedSites(response.data.websites);
           
           // Fetch analytics data for all websites
-          response.data.forEach(website => {
-            fetchAnalyticsData(website.id);
+          response.data.websites.forEach(website => {
+            fetchAnalyticsData(website.siteId);
           });
         }
       } catch (error) {
@@ -98,17 +94,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const selectedTeam = localStorage.getItem("selectedTeam");
       
       if (!selectedTeam) {
-        console.log("No team selected");
         setIsLoadingContracts(false);
         return;
       }
 
-      const response = await axiosInstance.get(`/api/contracts/${selectedTeam}`);
+      const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
       
-      if (response.data && Array.isArray(response.data)) {
+      if (response.data && response.data.contracts) {
         // Format contract data
-        const contracts = response.data.map(contract => ({
-          id: contract.id,
+        const contracts = response.data.contracts.map(contract => ({
+          id: contract.contractId,
           address: contract.address,
           name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
           blockchain: contract.blockchain,
@@ -134,43 +129,58 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       setIsLoadingTransactions(true);
-      setError(null);
-      setLoadedTransactionCount(0);
+      setError(null); // Clear any previous errors
+      setLoadedTransactionCount(0); // Reset counter
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 100000;
+      const pageSize = 100000; // Fetch 100000 transactions per request
       
+      // Loop to fetch all transactions with pagination
       while (hasMore) {
         console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        const response = await axiosInstance.get(`/api/transactions/${contractId}`, {
+        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
           params: { 
             limit: pageSize,
             page: page
           }
         });
         
-        if (response.data && Array.isArray(response.data)) {
-          const fetchedTransactions = response.data;
+        if (response.data && response.data.transactions) {
+          const fetchedTransactions = response.data.transactions;
           
+          // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          // Update the progress counter
           setLoadedTransactionCount(allTransactions.length);
           
           console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
           
-          hasMore = fetchedTransactions.length === pageSize;
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
+            hasMore = false;
+          }
+          
+          // Move to next page
           page++;
           
+          // Safety check - don't loop more than 10 times (1,000,000 transactions)
           if (page > 10) {
             console.log("Reached maximum page fetch limit (1,000,000 transactions)");
             hasMore = false;
           }
           
           if (page % 10 === 0) {
+            // Log progress every 10 pages
             console.log(`Fetched ${allTransactions.length} transactions so far...`);
+            // Small delay to avoid overwhelming the server
             await new Promise(resolve => setTimeout(resolve, 300));
           }
         } else {
@@ -179,7 +189,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
       
       setContractTransactions(allTransactions);
-      setError(null);
+      setError(null); // Clear any status messages
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       return allTransactions;
     } catch (error) {
@@ -207,21 +217,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const fetchAnalyticsData = async (siteId) => {
     setIsDataLoading(true);
     try {
-      // Use the SDK endpoint
-      const response = await axiosInstance.get(`/api/sdk/analytics/${siteId}`, {
+      // Create a direct axios call without withCredentials for this specific endpoint
+      // to avoid CORS issues with the wildcard Access-Control-Allow-Origin
+      const response = await axiosInstance.get(`/sdk/analytics/${siteId}`, {
+        withCredentials: false, // Explicitly set to false for this request
         headers: {
-          'x-cryptique-site-id': siteId
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
       
-      if (response && response.data) {
-        setAnalytics(prev => ({
-          ...prev,
-          [siteId]: response.data
-        }));
+      if (response.data && response.data.analytics) {
+        setAnalytics(response.data.analytics);
         setError(null);
-      } else if (response.data?.subscriptionError) {
-        setError("Subscription required to access analytics data.");
       }
     } catch (error) {
       console.error("Error fetching analytics data:", error);
@@ -1703,7 +1711,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary(userMessage);
       
       // Call our backend API with selected contracts
-      const response = await axiosInstance.post('/api/intelligence/query', {
+      const response = await axiosInstance.post('/ai/intelligence/query', {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,

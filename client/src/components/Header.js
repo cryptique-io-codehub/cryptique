@@ -44,21 +44,15 @@ const TeamSelector = () => {
         lastFetchTimeRef.current = now;
         
         const token = localStorage.getItem("token");
-        const response = await axiosInstance.get('/api/team/details', {
+        const response = await axiosInstance.get('/team/details', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
         
-        if (response.data && Array.isArray(response.data.teams)) {
-          setCurTeams(response.data.teams);
-        } else if (response.data && Array.isArray(response.data.team)) {
-          setCurTeams(response.data.team);
-        } else {
-          console.warn("Unexpected team data format:", response.data);
-          setCurTeams([]);
-        }
+        const teams = response.data.team;
+        setCurTeams(teams);
       } catch (error) {
         console.error("Error fetching teams:", error);
       } finally {
@@ -89,21 +83,15 @@ const TeamSelector = () => {
             lastFetchTimeRef.current = now;
             
             const token = localStorage.getItem("token");
-            const response = await axiosInstance.get('/api/team/details', {
+            const response = await axiosInstance.get('/team/details', {
               headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
               }
             });
             
-            if (response.data && Array.isArray(response.data.teams)) {
-              setCurTeams(response.data.teams);
-            } else if (response.data && Array.isArray(response.data.team)) {
-              setCurTeams(response.data.team);
-            } else {
-              console.warn("Unexpected team data format:", response.data);
-              setCurTeams([]);
-            }
+            const teams = response.data.team;
+            setCurTeams(teams);
           } catch (error) {
             console.error("Error fetching teams:", error);
           } finally {
