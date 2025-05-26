@@ -1160,7 +1160,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       4. Comparative analysis against Web3 industry standards
       5. Growth opportunities through platform features
       6. Risk assessment and opportunity identification
-
+      
       When analyzing metrics, consider Web3-specific factors such as:
       - Wallet connection rates and patterns
       - Chain-specific user behavior
@@ -1713,7 +1713,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,
-        minScore: 0.7
+        minScore: 0.7,
+        selectedSites: selectedSites.map(site => site.siteId),
+        selectedContracts: selectedContracts ? [selectedContracts] : [],
+        analyticsSummary
       });
 
       if (!response.data) {
@@ -1729,13 +1732,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }]);
     } catch (err) {
       console.error('Error in handleSend:', err);
-      setError(`Failed to process request: ${err.message}`);
-      
-      // Generate fallback response using available data
-      const fallbackResponse = generateFallbackResponse(userMessage, analytics, selectedSites, selectedContracts, contractTransactions);
+      setError('Failed to get response. Please try again.');
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: fallbackResponse,
+        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
@@ -1743,507 +1743,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Helper function to generate fallback response
-  const generateFallbackResponse = (query, analytics, sites, contracts, transactions) => {
-    const siteData = sites.map(site => {
-      const siteAnalytics = analytics.find(a => a.site === site);
-      return siteAnalytics ? `- ${site}: ${siteAnalytics.totalPageViews} views, ${siteAnalytics.uniqueVisitors} visitors, ${siteAnalytics.connectedWallets} connected wallets, ${siteAnalytics.web3Visitors} Web3 visitors` : '';
-    }).filter(Boolean).join('\n');
-
-    const contractData = contracts.map(contract => {
-      const contractTransactions = transactions[contract];
-      if (!contractTransactions || contractTransactions.length === 0) return '';
-
-      const contractInfo = processContractTransactions(contractTransactions[0], contractTransactions);
-      if (!contractInfo) return '';
-
-      return `- ${contract}: ${contractInfo.contractInfo.totalTransactions} transactions, ${contractInfo.summary.uniqueUsers} unique users, ${contractInfo.summary.uniqueReceivers} unique receivers, total volume: ${contractInfo.summary.totalVolume.toFixed(2)} ETH`;
-    }).filter(Boolean).join('\n');
-
-    return `
-[FALLBACK RESPONSE]
-<rewritten_file>
-```
-  // Helper function to process smart contract transaction data
-  const processContractTransactions = (contractDetails, transactions) => {
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-      return null;
-    }
-
-    // Start with basic contract info
-    const contractData = {
-      contractInfo: {
-        address: contractDetails.address,
-        name: contractDetails.name,
-        blockchain: contractDetails.blockchain,
-        tokenSymbol: contractDetails.tokenSymbol || 'Unknown',
-        totalTransactions: transactions.length,
-        firstTransaction: null,
-        latestTransaction: null
-      },
-      summary: {
-        uniqueUsers: new Set(transactions.map(tx => tx.from_address)).size,
-        uniqueReceivers: new Set(transactions.map(tx => tx.to_address)).size,
-        totalVolume: transactions.reduce((sum, tx) => {
-          const value = parseFloat(tx.value_eth) || 0;
-          return isNaN(value) ? sum : sum + value;
-        }, 0),
-        averageTransactionValue: 0,
-        medianTransactionValue: 0
-      },
-      timeSeries: {
-        hourly: {},
-        daily: {},
-        weekly: {},
-        monthly: {}
-      },
-      walletAnalytics: {
-        topSenders: [],
-        topReceivers: [],
-        mostFrequentUsers: [],
-        walletActivity: {}
-      },
-      transactionSizeDistribution: {
-        small: 0,     // < 0.1
-        medium: 0,    // 0.1 - 1
-        large: 0,     // 1 - 10
-        whale: 0      // > 10
-      },
-      timeOfDayDistribution: {
-        morning: 0,   // 6am - 12pm
-        afternoon: 0, // 12pm - 6pm
-        evening: 0,   // 6pm - 12am
-        night: 0      // 12am - 6am
-      },
-      dayOfWeekDistribution: {
-        monday: 0,
-        tuesday: 0,
-        wednesday: 0,
-        thursday: 0,
-        friday: 0,
-        saturday: 0,
-        sunday: 0
-      }
-    };
-
-    // Sort transactions by block time
-    const sortedTransactions = [...transactions].sort((a, b) => {
-      return new Date(a.block_time) - new Date(b.block_time);
-    });
-
-    // Set first and last transaction times
-    if (sortedTransactions.length > 0) {
-      contractData.contractInfo.firstTransaction = sortedTransactions[0].block_time;
-      contractData.contractInfo.latestTransaction = sortedTransactions[sortedTransactions.length - 1].block_time;
-    }
-
-    // Calculate average and median transaction values
-    const values = transactions.map(tx => parseFloat(tx.value_eth) || 0).filter(val => !isNaN(val) && val > 0);
-    
-    if (values.length > 0) {
-      contractData.summary.averageTransactionValue = values.reduce((a, b) => a + b, 0) / values.length;
-      
-      // Calculate median
-      const sortedValues = [...values].sort((a, b) => a - b);
-      const mid = Math.floor(sortedValues.length / 2);
-      contractData.summary.medianTransactionValue = sortedValues.length % 2 === 0
-        ? (sortedValues[mid - 1] + sortedValues[mid]) / 2
-        : sortedValues[mid];
-    }
-
-    // Create wallet analysis
-    const senderVolumes = {};
-    const receiverVolumes = {};
-    const senderCounts = {};
-    const receiverCounts = {};
-    const walletActivity = {};
-
-    // Process transaction size distribution
-    transactions.forEach(tx => {
-      const value = parseFloat(tx.value_eth) || 0;
-      if (!isNaN(value) && value > 0) {
-        if (value < 0.1) contractData.transactionSizeDistribution.small++;
-        else if (value < 1) contractData.transactionSizeDistribution.medium++;
-        else if (value < 10) contractData.transactionSizeDistribution.large++;
-        else contractData.transactionSizeDistribution.whale++;
-      }
-
-      // Track sender volumes and counts
-      if (tx.from_address) {
-        senderCounts[tx.from_address] = (senderCounts[tx.from_address] || 0) + 1;
-        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + (parseFloat(tx.value_eth) || 0);
-        
-        if (!walletActivity[tx.from_address]) {
-          walletActivity[tx.from_address] = {
-            sent: { count: 0, volume: 0 },
-            received: { count: 0, volume: 0 },
-            firstSeen: tx.block_time,
-            lastSeen: tx.block_time
-          };
-        } else {
-          walletActivity[tx.from_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.from_address].lastSeen) 
-            ? tx.block_time 
-            : walletActivity[tx.from_address].lastSeen;
-        }
-        
-        walletActivity[tx.from_address].sent.count++;
-        walletActivity[tx.from_address].sent.volume += (parseFloat(tx.value_eth) || 0);
-      }
-
-      // Track receiver volumes and counts
-      if (tx.to_address) {
-        receiverCounts[tx.to_address] = (receiverCounts[tx.to_address] || 0) + 1;
-        receiverVolumes[tx.to_address] = (receiverVolumes[tx.to_address] || 0) + (parseFloat(tx.value_eth) || 0);
-        
-        if (!walletActivity[tx.to_address]) {
-          walletActivity[tx.to_address] = {
-            sent: { count: 0, volume: 0 },
-            received: { count: 0, volume: 0 },
-            firstSeen: tx.block_time,
-            lastSeen: tx.block_time
-          };
-        } else {
-          walletActivity[tx.to_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.to_address].lastSeen) 
-            ? tx.block_time 
-            : walletActivity[tx.to_address].lastSeen;
-        }
-        
-        walletActivity[tx.to_address].received.count++;
-        walletActivity[tx.to_address].received.volume += (parseFloat(tx.value_eth) || 0);
-      }
-
-      // Parse date for time-based analytics
-      const txDate = new Date(tx.block_time);
-      
-      // Time of day distribution
-      const hour = txDate.getHours();
-      if (hour >= 6 && hour < 12) contractData.timeOfDayDistribution.morning++;
-      else if (hour >= 12 && hour < 18) contractData.timeOfDayDistribution.afternoon++;
-      else if (hour >= 18) contractData.timeOfDayDistribution.evening++;
-      else contractData.timeOfDayDistribution.night++;
-      
-      // Day of week distribution
-      const day = txDate.getDay();
-      switch (day) {
-        case 0: contractData.dayOfWeekDistribution.sunday++; break;
-        case 1: contractData.dayOfWeekDistribution.monday++; break;
-        case 2: contractData.dayOfWeekDistribution.tuesday++; break;
-        case 3: contractData.dayOfWeekDistribution.wednesday++; break;
-        case 4: contractData.dayOfWeekDistribution.thursday++; break;
-        case 5: contractData.dayOfWeekDistribution.friday++; break;
-        case 6: contractData.dayOfWeekDistribution.saturday++; break;
-      }
-    });
-
-    // Get top senders and receivers by volume and frequency
-    contractData.walletAnalytics.topSenders = Object.entries(senderVolumes)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([address, volume]) => ({
-        address,
-        volume,
-        transactionCount: senderCounts[address] || 0
-      }));
-
-    contractData.walletAnalytics.topReceivers = Object.entries(receiverVolumes)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([address, volume]) => ({
-        address,
-        volume,
-        transactionCount: receiverCounts[address] || 0
-      }));
-
-    // Most active wallets by total transaction count (sent + received)
-    const combinedActivity = {};
-    Object.keys(walletActivity).forEach(address => {
-      combinedActivity[address] = walletActivity[address].sent.count + walletActivity[address].received.count;
-    });
-
-    contractData.walletAnalytics.mostFrequentUsers = Object.entries(combinedActivity)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([address, totalCount]) => ({
-        address,
-        totalTransactions: totalCount,
-        sentTransactions: walletActivity[address].sent.count,
-        receivedTransactions: walletActivity[address].received.count,
-        totalVolume: walletActivity[address].sent.volume + walletActivity[address].received.volume,
-        firstSeen: walletActivity[address].firstSeen,
-        lastSeen: walletActivity[address].lastSeen
-      }));
-
-    // Generate time series data
-    const hourlyData = {};
-    const dailyData = {};
-    const weeklyData = {};
-    const monthlyData = {};
-
-    transactions.forEach(tx => {
-      const date = new Date(tx.block_time);
-      const value = parseFloat(tx.value_eth) || 0;
-      
-      // Hourly aggregation - format: "YYYY-MM-DD HH:00"
-      const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
-      if (!hourlyData[hourKey]) {
-        hourlyData[hourKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      hourlyData[hourKey].count++;
-      hourlyData[hourKey].volume += value;
-      hourlyData[hourKey].uniqueAddresses.add(tx.from_address);
-      
-      // Daily aggregation - format: "YYYY-MM-DD"
-      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      if (!dailyData[dayKey]) {
-        dailyData[dayKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      dailyData[dayKey].count++;
-      dailyData[dayKey].volume += value;
-      dailyData[dayKey].uniqueAddresses.add(tx.from_address);
-      
-      // Weekly aggregation - format: "YYYY-WW" (ISO week)
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1)); // Adjust to Monday
-      const weekNumber = Math.ceil((((weekStart - new Date(date.getFullYear(), 0, 1)) / 86400000) + 1) / 7);
-      const weekKey = `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
-      if (!weeklyData[weekKey]) {
-        weeklyData[weekKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      weeklyData[weekKey].count++;
-      weeklyData[weekKey].volume += value;
-      weeklyData[weekKey].uniqueAddresses.add(tx.from_address);
-      
-      // Monthly aggregation - format: "YYYY-MM"
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { count: 0, volume: 0, uniqueAddresses: new Set() };
-      }
-      monthlyData[monthKey].count++;
-      monthlyData[monthKey].volume += value;
-      monthlyData[monthKey].uniqueAddresses.add(tx.from_address);
-    });
-
-    // Convert time series data to arrays and process Sets for uniqueAddresses
-    contractData.timeSeries.hourly = Object.entries(hourlyData)
-      .map(([time, data]) => ({
-        time,
-        count: data.count,
-        volume: data.volume,
-        uniqueAddresses: data.uniqueAddresses.size
-      }))
-      .sort((a, b) => new Date(a.time) - new Date(b.time));
-
-    contractData.timeSeries.daily = Object.entries(dailyData)
-      .map(([date, data]) => ({
-        date,
-        count: data.count,
-        volume: data.volume,
-        uniqueAddresses: data.uniqueAddresses.size
-      }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    contractData.timeSeries.weekly = Object.entries(weeklyData)
-      .map(([week, data]) => ({
-        week,
-        count: data.count,
-        volume: data.volume,
-        uniqueAddresses: data.uniqueAddresses.size
-      }))
-      .sort((a, b) => {
-        const [aYear, aWeek] = a.week.split('-W').map(Number);
-        const [bYear, bWeek] = b.week.split('-W').map(Number);
-        return aYear !== bYear ? aYear - bYear : aWeek - bWeek;
-      });
-
-    contractData.timeSeries.monthly = Object.entries(monthlyData)
-      .map(([month, data]) => ({
-        month,
-        count: data.count,
-        volume: data.volume,
-        uniqueAddresses: data.uniqueAddresses.size
-      }))
-      .sort((a, b) => {
-        const [aYear, aMonth] = a.month.split('-').map(Number);
-        const [bYear, bMonth] = b.month.split('-').map(Number);
-        return aYear !== bYear ? aYear - bYear : aMonth - bMonth;
-      });
-
-    return contractData;
-  };
-
-  // Initialize Gemini AI
-  const initializeAI = () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
-                  window.ENV?.NEXT_PUBLIC_GEMINI_API || 
-                  'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
-    return new GoogleGenerativeAI(apiKey, {
-      apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta'
-    });
-  };
-
-  // Verify model availability
-  const verifyModel = async () => {
-    try {
-      console.log('Fetching available models...');
-      const response = await axiosInstance.get('/ai/models');
-      const data = response.data;
-      console.log("Available models:", data.models?.map(m => m.name));
-      
-      // Define preferred models in order of preference
-      const preferredModels = [
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-pro',
-        'gemini-1.5-pro-latest'
-      ];
-      
-      const models = data.models || [];
-      
-      // Try to find any of our preferred models
-      for (const preferredModel of preferredModels) {
-        const hasModel = models.some(m => m.name.includes(preferredModel));
-        if (hasModel) {
-          console.log(`Using preferred model: ${preferredModel}`);
-          return preferredModel;
-        }
-      }
-      
-      // If no preferred model found, find first model that supports generateContent
-      const modelName = models.find(m => 
-        m.supportedGenerationMethods?.includes('generateContent') &&
-        m.name.includes('pro') // Prefer pro models
-      )?.name;
-      
-      if (modelName) {
-        const cleanedName = modelName.replace('models/', '');
-        console.log(`Using alternative model: ${cleanedName}`);
-        return cleanedName;
-      }
-      
-      // Default fallback
-      console.log('Falling back to default model: gemini-1.5-pro');
-      return 'gemini-1.5-pro';
-    } catch (error) {
-      console.error("Error fetching models:", error.response?.data || error);
-      // If the API call fails, still provide a reasonable default
-      console.log('API call failed, using safe fallback model: gemini-pro');
-      return 'gemini-pro';
-    }
-  };
-
-  const formatResponse = (response) => {
-    let formattedText = response
-      .trim()
-      // Fix heading formatting
-      .replace(/#+\s*(.*?)(?=\n|$)/g, '### $1')
-      
-      // Format metrics to be on the same line
-      .replace(/(\*\*[^:]+):\*\*\s*\n+(`[^`]+`)/g, '**$1:** $2')
-      .replace(/(\*\*[^:]+):\*\*\s*\n+(\d+|true|false)(?=\s|\n|$)/g, '**$1:** $2')
-      
-      // Fix metric value formatting (value on newline)
-      .replace(/([^:]+):\s*\n+(\d[^\n]*|`[^`]+`)(?=\n)/g, '$1: $2')
-      
-      // Format page metrics to be on the same line
-      .replace(/(`[^`]+`):\s*\n+(\d+)\s*\n+views/g, '$1: $2 views')
-      
-      // Format percentages to be on the same line
-      .replace(/(\d+)%\s*\n+/g, '$1% ')
-      
-      // Format bullet points with their content
-      .replace(/(\* [^\n]+)\s*\n+([^*\n][^\n]*?)(?=\n+\*|\n+$|\n+###|\n\n)/g, '$1 $2')
-      
-      // Format metrics with values in code blocks
-      .replace(/\*\*([^:]+):\*\*\s*\n+```([^`]+)```/g, '**$1:** `$2`')
-      
-      // Clean up multiple newlines
-      .replace(/\n{3,}/g, '\n\n')
-      
-      // Format metrics with their context on same line
-      .replace(/(\d+)\s*\n+\(([^)]+)\)/g, '$1 ($2)')
-      
-      // Format metrics consistently
-      .replace(/\*\*([^:]+):\*\*\s*(`[^`]+`)/g, '**$1:** $2')
-      
-      // Clean up spacing around parentheses
-      .replace(/\s*\(\s*/g, ' (')
-      .replace(/\s*\)\s*/g, ') ')
-      
-      // Fix common inline formatting issues
-      .replace(/^([\w\s]+):\s*\n+(\d+)/gm, '$1: $2')
-      .replace(/([\w\s]+):\s*\n+(\w+)/g, '$1: $2')
-      
-      // Fix sub-list formatting
-      .replace(/\n\s+([0-9]+)\.\s+/g, '\n$1. ')
-      
-      // Ensure proper spacing around sections
-      .replace(/---\s*/g, '\n---\n')
-      
-      // Remove extra spaces at line starts
-      .replace(/^\s+/gm, '')
-      
-      // Clean up multiple newlines between sections
-      .replace(/\n{3,}/g, '\n\n')
-      
-      // Format inline metrics properly 
-      .replace(/(\d+)\s*\n+([a-zA-Z])/g, '$1 $2')
-      
-      // Clean up spacing around backticks
-      .replace(/\s+`/g, ' `')
-      .replace(/`\s+/g, '` ')
-      
-      // Ensure colons and values are on the same line
-      .replace(/(:\s*)\n+/g, '$1')
-      
-      // Fix nested metrics that might be separated
-      .replace(/(\*\*[^*\n]+\*\*)\s*\n+(\d|`)/g, '$1 $2')
-      
-      // Ensure all bullet points have a space after the asterisk
-      .replace(/\n\*(?!\s)/g, '\n* ')
-      
-      // Fix subsection headings (numbered lists after headings)
-      .replace(/(### [^\n]+)\n+([0-9]+)\.\s+/g, '$1\n\n$2. ')
-      
-      // Fix paragraphs after bullet points
-      .replace(/(\* [^\n]+)\n+([^*#\n][^\n]+)/g, '$1\n$2')
-      
-      // Clean up section separations with proper spacing 
-      .replace(/(### [^\n]+)\n+/g, '$1\n\n')
-      
-      // Additional fixes for specific issues
-      .replace(/transactions\s*\n+/g, 'transactions ')
-      .replace(/visitors\s*\n+/g, 'visitors ')
-      .replace(/\n+based on/gi, ' based on');
-
-    return formattedText;
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Generate analytics summary
-      const analyticsSummary = generateAnalyticsSummary(userMessage);
-      
-      // Call our backend API
-      const response = await axiosInstance.post('/ai/intelligence/query', {
-        query: userMessage,
-        expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
-        topK: 5,
-        minScore: 0.7
-      });
-
-      if (!response.data) {
-        throw new Error('No response data received from backend');
-      }
-
-      const formattedMessage = formatResponse(response.data.text_answer);
   // Format analytics data for display
   const formatAnalyticsData = () => {
     if (!analytics || Object.keys(analytics).length === 0) {
@@ -2665,80 +2164,70 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   );
 
   // Update the chat area section to use the new loading state
-  const ChatArea = () => (
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-                <div className="logo-container mb-6">
-                  <img src="/logo192.png" alt="Cryptique" className="w-16 h-16 animate-cube-spin" />
-                </div>
-                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-          <p className="text-gray-600 max-w-md mb-8">
-                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-                </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-            {/* Example questions buttons */}
-            <button 
-              onClick={() => {
-                setInput("What are the top pages on my website?");
-                setTimeout(() => handleSend(), 100);
-              }}
-              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-            >
-              What are the top pages on my website?
-            </button>
-            <button 
-              onClick={() => {
-                setInput("How is my website performing?");
-                setTimeout(() => handleSend(), 100);
-              }}
-              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-            >
-              How is my website performing?
-            </button>
-            <button 
-              onClick={() => {
-                setInput("Show me my Web3 user analytics");
-                setTimeout(() => handleSend(), 100);
-              }}
-              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-            >
-              Show me my Web3 user analytics
-            </button>
-            <button 
-              onClick={() => {
-                setInput("What are my traffic sources?");
-                setTimeout(() => handleSend(), 100);
-              }}
-              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-            >
-              What are my traffic sources?
-            </button>
+  const ChatArea = () => {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+            <Bot size={64} className="mb-6 text-[#caa968]" />
+            <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+            <p className="text-gray-600 max-w-md">
+              I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full max-w-2xl">
+              <button 
+                onClick={() => {
+                  setInput("How is my website performing?");
+                  setTimeout(() => handleSend(), 100);
+                }}
+                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+              >
+                How is my website performing?
+              </button>
+              <button 
+                onClick={() => {
+                  setInput("Show me my Web3 user analytics");
+                  setTimeout(() => handleSend(), 100);
+                }}
+                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+              >
+                Show me my Web3 user analytics
+              </button>
+              <button 
+                onClick={() => {
+                  setInput("What are my traffic sources?");
+                  setTimeout(() => handleSend(), 100);
+                }}
+                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+              >
+                What are my traffic sources?
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {renderMessage(message)}
               </div>
-            ) : (
-        <>
-          {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-              {renderMessage(message)}
-                  </div>
-          ))}
-          {isLoading && renderLoadingState()}
+            ))}
+            {isLoading && renderLoadingState()}
             {error && (
               <div className="flex justify-start">
                 <div className="bg-red-100 text-red-600 p-4 rounded-lg">
                   {error}
                 </div>
               </div>
-          )}
-        </>
             )}
-            <div ref={messagesEndRef} />
-          </div>
-  );
+          </>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full">
