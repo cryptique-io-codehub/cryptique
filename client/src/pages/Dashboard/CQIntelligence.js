@@ -32,13 +32,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const [error, setError] = useState(null);
   const [analytics, setAnalytics] = useState({});
   const [isDataLoading, setIsDataLoading] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Add state for website dropdown
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Website dropdown
+  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false); // Contract dropdown
   const messagesEndRef = useRef(null);
-  const dropdownRef = useRef(null); // Add ref for dropdown
+  const dropdownRef = useRef(null); // Website dropdown ref
+  const contractDropdownRef = useRef(null); // Contract dropdown ref
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContracts, setSelectedContracts] = useState([]); // Changed from single selection to multiple
+  const [selectedContracts, setSelectedContracts] = useState([]); // Array for multiple selections
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -46,10 +48,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
-
-  // Add state for contract dropdown visibility
-  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
-  const contractDropdownRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,7 +111,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }));
         
         setContractArray(contracts);
-        console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
+        // Select all contracts by default
+        setSelectedContracts(contracts);
+        console.log(`Loaded and selected ${contracts.length} contracts for team ${selectedTeam}`);
       }
     } catch (error) {
       console.error("Error fetching smart contracts:", error);
@@ -2237,6 +2237,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
+      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target)) {
+        setIsContractDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -2244,6 +2247,52 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Handle contract selection/deselection
+  const handleContractToggle = (contract) => {
+    setSelectedContracts(prev => {
+      const isSelected = prev.some(c => c.id === contract.id);
+      if (isSelected) {
+        return prev.filter(c => c.id !== contract.id);
+      } else {
+        return [...prev, contract];
+      }
+    });
+  };
+
+  // Select/Deselect all contracts
+  const handleSelectAllContracts = (selectAll) => {
+    setSelectedContracts(selectAll ? [...contractArray] : []);
+  };
+
+  // Update contract transactions when selection changes
+  useEffect(() => {
+    const fetchAllContractTransactions = async () => {
+      if (selectedContracts.length === 0) {
+        setContractTransactions([]);
+        return;
+      }
+
+      setIsLoadingTransactions(true);
+      setLoadedTransactionCount(0);
+
+      try {
+        let allTransactions = [];
+        for (const contract of selectedContracts) {
+          const transactions = await fetchContractTransactions(contract.id);
+          allTransactions = [...allTransactions, ...transactions];
+        }
+        setContractTransactions(allTransactions);
+      } catch (error) {
+        console.error('Error fetching contract transactions:', error);
+        setError('Failed to load some contract transactions');
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    fetchAllContractTransactions();
+  }, [selectedContracts]);
 
   return (
     <div className="flex flex-col h-full">
@@ -2317,20 +2366,51 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 
                 {/* Smart Contract Selector */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
-                  <select
-                    value={selectedContracts}
-                    onChange={handleContractChange}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
-                    disabled={isLoadingContracts}
-                  >
-                    <option value="">Select a contract</option>
-                    {contractArray.map(contract => (
-                      <option key={contract.id} value={contract.id}>
-                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Smart Contracts Selected ({selectedContracts.length})</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsContractDropdownOpen(!isContractDropdownOpen)}
+                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm flex items-center justify-between"
+                    >
+                      <span className="truncate">
+                        {selectedContracts.length === contractArray.length 
+                          ? "All Contracts" 
+                          : selectedContracts.length === 0 
+                            ? "Select Contracts"
+                            : `${selectedContracts.length} Contract${selectedContracts.length !== 1 ? 's' : ''} Selected`}
+                      </span>
+                      <span className="ml-2">▼</span>
+                    </button>
+
+                    {isContractDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg" ref={contractDropdownRef}>
+                        <div className="p-2 border-b">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedContracts.length === contractArray.length}
+                              onChange={(e) => handleSelectAllContracts(e.target.checked)}
+                              className="mr-2"
+                            />
+                            Select All
+                          </label>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {contractArray.map(contract => (
+                            <label key={contract.id} className="flex items-center p-2 hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={selectedContracts.some(c => c.id === contract.id)}
+                                onChange={() => handleContractToggle(contract)}
+                                className="mr-2"
+                              />
+                              {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2349,9 +2429,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContracts && contractTransactions.length > 0 && (
+              {!isLoadingTransactions && selectedContracts.length > 0 && contractTransactions.length > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
+                  <span>{contractTransactions.length} transactions loaded for {selectedContracts.length} selected contract{selectedContracts.length !== 1 ? 's' : ''}</span>
                 </div>
               )}
             </div>
