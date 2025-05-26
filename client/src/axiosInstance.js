@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
+// Use the actual production URL with https, fallback to localhost for development
 const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
 
 console.log('API Server URL:', baseURL);
@@ -10,15 +10,9 @@ const axiosInstance = axios.create({
   baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    // Add CORS headers
-    'Access-Control-Allow-Origin': 'https://app.cryptique.io',
-    'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
-    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    'Accept': 'application/json'
   },
-  maxContentLength: 50 * 1024 * 1024,
-  maxBodyLength: 50 * 1024 * 1024,
-  withCredentials: true, // Enable credentials for CORS
+  withCredentials: true, // Enable sending cookies
   timeout: 60000
 });
 
@@ -32,16 +26,6 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Add CORS headers to every request
-    config.headers['Access-Control-Allow-Origin'] = 'https://app.cryptique.io';
-    
-    // Handle preflight OPTIONS requests
-    if (config.method.toLowerCase() === 'options') {
-      config.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,PATCH,OPTIONS';
-      config.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
-      config.headers['Access-Control-Max-Age'] = '3600';
     }
 
     return config;
@@ -68,20 +52,9 @@ axiosInstance.interceptors.response.use(
       url: originalRequest?.url,
       status: error.response?.status,
       message: error.message,
-      data: error.response?.data,
-      headers: error.response?.headers
+      data: error.response?.data
     });
 
-    // Handle CORS errors specifically
-    if (error.message === 'Network Error' || (error.response && error.response.status === 0)) {
-      console.error('CORS or Network Error detected. Please check backend CORS configuration.');
-      // You might want to notify the user about the CORS issue
-      return Promise.reject({
-        ...error,
-        message: 'Unable to connect to the server. Please check your connection or contact support.'
-      });
-    }
-    
     // Handle 401 errors (token expired)
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -91,12 +64,7 @@ axiosInstance.interceptors.response.use(
         const refreshResponse = await axios.post(
           `${baseURL}/api/auth/refresh-token`, 
           {}, 
-          { 
-            withCredentials: true,
-            headers: {
-              'Access-Control-Allow-Origin': 'https://app.cryptique.io'
-            }
-          }
+          { withCredentials: true }
         );
         
         if (refreshResponse.data.accessToken) {
@@ -125,5 +93,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// Single export at the end of the file
 export default axiosInstance;
