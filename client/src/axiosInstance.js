@@ -7,17 +7,14 @@ console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
-  baseURL: baseURL,  // The API routes already include /api prefix
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
-    // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  // Set withCredentials based on environment
-  withCredentials: false, // Changed to false by default
-  // Add timeout configuration
+  withCredentials: true, // Enable credentials for all requests
   timeout: 60000 // 60 seconds timeout
 });
 
@@ -27,34 +24,10 @@ axiosInstance.interceptors.request.use(
     // Log requests for debugging
     console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Check if this is an analytics endpoint that's causing CORS issues
-    if (config.url && (
-      config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/')
-    )) {
-      // For these endpoints, explicitly set withCredentials to false
-      config.withCredentials = false;
-    } else {
-      // For all other endpoints, including team routes, use credentials
-      config.withCredentials = true;
-    }
-    
-    // Get token dynamically on each request - not from closure
-    // Try both accessToken and token, as different parts of the app might use different keys
+    // Get token dynamically on each request
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Special handling for team routes
-    if (config.url && config.url.includes('/team/')) {
-      // Ensure content type is always set correctly for all team routes
-      config.headers['Content-Type'] = 'application/json';
-      
-      // Ensure Authorization header is set for team routes
-      if (token && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
     }
     
     return config;
