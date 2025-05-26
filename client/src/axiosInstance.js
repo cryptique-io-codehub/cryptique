@@ -12,6 +12,7 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
+  withCredentials: true,
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
   timeout: 60000 // 60 seconds timeout
@@ -20,17 +21,27 @@ const axiosInstance = axios.create({
 // Add request interceptor to handle credentials based on endpoint
 axiosInstance.interceptors.request.use(
   config => {
+    // Get the current origin
+    const origin = window.location.origin;
+    
+    // Add origin to headers for CORS
+    config.headers['Origin'] = origin;
+    
     // SDK endpoints don't need credentials
     if (config.url.startsWith('/api/sdk/')) {
       config.withCredentials = false;
-    } else {
-      config.withCredentials = true;
     }
     
     // Add authorization header if token exists
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Add team ID if available
+    const selectedTeam = localStorage.getItem('selectedTeam');
+    if (selectedTeam) {
+      config.headers['x-team-id'] = selectedTeam;
     }
     
     return config;
