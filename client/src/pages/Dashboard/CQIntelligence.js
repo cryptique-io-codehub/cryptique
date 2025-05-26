@@ -36,11 +36,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContracts, setSelectedContracts] = useState([]); // Changed from single selection to multiple
+  const [selectedContracts, setSelectedContracts] = useState([]); // Array for multiple selections
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [loadedTransactionCount, setLoadedTransactionCount] = useState(0);
+  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
+  const contractDropdownRef = useRef(null);
 
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
@@ -121,74 +123,75 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Function to fetch transactions for a selected smart contract
-  const fetchContractTransactions = async (contractId) => {
-    if (!contractId) return;
+  // Function to fetch transactions for selected smart contracts
+  const fetchContractTransactions = async (contracts) => {
+    if (!contracts || contracts.length === 0) {
+      setContractTransactions([]);
+      return;
+    }
     
     try {
       setIsLoadingTransactions(true);
-      setError(null); // Clear any previous errors
-      setLoadedTransactionCount(0); // Reset counter
-      console.log(`Fetching transactions for contract ID: ${contractId}`);
+      setError(null);
+      setLoadedTransactionCount(0);
       
       let allTransactions = [];
-      let hasMore = true;
-      let page = 1;
-      const pageSize = 100000; // Fetch 100000 transactions per request
+      const pageSize = 100000;
       
-      // Loop to fetch all transactions with pagination
-      while (hasMore) {
-        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
+      // Fetch transactions for each selected contract
+      for (const contract of contracts) {
+        console.log(`Fetching transactions for contract ID: ${contract.id}`);
         
-        const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-          params: { 
-            limit: pageSize,
-            page: page
-          }
-        });
+        let hasMore = true;
+        let page = 1;
         
-        if (response.data && response.data.transactions) {
-          const fetchedTransactions = response.data.transactions;
+        while (hasMore) {
+          console.log(`Fetching page ${page} for contract ${contract.id} (${pageSize} per page)`);
           
-          // Add to our accumulated transactions
-          allTransactions = [...allTransactions, ...fetchedTransactions];
+          const response = await axiosInstance.get(`/transactions/contract/${contract.id}`, {
+            params: { 
+              limit: pageSize,
+              page: page
+            }
+          });
           
-          // Update the progress counter
-          setLoadedTransactionCount(allTransactions.length);
-          
-          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
-          
-          // Check if we need to fetch more
-          hasMore = response.data.metadata?.hasMore;
-          
-          // If we got fewer transactions than the page size, we're done
-          if (fetchedTransactions.length < pageSize) {
+          if (response.data && response.data.transactions) {
+            const fetchedTransactions = response.data.transactions.map(tx => ({
+              ...tx,
+              contractId: contract.id,
+              contractName: contract.name,
+              contractSymbol: contract.tokenSymbol
+            }));
+            
+            allTransactions = [...allTransactions, ...fetchedTransactions];
+            setLoadedTransactionCount(allTransactions.length);
+            
+            console.log(`Fetched ${fetchedTransactions.length} transactions for contract ${contract.id} on page ${page}`);
+            
+            hasMore = response.data.metadata?.hasMore;
+            if (fetchedTransactions.length < pageSize) {
+              hasMore = false;
+            }
+            
+            page++;
+            
+            if (page > 10) {
+              console.log(`Reached maximum page fetch limit for contract ${contract.id}`);
+              hasMore = false;
+            }
+            
+            if (page % 10 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          } else {
             hasMore = false;
           }
-          
-          // Move to next page
-          page++;
-          
-          // Safety check - don't loop more than 10 times (1,000,000 transactions)
-          if (page > 10) {
-            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
-            hasMore = false;
-          }
-          
-          if (page % 10 === 0) {
-            // Log progress every 10 pages
-            console.log(`Fetched ${allTransactions.length} transactions so far...`);
-            // Small delay to avoid overwhelming the server
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        } else {
-          hasMore = false;
         }
       }
       
       setContractTransactions(allTransactions);
-      setError(null); // Clear any status messages
-      console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
+      setError(null);
+      console.log(`Loaded ${allTransactions.length} total transactions for ${contracts.length} contracts`);
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
@@ -199,13 +202,23 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
+  // Update useEffect to fetch transactions when contracts are selected
+  useEffect(() => {
+    if (selectedContracts.length > 0) {
+      fetchContractTransactions(selectedContracts);
+    } else {
+      setContractTransactions([]);
+      setLoadedTransactionCount(0);
+    }
+  }, [selectedContracts]);
+
   // Handle contract selection change
   const handleContractChange = async (e) => {
     const contractId = e.target.value;
     setSelectedContracts(contractId);
     
     if (contractId) {
-      await fetchContractTransactions(contractId);
+      await fetchContractTransactions([contractArray.find(contract => contract.id === contractId)]);
     } else {
       setContractTransactions([]);
     }
@@ -2295,6 +2308,9 @@ If you have specific questions about your analytics, please try again later when
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
+      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target)) {
+        setIsContractDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -2302,6 +2318,23 @@ If you have specific questions about your analytics, please try again later when
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Handle contract selection/deselection
+  const handleContractToggle = (contract) => {
+    setSelectedContracts(prev => {
+      const isSelected = prev.some(c => c.id === contract.id);
+      if (isSelected) {
+        return prev.filter(c => c.id !== contract.id);
+      } else {
+        return [...prev, contract];
+      }
+    });
+  };
+
+  // Select/Deselect all contracts
+  const handleSelectAllContracts = (selectAll) => {
+    setSelectedContracts(selectAll ? [...contractArray] : []);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -2375,20 +2408,52 @@ If you have specific questions about your analytics, please try again later when
                 
                 {/* Smart Contract Selector */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
-                  <select
-                    value={selectedContracts}
-                    onChange={handleContractChange}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
-                    disabled={isLoadingContracts}
-                  >
-                    <option value="">Select a contract</option>
-                    {contractArray.map(contract => (
-                      <option key={contract.id} value={contract.id}>
-                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Smart Contracts Selected ({selectedContracts.length})</label>
+                  <div className="relative" ref={contractDropdownRef}>
+                    <button
+                      onClick={() => setIsContractDropdownOpen(!isContractDropdownOpen)}
+                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm flex items-center justify-between"
+                      disabled={isLoadingContracts}
+                    >
+                      <span className="truncate">
+                        {selectedContracts.length === contractArray.length 
+                          ? "All Contracts" 
+                          : selectedContracts.length === 0 
+                            ? "Select Contracts"
+                            : `${selectedContracts.length} Contract${selectedContracts.length !== 1 ? 's' : ''} Selected`}
+                      </span>
+                      <span className="ml-2">▼</span>
+                    </button>
+
+                    {isContractDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                        <div className="p-2 border-b">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedContracts.length === contractArray.length}
+                              onChange={(e) => handleSelectAllContracts(e.target.checked)}
+                              className="mr-2"
+                            />
+                            Select All
+                          </label>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {contractArray.map(contract => (
+                            <label key={contract.id} className="flex items-center p-2 hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={selectedContracts.some(c => c.id === contract.id)}
+                                onChange={() => handleContractToggle(contract)}
+                                className="mr-2"
+                              />
+                              {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2407,9 +2472,9 @@ If you have specific questions about your analytics, please try again later when
                   <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContracts && contractTransactions.length > 0 && (
+              {!isLoadingTransactions && selectedContracts.length > 0 && contractTransactions.length > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
+                  <span>{contractTransactions.length} transactions loaded for {selectedContracts.length} selected contract{selectedContracts.length !== 1 ? 's' : ''}</span>
                 </div>
               )}
             </div>
