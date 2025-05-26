@@ -14,18 +14,21 @@ const axiosInstance = axios.create({
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  withCredentials: true, // Enable credentials for all requests
   timeout: 60000 // 60 seconds timeout
 });
 
-// Add request interceptor to dynamically get the token before each request
+// Add request interceptor to handle credentials based on endpoint
 axiosInstance.interceptors.request.use(
   config => {
-    // Log requests for debugging
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
+    // SDK endpoints don't need credentials
+    if (config.url.startsWith('/api/sdk/')) {
+      config.withCredentials = false;
+    } else {
+      config.withCredentials = true;
+    }
     
-    // Get token dynamically on each request
-    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    // Add authorization header if token exists
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -33,7 +36,6 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   error => {
-    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );

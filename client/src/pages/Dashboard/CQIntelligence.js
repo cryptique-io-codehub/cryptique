@@ -217,19 +217,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const fetchAnalyticsData = async (siteId) => {
     setIsDataLoading(true);
     try {
-      // Create a direct axios call without withCredentials for this specific endpoint
-      // to avoid CORS issues with the wildcard Access-Control-Allow-Origin
-      const response = await axiosInstance.get(`/sdk/analytics/${siteId}`, {
-        withCredentials: false, // Explicitly set to false for this request
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
+      // Use the sdkApi utility instead of direct axios call
+      const response = await sdkApi.getAnalytics(siteId);
       
-      if (response.data && response.data.analytics) {
-        setAnalytics(response.data.analytics);
+      if (response && response.analytics) {
+        setAnalytics(response.analytics);
         setError(null);
+      } else if (response.subscriptionError) {
+        setError(response.message || "Subscription required to access analytics data.");
       }
     } catch (error) {
       console.error("Error fetching analytics data:", error);
