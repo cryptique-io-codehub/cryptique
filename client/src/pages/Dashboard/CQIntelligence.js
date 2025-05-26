@@ -32,7 +32,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const [error, setError] = useState(null);
   const [analytics, setAnalytics] = useState({});
   const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Add state for website dropdown
   const messagesEndRef = useRef(null);
+  const dropdownRef = useRef(null); // Add ref for dropdown
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
@@ -2229,6 +2231,20 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     );
   };
 
+  // Add click outside handler for dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
@@ -2269,7 +2285,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg" ref={dropdownRef}>
                         <div className="p-2 border-b">
                           <label className="flex items-center">
                             <input
