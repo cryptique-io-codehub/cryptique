@@ -125,5 +125,5 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance;
+// Single export at the end of the file
 export default axiosInstance;
