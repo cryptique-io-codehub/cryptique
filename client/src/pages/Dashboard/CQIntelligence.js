@@ -1711,7 +1711,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const analyticsSummary = generateAnalyticsSummary(userMessage);
       
       // Call our backend API with selected contracts
-      const response = await axiosInstance.post('/ai/intelligence/query', {
+      const response = await axiosInstance.post('/api/ai/intelligence/query', {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,
