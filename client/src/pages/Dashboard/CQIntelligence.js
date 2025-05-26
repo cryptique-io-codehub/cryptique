@@ -45,6 +45,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
 
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -2286,6 +2290,19 @@ If you have specific questions about your analytics, please try again later when
           </div>
   );
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
@@ -2310,7 +2327,7 @@ If you have specific questions about your analytics, please try again later when
                 {/* Website Selector */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Websites Selected ({selectedSites.length})</label>
-                  <div className="relative">
+                  <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm flex items-center justify-between"
