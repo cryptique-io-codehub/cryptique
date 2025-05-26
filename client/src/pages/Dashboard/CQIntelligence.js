@@ -217,14 +217,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const fetchAnalyticsData = async (siteId) => {
     setIsDataLoading(true);
     try {
-      // Use the sdkApi utility instead of direct axios call
-      const response = await sdkApi.getAnalytics(siteId);
+      // Use axiosInstance directly with the SDK endpoint
+      const response = await axiosInstance.get(`/api/sdk/analytics/${siteId}`);
       
-      if (response && response.analytics) {
-        setAnalytics(response.analytics);
+      if (response && response.data) {
+        setAnalytics(response.data);
         setError(null);
-      } else if (response.subscriptionError) {
-        setError(response.message || "Subscription required to access analytics data.");
+      } else if (response.data?.subscriptionError) {
+        setError(response.data.message || "Subscription required to access analytics data.");
       }
     } catch (error) {
       console.error("Error fetching analytics data:", error);
