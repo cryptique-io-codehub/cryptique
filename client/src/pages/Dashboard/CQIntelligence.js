@@ -1710,21 +1710,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Generate analytics summary
       const analyticsSummary = generateAnalyticsSummary(userMessage);
       
-      // Format the request payload
-      const payload = {
+      // Call our backend API with selected contracts
+      const response = await axiosInstance.post('/ai/intelligence/query', {
         query: userMessage,
         expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
         topK: 5,
         minScore: 0.7,
         selectedSites: selectedSites.map(site => site.siteId),
-        selectedContracts: selectedContracts.map(contract => contract.id), // Ensure we're sending an array of IDs
+        selectedContracts: selectedContracts.map(contract => contract.id),
         analyticsSummary
-      };
-
-      console.log('Sending request with payload:', payload);
-
-      // Call our backend API
-      const response = await axiosInstance.post('/api/ai/intelligence/query', payload);
+      });
 
       if (!response.data) {
         throw new Error('No response data received from backend');
@@ -1739,33 +1734,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }]);
     } catch (err) {
       console.error('Error in handleSend:', err);
-      
-      // More detailed error handling
-      let errorMessage = 'Failed to get response. Please try again.';
-      if (err.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Response error data:', err.response.data);
-        console.error('Response error status:', err.response.status);
-        console.error('Response error headers:', err.response.headers);
-        
-        if (err.response.status === 404) {
-          errorMessage = 'The API endpoint could not be found. Please check the server configuration.';
-        } else if (err.response.status === 401) {
-          errorMessage = 'Authentication error. Please try logging in again.';
-        } else if (err.response.status === 400) {
-          errorMessage = 'Invalid request. Please check your input and try again.';
-        }
-      } else if (err.request) {
-        // The request was made but no response was received
-        console.error('No response received:', err.request);
-        errorMessage = 'No response received from the server. Please check your internet connection.';
-      }
-      
-      setError(errorMessage);
+      setError('Failed to get response. Please try again.');
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'I apologize, but I encountered an error while processing your request. ' + errorMessage,
+        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
