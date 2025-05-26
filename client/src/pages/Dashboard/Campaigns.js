@@ -34,7 +34,6 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
   const [activeCampaignDetail, setActiveCampaignDetail] = useState(null);
   const [campaignMetrics, setCampaignMetrics] = useState(null);
   const [isCalculatingMetrics, setIsCalculatingMetrics] = useState(false);
-  const [teamContracts, setTeamContracts] = useState([]);
   
   // Sample data - In a real app, you might fetch this from an API
   const campaignsData = [
@@ -83,26 +82,6 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
     };
 
     fetchWebsites();
-  }, []);
-
-  // Fetch team contracts when component mounts
-  useEffect(() => {
-    const fetchTeamContracts = async () => {
-      try {
-        const selectedTeam = localStorage.getItem("selectedTeam");
-        if (!selectedTeam) return;
-
-        const response = await axiosInstance.get(`/smart-contract/team/${selectedTeam}`);
-        if (response.data.contracts) {
-          setTeamContracts(response.data.contracts);
-          setcontractarray(response.data.contracts);
-        }
-      } catch (error) {
-        console.error("Error fetching team contracts:", error);
-      }
-    };
-
-    fetchTeamContracts();
   }, []);
 
   // Add this useEffect to fetch campaigns when component mounts or website changes
@@ -327,20 +306,13 @@ export default function Campaigns({ onMenuClick, screenSize, selectedPage }) {
       const response = await axiosInstance.get(`/campaign/${campaign._id}/metrics`);
       const metrics = response.data;
       
-      // Add contract names to metrics
-      if (metrics.teamContracts) {
-        metrics.teamContracts = metrics.teamContracts.map(contractMetric => {
-          const matchingContract = teamContracts.find(
-            c => c.address.toLowerCase() === contractMetric.address.toLowerCase()
-          );
-          return {
-            ...contractMetric,
-            name: matchingContract?.name || contractMetric.name || 'Unknown Contract'
-          };
-        });
-      }
+      // Process metrics for visualization
+      const processedMetrics = {
+        ...metrics,
+        // Add any additional processing here
+      };
       
-      setCampaignMetrics(metrics);
+      setCampaignMetrics(processedMetrics);
     } catch (error) {
       console.error('Error calculating campaign metrics:', error);
     } finally {

@@ -25,7 +25,7 @@ const loadExpertKnowledge = async () => {
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
   const [websiteArray, setWebsiteArray] = useState([]);
-  const [selectedSite, setSelectedSite] = useState('');
+  const [selectedSites, setSelectedSites] = useState([]); // Changed from single selection to multiple
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +36,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContract, setSelectedContract] = useState('');
+  const [selectedContracts, setSelectedContracts] = useState([]); // Changed from single selection to multiple
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -53,24 +53,23 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Fetch website list on component mount
+  // Fetch website list and select all by default
   useEffect(() => {
     const fetchWebsites = async () => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        // Use the correct GET endpoint with team name in path parameter
         const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites.length > 0) {
           setWebsiteArray(response.data.websites);
+          // Select all websites by default
+          setSelectedSites(response.data.websites);
           
-          // Get the currently selected website from localStorage
-          const savedWebsiteId = localStorage.getItem("idy");
-          if (savedWebsiteId) {
-            setSelectedSite(savedWebsiteId);
-            fetchAnalyticsData(savedWebsiteId);
-          }
+          // Fetch analytics data for all websites
+          response.data.websites.forEach(website => {
+            fetchAnalyticsData(website.siteId);
+          });
         }
       } catch (error) {
         console.error("Error fetching websites:", error);
@@ -199,7 +198,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Handle contract selection change
   const handleContractChange = async (e) => {
     const contractId = e.target.value;
-    setSelectedContract(contractId);
+    setSelectedContracts(contractId);
     
     if (contractId) {
       await fetchContractTransactions(contractId);
@@ -234,17 +233,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Handle website selection change
-  const handleSiteChange = async (e) => {
-    const siteId = e.target.value;
-    setSelectedSite(siteId);
-    
-    if (siteId) {
-      localStorage.setItem("idy", siteId);
-      fetchAnalyticsData(siteId);
-    } else {
-      setAnalytics({});
-    }
+  // Handle website selection/deselection
+  const handleSiteToggle = (site) => {
+    setSelectedSites(prev => {
+      const isSelected = prev.some(s => s.siteId === site.siteId);
+      if (isSelected) {
+        return prev.filter(s => s.siteId !== site.siteId);
+      } else {
+        return [...prev, site];
+      }
+    });
+  };
+
+  // Select/Deselect all websites
+  const handleSelectAllSites = (selectAll) => {
+    setSelectedSites(selectAll ? [...websiteArray] : []);
   };
 
   // Load expert knowledge on component mount
@@ -1097,9 +1100,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
 
     // Add smart contract transaction data if available
-    if (selectedContract && contractTransactions && contractTransactions.length > 0) {
+    if (selectedContracts && contractTransactions && contractTransactions.length > 0) {
       // Find the selected contract details
-      const contractDetails = contractArray.find(contract => contract.id === selectedContract);
+      const contractDetails = contractArray.find(contract => contract.id === selectedContracts);
       
       // Process transaction data
       if (contractDetails) {
@@ -1752,7 +1755,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // If both approaches fail, create a fallback response based on the analytics data
           botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
           
-Based on the analytics data I can see for your site${selectedSite ? ` "${selectedSite}"` : ''}, here's what I can tell you:
+Based on the analytics data I can see for your site${selectedSites.length > 0 ? ` "${selectedSites.map(site => site.Domain).join(', ')}"` : ''}, here's what I can tell you:
 
 ## Analytics Summary
 ${analytics && analytics.pageViews ? `- Total Page Views: ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '- Page view data is not available at the moment.'}
@@ -2306,26 +2309,58 @@ If you have specific questions about your analytics, please try again later when
               <div className="flex items-center gap-4 min-w-[300px]">
                 {/* Website Selector */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Website</label>
-                  <select
-                    value={selectedSite}
-                    onChange={handleSiteChange}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
-                  >
-                    <option value="">Select a website</option>
-                    {websiteArray.map(website => (
-                      <option key={website.siteId} value={website.siteId}>
-                        {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Websites Selected ({selectedSites.length})</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm flex items-center justify-between"
+                    >
+                      <span className="truncate">
+                        {selectedSites.length === websiteArray.length 
+                          ? "All Websites" 
+                          : selectedSites.length === 0 
+                            ? "Select Websites"
+                            : `${selectedSites.length} Website${selectedSites.length !== 1 ? 's' : ''} Selected`}
+                      </span>
+                      <span className="ml-2">▼</span>
+                    </button>
+
+                    {isDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                        <div className="p-2 border-b">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedSites.length === websiteArray.length}
+                              onChange={(e) => handleSelectAllSites(e.target.checked)}
+                              className="mr-2"
+                            />
+                            Select All
+                          </label>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {websiteArray.map(website => (
+                            <label key={website.siteId} className="flex items-center p-2 hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={selectedSites.some(s => s.siteId === website.siteId)}
+                                onChange={() => handleSiteToggle(website)}
+                                className="mr-2"
+                              />
+                              {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Smart Contract Selector */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
                   <select
-                    value={selectedContract}
+                    value={selectedContracts}
                     onChange={handleContractChange}
                     className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
                     disabled={isLoadingContracts}
@@ -2355,7 +2390,7 @@ If you have specific questions about your analytics, please try again later when
                   <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContract && contractTransactions.length > 0 && (
+              {!isLoadingTransactions && selectedContracts && contractTransactions.length > 0 && (
                 <div className="flex items-center text-gray-600">
                   <span>{contractTransactions.length} transactions loaded for selected contract</span>
                 </div>
@@ -2375,17 +2410,17 @@ If you have specific questions about your analytics, please try again later when
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
-                  disabled={!selectedSite || isLoading}
+                  placeholder={selectedSites.length > 0 ? "Ask about your analytics..." : "Select a website first to ask questions"}
+                  disabled={!selectedSites.length || isLoading}
                   className="w-full p-4 pl-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] focus:border-transparent focus:shadow-input disabled:bg-gray-100 disabled:text-gray-400 transition-all duration-300 bg-white"
                 />
                 <div className="input-glow"></div>
               </div>
               <button
                 onClick={handleSend}
-                disabled={isLoading || !input.trim() || !selectedSite}
+                disabled={isLoading || !input.trim() || !selectedSites.length}
                 className={`px-8 rounded-lg flex items-center gap-2 transition-all duration-300 ${
-                  isLoading || !input.trim() || !selectedSite
+                  isLoading || !input.trim() || !selectedSites.length
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90 hover:shadow-lg hover:shadow-[#1d0c46]/20'
                 }`}

@@ -5,8 +5,9 @@ import { ChevronDown } from 'lucide-react';
 const SmartContractSelector = () => {
   const { 
     contractArray, 
-    selectedContract, 
-    handleContractChange, 
+    selectedContracts,
+    handleContractToggle,
+    handleSelectAllContracts,
     isLoadingContracts,
     isLoadingTransactions
   } = useContractData();
@@ -19,62 +20,65 @@ const SmartContractSelector = () => {
         <div className="w-full md:w-auto relative">
           <div className="flex items-center">
             <div className="relative flex-grow">
-              <select
-                className="appearance-none bg-white border border-gray-300 rounded-lg py-2 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
-                value={selectedContract ? selectedContract.id : ''}
-                onChange={(e) => handleContractChange(e.target.value)}
+              <button
+                onClick={() => handleSelectAllContracts(!selectedContracts.length)}
+                className="appearance-none bg-white border border-gray-300 rounded-lg py-2 px-4 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64 text-left"
                 disabled={isLoadingContracts}
               >
-                <option value="">Select a Smart Contract</option>
-                {contractArray.map(contract => (
-                  <option key={contract.id} value={contract.id}>
-                    {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <ChevronDown size={18} />
+                <div className="flex items-center justify-between">
+                  <span className="truncate">
+                    {selectedContracts.length === contractArray.length 
+                      ? "All Smart Contracts" 
+                      : selectedContracts.length === 0 
+                        ? "Select Smart Contracts"
+                        : `${selectedContracts.length} Contract${selectedContracts.length !== 1 ? 's' : ''} Selected`}
+                  </span>
+                  <ChevronDown size={18} />
+                </div>
+              </button>
+
+              <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                <div className="p-2 border-b">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedContracts.length === contractArray.length}
+                      onChange={(e) => handleSelectAllContracts(e.target.checked)}
+                      className="mr-2"
+                    />
+                    Select All
+                  </label>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {contractArray.map(contract => (
+                    <label key={contract.id} className="flex items-center p-2 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={selectedContracts.some(c => c.id === contract.id)}
+                        onChange={() => handleContractToggle(contract.id)}
+                        className="mr-2"
+                      />
+                      {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
           
           {/* Loading Indicators */}
           {isLoadingContracts && (
-            <div className="text-xs text-gray-500 mt-1 flex items-center">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1"></div>
-              <span>Loading contracts...</span>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-8">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
             </div>
           )}
           {isLoadingTransactions && (
-            <div className="text-xs text-gray-500 mt-1 flex items-center">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-              <span>Loading transaction data...</span>
+            <div className="mt-2 text-sm text-gray-500">
+              Loading transaction data...
             </div>
           )}
         </div>
       </div>
-      
-      {/* Selected Contract Details */}
-      {selectedContract && (
-        <div className="mt-3 text-sm border-t pt-3">
-          <div className="flex flex-wrap gap-x-6 gap-y-1">
-            <div>
-              <span className="text-gray-500">Contract:</span> {selectedContract.name}
-            </div>
-            <div>
-              <span className="text-gray-500">Address:</span> {selectedContract.address.substring(0, 6)}...{selectedContract.address.substring(selectedContract.address.length - 4)}
-            </div>
-            <div>
-              <span className="text-gray-500">Blockchain:</span> {selectedContract.blockchain}
-            </div>
-            {selectedContract.tokenSymbol && (
-              <div>
-                <span className="text-gray-500">Token:</span> {selectedContract.tokenSymbol}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

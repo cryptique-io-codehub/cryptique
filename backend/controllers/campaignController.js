@@ -678,13 +678,14 @@ async function getTeamContractsPerformance(siteId, campaign) {
     if (!website) return [];
 
     // Get all contracts for the team
-    const Contract = require('../models/contract');
-    const contracts = await Contract.find({ teamId: website.teamId });
+    const SmartContract = require('../models/smartContract');
+    const contracts = await SmartContract.find({ team: website.teamId });
 
     // Process each contract's performance for this campaign
     const contractsPerformance = contracts.map(contract => {
       // Filter transactions for this contract
       const contractTransactions = (campaign.stats.transactions || []).filter(tx => 
+        tx.contractAddress && contract.address && 
         tx.contractAddress.toLowerCase() === contract.address.toLowerCase()
       );
 
@@ -694,10 +695,10 @@ async function getTeamContractsPerformance(siteId, campaign) {
       const averageValue = contractTransactions.length > 0 ? totalVolume / contractTransactions.length : 0;
 
       return {
-        name: contract.name,
+        name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
         address: contract.address,
-        chainId: contract.chainId,
-        chainName: contract.chainName,
+        chainId: contract.blockchain,
+        chainName: contract.blockchain,
         metrics: {
           transactions: contractTransactions.length,
           uniqueUsers,
