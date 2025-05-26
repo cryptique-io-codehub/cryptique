@@ -63,16 +63,20 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        const response = await axiosInstance.get(`/api/website/team/${selectedTeam}`);
+        if (!selectedTeam) {
+          console.log("No team selected");
+          return;
+        }
+        const response = await axiosInstance.get(`/api/websites/${selectedTeam}`);
         
-        if (response.status === 200 && response.data.websites.length > 0) {
-          setWebsiteArray(response.data.websites);
+        if (response.status === 200 && response.data && response.data.length > 0) {
+          setWebsiteArray(response.data);
           // Select all websites by default
-          setSelectedSites(response.data.websites);
+          setSelectedSites(response.data);
           
           // Fetch analytics data for all websites
-          response.data.websites.forEach(website => {
-            fetchAnalyticsData(website.siteId);
+          response.data.forEach(website => {
+            fetchAnalyticsData(website.id);
           });
         }
       } catch (error) {
@@ -94,16 +98,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const selectedTeam = localStorage.getItem("selectedTeam");
       
       if (!selectedTeam) {
+        console.log("No team selected");
         setIsLoadingContracts(false);
         return;
       }
 
-      const response = await axiosInstance.get(`/api/contracts/team/${selectedTeam}`);
+      const response = await axiosInstance.get(`/api/contracts/${selectedTeam}`);
       
-      if (response.data && response.data.contracts) {
+      if (response.data && Array.isArray(response.data)) {
         // Format contract data
-        const contracts = response.data.contracts.map(contract => ({
-          id: contract.contractId,
+        const contracts = response.data.map(contract => ({
+          id: contract.id,
           address: contract.address,
           name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
           blockchain: contract.blockchain,
@@ -129,58 +134,43 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       setIsLoadingTransactions(true);
-      setError(null); // Clear any previous errors
-      setLoadedTransactionCount(0); // Reset counter
+      setError(null);
+      setLoadedTransactionCount(0);
       console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 100000; // Fetch 100000 transactions per request
+      const pageSize = 100000;
       
-      // Loop to fetch all transactions with pagination
       while (hasMore) {
         console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
         
-        const response = await axiosInstance.get(`/api/transactions/contract/${contractId}`, {
+        const response = await axiosInstance.get(`/api/transactions/${contractId}`, {
           params: { 
             limit: pageSize,
             page: page
           }
         });
         
-        if (response.data && response.data.transactions) {
-          const fetchedTransactions = response.data.transactions;
+        if (response.data && Array.isArray(response.data)) {
+          const fetchedTransactions = response.data;
           
-          // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
-          
-          // Update the progress counter
           setLoadedTransactionCount(allTransactions.length);
           
           console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
           
-          // Check if we need to fetch more
-          hasMore = response.data.metadata?.hasMore;
-          
-          // If we got fewer transactions than the page size, we're done
-          if (fetchedTransactions.length < pageSize) {
-            hasMore = false;
-          }
-          
-          // Move to next page
+          hasMore = fetchedTransactions.length === pageSize;
           page++;
           
-          // Safety check - don't loop more than 10 times (1,000,000 transactions)
           if (page > 10) {
             console.log("Reached maximum page fetch limit (1,000,000 transactions)");
             hasMore = false;
           }
           
           if (page % 10 === 0) {
-            // Log progress every 10 pages
             console.log(`Fetched ${allTransactions.length} transactions so far...`);
-            // Small delay to avoid overwhelming the server
             await new Promise(resolve => setTimeout(resolve, 300));
           }
         } else {
@@ -189,7 +179,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       }
       
       setContractTransactions(allTransactions);
-      setError(null); // Clear any status messages
+      setError(null);
       console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       return allTransactions;
     } catch (error) {
@@ -217,14 +207,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const fetchAnalyticsData = async (siteId) => {
     setIsDataLoading(true);
     try {
-      // Use axiosInstance directly with the SDK endpoint
-      const response = await axiosInstance.get(`/api/sdk/analytics/${siteId}`);
+      // Use the SDK endpoint
+      const response = await axiosInstance.get(`/api/sdk/analytics/${siteId}`, {
+        headers: {
+          'x-cryptique-site-id': siteId
+        }
+      });
       
       if (response && response.data) {
-        setAnalytics(response.data);
+        setAnalytics(prev => ({
+          ...prev,
+          [siteId]: response.data
+        }));
         setError(null);
       } else if (response.data?.subscriptionError) {
-        setError(response.data.message || "Subscription required to access analytics data.");
+        setError("Subscription required to access analytics data.");
       }
     } catch (error) {
       console.error("Error fetching analytics data:", error);
