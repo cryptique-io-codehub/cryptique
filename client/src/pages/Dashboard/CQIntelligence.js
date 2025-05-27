@@ -1911,19 +1911,63 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const storedChunks = [];
       for (const chunk of chunks) {
         try {
-          const embedding = await generateEmbedding(chunk.text);
-          await axiosInstance.post('/vector/store', {
-            text: chunk.text,
-            embedding: embedding,
-            metadata: chunk.metadata
-          });
-          storedChunks.push(chunk);
-        } catch (error) {
-          console.error(`Error storing chunk: ${error.message}`);
-          // Continue with other chunks even if one fails
+          // Validate chunk data
+          if (!chunk.text || typeof chunk.text !== 'string') {
+            console.error('Invalid chunk text:', chunk);
+            continue;
+          }
+
+          // Generate embedding
+          let embedding;
+          try {
+            const embedResponse = await axiosInstance.post('/vector/embed', { text: chunk.text });
+            embedding = embedResponse.data.embedding;
+            
+            if (!embedding || !Array.isArray(embedding)) {
+              console.error('Invalid embedding received:', embedding);
+              continue;
+            }
+          } catch (embedError) {
+            console.error('Error generating embedding:', embedError);
+            continue;
+          }
+
+          // Store vector with retries
+          let retries = 3;
+          while (retries > 0) {
+            try {
+              const storeResponse = await axiosInstance.post('/vector/store', {
+                text: chunk.text,
+                embedding: embedding,
+                metadata: chunk.metadata || {}
+              });
+
+              if (storeResponse.data.success) {
+                storedChunks.push({
+                  ...chunk,
+                  id: storeResponse.data.id
+                });
+                break; // Success, exit retry loop
+              }
+            } catch (storeError) {
+              console.error(`Store attempt ${4 - retries} failed:`, storeError);
+              retries--;
+              if (retries === 0) {
+                console.error('Failed to store chunk after all retries');
+              } else {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+              }
+            }
+          }
+        } catch (chunkError) {
+          console.error('Error processing chunk:', chunkError);
+          // Continue with next chunk
         }
       }
-      console.log(`Successfully stored ${storedChunks.length} of ${chunks.length} chunks with embeddings`);
+
+      const successRate = (storedChunks.length / chunks.length) * 100;
+      console.log(`Successfully stored ${storedChunks.length} of ${chunks.length} chunks (${successRate.toFixed(1)}%)`);
+      
       return storedChunks.length > 0;
     } catch (error) {
       console.error("Error in storeChunksWithEmbeddings:", error);
@@ -2101,8 +2145,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         
         // Step 4: Get response from Gemini
         try {
-          const ai = initializeAI();
-          const modelName = await verifyModel();
+        const ai = initializeAI();
+        const modelName = await verifyModel();
           
           // If we have relevant chunks and storage was successful, use RAG approach
           if (useRAG) {
@@ -2110,11 +2154,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             
             // Construct enhanced prompt with retrieved chunks
             const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
-            
-            const model = ai.getGenerativeModel({ model: modelName });
+        
+        const model = ai.getGenerativeModel({ model: modelName });
             const result = await model.generateContent(enhancedPrompt);
-            const response = await result.response;
-            botMessage = response.text();
+        const response = await result.response;
+        botMessage = response.text();
           } else {
             // Fall back to traditional approach
             console.log("Falling back to traditional approach with model:", modelName);
@@ -2131,7 +2175,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // Try REST API fallback
           try {
             console.log("Trying REST API fallback...");
-            const modelName = await verifyModel();
+          const modelName = await verifyModel();
             
             let promptContent;
             if (useRAG) {
@@ -2139,19 +2183,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             } else {
               promptContent = generateAnalyticsSummary(userMessage);
             }
-            
-            const requestBody = {
-              model: modelName,
-              contents: [
-                {
-                  parts: [
+          
+          const requestBody = {
+            model: modelName,
+            contents: [
+              {
+                parts: [
                     { text: promptContent }
-                  ]
-                }
-              ]
-            };
-            
-            const response = await axiosInstance.post('/ai/generate', requestBody);
+                ]
+              }
+            ]
+          };
+
+          const response = await axiosInstance.post('/ai/generate', requestBody);
             botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
                        "Sorry, I couldn't process your request.";
           } catch (apiError) {
@@ -2202,10 +2246,10 @@ If you have specific questions about your analytics, please try again later when
             const response = await axiosInstance.post('/ai/generate', requestBody);
             botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
                         "Sorry, I couldn't process your request.";
-          } catch (apiError) {
-            console.error("REST API approach also failed:", apiError);
-            botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
-            
+        } catch (apiError) {
+          console.error("REST API approach also failed:", apiError);
+          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+          
 Based on the analytics data I can see for your selected sites, here's what I can tell you:
 
 ## Analytics Summary
@@ -2219,12 +2263,12 @@ If you have specific questions about your analytics, please try again later when
 
       // Format and display the response
       try {
-        const formattedMessage = formatResponse(botMessage);
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: formattedMessage,
-          timestamp: new Date().toISOString()
-        }]);
+      const formattedMessage = formatResponse(botMessage);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: formattedMessage,
+        timestamp: new Date().toISOString()
+      }]);
       } catch (formatError) {
         console.error("Error formatting response:", formatError);
         // If formatting fails, use the original message
