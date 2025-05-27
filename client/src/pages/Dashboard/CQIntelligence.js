@@ -25,19 +25,21 @@ const loadExpertKnowledge = async () => {
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
   const [websiteArray, setWebsiteArray] = useState([]);
-  const [selectedSite, setSelectedSite] = useState('');
+  const [selectedSites, setSelectedSites] = useState(new Set()); // Changed to Set for multiple selections
+  const [allSitesSelected, setAllSitesSelected] = useState(true); // New state for select all
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [analytics, setAnalytics] = useState({});
+  const [analytics, setAnalytics] = useState({}); // Will now store analytics for multiple sites
   const [isDataLoading, setIsDataLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContract, setSelectedContract] = useState('');
-  const [contractTransactions, setContractTransactions] = useState([]);
+  const [selectedContracts, setSelectedContracts] = useState(new Set()); // Changed to Set for multiple selections
+  const [allContractsSelected, setAllContractsSelected] = useState(true); // New state for select all
+  const [contractTransactions, setContractTransactions] = useState({}); // Changed to object to store multiple contract data
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [loadedTransactionCount, setLoadedTransactionCount] = useState(0);
@@ -59,17 +61,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
-        // Use the correct GET endpoint with team name in path parameter
         const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites.length > 0) {
           setWebsiteArray(response.data.websites);
           
-          // Get the currently selected website from localStorage
-          const savedWebsiteId = localStorage.getItem("idy");
-          if (savedWebsiteId) {
-            setSelectedSite(savedWebsiteId);
-            fetchAnalyticsData(savedWebsiteId);
+          // Select all websites by default
+          const allSiteIds = new Set(response.data.websites.map(site => site.siteId));
+          setSelectedSites(allSiteIds);
+          setAllSitesSelected(true);
+          
+          // Fetch analytics for all sites
+          for (const site of response.data.websites) {
+            fetchAnalyticsData(site.siteId);
           }
         }
       } catch (error) {
@@ -98,7 +102,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
       
       if (response.data && response.data.contracts) {
-        // Format contract data
         const contracts = response.data.contracts.map(contract => ({
           id: contract.contractId,
           address: contract.address,
@@ -108,6 +111,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }));
         
         setContractArray(contracts);
+        
+        // Select all contracts by default
+        const allContractIds = new Set(contracts.map(contract => contract.id));
+        setSelectedContracts(allContractIds);
+        setAllContractsSelected(true);
+        
+        // Fetch transactions for all contracts
+        for (const contract of contracts) {
+          fetchContractTransactions(contract.id);
+        }
+        
         console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
       }
     } catch (error) {
@@ -124,68 +138,37 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       setIsLoadingTransactions(true);
-      setError(null); // Clear any previous errors
-      setLoadedTransactionCount(0); // Reset counter
-      console.log(`Fetching transactions for contract ID: ${contractId}`);
+      setError(null);
+      setLoadedTransactionCount(prevCount => prevCount + 1);
       
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 100000; // Fetch 100000 transactions per request
+      const pageSize = 100000;
       
-      // Loop to fetch all transactions with pagination
       while (hasMore) {
-        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
-        
         const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-          params: { 
-            limit: pageSize,
-            page: page
-          }
+          params: { limit: pageSize, page: page }
         });
         
         if (response.data && response.data.transactions) {
           const fetchedTransactions = response.data.transactions;
-          
-          // Add to our accumulated transactions
           allTransactions = [...allTransactions, ...fetchedTransactions];
+          setLoadedTransactionCount(prevCount => prevCount + fetchedTransactions.length);
           
-          // Update the progress counter
-          setLoadedTransactionCount(allTransactions.length);
-          
-          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
-          
-          // Check if we need to fetch more
-          hasMore = response.data.metadata?.hasMore;
-          
-          // If we got fewer transactions than the page size, we're done
-          if (fetchedTransactions.length < pageSize) {
-            hasMore = false;
-          }
-          
-          // Move to next page
+          hasMore = response.data.metadata?.hasMore && fetchedTransactions.length === pageSize && page < 10;
           page++;
-          
-          // Safety check - don't loop more than 10 times (1,000,000 transactions)
-          if (page > 10) {
-            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
-            hasMore = false;
-          }
-          
-          if (page % 10 === 0) {
-            // Log progress every 10 pages
-            console.log(`Fetched ${allTransactions.length} transactions so far...`);
-            // Small delay to avoid overwhelming the server
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
         } else {
           hasMore = false;
         }
       }
       
-      setContractTransactions(allTransactions);
-      setError(null); // Clear any status messages
-      console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
+      // Store transactions in the object with contractId as key
+      setContractTransactions(prev => ({
+        ...prev,
+        [contractId]: allTransactions
+      }));
+      
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
@@ -196,15 +179,55 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Handle contract selection change
-  const handleContractChange = async (e) => {
-    const contractId = e.target.value;
-    setSelectedContract(contractId);
-    
-    if (contractId) {
-      await fetchContractTransactions(contractId);
+  // Handle website selection changes
+  const handleSiteChange = (siteId) => {
+    setSelectedSites(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(siteId)) {
+        newSelection.delete(siteId);
+      } else {
+        newSelection.add(siteId);
+      }
+      setAllSitesSelected(newSelection.size === websiteArray.length);
+      return newSelection;
+    });
+  };
+
+  // Handle contract selection changes
+  const handleContractChange = (contractId) => {
+    setSelectedContracts(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(contractId)) {
+        newSelection.delete(contractId);
+      } else {
+        newSelection.add(contractId);
+      }
+      setAllContractsSelected(newSelection.size === contractArray.length);
+      return newSelection;
+    });
+  };
+
+  // Handle select all websites
+  const handleSelectAllSites = () => {
+    if (allSitesSelected) {
+      setSelectedSites(new Set());
+      setAllSitesSelected(false);
     } else {
-      setContractTransactions([]);
+      const allSiteIds = new Set(websiteArray.map(site => site.siteId));
+      setSelectedSites(allSiteIds);
+      setAllSitesSelected(true);
+    }
+  };
+
+  // Handle select all contracts
+  const handleSelectAllContracts = () => {
+    if (allContractsSelected) {
+      setSelectedContracts(new Set());
+      setAllContractsSelected(false);
+    } else {
+      const allContractIds = new Set(contractArray.map(contract => contract.id));
+      setSelectedContracts(allContractIds);
+      setAllContractsSelected(true);
     }
   };
 
@@ -223,7 +246,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       });
       
       if (response.data && response.data.analytics) {
-        setAnalytics(response.data.analytics);
+        setAnalytics(prev => ({ ...prev, [siteId]: response.data.analytics }));
         setError(null);
       }
     } catch (error) {
@@ -231,19 +254,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setError("Failed to load analytics data for this website.");
     } finally {
       setIsDataLoading(false);
-    }
-  };
-
-  // Handle website selection change
-  const handleSiteChange = async (e) => {
-    const siteId = e.target.value;
-    setSelectedSite(siteId);
-    
-    if (siteId) {
-      localStorage.setItem("idy", siteId);
-      fetchAnalyticsData(siteId);
-    } else {
-      setAnalytics({});
     }
   };
 
@@ -1097,14 +1107,21 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
 
     // Add smart contract transaction data if available
-    if (selectedContract && contractTransactions && contractTransactions.length > 0) {
+    if (selectedContracts.size > 0 && contractTransactions) {
       // Find the selected contract details
-      const contractDetails = contractArray.find(contract => contract.id === selectedContract);
+      const selectedContractsData = contractArray.filter(contract => selectedContracts.has(contract.id));
       
       // Process transaction data
-      if (contractDetails) {
-        const contractData = processContractTransactions(contractDetails, contractTransactions);
-        fullAnalytics.smartContract = contractData;
+      if (selectedContractsData.length > 0) {
+        const selectedContractsData = selectedContractsData.map(contract => ({
+          id: contract.id,
+          name: contract.name,
+          blockchain: contract.blockchain,
+          tokenSymbol: contract.tokenSymbol,
+          transactions: contractTransactions[contract.id] || []
+        }));
+        
+        fullAnalytics.smartContract = selectedContractsData;
       }
     }
 
@@ -1752,7 +1769,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           // If both approaches fail, create a fallback response based on the analytics data
           botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
           
-Based on the analytics data I can see for your site${selectedSite ? ` "${selectedSite}"` : ''}, here's what I can tell you:
+Based on the analytics data I can see for your site${selectedSites.size > 0 ? ` "${[...selectedSites].join(', ')}"` : ''}, here's what I can tell you:
 
 ## Analytics Summary
 ${analytics && analytics.pageViews ? `- Total Page Views: ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '- Page view data is not available at the moment.'}
@@ -1787,21 +1804,232 @@ If you have specific questions about your analytics, please try again later when
     }
   };
 
-  // Format analytics data for display
-  const formatAnalyticsData = () => {
-    if (!analytics || Object.keys(analytics).length === 0) {
-      return [];
+  // Function to process analytics data from multiple websites
+  const processMultiSiteAnalytics = () => {
+    const combinedAnalytics = {
+      totalVisitors: 0,
+      uniqueVisitors: 0,
+      web3Visitors: 0,
+      totalPageViews: 0,
+      newVisitors: 0,
+      returningVisitors: 0,
+      walletsConnected: 0,
+      sites: [],
+      pageViews: {},
+      userAgents: new Set(),
+      wallets: [],
+      entryPages: {},
+      exitPages: {},
+      commonPathways: [],
+      userJourneys: [],
+      retentionByDay: [],
+      conversionPaths: [],
+      crossDeviceUsers: 0
+    };
+
+    // Process each selected site's analytics
+    for (const siteId of selectedSites) {
+      const siteAnalytics = analytics[siteId];
+      if (!siteAnalytics) continue;
+
+      // Aggregate numeric metrics
+      combinedAnalytics.totalVisitors += siteAnalytics.totalVisitors || 0;
+      combinedAnalytics.uniqueVisitors += siteAnalytics.uniqueVisitors || 0;
+      combinedAnalytics.web3Visitors += siteAnalytics.web3Visitors || 0;
+      combinedAnalytics.totalPageViews += siteAnalytics.totalPageViews || 0;
+      combinedAnalytics.newVisitors += siteAnalytics.newVisitors || 0;
+      combinedAnalytics.returningVisitors += siteAnalytics.returningVisitors || 0;
+      combinedAnalytics.walletsConnected += siteAnalytics.walletsConnected || 0;
+      combinedAnalytics.crossDeviceUsers += siteAnalytics.crossDeviceUsers || 0;
+
+      // Add site-specific data
+      const site = websiteArray.find(site => site.siteId === siteId);
+      if (site) {
+        combinedAnalytics.sites.push({
+          domain: site.Domain,
+          name: site.Name,
+          analytics: siteAnalytics
+        });
+      }
+
+      // Merge page views
+      if (siteAnalytics.pageViews) {
+        for (const [page, views] of Object.entries(siteAnalytics.pageViews)) {
+          combinedAnalytics.pageViews[page] = (combinedAnalytics.pageViews[page] || 0) + views;
+        }
+      }
+
+      // Merge user agents
+      if (siteAnalytics.userAgents) {
+        siteAnalytics.userAgents.forEach(agent => combinedAnalytics.userAgents.add(agent));
+      }
+
+      // Merge wallets
+      if (siteAnalytics.wallets) {
+        combinedAnalytics.wallets.push(...siteAnalytics.wallets);
+      }
+
+      // Merge entry pages
+      if (siteAnalytics.entryPages) {
+        for (const [page, count] of Object.entries(siteAnalytics.entryPages)) {
+          combinedAnalytics.entryPages[page] = (combinedAnalytics.entryPages[page] || 0) + count;
+        }
+      }
+
+      // Merge exit pages
+      if (siteAnalytics.exitPages) {
+        for (const [page, count] of Object.entries(siteAnalytics.exitPages)) {
+          combinedAnalytics.exitPages[page] = (combinedAnalytics.exitPages[page] || 0) + count;
+        }
+      }
+
+      // Merge common pathways
+      if (siteAnalytics.commonPathways) {
+        combinedAnalytics.commonPathways.push(...siteAnalytics.commonPathways);
+      }
+
+      // Merge user journeys
+      if (siteAnalytics.userJourneys) {
+        combinedAnalytics.userJourneys.push(...siteAnalytics.userJourneys);
+      }
+
+      // Merge retention data
+      if (siteAnalytics.retentionByDay) {
+        if (combinedAnalytics.retentionByDay.length === 0) {
+          combinedAnalytics.retentionByDay = [...siteAnalytics.retentionByDay];
+        } else {
+          combinedAnalytics.retentionByDay = combinedAnalytics.retentionByDay.map((retention, index) => ({
+            day: retention.day,
+            count: retention.count + (siteAnalytics.retentionByDay[index]?.count || 0),
+            percentage: (retention.percentage + (siteAnalytics.retentionByDay[index]?.percentage || 0)) / 2
+          }));
+        }
+      }
+
+      // Merge conversion paths
+      if (siteAnalytics.conversionPaths) {
+        combinedAnalytics.conversionPaths.push(...siteAnalytics.conversionPaths);
+      }
     }
 
-    const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
-    const uniqueVisitors = analytics.uniqueVisitors || 0;
-    
-    return [
-      { label: "Total Page Views", value: totalPageViews },
-      { label: "Unique Visitors", value: uniqueVisitors },
-      { label: "Connected Wallets", value: analytics.walletsConnected || 0 },
-      { label: "Web3 Visitors", value: analytics.web3Visitors || 0 }
-    ];
+    // Convert user agents Set back to array
+    combinedAnalytics.userAgents = Array.from(combinedAnalytics.userAgents);
+
+    return combinedAnalytics;
+  };
+
+  // Function to process transaction data from multiple contracts
+  const processMultiContractTransactions = () => {
+    const combinedContractData = {
+      contracts: [],
+      totalTransactions: 0,
+      totalVolume: 0,
+      uniqueWallets: new Set(),
+      transactionsByChain: {},
+      volumeByChain: {},
+      transactionsByTime: {},
+      topWallets: {},
+      tokenDistribution: {},
+      averageTransactionValue: 0,
+      medianTransactionValue: 0,
+      transactionValueRanges: {},
+      recentActivity: []
+    };
+
+    // Process each selected contract's transactions
+    for (const contractId of selectedContracts) {
+      const contract = contractArray.find(c => c.id === contractId);
+      const transactions = contractTransactions[contractId] || [];
+      
+      if (!contract || !transactions.length) continue;
+
+      // Add contract-specific data
+      const contractData = {
+        id: contract.id,
+        name: contract.name,
+        address: contract.address,
+        blockchain: contract.blockchain,
+        tokenSymbol: contract.tokenSymbol,
+        transactionCount: transactions.length,
+        volume: transactions.reduce((sum, tx) => sum + (parseFloat(tx.value_eth) || 0), 0),
+        uniqueWallets: new Set(transactions.map(tx => tx.from_address)).size
+      };
+
+      combinedContractData.contracts.push(contractData);
+      combinedContractData.totalTransactions += transactions.length;
+      combinedContractData.totalVolume += contractData.volume;
+
+      // Track unique wallets across all contracts
+      transactions.forEach(tx => {
+        combinedContractData.uniqueWallets.add(tx.from_address);
+      });
+
+      // Aggregate by blockchain
+      const chain = contract.blockchain;
+      if (!combinedContractData.transactionsByChain[chain]) {
+        combinedContractData.transactionsByChain[chain] = 0;
+        combinedContractData.volumeByChain[chain] = 0;
+      }
+      combinedContractData.transactionsByChain[chain] += transactions.length;
+      combinedContractData.volumeByChain[chain] += contractData.volume;
+
+      // Aggregate transactions by time
+      transactions.forEach(tx => {
+        const date = new Date(tx.block_time).toISOString().split('T')[0];
+        combinedContractData.transactionsByTime[date] = (combinedContractData.transactionsByTime[date] || 0) + 1;
+      });
+
+      // Track top wallets
+      transactions.forEach(tx => {
+        if (!combinedContractData.topWallets[tx.from_address]) {
+          combinedContractData.topWallets[tx.from_address] = {
+            transactionCount: 0,
+            totalVolume: 0
+          };
+        }
+        combinedContractData.topWallets[tx.from_address].transactionCount++;
+        combinedContractData.topWallets[tx.from_address].totalVolume += parseFloat(tx.value_eth) || 0;
+      });
+
+      // Add recent activity
+      const recentTxs = [...transactions]
+        .sort((a, b) => new Date(b.block_time) - new Date(a.block_time))
+        .slice(0, 100);
+      combinedContractData.recentActivity.push(...recentTxs);
+    }
+
+    // Convert unique wallets Set to size
+    combinedContractData.uniqueWallets = combinedContractData.uniqueWallets.size;
+
+    // Sort and limit top wallets
+    combinedContractData.topWallets = Object.entries(combinedContractData.topWallets)
+      .sort((a, b) => b[1].totalVolume - a[1].totalVolume)
+      .slice(0, 100)
+      .reduce((obj, [address, data]) => {
+        obj[address] = data;
+        return obj;
+      }, {});
+
+    // Sort recent activity by time
+    combinedContractData.recentActivity.sort((a, b) => new Date(b.block_time) - new Date(a.block_time));
+    combinedContractData.recentActivity = combinedContractData.recentActivity.slice(0, 100);
+
+    // Calculate averages
+    if (combinedContractData.totalTransactions > 0) {
+      combinedContractData.averageTransactionValue = combinedContractData.totalVolume / combinedContractData.totalTransactions;
+    }
+
+    return combinedContractData;
+  };
+
+  // Update the formatAnalyticsData function to use the new processing functions
+  const formatAnalyticsData = () => {
+    const fullAnalytics = {
+      websites: processMultiSiteAnalytics(),
+      smartContract: processMultiContractTransactions()
+    };
+
+    return fullAnalytics;
   };
 
   // Update the message rendering function
@@ -2289,7 +2517,7 @@ If you have specific questions about your analytics, please try again later when
       
       <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
         <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
-          {/* Header with Website Selector */}
+          {/* Header with Selectors */}
           <div className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -2303,40 +2531,61 @@ If you have specific questions about your analytics, please try again later when
               </div>
               
               {/* Selectors Section */}
-              <div className="flex items-center gap-4 min-w-[300px]">
-                {/* Website Selector */}
+              <div className="flex flex-col gap-4 min-w-[600px]">
+                {/* Website Selection */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Website</label>
-                  <select
-                    value={selectedSite}
-                    onChange={handleSiteChange}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
-                  >
-                    <option value="">Select a website</option>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-500">Websites</label>
+                    <button
+                      onClick={handleSelectAllSites}
+                      className="text-xs text-[#caa968] hover:text-[#1d0c46]"
+                    >
+                      {allSitesSelected ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto border rounded-lg p-2 bg-white">
                     {websiteArray.map(website => (
-                      <option key={website.siteId} value={website.siteId}>
-                        {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                      </option>
+                      <div key={website.siteId} className="flex items-center p-1 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={selectedSites.has(website.siteId)}
+                          onChange={() => handleSiteChange(website.siteId)}
+                          className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
+                        />
+                        <label className="text-sm">
+                          {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                        </label>
+                      </div>
                     ))}
-                  </select>
+                  </div>
                 </div>
                 
-                {/* Smart Contract Selector */}
+                {/* Smart Contract Selection */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
-                  <select
-                    value={selectedContract}
-                    onChange={handleContractChange}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
-                    disabled={isLoadingContracts}
-                  >
-                    <option value="">Select a contract</option>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-500">Smart Contracts</label>
+                    <button
+                      onClick={handleSelectAllContracts}
+                      className="text-xs text-[#caa968] hover:text-[#1d0c46]"
+                    >
+                      {allContractsSelected ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto border rounded-lg p-2 bg-white">
                     {contractArray.map(contract => (
-                      <option key={contract.id} value={contract.id}>
-                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
-                      </option>
+                      <div key={contract.id} className="flex items-center p-1 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={selectedContracts.has(contract.id)}
+                          onChange={() => handleContractChange(contract.id)}
+                          className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
+                        />
+                        <label className="text-sm">
+                          {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
+                        </label>
+                      </div>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2355,17 +2604,20 @@ If you have specific questions about your analytics, please try again later when
                   <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContract && contractTransactions.length > 0 && (
+              {!isLoadingTransactions && selectedContracts.size > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
+                  <span>
+                    {Object.values(contractTransactions).reduce((sum, txns) => sum + txns.length, 0)} 
+                    transactions loaded for {selectedContracts.size} contract{selectedContracts.size !== 1 ? 's' : ''}
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Chat Area */}
+          {/* Rest of the component remains unchanged */}
           <ChatArea />
-
+          
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
@@ -2375,17 +2627,17 @@ If you have specific questions about your analytics, please try again later when
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
-                  disabled={!selectedSite || isLoading}
+                  placeholder={selectedSites.size > 0 ? "Ask about your analytics..." : "Select at least one website to ask questions"}
+                  disabled={!selectedSites.size || isLoading}
                   className="w-full p-4 pl-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] focus:border-transparent focus:shadow-input disabled:bg-gray-100 disabled:text-gray-400 transition-all duration-300 bg-white"
                 />
                 <div className="input-glow"></div>
               </div>
               <button
                 onClick={handleSend}
-                disabled={isLoading || !input.trim() || !selectedSite}
+                disabled={isLoading || !input.trim() || !selectedSites.size}
                 className={`px-8 rounded-lg flex items-center gap-2 transition-all duration-300 ${
-                  isLoading || !input.trim() || !selectedSite
+                  isLoading || !input.trim() || !selectedSites.size
                     ? 'bg-gray-200 text-gray-400'
                     : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90 hover:shadow-lg hover:shadow-[#1d0c46]/20'
                 }`}
