@@ -6,8 +6,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { isWeb3User, calculateAverageDuration, formatDuration } from '../../utils/analyticsHelpers';
+
+// Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
-import ragService from '../../services/ragService';
 
 // Add knowledge base loading function
 const loadExpertKnowledge = async () => {
@@ -53,11 +54,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Add refs for dropdowns
   const websiteDropdownRef = useRef(null);
   const contractDropdownRef = useRef(null);
-
-  // Add state for RAG processing
-  const [isProcessingData, setIsProcessingData] = useState(false);
-  const [ragStats, setRagStats] = useState(null);
-  const [followUpQuestions, setFollowUpQuestions] = useState([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -191,49 +187,18 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Function to process data for RAG when selections change
-  const processDataForRAG = async (siteId, contractId) => {
-    try {
-      setIsProcessingData(true);
-
-      // Process website analytics if selected
-      if (siteId && analytics[siteId]) {
-        await ragService.processAnalytics(analytics[siteId]);
-      }
-
-      // Process contract data if selected
-      if (contractId && contractTransactions[contractId]) {
-        const contract = contractArray.find(c => c.id === contractId);
-        if (contract) {
-          await ragService.processContract(contract, contractTransactions[contractId]);
-        }
-      }
-
-      // Update RAG stats
-      const stats = await ragService.getStats();
-      setRagStats(stats);
-    } catch (error) {
-      console.error('Error processing data for RAG:', error);
-      setError('Failed to process data for AI analysis. Please try again.');
-    } finally {
-      setIsProcessingData(false);
-    }
-  };
-
   // Handle website selection changes
   const handleSiteChange = async (siteId) => {
     setSelectedSites(prev => {
       const newSelection = new Set(prev);
       if (newSelection.has(siteId)) {
         newSelection.delete(siteId);
-    } else {
+      } else {
         newSelection.add(siteId);
         // Fetch data for newly selected site if not already loaded
         if (!analytics[siteId]) {
           fetchAnalyticsData(siteId);
         }
-        // Process data for RAG
-        processDataForRAG(siteId, null);
       }
       setAllSitesSelected(newSelection.size === websiteArray.length);
       return newSelection;
@@ -246,14 +211,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const newSelection = new Set(prev);
       if (newSelection.has(contractId)) {
         newSelection.delete(contractId);
-      } else {
+    } else {
         newSelection.add(contractId);
         // Fetch data for newly selected contract if not already loaded
         if (!contractTransactions[contractId]) {
           fetchContractTransactions(contractId);
         }
-        // Process data for RAG
-        processDataForRAG(null, contractId);
       }
       setAllContractsSelected(newSelection.size === contractArray.length);
       return newSelection;
@@ -1823,7 +1786,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return formattedText;
   };
 
-  // Update handleSend to use RAG service
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -1834,22 +1796,124 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Get response from RAG service
-      const response = await ragService.query(
-        userMessage,
-        Array.from(selectedSites),
-        Array.from(selectedContracts)
-      );
-
-      if (response.status === 'success') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
-        setFollowUpQuestions(response.follow_up_questions || []);
-      } else {
-        setError(response.message || 'Failed to get a response. Please try again.');
+      // Generate analytics summary with error handling
+      let analyticsSummary;
+      try {
+        analyticsSummary = generateAnalyticsSummary(userMessage);
+        if (!analyticsSummary) {
+          throw new Error("Failed to generate analytics summary");
+        }
+      } catch (summaryError) {
+        console.error("Error generating analytics summary:", summaryError);
+        // Create a simplified fallback summary
+        analyticsSummary = `
+          [USER QUESTION]
+          ${userMessage}
+          [/USER QUESTION]
+          
+          [ANALYTICS CONTEXT]
+          Due to data processing limitations, detailed analytics are not available.
+          Please provide general Web3 marketing advice related to the query.
+          [/ANALYTICS CONTEXT]
+        `;
       }
-    } catch (error) {
-      console.error('Error getting response:', error);
-      setError('Failed to get a response. Please try again.');
+      
+      const messageWithContext = analyticsSummary;
+      let botMessage;
+
+      try {
+        // Try SDK approach first
+        const ai = initializeAI();
+        const modelName = await verifyModel();
+        console.log("Using model for SDK:", modelName);
+        
+        const model = ai.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(messageWithContext);
+        const response = await result.response;
+        botMessage = response.text();
+      } catch (sdkError) {
+        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        
+        try {
+          const modelName = await verifyModel();
+          console.log("Using model for REST API:", modelName);
+          
+          const requestBody = {
+            model: modelName,
+            contents: [
+              {
+                parts: [
+                  { text: messageWithContext }
+                ]
+              }
+            ]
+          };
+
+          console.log("Sending request to backend:", requestBody);
+          const response = await axiosInstance.post('/ai/generate', requestBody);
+          
+          if (!response.data) {
+            throw new Error('No response data received from backend');
+          }
+
+          if (response.data.error) {
+            throw new Error(response.data.error);
+          }
+
+          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+        } catch (apiError) {
+          console.error("REST API approach also failed:", apiError);
+          
+          // If both approaches fail, create a fallback response based on the analytics data
+          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+          
+Based on the analytics data I can see for your selected sites, here's what I can tell you:
+
+## Analytics Summary
+${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No websites selected.'}
+${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
+
+If you have specific questions about your analytics, please try again later when our AI service is back online.`;
+        }
+      }
+
+      // Format the response before displaying
+      try {
+      const formattedMessage = formatResponse(botMessage);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: formattedMessage,
+        timestamp: new Date().toISOString()
+      }]);
+      } catch (formatError) {
+        console.error("Error formatting response:", formatError);
+        // If formatting fails, use the original message
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: botMessage || "Sorry, I couldn't format the response properly.",
+          timestamp: new Date().toISOString()
+        }]);
+      }
+    } catch (err) {
+      console.error('Full Error Details:', err);
+      let errorMessage = "An unknown error occurred";
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.details) {
+        errorMessage = err.response.data.details;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(`Failed to get response: ${errorMessage}`);
+      
+      // Add a fallback message even if the entire try block fails
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -2499,64 +2563,63 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
                 </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-            <button 
-              onClick={() => getInsights()}
-              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-            >
-              Generate comprehensive insights
-            </button>
+            {/* Example questions buttons */}
             <button 
               onClick={() => {
-                setInput("What are the top performing pages?");
+                setInput("What are the top pages on my website?");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              What are the top performing pages?
+              What are the top pages on my website?
             </button>
             <button 
               onClick={() => {
-                setInput("Show me Web3 user analytics");
+                setInput("How is my website performing?");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              Show me Web3 user analytics
+              How is my website performing?
             </button>
             <button 
               onClick={() => {
-                setInput("Analyze smart contract transactions");
+                setInput("Show me my Web3 user analytics");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              Analyze smart contract transactions
+              Show me my Web3 user analytics
+            </button>
+            <button 
+              onClick={() => {
+                setInput("What are my traffic sources?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are my traffic sources?
             </button>
           </div>
               </div>
             ) : (
         <>
-          {messages.map((message, index) => renderMessage(message))}
-          {followUpQuestions.length > 0 && !isLoading && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Follow-up Questions</h3>
-              <div className="space-y-2">
-                {followUpQuestions.map((question, index) => (
-                  <button
+          {messages.map((message, index) => (
+                <div
                   key={index}
-                    onClick={() => {
-                      setInput(question);
-                      setTimeout(() => handleSend(), 100);
-                    }}
-                    className="block w-full text-left p-2 text-sm text-[#1d0c46] hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    {question}
-                  </button>
-                ))}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+              {renderMessage(message)}
+                  </div>
+          ))}
+          {isLoading && renderLoadingState()}
+            {error && (
+              <div className="flex justify-start">
+                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
+                  {error}
                 </div>
               </div>
           )}
-          {isLoading && renderLoadingState()}
         </>
             )}
             <div ref={messagesEndRef} />
@@ -2577,49 +2640,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Add function to get insights
-  const getInsights = async () => {
-    try {
-      setIsLoading(true);
-      const response = await ragService.getInsights(
-        Array.from(selectedSites),
-        Array.from(selectedContracts)
-      );
-
-      if (response.status === 'success') {
-        const insightsMessage = formatInsightsMessage(response.insights);
-        setMessages(prev => [...prev, { role: 'assistant', content: insightsMessage }]);
-      } else {
-        setError(response.message || 'Failed to generate insights. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error getting insights:', error);
-      setError('Failed to generate insights. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to format insights message
-  const formatInsightsMessage = (insights) => {
-    return `## Analytics Insights Summary
-
-### Key Metrics
-${insights.key_metrics.map(metric => `- ${metric}`).join('\n')}
-
-### Notable Trends
-${insights.trends.map(trend => `- ${trend}`).join('\n')}
-
-### User Behavior Insights
-${insights.user_insights.map(insight => `- ${insight}`).join('\n')}
-
-### Web3 Patterns
-${insights.web3_patterns.map(pattern => `- ${pattern}`).join('\n')}
-
-### Opportunities
-${insights.opportunities.map(opportunity => `- ${opportunity}`).join('\n')}`;
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -2725,7 +2745,7 @@ ${insights.opportunities.map(opportunity => `- ${opportunity}`).join('\n')}`;
                             {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
                           </label>
                         </div>
-                      ))}
+                    ))}
                     </div>
                   )}
                 </div>
