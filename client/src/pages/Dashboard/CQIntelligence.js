@@ -22,6 +22,8 @@ const loadExpertKnowledge = async () => {
   }
 };
 
+import ragService from '../../services/ragService';
+
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
   const [websiteArray, setWebsiteArray] = useState([]);
@@ -54,6 +56,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Add refs for dropdowns
   const websiteDropdownRef = useRef(null);
   const contractDropdownRef = useRef(null);
+
+  // Add state for RAG processing
+  const [isProcessingData, setIsProcessingData] = useState(false);
+  const [ragStats, setRagStats] = useState(null);
+  const [followUpQuestions, setFollowUpQuestions] = useState([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -187,18 +194,49 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
+  // Function to process data for RAG when selections change
+  const processDataForRAG = async (siteId, contractId) => {
+    try {
+      setIsProcessingData(true);
+
+      // Process website analytics if selected
+      if (siteId && analytics[siteId]) {
+        await ragService.processAnalytics(analytics[siteId]);
+      }
+
+      // Process contract data if selected
+      if (contractId && contractTransactions[contractId]) {
+        const contract = contractArray.find(c => c.id === contractId);
+        if (contract) {
+          await ragService.processContract(contract, contractTransactions[contractId]);
+        }
+      }
+
+      // Update RAG stats
+      const stats = await ragService.getStats();
+      setRagStats(stats);
+    } catch (error) {
+      console.error('Error processing data for RAG:', error);
+      setError('Failed to process data for AI analysis. Please try again.');
+    } finally {
+      setIsProcessingData(false);
+    }
+  };
+
   // Handle website selection changes
   const handleSiteChange = async (siteId) => {
     setSelectedSites(prev => {
       const newSelection = new Set(prev);
       if (newSelection.has(siteId)) {
         newSelection.delete(siteId);
-      } else {
+    } else {
         newSelection.add(siteId);
         // Fetch data for newly selected site if not already loaded
         if (!analytics[siteId]) {
           fetchAnalyticsData(siteId);
         }
+        // Process data for RAG
+        processDataForRAG(siteId, null);
       }
       setAllSitesSelected(newSelection.size === websiteArray.length);
       return newSelection;
@@ -217,6 +255,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         if (!contractTransactions[contractId]) {
           fetchContractTransactions(contractId);
         }
+        // Process data for RAG
+        processDataForRAG(null, contractId);
       }
       setAllContractsSelected(newSelection.size === contractArray.length);
       return newSelection;
@@ -319,31 +359,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       if (!session || !session.startTime) return;
       
       try {
-        const startTime = new Date(session.startTime);
+      const startTime = new Date(session.startTime);
         if (isNaN(startTime.getTime())) return; // Skip invalid dates
         
-        const timeDiff = now - startTime;
+      const timeDiff = now - startTime;
         const deviceId = session.device || session.deviceId || 'unknown'; // Use fallback ID if needed
 
-        // Daily
-        if (timeDiff <= dayInMs) {
-          const day = startTime.toISOString().split('T')[0];
-          if (!uniqueUsersByDay.has(day)) uniqueUsersByDay.set(day, new Set());
-          uniqueUsersByDay.get(day).add(deviceId);
-        }
+      // Daily
+      if (timeDiff <= dayInMs) {
+        const day = startTime.toISOString().split('T')[0];
+        if (!uniqueUsersByDay.has(day)) uniqueUsersByDay.set(day, new Set());
+        uniqueUsersByDay.get(day).add(deviceId);
+      }
 
-        // Weekly
-        if (timeDiff <= weekInMs) {
-          const week = Math.floor(startTime.getTime() / weekInMs);
-          if (!uniqueUsersByWeek.has(week)) uniqueUsersByWeek.set(week, new Set());
-          uniqueUsersByWeek.get(week).add(deviceId);
-        }
+      // Weekly
+      if (timeDiff <= weekInMs) {
+        const week = Math.floor(startTime.getTime() / weekInMs);
+        if (!uniqueUsersByWeek.has(week)) uniqueUsersByWeek.set(week, new Set());
+        uniqueUsersByWeek.get(week).add(deviceId);
+      }
 
-        // Monthly
-        if (timeDiff <= monthInMs) {
-          const month = startTime.toISOString().slice(0, 7);
-          if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
-          uniqueUsersByMonth.get(month).add(deviceId);
+      // Monthly
+      if (timeDiff <= monthInMs) {
+        const month = startTime.toISOString().slice(0, 7);
+        if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
+        uniqueUsersByMonth.get(month).add(deviceId);
         }
       } catch (error) {
         console.error("Error processing session for retention metrics:", error);
@@ -367,28 +407,28 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
 
     try {
-      if (uniqueUsersByDay.size >= 2) {
-        const days = Array.from(uniqueUsersByDay.keys()).sort();
-        const firstDay = uniqueUsersByDay.get(days[0]);
-        const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
+    if (uniqueUsersByDay.size >= 2) {
+      const days = Array.from(uniqueUsersByDay.keys()).sort();
+      const firstDay = uniqueUsersByDay.get(days[0]);
+      const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
         if (firstDay && firstDay.size > 0) {
           retention.daily = (lastDay.size / firstDay.size) * 100;
         }
-      }
+    }
 
-      if (uniqueUsersByWeek.size >= 2) {
-        const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
-        const firstWeek = uniqueUsersByWeek.get(weeks[0]);
-        const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
+    if (uniqueUsersByWeek.size >= 2) {
+      const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
+      const firstWeek = uniqueUsersByWeek.get(weeks[0]);
+      const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
         if (firstWeek && firstWeek.size > 0) {
           retention.weekly = (lastWeek.size / firstWeek.size) * 100;
         }
-      }
+    }
 
-      if (uniqueUsersByMonth.size >= 2) {
-        const months = Array.from(uniqueUsersByMonth.keys()).sort();
-        const firstMonth = uniqueUsersByMonth.get(months[0]);
-        const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
+    if (uniqueUsersByMonth.size >= 2) {
+      const months = Array.from(uniqueUsersByMonth.keys()).sort();
+      const firstMonth = uniqueUsersByMonth.get(months[0]);
+      const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
         if (firstMonth && firstMonth.size > 0) {
           retention.monthly = (lastMonth.size / firstMonth.size) * 100;
         }
@@ -417,40 +457,40 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     try {
-      const geoData = {
+    const geoData = {
         countries: analytics.countries || {},
-        regions: analytics.regions || {},
-        cities: analytics.cities || {},
-        topCountries: [],
-        topRegions: [],
-        topCities: []
-      };
+      regions: analytics.regions || {},
+      cities: analytics.cities || {},
+      topCountries: [],
+      topRegions: [],
+      topCities: []
+    };
 
-      // Process countries if data exists
+    // Process countries if data exists
       if (geoData.countries && Object.keys(geoData.countries).length > 0) {
-        geoData.topCountries = Object.entries(geoData.countries)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([country, count]) => ({ country, count }));
-      }
+      geoData.topCountries = Object.entries(geoData.countries)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([country, count]) => ({ country, count }));
+    }
 
-      // Process regions if data exists
+    // Process regions if data exists
       if (geoData.regions && Object.keys(geoData.regions).length > 0) {
-        geoData.topRegions = Object.entries(geoData.regions)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([region, count]) => ({ region, count }));
-      }
+      geoData.topRegions = Object.entries(geoData.regions)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([region, count]) => ({ region, count }));
+    }
 
-      // Process cities if data exists
+    // Process cities if data exists
       if (geoData.cities && Object.keys(geoData.cities).length > 0) {
-        geoData.topCities = Object.entries(geoData.cities)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([city, count]) => ({ city, count }));
-      }
+      geoData.topCities = Object.entries(geoData.cities)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([city, count]) => ({ city, count }));
+    }
 
-      return geoData;
+    return geoData;
     } catch (error) {
       console.error("Error processing geographical data:", error);
       return null;
@@ -499,161 +539,161 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     try {
-      const trafficData = {
+    const trafficData = {
+      sources: {},
+      sourceTimeline: {},
+      referrers: [],
+      campaigns: {
         sources: {},
-        sourceTimeline: {},
-        referrers: [],
-        campaigns: {
-          sources: {},
-          mediums: {},
-          campaigns: {},
-          topSources: [],
-          topMediums: [],
-          topCampaigns: [],
-          timeline: {}
-        }
-      };
+        mediums: {},
+        campaigns: {},
+        topSources: [],
+        topMediums: [],
+        topCampaigns: [],
+        timeline: {}
+      }
+    };
 
-      // Process sessions for traffic data
-      const timeframes = {
-        '24h': 24 * 60 * 60 * 1000,
-        '7d': 7 * 24 * 60 * 60 * 1000,
-        '30d': 30 * 24 * 60 * 60 * 1000
-      };
+    // Process sessions for traffic data
+    const timeframes = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000
+    };
 
-      const now = new Date();
-      const sourceMetrics = new Map(); // Store detailed metrics per source
+    const now = new Date();
+    const sourceMetrics = new Map(); // Store detailed metrics per source
 
-      analytics.sessions.forEach(session => {
+    analytics.sessions.forEach(session => {
         if (!session) return;
         
         try {
-          const source = normalizeTrafficSource(session);
+      const source = normalizeTrafficSource(session);
           if (!source) return;
           
-          const timestamp = new Date(session.startTime);
+      const timestamp = new Date(session.startTime);
           if (isNaN(timestamp.getTime())) return; // Skip invalid dates
-          
-          // Initialize source metrics if not exists
-          if (!sourceMetrics.has(source)) {
-            sourceMetrics.set(source, {
-              total: 0,
-              uniqueVisitors: new Set(),
-              web3Users: 0,
-              walletsConnected: 0,
-              bounces: 0,
-              totalDuration: 0,
-              timeline: {
-                '24h': { visits: 0, web3: 0, wallets: 0 },
-                '7d': { visits: 0, web3: 0, wallets: 0 },
-                '30d': { visits: 0, web3: 0, wallets: 0 }
+      
+      // Initialize source metrics if not exists
+      if (!sourceMetrics.has(source)) {
+        sourceMetrics.set(source, {
+          total: 0,
+          uniqueVisitors: new Set(),
+          web3Users: 0,
+          walletsConnected: 0,
+          bounces: 0,
+          totalDuration: 0,
+          timeline: {
+            '24h': { visits: 0, web3: 0, wallets: 0 },
+            '7d': { visits: 0, web3: 0, wallets: 0 },
+            '30d': { visits: 0, web3: 0, wallets: 0 }
+          }
+        });
+      }
+
+      const metrics = sourceMetrics.get(source);
+      metrics.total++;
+          if (session.device) metrics.uniqueVisitors.add(session.device);
+      if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
+      if (session.walletConnected) metrics.walletsConnected++;
+      if (session.pages?.length === 1) metrics.bounces++;
+      if (session.duration) metrics.totalDuration += session.duration;
+
+      // Update timeline metrics
+      Object.entries(timeframes).forEach(([period, ms]) => {
+        if ((now - timestamp) <= ms) {
+          metrics.timeline[period].visits++;
+          if (session.hasWeb3 || session.walletConnected) {
+            metrics.timeline[period].web3++;
+          }
+          if (session.walletConnected) {
+            metrics.timeline[period].wallets++;
+          }
+        }
+      });
+
+      // Process UTM data if available
+      if (session.utmSource) {
+        const utmData = {
+          source: session.utmSource.toLowerCase(),
+          medium: session.utmMedium?.toLowerCase(),
+          campaign: session.utmCampaign?.toLowerCase()
+        };
+
+        // Update campaign metrics
+        ['source', 'medium', 'campaign'].forEach(type => {
+          if (utmData[type]) {
+            const key = `utm${type.charAt(0).toUpperCase() + type.slice(1)}s`;
+            trafficData.campaigns[key] = trafficData.campaigns[key] || {};
+            trafficData.campaigns[key][utmData[type]] = (trafficData.campaigns[key][utmData[type]] || 0) + 1;
+
+            // Update timeline
+            if (!trafficData.campaigns.timeline[type]) {
+              trafficData.campaigns.timeline[type] = {};
+            }
+            Object.entries(timeframes).forEach(([period, ms]) => {
+              if ((now - timestamp) <= ms) {
+                if (!trafficData.campaigns.timeline[type][period]) {
+                  trafficData.campaigns.timeline[type][period] = {};
+                }
+                trafficData.campaigns.timeline[type][period][utmData[type]] = 
+                  (trafficData.campaigns.timeline[type][period][utmData[type]] || 0) + 1;
               }
             });
           }
-
-          const metrics = sourceMetrics.get(source);
-          metrics.total++;
-          if (session.device) metrics.uniqueVisitors.add(session.device);
-          if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
-          if (session.walletConnected) metrics.walletsConnected++;
-          if (session.pages?.length === 1) metrics.bounces++;
-          if (session.duration) metrics.totalDuration += session.duration;
-
-          // Update timeline metrics
-          Object.entries(timeframes).forEach(([period, ms]) => {
-            if ((now - timestamp) <= ms) {
-              metrics.timeline[period].visits++;
-              if (session.hasWeb3 || session.walletConnected) {
-                metrics.timeline[period].web3++;
-              }
-              if (session.walletConnected) {
-                metrics.timeline[period].wallets++;
-              }
-            }
-          });
-
-          // Process UTM data if available
-          if (session.utmSource) {
-            const utmData = {
-              source: session.utmSource.toLowerCase(),
-              medium: session.utmMedium?.toLowerCase(),
-              campaign: session.utmCampaign?.toLowerCase()
-            };
-
-            // Update campaign metrics
-            ['source', 'medium', 'campaign'].forEach(type => {
-              if (utmData[type]) {
-                const key = `utm${type.charAt(0).toUpperCase() + type.slice(1)}s`;
-                trafficData.campaigns[key] = trafficData.campaigns[key] || {};
-                trafficData.campaigns[key][utmData[type]] = (trafficData.campaigns[key][utmData[type]] || 0) + 1;
-
-                // Update timeline
-                if (!trafficData.campaigns.timeline[type]) {
-                  trafficData.campaigns.timeline[type] = {};
-                }
-                Object.entries(timeframes).forEach(([period, ms]) => {
-                  if ((now - timestamp) <= ms) {
-                    if (!trafficData.campaigns.timeline[type][period]) {
-                      trafficData.campaigns.timeline[type][period] = {};
-                    }
-                    trafficData.campaigns.timeline[type][period][utmData[type]] = 
-                      (trafficData.campaigns.timeline[type][period][utmData[type]] || 0) + 1;
-                  }
-                });
-              }
-            });
+        });
           }
         } catch (error) {
           console.error("Error processing session for traffic sources:", error);
           // Continue processing other sessions
-        }
-      });
+      }
+    });
 
-      // Convert source metrics to final format
-      sourceMetrics.forEach((metrics, source) => {
-        if (metrics.total > 0) {
-          trafficData.sources[source] = {
-            visits: metrics.total,
-            uniqueVisitors: metrics.uniqueVisitors.size,
-            web3Users: metrics.web3Users,
-            walletsConnected: metrics.walletsConnected,
+    // Convert source metrics to final format
+    sourceMetrics.forEach((metrics, source) => {
+      if (metrics.total > 0) {
+        trafficData.sources[source] = {
+          visits: metrics.total,
+          uniqueVisitors: metrics.uniqueVisitors.size,
+          web3Users: metrics.web3Users,
+          walletsConnected: metrics.walletsConnected,
             bounceRate: metrics.total > 0 ? (metrics.bounces / metrics.total) * 100 : 0,
             avgDuration: metrics.total > 0 ? metrics.totalDuration / metrics.total : 0
-          };
+        };
 
-          // Add timeline data
-          Object.entries(metrics.timeline).forEach(([period, data]) => {
-            if (data.visits > 0) {
-              if (!trafficData.sourceTimeline[period]) {
-                trafficData.sourceTimeline[period] = {};
-              }
-              trafficData.sourceTimeline[period][source] = data;
+        // Add timeline data
+        Object.entries(metrics.timeline).forEach(([period, data]) => {
+          if (data.visits > 0) {
+            if (!trafficData.sourceTimeline[period]) {
+              trafficData.sourceTimeline[period] = {};
             }
-          });
-        }
-      });
+            trafficData.sourceTimeline[period][source] = data;
+          }
+        });
+      }
+    });
 
-      // Process top sources for each category
-      ['sources', 'mediums', 'campaigns'].forEach(type => {
+    // Process top sources for each category
+    ['sources', 'mediums', 'campaigns'].forEach(type => {
         const keyName = `utm${type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1)}`;
         const data = trafficData.campaigns[keyName];
-        if (data && Object.keys(data).length > 0) {
-          trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
-            Object.entries(data)
-              .sort(([,a], [,b]) => b - a)
-              .slice(0, 10)
-              .map(([name, count]) => ({ name, count }));
-        }
-      });
+      if (data && Object.keys(data).length > 0) {
+        trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
+          Object.entries(data)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+      }
+    });
 
-      // Clean up empty sections
-      Object.keys(trafficData).forEach(key => {
-        if (typeof trafficData[key] === 'object' && Object.keys(trafficData[key]).length === 0) {
-          delete trafficData[key];
-        }
-      });
+    // Clean up empty sections
+    Object.keys(trafficData).forEach(key => {
+      if (typeof trafficData[key] === 'object' && Object.keys(trafficData[key]).length === 0) {
+        delete trafficData[key];
+      }
+    });
 
-      return Object.keys(trafficData).length > 0 ? trafficData : null;
+    return Object.keys(trafficData).length > 0 ? trafficData : null;
     } catch (error) {
       console.error("Error processing traffic sources:", error);
       return null;
@@ -1136,7 +1176,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
-    
+
     // Process analytics data from all selected sites
     const combinedAnalytics = processMultiSiteAnalytics();
     
@@ -1206,11 +1246,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     // Remove empty sections
     if (fullAnalytics && typeof fullAnalytics === 'object') {
-      Object.keys(fullAnalytics).forEach(key => {
-        if (!isValidValue(fullAnalytics[key])) {
-          delete fullAnalytics[key];
-        }
-      });
+    Object.keys(fullAnalytics).forEach(key => {
+      if (!isValidValue(fullAnalytics[key])) {
+        delete fullAnalytics[key];
+      }
+    });
     }
 
     console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
@@ -1786,6 +1826,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return formattedText;
   };
 
+  // Update handleSend to use RAG service
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -1796,124 +1837,22 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Generate analytics summary with error handling
-      let analyticsSummary;
-      try {
-        analyticsSummary = generateAnalyticsSummary(userMessage);
-        if (!analyticsSummary) {
-          throw new Error("Failed to generate analytics summary");
-        }
-      } catch (summaryError) {
-        console.error("Error generating analytics summary:", summaryError);
-        // Create a simplified fallback summary
-        analyticsSummary = `
-          [USER QUESTION]
-          ${userMessage}
-          [/USER QUESTION]
-          
-          [ANALYTICS CONTEXT]
-          Due to data processing limitations, detailed analytics are not available.
-          Please provide general Web3 marketing advice related to the query.
-          [/ANALYTICS CONTEXT]
-        `;
+      // Get response from RAG service
+      const response = await ragService.query(
+        userMessage,
+        Array.from(selectedSites),
+        Array.from(selectedContracts)
+      );
+
+      if (response.status === 'success') {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+        setFollowUpQuestions(response.follow_up_questions || []);
+      } else {
+        setError(response.message || 'Failed to get a response. Please try again.');
       }
-      
-      const messageWithContext = analyticsSummary;
-      let botMessage;
-
-      try {
-        // Try SDK approach first
-        const ai = initializeAI();
-        const modelName = await verifyModel();
-        console.log("Using model for SDK:", modelName);
-        
-        const model = ai.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(messageWithContext);
-        const response = await result.response;
-        botMessage = response.text();
-      } catch (sdkError) {
-        console.log("SDK approach failed, falling back to REST API:", sdkError);
-        
-        try {
-          const modelName = await verifyModel();
-          console.log("Using model for REST API:", modelName);
-          
-          const requestBody = {
-            model: modelName,
-            contents: [
-              {
-                parts: [
-                  { text: messageWithContext }
-                ]
-              }
-            ]
-          };
-
-          console.log("Sending request to backend:", requestBody);
-          const response = await axiosInstance.post('/ai/generate', requestBody);
-          
-          if (!response.data) {
-            throw new Error('No response data received from backend');
-          }
-
-          if (response.data.error) {
-            throw new Error(response.data.error);
-          }
-
-          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
-        } catch (apiError) {
-          console.error("REST API approach also failed:", apiError);
-          
-          // If both approaches fail, create a fallback response based on the analytics data
-          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
-          
-Based on the analytics data I can see for your selected sites, here's what I can tell you:
-
-## Analytics Summary
-${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No websites selected.'}
-${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
-
-If you have specific questions about your analytics, please try again later when our AI service is back online.`;
-        }
-      }
-
-      // Format the response before displaying
-      try {
-        const formattedMessage = formatResponse(botMessage);
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: formattedMessage,
-          timestamp: new Date().toISOString()
-        }]);
-      } catch (formatError) {
-        console.error("Error formatting response:", formatError);
-        // If formatting fails, use the original message
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: botMessage || "Sorry, I couldn't format the response properly.",
-          timestamp: new Date().toISOString()
-        }]);
-      }
-    } catch (err) {
-      console.error('Full Error Details:', err);
-      let errorMessage = "An unknown error occurred";
-      
-      if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.response?.data?.details) {
-        errorMessage = err.response.data.details;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(`Failed to get response: ${errorMessage}`);
-      
-      // Add a fallback message even if the entire try block fails
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
-        timestamp: new Date().toISOString()
-      }]);
+    } catch (error) {
+      console.error('Error getting response:', error);
+      setError('Failed to get a response. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -2563,63 +2502,64 @@ If you have specific questions about your analytics, please try again later when
                   I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
                 </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-            {/* Example questions buttons */}
             <button 
-              onClick={() => {
-                setInput("What are the top pages on my website?");
-                setTimeout(() => handleSend(), 100);
-              }}
+              onClick={() => getInsights()}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              What are the top pages on my website?
+              Generate comprehensive insights
             </button>
             <button 
               onClick={() => {
-                setInput("How is my website performing?");
+                setInput("What are the top performing pages?");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              How is my website performing?
+              What are the top performing pages?
             </button>
             <button 
               onClick={() => {
-                setInput("Show me my Web3 user analytics");
+                setInput("Show me Web3 user analytics");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              Show me my Web3 user analytics
+              Show me Web3 user analytics
             </button>
             <button 
               onClick={() => {
-                setInput("What are my traffic sources?");
+                setInput("Analyze smart contract transactions");
                 setTimeout(() => handleSend(), 100);
               }}
               className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
             >
-              What are my traffic sources?
+              Analyze smart contract transactions
             </button>
           </div>
               </div>
             ) : (
         <>
-          {messages.map((message, index) => (
-                <div
+          {messages.map((message, index) => renderMessage(message))}
+          {followUpQuestions.length > 0 && !isLoading && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Follow-up Questions</h3>
+              <div className="space-y-2">
+                {followUpQuestions.map((question, index) => (
+                  <button
                   key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-              {renderMessage(message)}
-                  </div>
-          ))}
-          {isLoading && renderLoadingState()}
-            {error && (
-              <div className="flex justify-start">
-                <div className="bg-red-100 text-red-600 p-4 rounded-lg">
-                  {error}
+                    onClick={() => {
+                      setInput(question);
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="block w-full text-left p-2 text-sm text-[#1d0c46] hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    {question}
+                  </button>
+                ))}
                 </div>
               </div>
           )}
+          {isLoading && renderLoadingState()}
         </>
             )}
             <div ref={messagesEndRef} />
@@ -2640,6 +2580,49 @@ If you have specific questions about your analytics, please try again later when
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Add function to get insights
+  const getInsights = async () => {
+    try {
+      setIsLoading(true);
+      const response = await ragService.getInsights(
+        Array.from(selectedSites),
+        Array.from(selectedContracts)
+      );
+
+      if (response.status === 'success') {
+        const insightsMessage = formatInsightsMessage(response.insights);
+        setMessages(prev => [...prev, { role: 'assistant', content: insightsMessage }]);
+      } else {
+        setError(response.message || 'Failed to generate insights. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error getting insights:', error);
+      setError('Failed to generate insights. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to format insights message
+  const formatInsightsMessage = (insights) => {
+    return `## Analytics Insights Summary
+
+### Key Metrics
+${insights.key_metrics.map(metric => `- ${metric}`).join('\n')}
+
+### Notable Trends
+${insights.trends.map(trend => `- ${trend}`).join('\n')}
+
+### User Behavior Insights
+${insights.user_insights.map(insight => `- ${insight}`).join('\n')}
+
+### Web3 Patterns
+${insights.web3_patterns.map(pattern => `- ${pattern}`).join('\n')}
+
+### Opportunities
+${insights.opportunities.map(opportunity => `- ${opportunity}`).join('\n')}`;
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -2688,7 +2671,7 @@ If you have specific questions about your analytics, please try again later when
                   </button>
                   {websiteDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {websiteArray.map(website => (
+                    {websiteArray.map(website => (
                         <div key={website.siteId} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
                              onClick={() => handleSiteChange(website.siteId)}>
                           <input
@@ -2698,14 +2681,14 @@ If you have specific questions about your analytics, please try again later when
                             className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
                           />
                           <label className="text-sm cursor-pointer flex-1">
-                            {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                        {website.Domain} {website.Name ? `(${website.Name})` : ''}
                           </label>
                         </div>
-                      ))}
+                    ))}
                     </div>
                   )}
                 </div>
-
+                
                 {/* Smart Contract Dropdown */}
                 <div className="flex-1 relative" ref={contractDropdownRef}>
                   <div className="flex items-center justify-between mb-2">
@@ -2732,7 +2715,7 @@ If you have specific questions about your analytics, please try again later when
                   </button>
                   {contractDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {contractArray.map(contract => (
+                    {contractArray.map(contract => (
                         <div key={contract.id} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
                              onClick={() => handleContractChange(contract.id)}>
                           <input
@@ -2779,7 +2762,7 @@ If you have specific questions about your analytics, please try again later when
 
           {/* Rest of the component remains unchanged */}
           <ChatArea />
-          
+
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
