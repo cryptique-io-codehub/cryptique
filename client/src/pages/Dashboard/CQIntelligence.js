@@ -6,9 +6,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { isWeb3User, calculateAverageDuration, formatDuration } from '../../utils/analyticsHelpers';
-
-// Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
+import ragService from '../../services/ragService';
 
 // Add knowledge base loading function
 const loadExpertKnowledge = async () => {
@@ -21,8 +20,6 @@ const loadExpertKnowledge = async () => {
     return '';
   }
 };
-
-import ragService from '../../services/ragService';
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
