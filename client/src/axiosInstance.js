@@ -1,25 +1,23 @@
 import axios from 'axios';
 
-// Use the production URL with https, fallback to localhost for development
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+// Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://localhost:3001';
 
-// Log the API configuration for debugging
-console.log('API Configuration:', {
-  baseURL,
-  nodeEnv: process.env.NODE_ENV,
-  hasApiUrl: !!process.env.REACT_APP_API_SERVER_URL
-});
+console.log('API Server URL:', baseURL);
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
   baseURL: baseURL + '/api',
   headers: {
     'Content-Type': 'application/json',
+    // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  withCredentials: true, // Set to true by default for authenticated routes
+  // Set withCredentials based on environment
+  withCredentials: false, // Changed to false by default
+  // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
 
@@ -27,26 +25,22 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   config => {
     // Log requests for debugging
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, {
-      params: config.params || {},
-      withCredentials: config.withCredentials,
-      headers: {
-        ...config.headers,
-        Authorization: config.headers.Authorization ? '**present**' : '**missing**'
-      }
-    });
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Check if this is an analytics or RAG endpoint that's causing CORS issues
+    // Check if this is an analytics endpoint that's causing CORS issues
     if (config.url && (
       config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/') ||
-      config.url.includes('/rag/')
+      config.url.includes('/intelligence/')
     )) {
       // For these endpoints, explicitly set withCredentials to false
       config.withCredentials = false;
+    } else {
+      // For all other endpoints, including team routes, use credentials
+      config.withCredentials = true;
     }
     
-    // Get token dynamically on each request
+    // Get token dynamically on each request - not from closure
+    // Try both accessToken and token, as different parts of the app might use different keys
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -75,22 +69,18 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   response => {
     console.log(`API Response: ${response.status} from ${response.config.url}`, {
-      data: response.data ? 'Data received' : 'No data',
-      headers: response.headers
+      data: response.data ? 'Data received' : 'No data'
     });
     return response;
   },
   async error => {
     const originalRequest = error.config;
     
-    // Enhanced error logging
     console.error('API Response Error:', {
       url: originalRequest?.url,
-      baseURL: originalRequest?.baseURL,
       status: error.response?.status,
       message: error.message,
-      data: error.response?.data,
-      headers: error.response?.headers
+      data: error.response?.data 
     });
     
     // Handle 401 errors (token expired)

@@ -1,13 +1,11 @@
 import axiosInstance from '../axiosInstance';
 
-// Use the same base URL as the main API, but with the RAG endpoint
-const RAG_API_BASE_URL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+const RAG_API_BASE_URL = process.env.REACT_APP_RAG_API_URL || 'http://localhost:8000';
 
 class RAGService {
     constructor() {
         this.axios = axiosInstance;
-        // Set the base URL to the RAG endpoint
-        this.axios.defaults.baseURL = `${RAG_API_BASE_URL}/api/rag`;
+        this.axios.defaults.baseURL = RAG_API_BASE_URL;
     }
 
     // Process analytics data
