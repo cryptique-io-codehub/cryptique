@@ -119,47 +119,52 @@ console.log('Main app environment check:', {
   envKeys: Object.keys(process.env)
 });
 
-// Connect to MongoDB using secure configuration
-connectToDatabase()
-  .then(() => {
-    console.log('MongoDB connection established successfully');
-  })
-  .catch(err => {
-    console.error('MongoDB connection failed:', err);
-    process.exit(1); // Exit on database connection failure
-  });
-
-// Define CORS options for different routes
-const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true,
-  maxAge: 86400
-};
-
-// SDK CORS configuration with explicit headers
-const sdkCorsOptions = {
-  origin: function(origin, callback) {
-    // Allow specific origins instead of wildcard
-    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+// CORS configuration
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
     
-    // Check if origin is in our allowed list or if it's not provided (like in REST clients)
-    const originAllowed = !origin || allowedOrigins.includes(origin);
+    // List of allowed origins
+    const allowedOrigins = [
+      'https://cryptique.vercel.app',
+      'https://www.cryptique.io',
+      'https://cryptique.io'
+    ];
     
-    if (originAllowed) {
-      callback(null, origin);
+    // In development, allow localhost
+    if (process.env.NODE_ENV !== 'production') {
+      allowedOrigins.push('http://localhost:3000');
+    }
+    
+    // Check if the origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      callback(new Error('CORS not allowed'));
+      // Special handling for SDK routes
+      if (origin.includes('cdn.cryptique.io') || 
+          origin.includes('/sdk/') || 
+          origin.includes('/analytics/') ||
+          origin.includes('/intelligence/') ||
+          origin.includes('/rag/')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: true, // Changed to true to allow credentials
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight requests for 10 minutes
 };
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
 // Parse cookies
 app.use(cookieParser());
@@ -201,9 +206,6 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
-// We'll handle CORS per-route instead of globally
-// This prevents conflicts between different CORS policies
-
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
   // Set common security headers
@@ -244,79 +246,38 @@ app.use((req, res, next) => {
   next();
 });
 
-// Increase JSON body size limit to 50MB
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Body parser middleware
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// Apply general rate limiting to all routes except SDK routes
-app.use('/api', (req, res, next) => {
-  // Skip rate limiting for SDK routes which need to handle many requests
-  if (req.path.startsWith('/sdk/')) {
-    return next();
-  }
-  
-  // Apply rate limiting for all other API routes
-  apiLimiter(req, res, next);
-});
+// Health check endpoint
+app.use('/health', healthRouter);
 
-// Debug endpoint to check environment variables
-app.get("/debug/env", (req, res) => {
-  res.json({
-    hasGeminiApi: !!process.env.GEMINI_API,
-    nodeEnv: process.env.NODE_ENV,
-    envCount: Object.keys(process.env).length
-  });
-});
+// Apply rate limiting to all routes except health checks
+app.use('/api', apiLimiter);
 
-// Debug endpoint to list all registered routes
-app.get("/debug/routes", (req, res) => {
-  const routes = [];
-  app._router.stack.forEach(middleware => {
-    if (middleware.route) {
-      routes.push({
-        path: middleware.route.path,
-        methods: Object.keys(middleware.route.methods)
-      });
-    } else if (middleware.name === 'router') {
-      middleware.handle.stack.forEach(handler => {
-        if (handler.route) {
-          routes.push({
-            path: handler.route.path,
-            methods: Object.keys(handler.route.methods)
-          });
-        }
-      });
-    }
-  });
-  res.json(routes);
-});
+// API routes
+app.use('/api/user', userRouter);
+app.use('/api/campaign', campaignRouter);
+app.use('/api/stripe', stripeRouter);
 
 // Load routes with specific CORS configurations
 console.log('Loading routes...');
 
-// Health check routes - minimal CORS and no rate limiting
-app.use("/health", healthRouter);
-
-// Stripe routes
-app.use("/api/stripe", stripeRouter);
-
-// Apply specific CORS for SDK routes
-app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
-
 // Apply main CORS for all other routes
-app.use("/api/auth", cors(mainCorsOptions), userRouter);
-app.use("/api/team", cors(mainCorsOptions), require("./routes/teamRouter"));
-app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter"));
-app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
-app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));
-app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
-app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
-app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
+app.use("/api/auth", cors(corsOptions), userRouter);
+app.use("/api/team", cors(corsOptions), require("./routes/teamRouter"));
+app.use("/api/website", cors(corsOptions), require("./routes/websiteRouter"));
+app.use("/api/analytics", cors(corsOptions), require("./routes/analytics"));
+app.use("/api/onchain", cors(corsOptions), require("./routes/onChainRouter"));
+app.use("/api/campaign", cors(corsOptions), campaignRouter);
+app.use("/api/contracts", cors(corsOptions), require("./routes/smartContractRouter"));
+app.use("/api/transactions", cors(corsOptions), require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/api/ai", aiRouter);  // Removed cors(mainCorsOptions) to use the router's own CORS settings
+  app.use("/api/ai", aiRouter);  // Removed cors(corsOptions) to use the router's own CORS settings
   console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);
@@ -505,6 +466,39 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  
+  // Handle CORS errors
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'Origin not allowed',
+      message: 'This origin is not allowed to access the API'
+    });
+  }
+  
+  // Handle other errors
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+  });
 });
+
+// Connect to MongoDB using secure configuration
+connectToDatabase()
+  .then(() => {
+    console.log('MongoDB connection established successfully');
+    
+    // Start server only after successful database connection
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection failed:', err);
+    // In production, let the platform handle the restart
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
+  });

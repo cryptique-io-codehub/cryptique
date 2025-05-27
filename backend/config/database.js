@@ -18,9 +18,9 @@ const defaultConnectionOptions = {
   connectTimeoutMS: 10000,   // 10 seconds to establish connection
   socketTimeoutMS: 45000,    // 45 seconds to complete operations
   
-  // Connection pool settings
-  maxPoolSize: 10,           // Maximum connection pool size
-  minPoolSize: 2,            // Minimum connection pool size
+  // Connection pool settings for Vercel serverless environment
+  maxPoolSize: process.env.NODE_ENV === 'production' ? 1 : 10, // Use smaller pool in production
+  minPoolSize: process.env.NODE_ENV === 'production' ? 0 : 2,  // No minimum in production
   
   // Write concern settings - ensure data integrity
   writeConcern: {
@@ -49,7 +49,7 @@ const connectToDatabase = async () => {
   // Check if MongoDB URI is set
   if (!process.env.MONGODB_URI) {
     console.error('MONGODB_URI environment variable is not set');
-    process.exit(1); // Exit process with failure
+    throw new Error('MongoDB connection string not found in environment variables');
   }
 
   try {
@@ -59,6 +59,10 @@ const connectToDatabase = async () => {
     // Set up connection event handlers
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
+      // Don't exit process in production as Vercel will restart
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
     });
     
     mongoose.connection.on('disconnected', () => {
@@ -69,11 +73,19 @@ const connectToDatabase = async () => {
       console.info('MongoDB reconnected successfully');
     });
 
-    console.log(`MongoDB connected successfully to ${connection.connection.host}`);
+    // Log connection success with sanitized host info
+    const host = connection.connection.host.replace(/:[^:]*@/, ':****@');
+    console.log(`MongoDB connected successfully to ${host}`);
+    
     return connection;
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error.message);
-    process.exit(1); // Exit process with failure
+    // In production (Vercel), throw error instead of exiting
+    if (process.env.NODE_ENV === 'production') {
+      throw error;
+    } else {
+      process.exit(1);
+    }
   }
 };
 
