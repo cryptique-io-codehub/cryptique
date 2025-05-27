@@ -1080,24 +1080,32 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
-    if (!analytics || Object.keys(analytics).length === 0) {
+    // Check if we have any analytics data
+    if (!analytics || (typeof analytics !== 'object')) {
       console.log("Analytics Context: No analytics data available");
-      return "No analytics data available for this website yet.";
+      return "No analytics data available for this website yet. Please wait for the data to load and try again.";
     }
 
-    // Calculate advanced metrics
+    // Check if we have data for any of the selected sites
+    const hasDataForSelectedSites = Array.from(selectedSites).some(siteId => analytics[siteId]);
+    if (!hasDataForSelectedSites) {
+      console.log("Analytics Context: No data for selected sites");
+      return "Still loading data for the selected websites. Please wait a moment and try again.";
+    }
+
+    // Calculate advanced metrics only if we have data
     const advancedMetrics = calculateAdvancedMetrics(analytics);
     
-    // Process geographical data
+    // Process geographical data if available
     const geoData = processGeographicalData(analytics);
     
-    // Process traffic sources
+    // Process traffic sources if available
     const trafficData = processTrafficSources(analytics);
 
-    // Compile complete analytics summary with computed metrics
+    // Initialize analytics summary with null checks
     const fullAnalytics = {
       overview: {
-        totalPageViews: Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0),
+        totalPageViews: Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0) || 0,
         uniqueVisitors: analytics.uniqueVisitors || 0,
         averageSessionDuration: analytics.averageSessionDuration || 0,
         bounceRate: analytics.bounceRate || 0
@@ -1105,12 +1113,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
 
     // Add DAU/WAU/MAU if available
-    const activityMetrics = calculateRetentionMetrics(analytics.sessions);
+    const activityMetrics = analytics.sessions ? calculateRetentionMetrics(analytics.sessions) : null;
     if (activityMetrics) {
       if (activityMetrics.dau > 0) fullAnalytics.overview.dau = activityMetrics.dau;
       if (activityMetrics.wau > 0) fullAnalytics.overview.wau = activityMetrics.wau;
       if (activityMetrics.mau > 0) fullAnalytics.overview.mau = activityMetrics.mau;
-      if (Object.keys(activityMetrics.retention).length > 0) {
+      if (activityMetrics.retention && Object.keys(activityMetrics.retention).length > 0) {
         fullAnalytics.overview.retention = activityMetrics.retention;
       }
     }
@@ -1121,8 +1129,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (fullAnalytics.overview.averageSessionDuration === 0) delete fullAnalytics.overview.averageSessionDuration;
     if (fullAnalytics.overview.bounceRate === 0) delete fullAnalytics.overview.bounceRate;
 
-    // Add advanced metrics if they exist
-    if (advancedMetrics) {
+    // Add advanced metrics if they exist and are valid
+    if (advancedMetrics && typeof advancedMetrics === 'object') {
       Object.entries(advancedMetrics).forEach(([key, value]) => {
         if (isValidValue(value)) {
           fullAnalytics[key] = value;
@@ -1130,35 +1138,41 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       });
     }
 
-    // Add geographical and traffic data if they exist
+    // Add geographical and traffic data if they exist and are valid
     if (geoData && isValidValue(geoData)) fullAnalytics.geography = geoData;
     if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
 
     // Add smart contract transaction data if available
     if (selectedContracts.size > 0 && contractTransactions) {
-      // Find the selected contract details
-      const selectedContractsData = contractArray.filter(contract => selectedContracts.has(contract.id));
-      
-      // Process transaction data
-      if (selectedContractsData.length > 0) {
-        const selectedContractsData = selectedContractsData.map(contract => ({
+      const selectedContractsData = contractArray
+        .filter(contract => selectedContracts.has(contract.id))
+        .map(contract => ({
           id: contract.id,
           name: contract.name,
           blockchain: contract.blockchain,
           tokenSymbol: contract.tokenSymbol,
           transactions: contractTransactions[contract.id] || []
-        }));
-        
+        }))
+        .filter(data => data.transactions.length > 0);
+
+      if (selectedContractsData.length > 0) {
         fullAnalytics.smartContract = selectedContractsData;
       }
     }
 
-    // Remove empty sections
-    Object.keys(fullAnalytics).forEach(key => {
-      if (!isValidValue(fullAnalytics[key])) {
-        delete fullAnalytics[key];
-      }
-    });
+    // Remove empty sections with proper null check
+    if (fullAnalytics && typeof fullAnalytics === 'object') {
+      Object.keys(fullAnalytics).forEach(key => {
+        if (!isValidValue(fullAnalytics[key])) {
+          delete fullAnalytics[key];
+        }
+      });
+    }
+
+    // Ensure we have some valid data before proceeding
+    if (!fullAnalytics || typeof fullAnalytics !== 'object' || Object.keys(fullAnalytics).length === 0) {
+      return "No valid analytics data available yet. Please wait for the data to load and try again.";
+    }
 
     console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
     console.log("Processed Analytics Data:", fullAnalytics);
@@ -1733,8 +1747,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return formattedText;
   };
 
+  // Update handleSend to check for data availability
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    // Check if we have any data loaded
+    const hasLoadedData = Array.from(selectedSites).some(siteId => analytics[siteId]);
+    if (!hasLoadedData) {
+      setError("Please wait for the analytics data to load before sending a message.");
+      return;
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -1744,6 +1766,18 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     try {
       const analyticsSummary = generateAnalyticsSummary(userMessage);
+      
+      // If analyticsSummary is a string, it's an error message
+      if (typeof analyticsSummary === 'string') {
+        setError(analyticsSummary);
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: analyticsSummary,
+          timestamp: new Date().toISOString()
+        }]);
+        return;
+      }
+
       const messageWithContext = analyticsSummary;
 
       let botMessage;
