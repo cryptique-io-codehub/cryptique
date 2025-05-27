@@ -7,38 +7,20 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'https://cryptique-backend.vercel.app',
       changeOrigin: true,
-      secure: true,
       pathRewrite: {
-        '^/api': '/api'
+        '^/api': '/api', // No rewrite needed
       },
       onProxyRes: function(proxyRes, req, res) {
         // Add CORS headers to all proxy responses
-        const origin = req.headers.origin;
-        if (origin && (
-          origin.includes('app.cryptique.io') || 
-          origin.includes('cryptique.io') || 
-          origin.includes('localhost')
-        )) {
-          proxyRes.headers['Access-Control-Allow-Origin'] = origin;
-          proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-          proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept';
-          proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
-          proxyRes.headers['Access-Control-Max-Age'] = '86400';
-        }
-      },
-      onProxyReq: function(proxyReq, req, res) {
-        // Copy authorization header from the original request
-        const token = req.headers.authorization;
-        if (token) {
-          proxyReq.setHeader('Authorization', token);
-        }
+        proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+        proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
       },
       onError: (err, req, res) => {
         console.error('Proxy error:', err);
         res.writeHead(500, {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': req.headers.origin || '*',
-          'Access-Control-Allow-Credentials': 'true'
+          'Access-Control-Allow-Origin': '*',
         });
         res.end(JSON.stringify({ 
           message: 'Error connecting to the API server. Please try again later.',

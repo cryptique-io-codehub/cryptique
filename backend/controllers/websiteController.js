@@ -110,42 +110,15 @@ exports.getWebsitesOfTeam = async (req, res) => {
         const teamName = req.params.teamName;
         console.log("Getting websites for team:", teamName);
         
-        if (!teamName) {
-            return res.status(400).json({ message: "Team name is required" });
-        }
+        if (!teamName) return res.status(400).json({ message: "Team name is required" });
 
-        // Find team and populate websites with analytics data
-        const team = await Team.findOne({ name: teamName })
-            .populate({
-                path: 'websites',
-                populate: {
-                    path: 'analytics',
-                    model: 'Analytics'
-                }
-            });
+        const team = await Team.findOne({ name: teamName }).populate('websites');
+        if (!team) return res.status(404).json({ message: "Team not found" });
 
-        if (!team) {
-            console.log(`Team not found: ${teamName}`);
-            return res.status(404).json({ message: "Team not found" });
-        }
-
-        if (!team.websites || team.websites.length === 0) {
-            console.log(`No websites found for team: ${teamName}`);
-            return res.status(200).json({ message: "No websites found", websites: [] });
-        }
-
-        console.log(`Found ${team.websites.length} websites for team: ${teamName}`);
-        return res.status(200).json({ 
-            message: "Websites fetched successfully", 
-            websites: team.websites 
-        });
+        return res.status(200).json({ message: "Websites fetched successfully", websites: team.websites });
     } catch (e) {
-        console.error("Error while fetching websites:", e);
-        res.status(500).json({ 
-            message: 'Error while fetching websites', 
-            error: e.message,
-            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
-        });
+        console.error("Error while fetching websites", e);
+        res.status(500).json({ message: 'Error while fetching websites', error: e.message });
     }
 }
 

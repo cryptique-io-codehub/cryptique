@@ -5,60 +5,28 @@ const Team = require('../models/team');
 const cors = require('cors');
 const router = express.Router();
 
-// Configure CORS for team endpoints
+// Define CORS options
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400
 };
 
-// Apply CORS middleware
-router.use(cors(corsOptions));
-
 router.post('/create',verifyToken,addMember);
-router.get('/:teamId/members',verifyToken,getMembers);
-router.get('/details',verifyToken,async (req, res) => {
-  try {
-    const userId = req.userId;
-    
-    // Find all teams where the user is a member
-    const teams = await Team.find({
-      $or: [
-        { owner: userId },
-        { members: userId }
-      ]
-    }).select('name owner members role');
-
-    // Format the response
-    const formattedTeams = teams.map(team => ({
-      _id: team._id,
-      name: team.name,
-      isOwner: team.owner.toString() === userId,
-      role: team.members.includes(userId) ? 'member' : 'owner',
-      members: team.members.length
-    }));
-
-    res.json({ team: formattedTeams });
-  } catch (error) {
-    console.error('Error fetching team details:', error);
-    res.status(500).json({ 
-      message: 'Error fetching team details',
-      error: error.message 
-    });
-  }
-});
+router.get('/:teamId/members',cors(corsOptions),verifyToken,getMembers);
+router.get('/details',verifyToken,getTeamDetails);
 router.get('/admin-team-details',verifyToken,getAdminTeamDetails);
 router.post('/createNewTeam',verifyToken,createNewTeam);
 router.post('/delete',verifyToken,deleteTeam);
 router.post('/update',verifyToken,updateTeam);
 router.post('/remove-member',verifyToken,removeMember);
 router.post('/update-member-role',verifyToken,updateMemberRole);
-router.get('/subscription-status/:teamName',verifyToken,getSubscriptionStatus);
+router.get('/subscription-status/:teamName',cors(corsOptions),verifyToken,getSubscriptionStatus);
 
 // Save billing details for a team
-router.post('/:teamId/billing-address', verifyToken, async (req, res) => {
+router.post('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {
     try {
         const { teamId } = req.params;
         const billingAddress = req.body;
@@ -88,7 +56,7 @@ router.post('/:teamId/billing-address', verifyToken, async (req, res) => {
 });
 
 // Get billing address for a team
-router.get('/:teamId/billing-address', verifyToken, async (req, res) => {
+router.get('/:teamId/billing-address', cors(corsOptions), verifyToken, async (req, res) => {
     try {
         const { teamId } = req.params;
         

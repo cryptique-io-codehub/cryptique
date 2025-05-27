@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the actual production URL with https, fallback to localhost for development
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+// Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://localhost:3001';
 
 console.log('API Server URL:', baseURL);
 
@@ -10,11 +10,14 @@ const axiosInstance = axios.create({
   baseURL: baseURL + '/api',
   headers: {
     'Content-Type': 'application/json',
+    // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  withCredentials: true, // Always true for authenticated routes
+  // Set withCredentials based on environment
+  withCredentials: false, // Changed to false by default
+  // Add timeout configuration
   timeout: 60000 // 60 seconds timeout
 });
 
@@ -24,7 +27,20 @@ axiosInstance.interceptors.request.use(
     // Log requests for debugging
     console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Get token dynamically on each request
+    // Check if this is an analytics endpoint that's causing CORS issues
+    if (config.url && (
+      config.url.includes('/sdk/analytics/') ||
+      config.url.includes('/intelligence/')
+    )) {
+      // For these endpoints, explicitly set withCredentials to false
+      config.withCredentials = false;
+    } else {
+      // For all other endpoints, including team routes, use credentials
+      config.withCredentials = true;
+    }
+    
+    // Get token dynamically on each request - not from closure
+    // Try both accessToken and token, as different parts of the app might use different keys
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -34,6 +50,11 @@ axiosInstance.interceptors.request.use(
     if (config.url && config.url.includes('/team/')) {
       // Ensure content type is always set correctly for all team routes
       config.headers['Content-Type'] = 'application/json';
+      
+      // Ensure Authorization header is set for team routes
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
     return config;
@@ -55,7 +76,6 @@ axiosInstance.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
     
-    // Log the error details
     console.error('API Response Error:', {
       url: originalRequest?.url,
       status: error.response?.status,
@@ -111,6 +131,23 @@ axiosInstance.interceptors.response.use(
       
       // Return a new request
       return axiosInstance(originalRequest);
+    }
+    
+    // Log the error for debugging
+    console.error("API Error:", error.message);
+    
+    if (error.response && error.response.status === 401) {
+      // Handle unauthorized access
+      console.log("Unauthorized access, please login again");
+      
+      // Redirect to login page if unauthorized
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("User");
+        localStorage.removeItem("selectedTeam");
+        localStorage.removeItem("selectedWebsite");
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);

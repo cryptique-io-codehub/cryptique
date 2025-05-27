@@ -1,40 +1,11 @@
 const express = require('express');
-const cors = require('cors');
+
 const {addWebsite,deleteWebsite,verify, getWebsitesOfTeam}=require("../controllers/websiteController");
 const Website = require('../models/website');
 const Analytics = require('../models/analytics');
 const {verifyToken}=require('../middleware/auth');
 
 const router = express.Router();
-
-// Configure CORS for website endpoints
-const corsOptions = {
-  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true,
-  maxAge: 86400
-};
-
-// Apply CORS middleware
-router.use(cors(corsOptions));
-
-// Middleware to ensure CORS headers are set
-router.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (corsOptions.origin.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', corsOptions.methods.join(', '));
-    res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', corsOptions.maxAge.toString());
-  }
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  next();
-});
 
 // Apply authentication middleware to all routes
 router.use(verifyToken);
