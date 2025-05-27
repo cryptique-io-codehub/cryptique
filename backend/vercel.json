@@ -8,6 +8,22 @@
   ],
   "routes": [
     {
+      "src": "/api/website/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://app.cryptique.io",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400"
+      },
+      "continue": true
+    },
+    {
+      "src": "/api/website/(.*)",
+      "methods": ["OPTIONS"],
+      "dest": "/index.js"
+    },
+    {
       "src": "/api/sdk/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "*",
@@ -46,7 +62,7 @@
     },
     {
       "path": "/api/sdk/update-all-analytics-stats-weekly",
-        "schedule": "*/10 * * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/sdk/update-all-analytics-stats-monthly",
