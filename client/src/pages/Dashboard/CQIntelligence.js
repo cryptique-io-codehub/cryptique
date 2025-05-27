@@ -2682,7 +2682,8 @@ If you have specific questions about your analytics, please try again later when
               {!isLoadingTransactions && selectedContracts.size > 0 && (
                 <div className="flex items-center text-gray-600">
                   <span>
-                    {Object.values(contractTransactions).reduce((sum, txns) => sum + txns.length, 0)} 
+                    {Array.from(selectedContracts).reduce((sum, contractId) => 
+                      sum + (contractTransactions[contractId]?.length || 0), 0)} 
                     transactions loaded for {selectedContracts.size} contract{selectedContracts.size !== 1 ? 's' : ''}
                   </span>
                 </div>
