@@ -2028,6 +2028,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     // Check if we need to use RAG or fallback to traditional approach
     let useRAG = true;
     let embeddingServiceAvailable = true;
+    let botMessage = ""; // Define botMessage at the top level of the function
     
     // Check if embedding service is available
     try {
@@ -2099,8 +2100,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
         
         // Step 4: Get response from Gemini
-        let botMessage;
-        
         try {
           const ai = initializeAI();
           const modelName = await verifyModel();
@@ -2154,7 +2153,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             
             const response = await axiosInstance.post('/ai/generate', requestBody);
             botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                        "Sorry, I couldn't process your request.";
+                       "Sorry, I couldn't process your request.";
           } catch (apiError) {
             console.error("REST API approach also failed:", apiError);
             botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
@@ -2218,37 +2217,37 @@ If you have specific questions about your analytics, please try again later when
         }
       }
 
-        // Format and display the response
-        try {
-          const formattedMessage = formatResponse(botMessage);
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: formattedMessage,
-            timestamp: new Date().toISOString()
-          }]);
-        } catch (formatError) {
-          console.error("Error formatting response:", formatError);
-          // If formatting fails, use the original message
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: botMessage || "Sorry, I couldn't format the response properly.",
-            timestamp: new Date().toISOString()
-          }]);
-        }
-      } catch (err) {
-        console.error('Error in RAG chat processing:', err);
-        setError(`Failed to process: ${err.message}`);
-        
-        // Add a fallback message even if the entire try block fails
+      // Format and display the response
+      try {
+        const formattedMessage = formatResponse(botMessage);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'I apologize, but I encountered an error processing your request. Falling back to standard response mode.',
+          content: formattedMessage,
           timestamp: new Date().toISOString()
         }]);
-      } finally {
-        setIsLoading(false);
+      } catch (formatError) {
+        console.error("Error formatting response:", formatError);
+        // If formatting fails, use the original message
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: botMessage || "Sorry, I couldn't format the response properly.",
+          timestamp: new Date().toISOString()
+        }]);
       }
+    } catch (err) {
+      console.error('Error in RAG chat processing:', err);
+      setError(`Failed to process: ${err.message}`);
+      
+      // Add a fallback message even if the entire try block fails
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I apologize, but I encountered an error processing your request. Falling back to standard response mode.',
+        timestamp: new Date().toISOString()
+      }]);
+    } finally {
+      setIsLoading(false);
     }
+  }
 
   // Replace handleSend with handleSendWithRAG
   const handleSend = handleSendWithRAG;
