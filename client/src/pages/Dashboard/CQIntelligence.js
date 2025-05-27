@@ -47,6 +47,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
 
+  // Add state for dropdown visibility
+  const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
+  const [contractDropdownOpen, setContractDropdownOpen] = useState(false);
+  
+  // Add refs for dropdowns
+  const websiteDropdownRef = useRef(null);
+  const contractDropdownRef = useRef(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -180,13 +188,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   // Handle website selection changes
-  const handleSiteChange = (siteId) => {
+  const handleSiteChange = async (siteId) => {
     setSelectedSites(prev => {
       const newSelection = new Set(prev);
       if (newSelection.has(siteId)) {
         newSelection.delete(siteId);
       } else {
         newSelection.add(siteId);
+        // Fetch data for newly selected site if not already loaded
+        if (!analytics[siteId]) {
+          fetchAnalyticsData(siteId);
+        }
       }
       setAllSitesSelected(newSelection.size === websiteArray.length);
       return newSelection;
@@ -194,13 +206,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   // Handle contract selection changes
-  const handleContractChange = (contractId) => {
+  const handleContractChange = async (contractId) => {
     setSelectedContracts(prev => {
       const newSelection = new Set(prev);
       if (newSelection.has(contractId)) {
         newSelection.delete(contractId);
       } else {
         newSelection.add(contractId);
+        // Fetch data for newly selected contract if not already loaded
+        if (!contractTransactions[contractId]) {
+          fetchContractTransactions(contractId);
+        }
       }
       setAllContractsSelected(newSelection.size === contractArray.length);
       return newSelection;
@@ -208,7 +224,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   // Handle select all websites
-  const handleSelectAllSites = () => {
+  const handleSelectAllSites = async () => {
     if (allSitesSelected) {
       setSelectedSites(new Set());
       setAllSitesSelected(false);
@@ -216,11 +232,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const allSiteIds = new Set(websiteArray.map(site => site.siteId));
       setSelectedSites(allSiteIds);
       setAllSitesSelected(true);
+      // Fetch data for any sites that haven't been loaded
+      websiteArray.forEach(site => {
+        if (!analytics[site.siteId]) {
+          fetchAnalyticsData(site.siteId);
+        }
+      });
     }
   };
 
   // Handle select all contracts
-  const handleSelectAllContracts = () => {
+  const handleSelectAllContracts = async () => {
     if (allContractsSelected) {
       setSelectedContracts(new Set());
       setAllContractsSelected(false);
@@ -228,6 +250,12 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const allContractIds = new Set(contractArray.map(contract => contract.id));
       setSelectedContracts(allContractIds);
       setAllContractsSelected(true);
+      // Fetch data for any contracts that haven't been loaded
+      contractArray.forEach(contract => {
+        if (!contractTransactions[contract.id]) {
+          fetchContractTransactions(contract.id);
+        }
+      });
     }
   };
 
@@ -2511,6 +2539,21 @@ If you have specific questions about your analytics, please try again later when
           </div>
   );
 
+  // Add click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (websiteDropdownRef.current && !websiteDropdownRef.current.contains(event.target)) {
+        setWebsiteDropdownOpen(false);
+      }
+      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target)) {
+        setContractDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
@@ -2531,9 +2574,9 @@ If you have specific questions about your analytics, please try again later when
               </div>
               
               {/* Selectors Section */}
-              <div className="flex flex-col gap-4 min-w-[600px]">
-                {/* Website Selection */}
-                <div className="flex-1">
+              <div className="flex gap-4 min-w-[400px]">
+                {/* Website Dropdown */}
+                <div className="flex-1 relative" ref={websiteDropdownRef}>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-medium text-gray-500">Websites</label>
                     <button
@@ -2543,25 +2586,41 @@ If you have specific questions about your analytics, please try again later when
                       {allSitesSelected ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className="max-h-32 overflow-y-auto border rounded-lg p-2 bg-white">
-                    {websiteArray.map(website => (
-                      <div key={website.siteId} className="flex items-center p-1 hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={selectedSites.has(website.siteId)}
-                          onChange={() => handleSiteChange(website.siteId)}
-                          className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
-                        />
-                        <label className="text-sm">
-                          {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setWebsiteDropdownOpen(!websiteDropdownOpen)}
+                    className="w-full p-2 border rounded-lg bg-white flex items-center justify-between hover:border-[#caa968] transition-colors"
+                  >
+                    <span className="text-sm truncate">
+                      {selectedSites.size === 0 ? 'Select websites' :
+                       selectedSites.size === websiteArray.length ? 'All websites selected' :
+                       `${selectedSites.size} website${selectedSites.size !== 1 ? 's' : ''} selected`}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform ${websiteDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {websiteDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {websiteArray.map(website => (
+                        <div key={website.siteId} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
+                             onClick={() => handleSiteChange(website.siteId)}>
+                          <input
+                            type="checkbox"
+                            checked={selectedSites.has(website.siteId)}
+                            onChange={() => {}}
+                            className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
+                          />
+                          <label className="text-sm cursor-pointer flex-1">
+                            {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                {/* Smart Contract Selection */}
-                <div className="flex-1">
+
+                {/* Smart Contract Dropdown */}
+                <div className="flex-1 relative" ref={contractDropdownRef}>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-medium text-gray-500">Smart Contracts</label>
                     <button
@@ -2571,21 +2630,37 @@ If you have specific questions about your analytics, please try again later when
                       {allContractsSelected ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className="max-h-32 overflow-y-auto border rounded-lg p-2 bg-white">
-                    {contractArray.map(contract => (
-                      <div key={contract.id} className="flex items-center p-1 hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={selectedContracts.has(contract.id)}
-                          onChange={() => handleContractChange(contract.id)}
-                          className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
-                        />
-                        <label className="text-sm">
-                          {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setContractDropdownOpen(!contractDropdownOpen)}
+                    className="w-full p-2 border rounded-lg bg-white flex items-center justify-between hover:border-[#caa968] transition-colors"
+                  >
+                    <span className="text-sm truncate">
+                      {selectedContracts.size === 0 ? 'Select contracts' :
+                       selectedContracts.size === contractArray.length ? 'All contracts selected' :
+                       `${selectedContracts.size} contract${selectedContracts.size !== 1 ? 's' : ''} selected`}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform ${contractDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {contractDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {contractArray.map(contract => (
+                        <div key={contract.id} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
+                             onClick={() => handleContractChange(contract.id)}>
+                          <input
+                            type="checkbox"
+                            checked={selectedContracts.has(contract.id)}
+                            onChange={() => {}}
+                            className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
+                          />
+                          <label className="text-sm cursor-pointer flex-1">
+                            {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
