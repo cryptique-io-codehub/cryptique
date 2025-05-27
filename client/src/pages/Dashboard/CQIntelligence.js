@@ -1786,7 +1786,223 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     return formattedText;
   };
 
-  const handleSend = async () => {
+  // New utility functions for RAG implementation
+
+  // Transform website analytics to text
+  function transformWebsiteAnalyticsToText(siteId, analyticsData) {
+    const site = websiteArray.find(s => s.siteId === siteId);
+    const domain = site?.Domain || 'Unknown domain';
+    
+    let descriptions = [];
+    
+    // Overview metrics
+    if (analyticsData.uniqueVisitors || analyticsData.totalPageViews) {
+      const pageViews = Object.values(analyticsData.pageViews || {}).reduce((a, b) => a + b, 0);
+      
+      descriptions.push(`
+        Website ${domain} had ${analyticsData.uniqueVisitors || 0} unique visitors and 
+        ${pageViews} total page views.
+        ${analyticsData.averageSessionDuration ? `The average session duration was ${formatDuration(analyticsData.averageSessionDuration)}.` : ''}
+        ${analyticsData.bounceRate ? `The bounce rate was ${analyticsData.bounceRate.toFixed(1)}%.` : ''}
+      `);
+    }
+    
+    // Web3 specific metrics
+    if (analyticsData.web3Visitors || analyticsData.walletsConnected) {
+      descriptions.push(`
+        ${analyticsData.web3Visitors || 0} visitors had Web3 wallets installed, and 
+        ${analyticsData.walletsConnected || 0} visitors connected their wallets.
+        ${analyticsData.walletTypes ? `The most common wallet types were: ${formatWalletTypes(analyticsData.walletTypes)}.` : ''}
+      `);
+    }
+    
+    // Page metrics
+    if (analyticsData.pageViews && Object.keys(analyticsData.pageViews).length > 0) {
+      descriptions.push(`
+        The most visited pages were: ${formatTopPages(analyticsData.pageViews, 5)}.
+      `);
+    }
+    
+    return descriptions;
+  }
+
+  // Transform contract data to text
+  function transformContractToText(contractId, transactionsData) {
+    const contract = contractArray.find(c => c.id === contractId);
+    if (!contract || !transactionsData || !transactionsData.length) return [];
+    
+    const totalVolume = transactionsData.reduce((sum, tx) => sum + (parseFloat(tx.value_eth) || 0), 0);
+    const uniqueWallets = new Set(transactionsData.map(tx => tx.from_address)).size;
+    
+    let descriptions = [];
+    
+    // Overview
+    descriptions.push(`
+      Smart contract ${contract.name} (${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}) 
+      on ${contract.blockchain} had ${transactionsData.length} transactions.
+      The total transaction volume was ${totalVolume.toFixed(2)} ${contract.tokenSymbol || 'tokens'}.
+      There were ${uniqueWallets} unique wallets interacting with this contract.
+    `);
+    
+    return descriptions;
+  }
+
+  // Create chunks with metadata
+  function createChunksWithMetadata(siteId, analyticsTexts) {
+    const site = websiteArray.find(s => s.siteId === siteId);
+    return analyticsTexts.map((text, index) => ({
+      text: text.trim(),
+      metadata: {
+        source: "website_analytics",
+        siteId: siteId,
+        domain: site?.Domain || 'Unknown',
+        dataType: index === 0 ? "overview" : 
+                  index === 1 ? "web3_metrics" : "page_metrics",
+        timestamp: new Date().toISOString(),
+        timeRange: "30d"
+      }
+    }));
+  }
+
+  function createContractChunksWithMetadata(contractId, contractTexts) {
+    const contract = contractArray.find(c => c.id === contractId);
+    return contractTexts.map((text, index) => ({
+      text: text.trim(),
+      metadata: {
+        source: "smart_contract",
+        contractId: contractId,
+        address: contract?.address || 'Unknown',
+        blockchain: contract?.blockchain || 'Unknown',
+        dataType: "overview",
+        timestamp: new Date().toISOString(),
+        timeRange: "all_time"
+      }
+    }));
+  }
+
+  // Generate embedding
+  async function generateEmbedding(text) {
+    try {
+      const response = await axiosInstance.post('/vector/embed', { text });
+      return response.data.embedding;
+    } catch (error) {
+      console.error("Error generating embedding:", error);
+      throw error;
+    }
+  }
+
+  // Store chunks with embeddings
+  async function storeChunksWithEmbeddings(chunks) {
+    try {
+      const storedChunks = [];
+      for (const chunk of chunks) {
+        try {
+          const embedding = await generateEmbedding(chunk.text);
+          await axiosInstance.post('/vector/store', {
+            text: chunk.text,
+            embedding: embedding,
+            metadata: chunk.metadata
+          });
+          storedChunks.push(chunk);
+        } catch (error) {
+          console.error(`Error storing chunk: ${error.message}`);
+          // Continue with other chunks even if one fails
+        }
+      }
+      console.log(`Successfully stored ${storedChunks.length} of ${chunks.length} chunks with embeddings`);
+      return storedChunks.length > 0;
+    } catch (error) {
+      console.error("Error in storeChunksWithEmbeddings:", error);
+      return false;
+    }
+  }
+
+  // Retrieve relevant chunks
+  async function retrieveRelevantChunks(query, selectedSites, selectedContracts) {
+    try {
+      // Create filter based on user selections
+      const filters = [];
+      if (selectedSites.size > 0) {
+        filters.push({ 
+          "metadata.source": "website_analytics",
+          "metadata.siteId": { $in: Array.from(selectedSites) } 
+        });
+      }
+      if (selectedContracts.size > 0) {
+        filters.push({ 
+          "metadata.source": "smart_contract",
+          "metadata.contractId": { $in: Array.from(selectedContracts) } 
+        });
+      }
+      
+      const filter = filters.length > 0 ? { $or: filters } : {};
+      
+      // Get embedding for query
+      const queryEmbedding = await generateEmbedding(query);
+      
+      // Perform search
+      const response = await axiosInstance.post('/vector/search', {
+        queryEmbedding: queryEmbedding,
+        filter: filter,
+        limit: 10
+      });
+      
+      return response.data.results || [];
+    } catch (error) {
+      console.error("Error retrieving relevant chunks:", error);
+      return [];
+    }
+  }
+
+  // Construct enhanced prompt
+  function constructEnhancedPrompt(query, relevantChunks) {
+    const contextText = relevantChunks
+      .map(chunk => {
+        return `[${chunk.metadata.source} - ${chunk.metadata.dataType}]\n${chunk.text}\n`;
+      })
+      .join("\n");
+    
+    return `
+      [CONTEXT INFORMATION]
+      ${contextText}
+      
+      [USER QUERY]
+      ${query}
+      
+      [INSTRUCTIONS]
+      Based on the context information above, answer the user's query about their Web3 analytics data.
+      Include specific metrics and insights when relevant.
+      If appropriate, suggest visualizations or charts that would help understand the data better.
+      If the answer isn't in the context, say so rather than making up information.
+      
+      Format your response using markdown for better readability. Use bullet points, headings, and other formatting as appropriate.
+    `;
+  }
+
+  // Helper function to format wallet types
+  function formatWalletTypes(walletTypes) {
+    if (!walletTypes || typeof walletTypes !== 'object') return 'none';
+    
+    return Object.entries(walletTypes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([type, count]) => `${type} (${count})`)
+      .join(', ');
+  }
+
+  // Helper function to format top pages
+  function formatTopPages(pageViews, limit = 5) {
+    if (!pageViews || typeof pageViews !== 'object') return 'none';
+    
+    return Object.entries(pageViews)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([page, views]) => `${page} (${views} views)`)
+      .join(', ');
+  }
+
+  // Enhanced send handler that uses RAG
+  async function handleSendWithRAG() {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
@@ -1796,75 +2012,111 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Generate analytics summary with error handling
-      let analyticsSummary;
-      try {
-        analyticsSummary = generateAnalyticsSummary(userMessage);
-        if (!analyticsSummary) {
-          throw new Error("Failed to generate analytics summary");
+      // Step 1: Transform current data to text
+      const allChunks = [];
+      
+      // Process websites
+      for (const siteId of selectedSites) {
+        const siteAnalytics = analytics[siteId];
+        if (siteAnalytics) {
+          const textDescriptions = transformWebsiteAnalyticsToText(siteId, siteAnalytics);
+          const chunks = createChunksWithMetadata(siteId, textDescriptions);
+          allChunks.push(...chunks);
         }
-      } catch (summaryError) {
-        console.error("Error generating analytics summary:", summaryError);
-        // Create a simplified fallback summary
-        analyticsSummary = `
-          [USER QUESTION]
-          ${userMessage}
-          [/USER QUESTION]
-          
-          [ANALYTICS CONTEXT]
-          Due to data processing limitations, detailed analytics are not available.
-          Please provide general Web3 marketing advice related to the query.
-          [/ANALYTICS CONTEXT]
-        `;
       }
       
-      const messageWithContext = analyticsSummary;
-      let botMessage;
-
+      // Process contracts
+      for (const contractId of selectedContracts) {
+        const contractTxs = contractTransactions[contractId];
+        if (contractTxs) {
+          const textDescriptions = transformContractToText(contractId, contractTxs);
+          const chunks = createContractChunksWithMetadata(contractId, textDescriptions);
+          allChunks.push(...chunks);
+        }
+      }
+      
+      // Step 2: Store chunks with embeddings
+      let storageSuccessful = false;
+      if (allChunks.length > 0) {
+        storageSuccessful = await storeChunksWithEmbeddings(allChunks);
+        console.log(`Storage of chunks was ${storageSuccessful ? 'successful' : 'unsuccessful'}`);
+      } else {
+        console.log('No chunks to store');
+      }
+      
+      // Step 3: Retrieve relevant chunks based on query
+      let relevantChunks = [];
       try {
-        // Try SDK approach first
+        relevantChunks = await retrieveRelevantChunks(
+          userMessage, 
+          selectedSites, 
+          selectedContracts
+        );
+        console.log(`Retrieved ${relevantChunks.length} relevant chunks`);
+      } catch (searchError) {
+        console.error('Error retrieving chunks:', searchError);
+        // Continue with an empty set of chunks - will fall back to regular processing
+      }
+      
+      // Step 4: Get response from Gemini
+      let botMessage;
+      
+      try {
         const ai = initializeAI();
         const modelName = await verifyModel();
-        console.log("Using model for SDK:", modelName);
         
-        const model = ai.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(messageWithContext);
-        const response = await result.response;
-        botMessage = response.text();
-      } catch (sdkError) {
-        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        // If we have relevant chunks and storage was successful, use RAG approach
+        if (relevantChunks.length > 0 && storageSuccessful) {
+          console.log("Using RAG approach with model:", modelName);
+          
+          // Construct enhanced prompt with retrieved chunks
+          const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
+          
+          const model = ai.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(enhancedPrompt);
+          const response = await result.response;
+          botMessage = response.text();
+        } else {
+          // Fall back to traditional approach
+          console.log("Falling back to traditional approach with model:", modelName);
+          const analyticsSummary = generateAnalyticsSummary(userMessage);
+          
+          const model = ai.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(analyticsSummary);
+          const response = await result.response;
+          botMessage = response.text();
+        }
+      } catch (aiError) {
+        console.error("Error getting AI response:", aiError);
         
+        // Try REST API fallback
         try {
+          console.log("Trying REST API fallback...");
           const modelName = await verifyModel();
-          console.log("Using model for REST API:", modelName);
+          
+          let promptContent;
+          if (relevantChunks.length > 0 && storageSuccessful) {
+            promptContent = constructEnhancedPrompt(userMessage, relevantChunks);
+          } else {
+            promptContent = generateAnalyticsSummary(userMessage);
+          }
           
           const requestBody = {
             model: modelName,
             contents: [
               {
                 parts: [
-                  { text: messageWithContext }
+                  { text: promptContent }
                 ]
               }
             ]
           };
-
-          console.log("Sending request to backend:", requestBody);
-          const response = await axiosInstance.post('/ai/generate', requestBody);
           
-          if (!response.data) {
-            throw new Error('No response data received from backend');
-          }
-
-          if (response.data.error) {
-            throw new Error(response.data.error);
-          }
-
-          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+          const response = await axiosInstance.post('/ai/generate', requestBody);
+          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                      "Sorry, I couldn't process your request.";
         } catch (apiError) {
           console.error("REST API approach also failed:", apiError);
-          
-          // If both approaches fail, create a fallback response based on the analytics data
           botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
           
 Based on the analytics data I can see for your selected sites, here's what I can tell you:
@@ -1876,8 +2128,8 @@ ${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}`
 If you have specific questions about your analytics, please try again later when our AI service is back online.`;
         }
       }
-
-      // Format the response before displaying
+      
+      // Format and display the response
       try {
         const formattedMessage = formatResponse(botMessage);
         setMessages(prev => [...prev, { 
@@ -1895,29 +2147,22 @@ If you have specific questions about your analytics, please try again later when
         }]);
       }
     } catch (err) {
-      console.error('Full Error Details:', err);
-      let errorMessage = "An unknown error occurred";
-      
-      if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.response?.data?.details) {
-        errorMessage = err.response.data.details;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(`Failed to get response: ${errorMessage}`);
+      console.error('Error in RAG chat processing:', err);
+      setError(`Failed to process: ${err.message}`);
       
       // Add a fallback message even if the entire try block fails
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
+        content: 'I apologize, but I encountered an error processing your request.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
+
+  // Replace handleSend with handleSendWithRAG
+  const handleSend = handleSendWithRAG;
 
   // Function to process analytics data from multiple websites
   const processMultiSiteAnalytics = () => {
