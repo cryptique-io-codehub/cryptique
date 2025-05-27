@@ -6,7 +6,6 @@ require("dotenv").config();
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
 const stripeRouter = require("./routes/stripeRouter");
-const vectorStoreRouter = require("./routes/vectorStore");
 const bodyParser = require("body-parser");
 const { apiLimiter } = require("./middleware/rateLimiter");
 const { connectToDatabase } = require("./config/database");
@@ -313,7 +312,6 @@ app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter")
 app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
-app.use("/api/vector", cors(mainCorsOptions), vectorStoreRouter);
 
 // Load AI router with explicit error handling
 try {

@@ -3,9 +3,6 @@ const router = express.Router();
 const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
-const { spawn } = require('child_process');
-const path = require('path');
-const { authenticateToken } = require('../middleware/auth');
 
 // Configure CORS specifically for AI endpoints
 const aiCorsOptions = {
@@ -160,68 +157,6 @@ router.get('/test', (req, res) => {
         message: 'AI router is working',
         timestamp: new Date().toISOString()
     });
-});
-
-// Helper function to run Python script
-const runPythonScript = (scriptPath, args) => {
-    return new Promise((resolve, reject) => {
-        const pythonProcess = spawn('python', [scriptPath, ...args]);
-        let result = '';
-        let error = '';
-
-        pythonProcess.stdout.on('data', (data) => {
-            result += data.toString();
-        });
-
-        pythonProcess.stderr.on('data', (data) => {
-            error += data.toString();
-        });
-
-        pythonProcess.on('close', (code) => {
-            if (code !== 0) {
-                reject(new Error(`Python process exited with code ${code}: ${error}`));
-            } else {
-                try {
-                    resolve(JSON.parse(result));
-                } catch (e) {
-                    resolve(result);
-                }
-            }
-        });
-    });
-};
-
-// CQ Intelligence query endpoint
-router.post('/intelligence/query', authenticateToken, async (req, res) => {
-    try {
-        const { query, expectGraph = false, topK = 5, minScore = 0.7 } = req.body;
-        
-        // Validate required parameters
-        if (!query) {
-            return res.status(400).json({ error: 'Query text is required' });
-        }
-        
-        // Get team ID from authenticated user
-        const teamId = req.user.teamId;
-        if (!teamId) {
-            return res.status(400).json({ error: 'User must be associated with a team' });
-        }
-
-        const scriptPath = path.join(__dirname, '..', 'python', 'ask_intelligence.py');
-        const args = [
-            query,
-            teamId,
-            expectGraph.toString(),
-            topK.toString(),
-            minScore.toString()
-        ];
-
-        const result = await runPythonScript(scriptPath, args);
-        res.json(result);
-    } catch (error) {
-        console.error('Error processing CQ Intelligence query:', error);
-        res.status(500).json({ error: error.message });
-    }
 });
 
 module.exports = router; 
