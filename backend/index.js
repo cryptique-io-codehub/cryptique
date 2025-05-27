@@ -505,8 +505,8 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-// Import the vector router
-const vectorRouter = require('./routes/vectorRouter');
+// Import vector routes
+const vectorRoutes = require('./routes/vector');
 
 // Main middleware and routes setup (add this near where other routes are defined)
 app.use("/api/users", userRouter);
@@ -514,8 +514,8 @@ app.use("/api/campaigns", campaignRouter);
 app.use("/api/stripe", stripeRouter);
 app.use("/api/health", healthRouter);
 
-// Add the vector router
-app.use("/api/vector", vectorRouter);
+// Add vector routes
+app.use('/api/vector', vectorRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
