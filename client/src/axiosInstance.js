@@ -3,7 +3,12 @@ import axios from 'axios';
 // Use the production URL with https, fallback to localhost for development
 const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
 
-console.log('API Server URL:', baseURL);
+// Log the API configuration for debugging
+console.log('API Configuration:', {
+  baseURL,
+  nodeEnv: process.env.NODE_ENV,
+  hasApiUrl: !!process.env.REACT_APP_API_SERVER_URL
+});
 
 // Create axios instance with proper configuration
 const axiosInstance = axios.create({
@@ -22,7 +27,14 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   config => {
     // Log requests for debugging
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, {
+      params: config.params || {},
+      withCredentials: config.withCredentials,
+      headers: {
+        ...config.headers,
+        Authorization: config.headers.Authorization ? '**present**' : '**missing**'
+      }
+    });
     
     // Check if this is an analytics or RAG endpoint that's causing CORS issues
     if (config.url && (
@@ -63,18 +75,22 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   response => {
     console.log(`API Response: ${response.status} from ${response.config.url}`, {
-      data: response.data ? 'Data received' : 'No data'
+      data: response.data ? 'Data received' : 'No data',
+      headers: response.headers
     });
     return response;
   },
   async error => {
     const originalRequest = error.config;
     
+    // Enhanced error logging
     console.error('API Response Error:', {
       url: originalRequest?.url,
+      baseURL: originalRequest?.baseURL,
       status: error.response?.status,
       message: error.message,
-      data: error.response?.data 
+      data: error.response?.data,
+      headers: error.response?.headers
     });
     
     // Handle 401 errors (token expired)

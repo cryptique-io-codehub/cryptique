@@ -122,8 +122,12 @@ console.log('Main app environment check:', {
 // CORS configuration
 const corsOptions = {
   origin: (origin, callback) => {
+    // Log the origin for debugging
+    console.log('Request origin:', origin);
+    
     // Allow requests with no origin (like mobile apps, curl, etc)
     if (!origin) {
+      console.log('No origin, allowing request');
       callback(null, true);
       return;
     }
@@ -132,33 +136,34 @@ const corsOptions = {
     const allowedOrigins = [
       'https://cryptique.vercel.app',
       'https://www.cryptique.io',
-      'https://cryptique.io'
+      'https://cryptique.io',
+      'https://app.cryptique.io',
+      'http://localhost:3000'
     ];
-    
-    // In development, allow localhost
-    if (process.env.NODE_ENV !== 'production') {
-      allowedOrigins.push('http://localhost:3000');
-    }
     
     // Check if the origin is allowed
     if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      // Special handling for SDK routes
-      if (origin.includes('cdn.cryptique.io') || 
+      // Special handling for SDK routes and subdomains
+      if (origin.includes('cryptique.io') || 
+          origin.includes('cryptique.vercel.app') ||
           origin.includes('/sdk/') || 
           origin.includes('/analytics/') ||
           origin.includes('/intelligence/') ||
           origin.includes('/rag/')) {
+        console.log('Special route/subdomain allowed:', origin);
         callback(null, true);
       } else {
+        console.log('Origin not allowed:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-cryptique-site-id'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 600 // Cache preflight requests for 10 minutes
 };
