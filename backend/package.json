@@ -4,9 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
-    "start:embedding": "node scripts/start_embedding_service.js",
-    "start:all": "concurrently \"npm run start\" \"npm run start:embedding\""
+    "start": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,7 +15,6 @@
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cheerio": "^1.0.0",
-    "concurrently": "^8.2.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
