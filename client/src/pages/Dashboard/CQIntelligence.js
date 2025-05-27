@@ -211,7 +211,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const newSelection = new Set(prev);
       if (newSelection.has(contractId)) {
         newSelection.delete(contractId);
-      } else {
+    } else {
         newSelection.add(contractId);
         // Fetch data for newly selected contract if not already loaded
         if (!contractTransactions[contractId]) {
@@ -319,31 +319,31 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       if (!session || !session.startTime) return;
       
       try {
-        const startTime = new Date(session.startTime);
+      const startTime = new Date(session.startTime);
         if (isNaN(startTime.getTime())) return; // Skip invalid dates
         
-        const timeDiff = now - startTime;
+      const timeDiff = now - startTime;
         const deviceId = session.device || session.deviceId || 'unknown'; // Use fallback ID if needed
 
-        // Daily
-        if (timeDiff <= dayInMs) {
-          const day = startTime.toISOString().split('T')[0];
-          if (!uniqueUsersByDay.has(day)) uniqueUsersByDay.set(day, new Set());
-          uniqueUsersByDay.get(day).add(deviceId);
-        }
+      // Daily
+      if (timeDiff <= dayInMs) {
+        const day = startTime.toISOString().split('T')[0];
+        if (!uniqueUsersByDay.has(day)) uniqueUsersByDay.set(day, new Set());
+        uniqueUsersByDay.get(day).add(deviceId);
+      }
 
-        // Weekly
-        if (timeDiff <= weekInMs) {
-          const week = Math.floor(startTime.getTime() / weekInMs);
-          if (!uniqueUsersByWeek.has(week)) uniqueUsersByWeek.set(week, new Set());
-          uniqueUsersByWeek.get(week).add(deviceId);
-        }
+      // Weekly
+      if (timeDiff <= weekInMs) {
+        const week = Math.floor(startTime.getTime() / weekInMs);
+        if (!uniqueUsersByWeek.has(week)) uniqueUsersByWeek.set(week, new Set());
+        uniqueUsersByWeek.get(week).add(deviceId);
+      }
 
-        // Monthly
-        if (timeDiff <= monthInMs) {
-          const month = startTime.toISOString().slice(0, 7);
-          if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
-          uniqueUsersByMonth.get(month).add(deviceId);
+      // Monthly
+      if (timeDiff <= monthInMs) {
+        const month = startTime.toISOString().slice(0, 7);
+        if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
+        uniqueUsersByMonth.get(month).add(deviceId);
         }
       } catch (error) {
         console.error("Error processing session for retention metrics:", error);
@@ -367,28 +367,28 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
 
     try {
-      if (uniqueUsersByDay.size >= 2) {
-        const days = Array.from(uniqueUsersByDay.keys()).sort();
-        const firstDay = uniqueUsersByDay.get(days[0]);
-        const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
+    if (uniqueUsersByDay.size >= 2) {
+      const days = Array.from(uniqueUsersByDay.keys()).sort();
+      const firstDay = uniqueUsersByDay.get(days[0]);
+      const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
         if (firstDay && firstDay.size > 0) {
           retention.daily = (lastDay.size / firstDay.size) * 100;
         }
-      }
+    }
 
-      if (uniqueUsersByWeek.size >= 2) {
-        const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
-        const firstWeek = uniqueUsersByWeek.get(weeks[0]);
-        const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
+    if (uniqueUsersByWeek.size >= 2) {
+      const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
+      const firstWeek = uniqueUsersByWeek.get(weeks[0]);
+      const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
         if (firstWeek && firstWeek.size > 0) {
           retention.weekly = (lastWeek.size / firstWeek.size) * 100;
         }
-      }
+    }
 
-      if (uniqueUsersByMonth.size >= 2) {
-        const months = Array.from(uniqueUsersByMonth.keys()).sort();
-        const firstMonth = uniqueUsersByMonth.get(months[0]);
-        const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
+    if (uniqueUsersByMonth.size >= 2) {
+      const months = Array.from(uniqueUsersByMonth.keys()).sort();
+      const firstMonth = uniqueUsersByMonth.get(months[0]);
+      const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
         if (firstMonth && firstMonth.size > 0) {
           retention.monthly = (lastMonth.size / firstMonth.size) * 100;
         }
@@ -417,40 +417,40 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     try {
-      const geoData = {
+    const geoData = {
         countries: analytics.countries || {},
-        regions: analytics.regions || {},
-        cities: analytics.cities || {},
-        topCountries: [],
-        topRegions: [],
-        topCities: []
-      };
+      regions: analytics.regions || {},
+      cities: analytics.cities || {},
+      topCountries: [],
+      topRegions: [],
+      topCities: []
+    };
 
-      // Process countries if data exists
+    // Process countries if data exists
       if (geoData.countries && Object.keys(geoData.countries).length > 0) {
-        geoData.topCountries = Object.entries(geoData.countries)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([country, count]) => ({ country, count }));
-      }
+      geoData.topCountries = Object.entries(geoData.countries)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([country, count]) => ({ country, count }));
+    }
 
-      // Process regions if data exists
+    // Process regions if data exists
       if (geoData.regions && Object.keys(geoData.regions).length > 0) {
-        geoData.topRegions = Object.entries(geoData.regions)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([region, count]) => ({ region, count }));
-      }
+      geoData.topRegions = Object.entries(geoData.regions)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([region, count]) => ({ region, count }));
+    }
 
-      // Process cities if data exists
+    // Process cities if data exists
       if (geoData.cities && Object.keys(geoData.cities).length > 0) {
-        geoData.topCities = Object.entries(geoData.cities)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([city, count]) => ({ city, count }));
-      }
+      geoData.topCities = Object.entries(geoData.cities)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([city, count]) => ({ city, count }));
+    }
 
-      return geoData;
+    return geoData;
     } catch (error) {
       console.error("Error processing geographical data:", error);
       return null;
@@ -499,161 +499,161 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     try {
-      const trafficData = {
+    const trafficData = {
+      sources: {},
+      sourceTimeline: {},
+      referrers: [],
+      campaigns: {
         sources: {},
-        sourceTimeline: {},
-        referrers: [],
-        campaigns: {
-          sources: {},
-          mediums: {},
-          campaigns: {},
-          topSources: [],
-          topMediums: [],
-          topCampaigns: [],
-          timeline: {}
-        }
-      };
+        mediums: {},
+        campaigns: {},
+        topSources: [],
+        topMediums: [],
+        topCampaigns: [],
+        timeline: {}
+      }
+    };
 
-      // Process sessions for traffic data
-      const timeframes = {
-        '24h': 24 * 60 * 60 * 1000,
-        '7d': 7 * 24 * 60 * 60 * 1000,
-        '30d': 30 * 24 * 60 * 60 * 1000
-      };
+    // Process sessions for traffic data
+    const timeframes = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000
+    };
 
-      const now = new Date();
-      const sourceMetrics = new Map(); // Store detailed metrics per source
+    const now = new Date();
+    const sourceMetrics = new Map(); // Store detailed metrics per source
 
-      analytics.sessions.forEach(session => {
+    analytics.sessions.forEach(session => {
         if (!session) return;
         
         try {
-          const source = normalizeTrafficSource(session);
+      const source = normalizeTrafficSource(session);
           if (!source) return;
           
-          const timestamp = new Date(session.startTime);
+      const timestamp = new Date(session.startTime);
           if (isNaN(timestamp.getTime())) return; // Skip invalid dates
-          
-          // Initialize source metrics if not exists
-          if (!sourceMetrics.has(source)) {
-            sourceMetrics.set(source, {
-              total: 0,
-              uniqueVisitors: new Set(),
-              web3Users: 0,
-              walletsConnected: 0,
-              bounces: 0,
-              totalDuration: 0,
-              timeline: {
-                '24h': { visits: 0, web3: 0, wallets: 0 },
-                '7d': { visits: 0, web3: 0, wallets: 0 },
-                '30d': { visits: 0, web3: 0, wallets: 0 }
+      
+      // Initialize source metrics if not exists
+      if (!sourceMetrics.has(source)) {
+        sourceMetrics.set(source, {
+          total: 0,
+          uniqueVisitors: new Set(),
+          web3Users: 0,
+          walletsConnected: 0,
+          bounces: 0,
+          totalDuration: 0,
+          timeline: {
+            '24h': { visits: 0, web3: 0, wallets: 0 },
+            '7d': { visits: 0, web3: 0, wallets: 0 },
+            '30d': { visits: 0, web3: 0, wallets: 0 }
+          }
+        });
+      }
+
+      const metrics = sourceMetrics.get(source);
+      metrics.total++;
+          if (session.device) metrics.uniqueVisitors.add(session.device);
+      if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
+      if (session.walletConnected) metrics.walletsConnected++;
+      if (session.pages?.length === 1) metrics.bounces++;
+      if (session.duration) metrics.totalDuration += session.duration;
+
+      // Update timeline metrics
+      Object.entries(timeframes).forEach(([period, ms]) => {
+        if ((now - timestamp) <= ms) {
+          metrics.timeline[period].visits++;
+          if (session.hasWeb3 || session.walletConnected) {
+            metrics.timeline[period].web3++;
+          }
+          if (session.walletConnected) {
+            metrics.timeline[period].wallets++;
+          }
+        }
+      });
+
+      // Process UTM data if available
+      if (session.utmSource) {
+        const utmData = {
+          source: session.utmSource.toLowerCase(),
+          medium: session.utmMedium?.toLowerCase(),
+          campaign: session.utmCampaign?.toLowerCase()
+        };
+
+        // Update campaign metrics
+        ['source', 'medium', 'campaign'].forEach(type => {
+          if (utmData[type]) {
+            const key = `utm${type.charAt(0).toUpperCase() + type.slice(1)}s`;
+            trafficData.campaigns[key] = trafficData.campaigns[key] || {};
+            trafficData.campaigns[key][utmData[type]] = (trafficData.campaigns[key][utmData[type]] || 0) + 1;
+
+            // Update timeline
+            if (!trafficData.campaigns.timeline[type]) {
+              trafficData.campaigns.timeline[type] = {};
+            }
+            Object.entries(timeframes).forEach(([period, ms]) => {
+              if ((now - timestamp) <= ms) {
+                if (!trafficData.campaigns.timeline[type][period]) {
+                  trafficData.campaigns.timeline[type][period] = {};
+                }
+                trafficData.campaigns.timeline[type][period][utmData[type]] = 
+                  (trafficData.campaigns.timeline[type][period][utmData[type]] || 0) + 1;
               }
             });
           }
-
-          const metrics = sourceMetrics.get(source);
-          metrics.total++;
-          if (session.device) metrics.uniqueVisitors.add(session.device);
-          if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
-          if (session.walletConnected) metrics.walletsConnected++;
-          if (session.pages?.length === 1) metrics.bounces++;
-          if (session.duration) metrics.totalDuration += session.duration;
-
-          // Update timeline metrics
-          Object.entries(timeframes).forEach(([period, ms]) => {
-            if ((now - timestamp) <= ms) {
-              metrics.timeline[period].visits++;
-              if (session.hasWeb3 || session.walletConnected) {
-                metrics.timeline[period].web3++;
-              }
-              if (session.walletConnected) {
-                metrics.timeline[period].wallets++;
-              }
-            }
-          });
-
-          // Process UTM data if available
-          if (session.utmSource) {
-            const utmData = {
-              source: session.utmSource.toLowerCase(),
-              medium: session.utmMedium?.toLowerCase(),
-              campaign: session.utmCampaign?.toLowerCase()
-            };
-
-            // Update campaign metrics
-            ['source', 'medium', 'campaign'].forEach(type => {
-              if (utmData[type]) {
-                const key = `utm${type.charAt(0).toUpperCase() + type.slice(1)}s`;
-                trafficData.campaigns[key] = trafficData.campaigns[key] || {};
-                trafficData.campaigns[key][utmData[type]] = (trafficData.campaigns[key][utmData[type]] || 0) + 1;
-
-                // Update timeline
-                if (!trafficData.campaigns.timeline[type]) {
-                  trafficData.campaigns.timeline[type] = {};
-                }
-                Object.entries(timeframes).forEach(([period, ms]) => {
-                  if ((now - timestamp) <= ms) {
-                    if (!trafficData.campaigns.timeline[type][period]) {
-                      trafficData.campaigns.timeline[type][period] = {};
-                    }
-                    trafficData.campaigns.timeline[type][period][utmData[type]] = 
-                      (trafficData.campaigns.timeline[type][period][utmData[type]] || 0) + 1;
-                  }
-                });
-              }
-            });
+        });
           }
         } catch (error) {
           console.error("Error processing session for traffic sources:", error);
           // Continue processing other sessions
-        }
-      });
+      }
+    });
 
-      // Convert source metrics to final format
-      sourceMetrics.forEach((metrics, source) => {
-        if (metrics.total > 0) {
-          trafficData.sources[source] = {
-            visits: metrics.total,
-            uniqueVisitors: metrics.uniqueVisitors.size,
-            web3Users: metrics.web3Users,
-            walletsConnected: metrics.walletsConnected,
+    // Convert source metrics to final format
+    sourceMetrics.forEach((metrics, source) => {
+      if (metrics.total > 0) {
+        trafficData.sources[source] = {
+          visits: metrics.total,
+          uniqueVisitors: metrics.uniqueVisitors.size,
+          web3Users: metrics.web3Users,
+          walletsConnected: metrics.walletsConnected,
             bounceRate: metrics.total > 0 ? (metrics.bounces / metrics.total) * 100 : 0,
             avgDuration: metrics.total > 0 ? metrics.totalDuration / metrics.total : 0
-          };
+        };
 
-          // Add timeline data
-          Object.entries(metrics.timeline).forEach(([period, data]) => {
-            if (data.visits > 0) {
-              if (!trafficData.sourceTimeline[period]) {
-                trafficData.sourceTimeline[period] = {};
-              }
-              trafficData.sourceTimeline[period][source] = data;
+        // Add timeline data
+        Object.entries(metrics.timeline).forEach(([period, data]) => {
+          if (data.visits > 0) {
+            if (!trafficData.sourceTimeline[period]) {
+              trafficData.sourceTimeline[period] = {};
             }
-          });
-        }
-      });
+            trafficData.sourceTimeline[period][source] = data;
+          }
+        });
+      }
+    });
 
-      // Process top sources for each category
-      ['sources', 'mediums', 'campaigns'].forEach(type => {
+    // Process top sources for each category
+    ['sources', 'mediums', 'campaigns'].forEach(type => {
         const keyName = `utm${type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1)}`;
         const data = trafficData.campaigns[keyName];
-        if (data && Object.keys(data).length > 0) {
-          trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
-            Object.entries(data)
-              .sort(([,a], [,b]) => b - a)
-              .slice(0, 10)
-              .map(([name, count]) => ({ name, count }));
-        }
-      });
+      if (data && Object.keys(data).length > 0) {
+        trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
+          Object.entries(data)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+      }
+    });
 
-      // Clean up empty sections
-      Object.keys(trafficData).forEach(key => {
-        if (typeof trafficData[key] === 'object' && Object.keys(trafficData[key]).length === 0) {
-          delete trafficData[key];
-        }
-      });
+    // Clean up empty sections
+    Object.keys(trafficData).forEach(key => {
+      if (typeof trafficData[key] === 'object' && Object.keys(trafficData[key]).length === 0) {
+        delete trafficData[key];
+      }
+    });
 
-      return Object.keys(trafficData).length > 0 ? trafficData : null;
+    return Object.keys(trafficData).length > 0 ? trafficData : null;
     } catch (error) {
       console.error("Error processing traffic sources:", error);
       return null;
@@ -1136,7 +1136,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       console.log("Analytics Context: No analytics data available");
       return "No analytics data available for this website yet.";
     }
-    
+
     // Process analytics data from all selected sites
     const combinedAnalytics = processMultiSiteAnalytics();
     
@@ -1206,11 +1206,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     // Remove empty sections
     if (fullAnalytics && typeof fullAnalytics === 'object') {
-      Object.keys(fullAnalytics).forEach(key => {
-        if (!isValidValue(fullAnalytics[key])) {
-          delete fullAnalytics[key];
-        }
-      });
+    Object.keys(fullAnalytics).forEach(key => {
+      if (!isValidValue(fullAnalytics[key])) {
+        delete fullAnalytics[key];
+      }
+    });
     }
 
     console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
@@ -1883,11 +1883,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Generate embedding
   async function generateEmbedding(text) {
     try {
+      // First check if the embedding service is available
+      try {
+        const healthCheck = await axiosInstance.get('/vector/health', { timeout: 3000 });
+        if (healthCheck.status !== 200) {
+          console.log("Embedding service health check failed, using fallback");
+          throw new Error("Embedding service unavailable");
+        }
+      } catch (healthError) {
+        console.log("Embedding service health check failed:", healthError);
+        throw new Error("Embedding service unavailable");
+      }
+      
+      // Try to generate embedding
       const response = await axiosInstance.post('/vector/embed', { text });
       return response.data.embedding;
     } catch (error) {
       console.error("Error generating embedding:", error);
-      throw error;
+      // Clear error message for better UX
+      throw new Error("Embedding service unavailable");
     }
   }
 
@@ -2011,114 +2025,140 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setIsLoading(true);
     setError(null);
 
+    // Check if we need to use RAG or fallback to traditional approach
+    let useRAG = true;
+    let embeddingServiceAvailable = true;
+    
+    // Check if embedding service is available
     try {
-      // Step 1: Transform current data to text
-      const allChunks = [];
-      
-      // Process websites
-      for (const siteId of selectedSites) {
-        const siteAnalytics = analytics[siteId];
-        if (siteAnalytics) {
-          const textDescriptions = transformWebsiteAnalyticsToText(siteId, siteAnalytics);
-          const chunks = createChunksWithMetadata(siteId, textDescriptions);
-          allChunks.push(...chunks);
-        }
-      }
-      
-      // Process contracts
-      for (const contractId of selectedContracts) {
-        const contractTxs = contractTransactions[contractId];
-        if (contractTxs) {
-          const textDescriptions = transformContractToText(contractId, contractTxs);
-          const chunks = createContractChunksWithMetadata(contractId, textDescriptions);
-          allChunks.push(...chunks);
-        }
-      }
-      
-      // Step 2: Store chunks with embeddings
-      let storageSuccessful = false;
-      if (allChunks.length > 0) {
-        storageSuccessful = await storeChunksWithEmbeddings(allChunks);
-        console.log(`Storage of chunks was ${storageSuccessful ? 'successful' : 'unsuccessful'}`);
-      } else {
-        console.log('No chunks to store');
-      }
-      
-      // Step 3: Retrieve relevant chunks based on query
-      let relevantChunks = [];
-      try {
-        relevantChunks = await retrieveRelevantChunks(
-          userMessage, 
-          selectedSites, 
-          selectedContracts
-        );
-        console.log(`Retrieved ${relevantChunks.length} relevant chunks`);
-      } catch (searchError) {
-        console.error('Error retrieving chunks:', searchError);
-        // Continue with an empty set of chunks - will fall back to regular processing
-      }
-      
-      // Step 4: Get response from Gemini
-      let botMessage;
-      
-      try {
-        const ai = initializeAI();
-        const modelName = await verifyModel();
+      await axiosInstance.get('/vector/health', { timeout: 3000 });
+    } catch (error) {
+      console.log("Embedding service unavailable, using traditional approach");
+      embeddingServiceAvailable = false;
+      useRAG = false;
+    }
+
+    try {
+      // Only proceed with RAG if embedding service is available
+      if (useRAG && embeddingServiceAvailable) {
+        // Step 1: Transform current data to text
+        const allChunks = [];
         
-        // If we have relevant chunks and storage was successful, use RAG approach
-        if (relevantChunks.length > 0 && storageSuccessful) {
-          console.log("Using RAG approach with model:", modelName);
-          
-          // Construct enhanced prompt with retrieved chunks
-          const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
-          
-          const model = ai.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(enhancedPrompt);
-          const response = await result.response;
-          botMessage = response.text();
-        } else {
-          // Fall back to traditional approach
-          console.log("Falling back to traditional approach with model:", modelName);
-          const analyticsSummary = generateAnalyticsSummary(userMessage);
-          
-          const model = ai.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(analyticsSummary);
-          const response = await result.response;
-          botMessage = response.text();
+        // Process websites
+        for (const siteId of selectedSites) {
+          const siteAnalytics = analytics[siteId];
+          if (siteAnalytics) {
+            const textDescriptions = transformWebsiteAnalyticsToText(siteId, siteAnalytics);
+            const chunks = createChunksWithMetadata(siteId, textDescriptions);
+            allChunks.push(...chunks);
+          }
         }
-      } catch (aiError) {
-        console.error("Error getting AI response:", aiError);
         
-        // Try REST API fallback
+        // Process contracts
+        for (const contractId of selectedContracts) {
+          const contractTxs = contractTransactions[contractId];
+          if (contractTxs) {
+            const textDescriptions = transformContractToText(contractId, contractTxs);
+            const chunks = createContractChunksWithMetadata(contractId, textDescriptions);
+            allChunks.push(...chunks);
+          }
+        }
+        
+        // Step 2: Store chunks with embeddings
+        let storageSuccessful = false;
         try {
-          console.log("Trying REST API fallback...");
+          if (allChunks.length > 0) {
+            storageSuccessful = await storeChunksWithEmbeddings(allChunks);
+            console.log(`Storage of chunks was ${storageSuccessful ? 'successful' : 'unsuccessful'}`);
+          } else {
+            console.log('No chunks to store');
+          }
+        } catch (storageError) {
+          console.error("Error storing chunks:", storageError);
+          // Continue with RAG if possible but mark storage as unsuccessful
+        }
+        
+        // Step 3: Retrieve relevant chunks based on query
+        let relevantChunks = [];
+        try {
+          relevantChunks = await retrieveRelevantChunks(
+            userMessage, 
+            selectedSites, 
+            selectedContracts
+          );
+          console.log(`Retrieved ${relevantChunks.length} relevant chunks`);
+        } catch (searchError) {
+          console.error('Error retrieving chunks:', searchError);
+          // If we can't retrieve chunks, fall back to traditional approach
+          useRAG = false;
+        }
+        
+        // Only use RAG if we have chunks and storage was successful
+        if (relevantChunks.length === 0 || !storageSuccessful) {
+          useRAG = false;
+        }
+        
+        // Step 4: Get response from Gemini
+        let botMessage;
+        
+        try {
+          const ai = initializeAI();
           const modelName = await verifyModel();
           
-          let promptContent;
-          if (relevantChunks.length > 0 && storageSuccessful) {
-            promptContent = constructEnhancedPrompt(userMessage, relevantChunks);
+          // If we have relevant chunks and storage was successful, use RAG approach
+          if (useRAG) {
+            console.log("Using RAG approach with model:", modelName);
+            
+            // Construct enhanced prompt with retrieved chunks
+            const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
+            
+            const model = ai.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(enhancedPrompt);
+            const response = await result.response;
+            botMessage = response.text();
           } else {
-            promptContent = generateAnalyticsSummary(userMessage);
+            // Fall back to traditional approach
+            console.log("Falling back to traditional approach with model:", modelName);
+            const analyticsSummary = generateAnalyticsSummary(userMessage);
+            
+            const model = ai.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(analyticsSummary);
+            const response = await result.response;
+            botMessage = response.text();
           }
+        } catch (aiError) {
+          console.error("Error getting AI response:", aiError);
           
-          const requestBody = {
-            model: modelName,
-            contents: [
-              {
-                parts: [
-                  { text: promptContent }
-                ]
-              }
-            ]
-          };
-          
-          const response = await axiosInstance.post('/ai/generate', requestBody);
-          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                      "Sorry, I couldn't process your request.";
-        } catch (apiError) {
-          console.error("REST API approach also failed:", apiError);
-          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
-          
+          // Try REST API fallback
+          try {
+            console.log("Trying REST API fallback...");
+            const modelName = await verifyModel();
+            
+            let promptContent;
+            if (useRAG) {
+              promptContent = constructEnhancedPrompt(userMessage, relevantChunks);
+            } else {
+              promptContent = generateAnalyticsSummary(userMessage);
+            }
+            
+            const requestBody = {
+              model: modelName,
+              contents: [
+                {
+                  parts: [
+                    { text: promptContent }
+                  ]
+                }
+              ]
+            };
+            
+            const response = await axiosInstance.post('/ai/generate', requestBody);
+            botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                        "Sorry, I couldn't process your request.";
+          } catch (apiError) {
+            console.error("REST API approach also failed:", apiError);
+            botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+            
 Based on the analytics data I can see for your selected sites, here's what I can tell you:
 
 ## Analytics Summary
@@ -2126,40 +2166,89 @@ ${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No 
 ${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
 
 If you have specific questions about your analytics, please try again later when our AI service is back online.`;
+          }
+        }
+      } else {
+        // If embedding service is not available, use traditional approach
+        console.log("Using traditional approach due to unavailable embedding service");
+        const analyticsSummary = generateAnalyticsSummary(userMessage);
+        
+        try {
+          const ai = initializeAI();
+          const modelName = await verifyModel();
+          
+          const model = ai.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(analyticsSummary);
+          const response = await result.response;
+          botMessage = response.text();
+        } catch (aiError) {
+          console.error("Error getting AI response:", aiError);
+          
+          // Try REST API fallback
+          try {
+            console.log("Trying REST API fallback...");
+            const modelName = await verifyModel();
+            
+            const requestBody = {
+              model: modelName,
+              contents: [
+                {
+                  parts: [
+                    { text: analyticsSummary }
+                  ]
+                }
+              ]
+            };
+            
+            const response = await axiosInstance.post('/ai/generate', requestBody);
+            botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                        "Sorry, I couldn't process your request.";
+          } catch (apiError) {
+            console.error("REST API approach also failed:", apiError);
+            botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+            
+Based on the analytics data I can see for your selected sites, here's what I can tell you:
+
+## Analytics Summary
+${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No websites selected.'}
+${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
+
+If you have specific questions about your analytics, please try again later when our AI service is back online.`;
+          }
         }
       }
-      
-      // Format and display the response
-      try {
-        const formattedMessage = formatResponse(botMessage);
+
+        // Format and display the response
+        try {
+          const formattedMessage = formatResponse(botMessage);
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: formattedMessage,
+            timestamp: new Date().toISOString()
+          }]);
+        } catch (formatError) {
+          console.error("Error formatting response:", formatError);
+          // If formatting fails, use the original message
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: botMessage || "Sorry, I couldn't format the response properly.",
+            timestamp: new Date().toISOString()
+          }]);
+        }
+      } catch (err) {
+        console.error('Error in RAG chat processing:', err);
+        setError(`Failed to process: ${err.message}`);
+        
+        // Add a fallback message even if the entire try block fails
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: formattedMessage,
+          content: 'I apologize, but I encountered an error processing your request. Falling back to standard response mode.',
           timestamp: new Date().toISOString()
         }]);
-      } catch (formatError) {
-        console.error("Error formatting response:", formatError);
-        // If formatting fails, use the original message
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: botMessage || "Sorry, I couldn't format the response properly.",
-          timestamp: new Date().toISOString()
-        }]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error in RAG chat processing:', err);
-      setError(`Failed to process: ${err.message}`);
-      
-      // Add a fallback message even if the entire try block fails
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'I apologize, but I encountered an error processing your request.',
-        timestamp: new Date().toISOString()
-      }]);
-    } finally {
-      setIsLoading(false);
     }
-  }
 
   // Replace handleSend with handleSendWithRAG
   const handleSend = handleSendWithRAG;
@@ -2933,7 +3022,7 @@ If you have specific questions about your analytics, please try again later when
                   </button>
                   {websiteDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {websiteArray.map(website => (
+                    {websiteArray.map(website => (
                         <div key={website.siteId} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
                              onClick={() => handleSiteChange(website.siteId)}>
                           <input
@@ -2943,14 +3032,14 @@ If you have specific questions about your analytics, please try again later when
                             className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
                           />
                           <label className="text-sm cursor-pointer flex-1">
-                            {website.Domain} {website.Name ? `(${website.Name})` : ''}
+                        {website.Domain} {website.Name ? `(${website.Name})` : ''}
                           </label>
                         </div>
-                      ))}
+                    ))}
                     </div>
                   )}
                 </div>
-
+                
                 {/* Smart Contract Dropdown */}
                 <div className="flex-1 relative" ref={contractDropdownRef}>
                   <div className="flex items-center justify-between mb-2">
@@ -2977,7 +3066,7 @@ If you have specific questions about your analytics, please try again later when
                   </button>
                   {contractDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {contractArray.map(contract => (
+                    {contractArray.map(contract => (
                         <div key={contract.id} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
                              onClick={() => handleContractChange(contract.id)}>
                           <input
@@ -2990,7 +3079,7 @@ If you have specific questions about your analytics, please try again later when
                             {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
                           </label>
                         </div>
-                      ))}
+                    ))}
                     </div>
                   )}
                 </div>
@@ -3024,7 +3113,7 @@ If you have specific questions about your analytics, please try again later when
 
           {/* Rest of the component remains unchanged */}
           <ChatArea />
-          
+
           {/* Input Area */}
           <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
