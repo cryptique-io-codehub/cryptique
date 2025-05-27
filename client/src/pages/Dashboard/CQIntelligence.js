@@ -32,15 +32,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   const [error, setError] = useState(null);
   const [analytics, setAnalytics] = useState({});
   const [isDataLoading, setIsDataLoading] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Website dropdown
-  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false); // Contract dropdown
   const messagesEndRef = useRef(null);
-  const dropdownRef = useRef(null); // Website dropdown ref
-  const contractDropdownRef = useRef(null); // Contract dropdown ref
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContracts, setSelectedContracts] = useState([]); // Array for multiple selections
+  const [selectedContracts, setSelectedContracts] = useState([]); // Changed from single selection to multiple
   const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -111,9 +107,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }));
         
         setContractArray(contracts);
-        // Select all contracts by default
-        setSelectedContracts(contracts);
-        console.log(`Loaded and selected ${contracts.length} contracts for team ${selectedTeam}`);
+        console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
       }
     } catch (error) {
       console.error("Error fetching smart contracts:", error);
@@ -1707,37 +1701,88 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setError(null);
 
     try {
-      // Generate analytics summary
       const analyticsSummary = generateAnalyticsSummary(userMessage);
-      
-      // Call our backend API with selected contracts
-      const response = await axiosInstance.post('/ai/intelligence/query', {
-        query: userMessage,
-        expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
-        topK: 5,
-        minScore: 0.7,
-        selectedSites: selectedSites.map(site => site.siteId),
-        selectedContracts: selectedContracts.map(contract => contract.id),
-        analyticsSummary
-      });
+      const messageWithContext = analyticsSummary;
 
-      if (!response.data) {
-        throw new Error('No response data received from backend');
+      let botMessage;
+      let errorOccurred = false;
+
+      try {
+        // Try SDK approach first
+        const ai = initializeAI();
+        const modelName = await verifyModel();
+        console.log("Using model for SDK:", modelName);
+        
+        const model = ai.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(messageWithContext);
+        const response = await result.response;
+        botMessage = response.text();
+      } catch (sdkError) {
+        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        errorOccurred = true;
+        
+        try {
+          const modelName = await verifyModel();
+          console.log("Using model for REST API:", modelName);
+          
+          const requestBody = {
+            model: modelName,
+            contents: [
+              {
+                parts: [
+                  { text: messageWithContext }
+                ]
+              }
+            ]
+          };
+
+          console.log("Sending request to backend:", requestBody);
+          const response = await axiosInstance.post('/ai/generate', requestBody);
+          
+          if (!response.data) {
+            throw new Error('No response data received from backend');
+          }
+
+          if (response.data.error) {
+            throw new Error(response.data.error);
+          }
+
+          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+          errorOccurred = false;
+        } catch (apiError) {
+          console.error("REST API approach also failed:", apiError);
+          
+          // If both approaches fail, create a fallback response based on the analytics data
+          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+          
+Based on the analytics data I can see for your site${selectedSites.length > 0 ? ` "${selectedSites.map(site => site.Domain).join(', ')}"` : ''}, here's what I can tell you:
+
+## Analytics Summary
+${analytics && analytics.pageViews ? `- Total Page Views: ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '- Page view data is not available at the moment.'}
+${analytics && analytics.uniqueVisitors ? `- Unique Visitors: ${analytics.uniqueVisitors}` : '- Unique visitor data is not available at the moment.'}
+${analytics && analytics.walletsConnected ? `- Connected Wallets: ${analytics.walletsConnected}` : '- Wallet connection data is not available at the moment.'}
+${analytics && analytics.web3Visitors ? `- Web3 Visitors: ${analytics.web3Visitors}` : '- Web3 visitor data is not available at the moment.'}
+
+If you have specific questions about your analytics, please try again later when our AI service is back online.`;
+        }
       }
 
-      const formattedMessage = formatResponse(response.data.text_answer);
+      // Format the response before displaying
+      const formattedMessage = formatResponse(botMessage);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: formattedMessage,
-        timestamp: new Date().toISOString(),
-        graphData: response.data.graph_data_json
+        timestamp: new Date().toISOString()
       }]);
     } catch (err) {
-      console.error('Error in handleSend:', err);
-      setError('Failed to get response. Please try again.');
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
+      console.error('Full Error Details:', err.response?.data || err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
+      setError(`Failed to get response: ${errorMessage}`);
+      
+      // Add a fallback message even if the entire try block fails
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
@@ -2166,133 +2211,80 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   );
 
   // Update the chat area section to use the new loading state
-  const ChatArea = () => {
-    return (
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
-            <Bot size={64} className="mb-6 text-[#caa968]" />
-            <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
-            <p className="text-gray-600 max-w-md">
-              I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full max-w-2xl">
-              <button 
-                onClick={() => {
-                  setInput("How is my website performing?");
-                  setTimeout(() => handleSend(), 100);
-                }}
-                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-              >
-                How is my website performing?
-              </button>
-              <button 
-                onClick={() => {
-                  setInput("Show me my Web3 user analytics");
-                  setTimeout(() => handleSend(), 100);
-                }}
-                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-              >
-                Show me my Web3 user analytics
-              </button>
-              <button 
-                onClick={() => {
-                  setInput("What are my traffic sources?");
-                  setTimeout(() => handleSend(), 100);
-                }}
-                className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
-              >
-                What are my traffic sources?
-              </button>
-            </div>
+  const ChatArea = () => (
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
+                <div className="logo-container mb-6">
+                  <img src="/logo192.png" alt="Cryptique" className="w-16 h-16 animate-cube-spin" />
+                </div>
+                <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to CQ Intelligence</h2>
+          <p className="text-gray-600 max-w-md mb-8">
+                  I can help you analyze your website's performance, track user behavior, and provide insights about your analytics data.
+                </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            {/* Example questions buttons */}
+            <button 
+              onClick={() => {
+                setInput("What are the top pages on my website?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are the top pages on my website?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("How is my website performing?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              How is my website performing?
+            </button>
+            <button 
+              onClick={() => {
+                setInput("Show me my Web3 user analytics");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              Show me my Web3 user analytics
+            </button>
+            <button 
+              onClick={() => {
+                setInput("What are my traffic sources?");
+                setTimeout(() => handleSend(), 100);
+              }}
+              className="p-4 bg-gray-100 rounded-lg text-left hover:bg-gray-200 transition-colors"
+            >
+              What are my traffic sources?
+            </button>
           </div>
-        ) : (
-          <>
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {renderMessage(message)}
               </div>
-            ))}
-            {isLoading && renderLoadingState()}
+            ) : (
+        <>
+          {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+              {renderMessage(message)}
+                  </div>
+          ))}
+          {isLoading && renderLoadingState()}
             {error && (
               <div className="flex justify-start">
                 <div className="bg-red-100 text-red-600 p-4 rounded-lg">
                   {error}
                 </div>
               </div>
+          )}
+        </>
             )}
-          </>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-    );
-  };
-
-  // Add click outside handler for dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target)) {
-        setIsContractDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Handle contract selection/deselection
-  const handleContractToggle = (contract) => {
-    setSelectedContracts(prev => {
-      const isSelected = prev.some(c => c.id === contract.id);
-      if (isSelected) {
-        return prev.filter(c => c.id !== contract.id);
-      } else {
-        return [...prev, contract];
-      }
-    });
-  };
-
-  // Select/Deselect all contracts
-  const handleSelectAllContracts = (selectAll) => {
-    setSelectedContracts(selectAll ? [...contractArray] : []);
-  };
-
-  // Update contract transactions when selection changes
-  useEffect(() => {
-    const fetchAllContractTransactions = async () => {
-      if (selectedContracts.length === 0) {
-        setContractTransactions([]);
-        return;
-      }
-
-      setIsLoadingTransactions(true);
-      setLoadedTransactionCount(0);
-
-      try {
-        let allTransactions = [];
-        for (const contract of selectedContracts) {
-          const transactions = await fetchContractTransactions(contract.id);
-          allTransactions = [...allTransactions, ...transactions];
-        }
-        setContractTransactions(allTransactions);
-      } catch (error) {
-        console.error('Error fetching contract transactions:', error);
-        setError('Failed to load some contract transactions');
-      } finally {
-        setIsLoadingTransactions(false);
-      }
-    };
-
-    fetchAllContractTransactions();
-  }, [selectedContracts]);
+            <div ref={messagesEndRef} />
+          </div>
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -2334,7 +2326,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg" ref={dropdownRef}>
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
                         <div className="p-2 border-b">
                           <label className="flex items-center">
                             <input
@@ -2366,51 +2358,20 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                 
                 {/* Smart Contract Selector */}
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Smart Contracts Selected ({selectedContracts.length})</label>
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsContractDropdownOpen(!isContractDropdownOpen)}
-                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm flex items-center justify-between"
-                    >
-                      <span className="truncate">
-                        {selectedContracts.length === contractArray.length 
-                          ? "All Contracts" 
-                          : selectedContracts.length === 0 
-                            ? "Select Contracts"
-                            : `${selectedContracts.length} Contract${selectedContracts.length !== 1 ? 's' : ''} Selected`}
-                      </span>
-                      <span className="ml-2">▼</span>
-                    </button>
-
-                    {isContractDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg" ref={contractDropdownRef}>
-                        <div className="p-2 border-b">
-                          <label className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedContracts.length === contractArray.length}
-                              onChange={(e) => handleSelectAllContracts(e.target.checked)}
-                              className="mr-2"
-                            />
-                            Select All
-                          </label>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto">
-                          {contractArray.map(contract => (
-                            <label key={contract.id} className="flex items-center p-2 hover:bg-gray-50">
-                              <input
-                                type="checkbox"
-                                checked={selectedContracts.some(c => c.id === contract.id)}
-                                onChange={() => handleContractToggle(contract)}
-                                className="mr-2"
-                              />
-                              {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
+                  <select
+                    value={selectedContracts}
+                    onChange={handleContractChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                    disabled={isLoadingContracts}
+                  >
+                    <option value="">Select a contract</option>
+                    {contractArray.map(contract => (
+                      <option key={contract.id} value={contract.id}>
+                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -2423,15 +2384,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
                   <span>Loading website analytics...</span>
                 </div>
               )}
-              {isLoadingContracts && (
+              {isLoadingTransactions && (
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-                  <span>Loading available contracts...</span>
+                  <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingContracts && selectedContracts.length > 0 && (
+              {!isLoadingTransactions && selectedContracts && contractTransactions.length > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>{selectedContracts.length} contract{selectedContracts.length !== 1 ? 's' : ''} selected</span>
+                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
                 </div>
               )}
             </div>

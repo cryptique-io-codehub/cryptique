@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot } from 'lucide-react';
-import axiosInstance from '../../services/axiosInstance';
 
 const CQIntelligence = () => {
   const [selectedSite, setSelectedSite] = useState('');
@@ -28,33 +27,31 @@ const CQIntelligence = () => {
     setError(null);
 
     try {
-      // Call our backend API
-      const response = await axiosInstance.post('/ai/intelligence/query', {
-        query: userMessage,
-        expectGraph: userMessage.toLowerCase().includes('graph') || userMessage.toLowerCase().includes('chart'),
-        topK: 5,
-        minScore: 0.7
+      const response = await fetch('https://api.gemini.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_GEMINI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gemini-2.0-flash',
+          messages: [
+            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
+            { role: 'user', content: userMessage }
+          ]
+        })
       });
 
-      if (!response.data) {
-        throw new Error('No response data received from backend');
+      if (!response.ok) {
+        throw new Error('Failed to get response from Gemini');
       }
 
-      const botMessage = response.data.text_answer;
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: botMessage,
-        timestamp: new Date().toISOString(),
-        graphData: response.data.graph_data_json
-      }]);
+      const data = await response.json();
+      const botMessage = data.choices[0].message.content;
+      setMessages(prev => [...prev, { role: 'assistant', content: botMessage }]);
     } catch (err) {
       setError('Failed to get response. Please try again.');
       console.error('Error:', err);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
-        timestamp: new Date().toISOString()
-      }]);
     } finally {
       setIsLoading(false);
     }
