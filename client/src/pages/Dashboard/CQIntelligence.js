@@ -1883,25 +1883,11 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Generate embedding
   async function generateEmbedding(text) {
     try {
-      // First check if the embedding service is available
-      try {
-        const healthCheck = await axiosInstance.get('/vector/health', { timeout: 3000 });
-        if (healthCheck.status !== 200) {
-          console.log("Embedding service health check failed, using fallback");
-          throw new Error("Embedding service unavailable");
-        }
-      } catch (healthError) {
-        console.log("Embedding service health check failed:", healthError);
-        throw new Error("Embedding service unavailable");
-      }
-      
-      // Try to generate embedding
       const response = await axiosInstance.post('/vector/embed', { text });
       return response.data.embedding;
     } catch (error) {
       console.error("Error generating embedding:", error);
-      // Clear error message for better UX
-      throw new Error("Embedding service unavailable");
+      throw error;
     }
   }
 
@@ -1911,63 +1897,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const storedChunks = [];
       for (const chunk of chunks) {
         try {
-          // Validate chunk data
-          if (!chunk.text || typeof chunk.text !== 'string') {
-            console.error('Invalid chunk text:', chunk);
-            continue;
-          }
-
-          // Generate embedding
-          let embedding;
-          try {
-            const embedResponse = await axiosInstance.post('/vector/embed', { text: chunk.text });
-            embedding = embedResponse.data.embedding;
-            
-            if (!embedding || !Array.isArray(embedding)) {
-              console.error('Invalid embedding received:', embedding);
-              continue;
-            }
-          } catch (embedError) {
-            console.error('Error generating embedding:', embedError);
-            continue;
-          }
-
-          // Store vector with retries
-          let retries = 3;
-          while (retries > 0) {
-            try {
-              const storeResponse = await axiosInstance.post('/vector/store', {
-                text: chunk.text,
-                embedding: embedding,
-                metadata: chunk.metadata || {}
-              });
-
-              if (storeResponse.data.success) {
-                storedChunks.push({
-                  ...chunk,
-                  id: storeResponse.data.id
-                });
-                break; // Success, exit retry loop
-              }
-            } catch (storeError) {
-              console.error(`Store attempt ${4 - retries} failed:`, storeError);
-              retries--;
-              if (retries === 0) {
-                console.error('Failed to store chunk after all retries');
-              } else {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
-              }
-            }
-          }
-        } catch (chunkError) {
-          console.error('Error processing chunk:', chunkError);
-          // Continue with next chunk
+          const embedding = await generateEmbedding(chunk.text);
+          await axiosInstance.post('/vector/store', {
+            text: chunk.text,
+            embedding: embedding,
+            metadata: chunk.metadata
+          });
+          storedChunks.push(chunk);
+        } catch (error) {
+          console.error(`Error storing chunk: ${error.message}`);
+          // Continue with other chunks even if one fails
         }
       }
-
-      const successRate = (storedChunks.length / chunks.length) * 100;
-      console.log(`Successfully stored ${storedChunks.length} of ${chunks.length} chunks (${successRate.toFixed(1)}%)`);
-      
+      console.log(`Successfully stored ${storedChunks.length} of ${chunks.length} chunks with embeddings`);
       return storedChunks.length > 0;
     } catch (error) {
       console.error("Error in storeChunksWithEmbeddings:", error);
@@ -2069,183 +2011,110 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     setIsLoading(true);
     setError(null);
 
-    // Check if we need to use RAG or fallback to traditional approach
-    let useRAG = true;
-    let embeddingServiceAvailable = true;
-    let botMessage = ""; // Define botMessage at the top level of the function
-    
-    // Check if embedding service is available
     try {
-      await axiosInstance.get('/vector/health', { timeout: 3000 });
-    } catch (error) {
-      console.log("Embedding service unavailable, using traditional approach");
-      embeddingServiceAvailable = false;
-      useRAG = false;
-    }
+      // Step 1: Transform current data to text
+      const allChunks = [];
+      
+      // Process websites
+      for (const siteId of selectedSites) {
+        const siteAnalytics = analytics[siteId];
+        if (siteAnalytics) {
+          const textDescriptions = transformWebsiteAnalyticsToText(siteId, siteAnalytics);
+          const chunks = createChunksWithMetadata(siteId, textDescriptions);
+          allChunks.push(...chunks);
+        }
+      }
+      
+      // Process contracts
+      for (const contractId of selectedContracts) {
+        const contractTxs = contractTransactions[contractId];
+        if (contractTxs) {
+          const textDescriptions = transformContractToText(contractId, contractTxs);
+          const chunks = createContractChunksWithMetadata(contractId, textDescriptions);
+          allChunks.push(...chunks);
+        }
+      }
+      
+      // Step 2: Store chunks with embeddings
+      let storageSuccessful = false;
+      if (allChunks.length > 0) {
+        storageSuccessful = await storeChunksWithEmbeddings(allChunks);
+        console.log(`Storage of chunks was ${storageSuccessful ? 'successful' : 'unsuccessful'}`);
+      } else {
+        console.log('No chunks to store');
+      }
+      
+      // Step 3: Retrieve relevant chunks based on query
+      let relevantChunks = [];
+      try {
+        relevantChunks = await retrieveRelevantChunks(
+          userMessage, 
+          selectedSites, 
+          selectedContracts
+        );
+        console.log(`Retrieved ${relevantChunks.length} relevant chunks`);
+      } catch (searchError) {
+        console.error('Error retrieving chunks:', searchError);
+        // Continue with an empty set of chunks - will fall back to regular processing
+      }
+      
+      // Step 4: Get response from Gemini
+      let botMessage;
 
-    try {
-      // Only proceed with RAG if embedding service is available
-      if (useRAG && embeddingServiceAvailable) {
-        // Step 1: Transform current data to text
-        const allChunks = [];
-        
-        // Process websites
-        for (const siteId of selectedSites) {
-          const siteAnalytics = analytics[siteId];
-          if (siteAnalytics) {
-            const textDescriptions = transformWebsiteAnalyticsToText(siteId, siteAnalytics);
-            const chunks = createChunksWithMetadata(siteId, textDescriptions);
-            allChunks.push(...chunks);
-          }
-        }
-        
-        // Process contracts
-        for (const contractId of selectedContracts) {
-          const contractTxs = contractTransactions[contractId];
-          if (contractTxs) {
-            const textDescriptions = transformContractToText(contractId, contractTxs);
-            const chunks = createContractChunksWithMetadata(contractId, textDescriptions);
-            allChunks.push(...chunks);
-          }
-        }
-        
-        // Step 2: Store chunks with embeddings
-        let storageSuccessful = false;
-        try {
-          if (allChunks.length > 0) {
-            storageSuccessful = await storeChunksWithEmbeddings(allChunks);
-            console.log(`Storage of chunks was ${storageSuccessful ? 'successful' : 'unsuccessful'}`);
-          } else {
-            console.log('No chunks to store');
-          }
-        } catch (storageError) {
-          console.error("Error storing chunks:", storageError);
-          // Continue with RAG if possible but mark storage as unsuccessful
-        }
-        
-        // Step 3: Retrieve relevant chunks based on query
-        let relevantChunks = [];
-        try {
-          relevantChunks = await retrieveRelevantChunks(
-            userMessage, 
-            selectedSites, 
-            selectedContracts
-          );
-          console.log(`Retrieved ${relevantChunks.length} relevant chunks`);
-        } catch (searchError) {
-          console.error('Error retrieving chunks:', searchError);
-          // If we can't retrieve chunks, fall back to traditional approach
-          useRAG = false;
-        }
-        
-        // Only use RAG if we have chunks and storage was successful
-        if (relevantChunks.length === 0 || !storageSuccessful) {
-          useRAG = false;
-        }
-        
-        // Step 4: Get response from Gemini
-        try {
+      try {
         const ai = initializeAI();
         const modelName = await verifyModel();
+        
+        // If we have relevant chunks and storage was successful, use RAG approach
+        if (relevantChunks.length > 0 && storageSuccessful) {
+          console.log("Using RAG approach with model:", modelName);
           
-          // If we have relevant chunks and storage was successful, use RAG approach
-          if (useRAG) {
-            console.log("Using RAG approach with model:", modelName);
-            
-            // Construct enhanced prompt with retrieved chunks
-            const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
+          // Construct enhanced prompt with retrieved chunks
+          const enhancedPrompt = constructEnhancedPrompt(userMessage, relevantChunks);
         
         const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(enhancedPrompt);
+          const result = await model.generateContent(enhancedPrompt);
         const response = await result.response;
         botMessage = response.text();
-          } else {
-            // Fall back to traditional approach
-            console.log("Falling back to traditional approach with model:", modelName);
-            const analyticsSummary = generateAnalyticsSummary(userMessage);
-            
-            const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(analyticsSummary);
-            const response = await result.response;
-            botMessage = response.text();
-          }
-        } catch (aiError) {
-          console.error("Error getting AI response:", aiError);
+        } else {
+          // Fall back to traditional approach
+          console.log("Falling back to traditional approach with model:", modelName);
+          const analyticsSummary = generateAnalyticsSummary(userMessage);
           
-          // Try REST API fallback
-          try {
-            console.log("Trying REST API fallback...");
+          const model = ai.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(analyticsSummary);
+          const response = await result.response;
+          botMessage = response.text();
+        }
+      } catch (aiError) {
+        console.error("Error getting AI response:", aiError);
+        
+        // Try REST API fallback
+        try {
+          console.log("Trying REST API fallback...");
           const modelName = await verifyModel();
-            
-            let promptContent;
-            if (useRAG) {
-              promptContent = constructEnhancedPrompt(userMessage, relevantChunks);
-            } else {
-              promptContent = generateAnalyticsSummary(userMessage);
-            }
+          
+          let promptContent;
+          if (relevantChunks.length > 0 && storageSuccessful) {
+            promptContent = constructEnhancedPrompt(userMessage, relevantChunks);
+          } else {
+            promptContent = generateAnalyticsSummary(userMessage);
+          }
           
           const requestBody = {
             model: modelName,
             contents: [
               {
                 parts: [
-                    { text: promptContent }
+                  { text: promptContent }
                 ]
               }
             ]
           };
 
           const response = await axiosInstance.post('/ai/generate', requestBody);
-            botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                       "Sorry, I couldn't process your request.";
-          } catch (apiError) {
-            console.error("REST API approach also failed:", apiError);
-            botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
-            
-Based on the analytics data I can see for your selected sites, here's what I can tell you:
-
-## Analytics Summary
-${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No websites selected.'}
-${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
-
-If you have specific questions about your analytics, please try again later when our AI service is back online.`;
-          }
-        }
-      } else {
-        // If embedding service is not available, use traditional approach
-        console.log("Using traditional approach due to unavailable embedding service");
-        const analyticsSummary = generateAnalyticsSummary(userMessage);
-        
-        try {
-          const ai = initializeAI();
-          const modelName = await verifyModel();
-          
-          const model = ai.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(analyticsSummary);
-          const response = await result.response;
-          botMessage = response.text();
-        } catch (aiError) {
-          console.error("Error getting AI response:", aiError);
-          
-          // Try REST API fallback
-          try {
-            console.log("Trying REST API fallback...");
-            const modelName = await verifyModel();
-            
-            const requestBody = {
-              model: modelName,
-              contents: [
-                {
-                  parts: [
-                    { text: analyticsSummary }
-                  ]
-                }
-              ]
-            };
-            
-            const response = await axiosInstance.post('/ai/generate', requestBody);
-            botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                        "Sorry, I couldn't process your request.";
+          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                      "Sorry, I couldn't process your request.";
         } catch (apiError) {
           console.error("REST API approach also failed:", apiError);
           botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
@@ -2257,7 +2126,6 @@ ${selectedSites.size > 0 ? `- Websites selected: ${selectedSites.size}` : '- No 
 ${selectedContracts.size > 0 ? `- Contracts selected: ${selectedContracts.size}` : '- No contracts selected.'}
 
 If you have specific questions about your analytics, please try again later when our AI service is back online.`;
-          }
         }
       }
 
@@ -2285,7 +2153,7 @@ If you have specific questions about your analytics, please try again later when
       // Add a fallback message even if the entire try block fails
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'I apologize, but I encountered an error processing your request. Falling back to standard response mode.',
+        content: 'I apologize, but I encountered an error processing your request.',
         timestamp: new Date().toISOString()
       }]);
     } finally {

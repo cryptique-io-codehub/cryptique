@@ -12,7 +12,6 @@ const { connectToDatabase } = require("./config/database");
 const healthRouter = require("./routes/healthRouter");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Team = require("./models/team");
-const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -130,17 +129,37 @@ connectToDatabase()
     process.exit(1); // Exit on database connection failure
   });
 
-// Global CORS configuration
-const corsOptions = {
-  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+// Define CORS options for different routes
+const mainCorsOptions = {
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-cryptique-website-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400
 };
 
-// Apply CORS middleware globally
-app.use(cors(corsOptions));
+// SDK CORS configuration with explicit headers
+const sdkCorsOptions = {
+  origin: function(origin, callback) {
+    // Allow specific origins instead of wildcard
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    
+    // Check if origin is in our allowed list or if it's not provided (like in REST clients)
+    const originAllowed = !origin || allowedOrigins.includes(origin);
+    
+    if (originAllowed) {
+      callback(null, origin);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  credentials: true, // Changed to true to allow credentials
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
 
 // Parse cookies
 app.use(cookieParser());
@@ -182,6 +201,9 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
+// We'll handle CORS per-route instead of globally
+// This prevents conflicts between different CORS policies
+
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
   // Set common security headers
@@ -222,9 +244,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parser middleware
+// Increase JSON body size limit to 50MB
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Apply general rate limiting to all routes except SDK routes
 app.use('/api', (req, res, next) => {
@@ -282,19 +304,19 @@ app.use("/api/stripe", stripeRouter);
 app.use("/api/sdk", require("./routes/sdkRouter"));  // Removed cors(sdkCorsOptions) to use the router's own settings
 
 // Apply main CORS for all other routes
-app.use("/api/auth", cors(corsOptions), userRouter);
-app.use("/api/team", cors(corsOptions), require("./routes/teamRouter"));
-app.use("/api/website", cors(corsOptions), require("./routes/websiteRouter"));
-app.use("/api/analytics", cors(corsOptions), require("./routes/analytics"));
-app.use("/api/onchain", cors(corsOptions), require("./routes/onChainRouter"));
-app.use("/api/campaign", cors(corsOptions), campaignRouter);
-app.use("/api/contracts", cors(corsOptions), require("./routes/smartContractRouter"));
-app.use("/api/transactions", cors(corsOptions), require("./routes/transactionRouter"));
+app.use("/api/auth", cors(mainCorsOptions), userRouter);
+app.use("/api/team", cors(mainCorsOptions), require("./routes/teamRouter"));
+app.use("/api/website", cors(mainCorsOptions), require("./routes/websiteRouter"));
+app.use("/api/analytics", cors(mainCorsOptions), require("./routes/analytics"));
+app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter"));
+app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
+app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
+app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");
-  app.use("/api/ai", aiRouter);  // Removed cors(corsOptions) to use the router's own CORS settings
+  app.use("/api/ai", aiRouter);  // Removed cors(mainCorsOptions) to use the router's own CORS settings
   console.log('AI router loaded successfully at /api/ai');
 } catch (error) {
   console.error('Error loading AI router:', error);
@@ -483,8 +505,8 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-// Import vector routes
-const vectorRoutes = require('./routes/vector');
+// Import the vector router
+const vectorRouter = require('./routes/vectorRouter');
 
 // Main middleware and routes setup (add this near where other routes are defined)
 app.use("/api/users", userRouter);
@@ -492,16 +514,8 @@ app.use("/api/campaigns", campaignRouter);
 app.use("/api/stripe", stripeRouter);
 app.use("/api/health", healthRouter);
 
-// Add vector routes
-app.use('/api/vector', vectorRoutes);
-
-// Error handling middleware
-app.use(errorHandler);
-
-// Handle 404
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
+// Add the vector router
+app.use("/api/vector", vectorRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
