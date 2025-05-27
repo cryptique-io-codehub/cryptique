@@ -1,47 +1,68 @@
 const express = require('express');
 const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats, updateDailyAnalyticsStats, updateWeeklyAnalyticsStats, updateMonthlyAnalyticsStats} = require('../controllers/sdkController');
 const cors = require('cors');
+const Analytics = require('../models/analytics');
 
 const router = express.Router();
 
-// Configure CORS for the SDK endpoints - make it fully permissive for the SDK
+// Configure CORS for SDK endpoints - allow all origins for the SDK
 const corsOptions = {
-  origin: '*', // Allow requests from any origin for the SDK
+  origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id', 'Accept'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: false, // SDK doesn't need credentials
-  maxAge: 86400, // 24 hours
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-cryptique-website-id'],
+  maxAge: 86400
 };
 
-// Apply CORS to all routes in this router
+// Apply CORS middleware
 router.use(cors(corsOptions));
 
-// Middleware to ensure CORS headers are set - this is a backup in case the cors middleware doesn't work
-router.use((req, res, next) => {
-  // For SDK routes, allow any origin
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id, Accept');
-  res.header('Access-Control-Max-Age', '86400');
-  
-  // Handle OPTIONS requests immediately
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  
-  next();
-});
-
-// Define routes with error handling
+// Track analytics data
 router.post('/track', async (req, res) => {
   try {
-    await postAnalytics(req, res);
+    const websiteId = req.headers['x-cryptique-website-id'];
+    if (!websiteId) {
+      return res.status(400).json({ 
+        message: 'Website ID is required',
+        error: 'Missing x-cryptique-website-id header'
+      });
+    }
+
+    const {
+      userId,
+      event,
+      properties,
+      timestamp = new Date(),
+      sessionId,
+      pageUrl,
+      referrer
+    } = req.body;
+
+    if (!userId || !event) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        error: 'userId and event are required'
+      });
+    }
+
+    const analytics = new Analytics({
+      websiteId,
+      userId,
+      event,
+      properties,
+      timestamp,
+      sessionId,
+      pageUrl,
+      referrer
+    });
+
+    await analytics.save();
+    res.status(200).json({ message: 'Analytics data tracked successfully' });
   } catch (error) {
-    console.error('Error in track endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error tracking analytics:', error);
+    res.status(500).json({ 
+      message: 'Error tracking analytics data',
+      error: error.message 
+    });
   }
 });
 
