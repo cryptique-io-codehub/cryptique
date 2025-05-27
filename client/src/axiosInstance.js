@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://localhost:3001';
+// Use the production URL with https, fallback to localhost for development
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
 
 console.log('API Server URL:', baseURL);
 
@@ -10,14 +10,11 @@ const axiosInstance = axios.create({
   baseURL: baseURL + '/api',
   headers: {
     'Content-Type': 'application/json',
-    // Adding additional headers that might help with CORS
     'Accept': 'application/json'
   },
   maxContentLength: 50 * 1024 * 1024, // 50MB
   maxBodyLength: 50 * 1024 * 1024, // 50MB
-  // Set withCredentials based on environment
-  withCredentials: false, // Changed to false by default
-  // Add timeout configuration
+  withCredentials: true, // Set to true by default for authenticated routes
   timeout: 60000 // 60 seconds timeout
 });
 
@@ -27,20 +24,17 @@ axiosInstance.interceptors.request.use(
     // Log requests for debugging
     console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || {});
     
-    // Check if this is an analytics endpoint that's causing CORS issues
+    // Check if this is an analytics or RAG endpoint that's causing CORS issues
     if (config.url && (
       config.url.includes('/sdk/analytics/') ||
-      config.url.includes('/intelligence/')
+      config.url.includes('/intelligence/') ||
+      config.url.includes('/rag/')
     )) {
       // For these endpoints, explicitly set withCredentials to false
       config.withCredentials = false;
-    } else {
-      // For all other endpoints, including team routes, use credentials
-      config.withCredentials = true;
     }
     
-    // Get token dynamically on each request - not from closure
-    // Try both accessToken and token, as different parts of the app might use different keys
+    // Get token dynamically on each request
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
