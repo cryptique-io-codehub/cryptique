@@ -1868,6 +1868,9 @@ Performance Indicators
     setIsLoading(true);
 
     try {
+      // Add a delay to show the loading cube
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
+
       // Fixed data for visualization
       const dailyData = [
         { date: '19 May', clicks: 1823, volume: 45678, conversions: 52 },
@@ -1949,8 +1952,11 @@ Performance Indicators
       
     } catch (err) {
       console.error('Error:', err);
+      // Add the same delay even in case of error
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
+      
       // Even on error, show the same response
-      const response = `### 📊 Meta Ad Campaign Performance Report...`; // Same response as above
+      const response = `### Meta Ad Campaign Performance Report...`; // Same response as above
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: response,
