@@ -559,23 +559,37 @@ export default function OnchainDashboard() {
     // Only show labels for segments with actual values
     if (value === 0) return null;
     
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.8;
+    // Calculate radius based on segment size to prevent overlapping
+    // Larger segments get labels further out
+    const radius = innerRadius + (outerRadius - innerRadius) * (0.5 + (value / 200)); // Dynamic radius based on value
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
+    // Add a white background to make labels more readable
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="black" 
-        textAnchor={x > cx ? 'start' : 'end'} 
-        dominantBaseline="central"
-        fontSize="12"
-        fontWeight="bold"
-        fontFamily="'Poppins', sans-serif"
-      >
-        {`${value}%`}
-      </text>
+      <g>
+        <rect
+          x={x - 15}
+          y={y - 8}
+          width="30"
+          height="16"
+          fill="white"
+          fillOpacity="0.8"
+          rx="4"
+        />
+        <text 
+          x={x} 
+          y={y} 
+          fill="black" 
+          textAnchor={x > cx ? 'start' : 'end'} 
+          dominantBaseline="central"
+          fontSize="12"
+          fontWeight="bold"
+          fontFamily="'Poppins', sans-serif"
+        >
+          {`${value}%`}
+        </text>
+      </g>
     );
   };
 
