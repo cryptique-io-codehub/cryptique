@@ -1163,48 +1163,76 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
       };
 
-      // Create ASCII bar chart for daily performance using standard ASCII characters
+      // Create better ASCII charts
       const maxClicks = Math.max(...data.daily.map(d => d.clicks));
-      const barChart = data.daily.map(d => {
-        const barLength = Math.round((d.clicks / maxClicks) * 20);
-        const bar = '='.repeat(barLength) + '-'.repeat(20 - barLength);
-        return `${d.date} |${bar}| ${d.clicks}`;
+      const maxVol = Math.max(...data.daily.map(d => d.vol));
+      const chartWidth = 30;
+
+      // Function to create a bar with value indicator
+      const createBar = (value, max, width) => {
+        const barLength = Math.round((value / max) * width);
+        const bar = '='.repeat(barLength) + ' '.repeat(width - barLength);
+        return bar;
+      };
+
+      // Create combined chart showing clicks and volume
+      const combinedChart = data.daily.map(d => {
+        const clicksBar = createBar(d.clicks, maxClicks, chartWidth);
+        const volBar = createBar(d.vol, maxVol, chartWidth);
+        return `${d.date} Clicks |${clicksBar}| ${d.clicks.toString().padStart(5)}
+         Volume |${volBar}| ${d.vol.toString().padStart(6)}
+-----------------------------------------`;
+      }).join('\n');
+
+      // Create chain distribution chart
+      const totalVol = Object.values(data.chains).reduce((sum, chain) => sum + chain.vol, 0);
+      const chainChart = Object.entries(data.chains).map(([chain, data]) => {
+        const percentage = (data.vol / totalVol) * 100;
+        const barLength = Math.round((percentage / 100) * chartWidth);
+        const bar = '='.repeat(barLength) + ' '.repeat(chartWidth - barLength);
+        return `${chain.padEnd(4)} |${bar}| ${percentage.toFixed(1)}%`;
       }).join('\n');
 
       return `
 ### 📊 Meta Ad Performance (15-21 Oct)
 
+Daily Performance:
 \`\`\`
-Daily Clicks Trend:
-${barChart}
+${combinedChart}
 \`\`\`
 
-| Chain | Volume (ZBU) | Value ($) | Txs |
-|-------|--------------|-----------|-----|
-| ETH   | ${data.chains.ETH.vol.toLocaleString()} | ${data.chains.ETH.val.toLocaleString()} | ${data.chains.ETH.txs} |
-| BNB   | ${data.chains.BNB.vol.toLocaleString()} | ${data.chains.BNB.val.toLocaleString()} | ${data.chains.BNB.txs} |
-| BASE  | ${data.chains.BASE.vol.toLocaleString()} | ${data.chains.BASE.val.toLocaleString()} | ${data.chains.BASE.txs} |
+Chain Distribution:
+\`\`\`
+${chainChart}
+\`\`\`
 
-Top Wallets:
-| Wallet | Vol (ZBU) | Val ($) | Txs |
-|--------|-----------|---------|-----|
-${data.wallets.map(w => `| ${w.id} | ${w.vol.toLocaleString()} | ${w.val.toLocaleString()} | ${w.txs} |`).join('\n')}
+Chain Performance:
+| Chain | Volume (ZBU) | Value ($) | Transactions |
+|-------|-------------|-----------|--------------|
+| ETH   | ${data.chains.ETH.vol.toLocaleString()} | $${data.chains.ETH.val.toLocaleString()} | ${data.chains.ETH.txs.toLocaleString()} |
+| BNB   | ${data.chains.BNB.vol.toLocaleString()} | $${data.chains.BNB.val.toLocaleString()} | ${data.chains.BNB.txs.toLocaleString()} |
+| BASE  | ${data.chains.BASE.vol.toLocaleString()} | $${data.chains.BASE.val.toLocaleString()} | ${data.chains.BASE.txs.toLocaleString()} |
 
-Geo Data:
-| Region | Clicks | Conv | Vol (ZBU) |
-|--------|--------|------|-----------|
-${Object.entries(data.geo).map(([k,v]) => `| ${k} | ${v.clicks.toLocaleString()} | ${v.conv} | ${v.vol.toLocaleString()} |`).join('\n')}
+Top Performing Wallets:
+| Wallet | Volume (ZBU) | Value ($) | Txs |
+|--------|-------------|-----------|-----|
+${data.wallets.map(w => `| ${w.id} | ${w.vol.toLocaleString()} | $${w.val.toLocaleString()} | ${w.txs} |`).join('\n')}
 
-KPIs:
-▸ Total Vol: ${Object.values(data.chains).reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU
-▸ Total Val: $${Object.values(data.chains).reduce((a,b) => a + b.val, 0).toLocaleString()}
-▸ Total Txs: ${Object.values(data.chains).reduce((a,b) => a + b.txs, 0).toLocaleString()}
-▸ Avg $/Tx: $${Math.round(Object.values(data.chains).reduce((a,b) => a + b.val, 0) / Object.values(data.chains).reduce((a,b) => a + b.txs, 0)).toLocaleString()}
+Geographic Distribution:
+| Region | Clicks | Conversions | Volume (ZBU) |
+|--------|--------|-------------|--------------|
+${Object.entries(data.geo).map(([k,v]) => `| ${k.padEnd(6)} | ${v.clicks.toLocaleString().padStart(6)} | ${v.conv.toString().padStart(11)} | ${v.vol.toLocaleString().padStart(10)} |`).join('\n')}
 
-Performance:
-📈 Clicks: ${data.daily.reduce((a,b) => a + b.clicks, 0).toLocaleString()}
-🔄 Conv: ${data.daily.reduce((a,b) => a + b.conv, 0)}
-💰 Vol: ${data.daily.reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU`;
+Summary KPIs:
+| Metric | Value |
+|--------|-------|
+| Total Volume | ${Object.values(data.chains).reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU |
+| Total Value | $${Object.values(data.chains).reduce((a,b) => a + b.val, 0).toLocaleString()} |
+| Total Transactions | ${Object.values(data.chains).reduce((a,b) => a + b.txs, 0).toLocaleString()} |
+| Average Value/Tx | $${Math.round(Object.values(data.chains).reduce((a,b) => a + b.val, 0) / Object.values(data.chains).reduce((a,b) => a + b.txs, 0)).toLocaleString()} |
+| Total Clicks | ${data.daily.reduce((a,b) => a + b.clicks, 0).toLocaleString()} |
+| Total Conversions | ${data.daily.reduce((a,b) => a + b.conv, 0)} |
+| Conversion Rate | ${((data.daily.reduce((a,b) => a + b.conv, 0) / data.daily.reduce((a,b) => a + b.clicks, 0)) * 100).toFixed(2)}% |`;
     }
 
     // Regular analytics processing for other queries
