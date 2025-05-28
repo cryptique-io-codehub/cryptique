@@ -1206,13 +1206,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     if (message.toLowerCase().includes('meta ad') || message.toLowerCase().includes('facebook ad')) {
       // Create data for charts
       const dailyData = [
-        { date: '15 Oct', clicks: 1823, volume: 45678, conversions: 52 },
-        { date: '16 Oct', clicks: 1654, volume: 42345, conversions: 48 },
-        { date: '17 Oct', clicks: 2134, volume: 67892, conversions: 67 },
-        { date: '18 Oct', clicks: 1987, volume: 54321, conversions: 59 },
-        { date: '19 Oct', clicks: 1765, volume: 48765, conversions: 51 },
-        { date: '20 Oct', clicks: 1543, volume: 43210, conversions: 45 },
-        { date: '21 Oct', clicks: 1547, volume: 58976, conversions: 64 }
+        { date: '19 May', clicks: 1823, volume: 45678, conversions: 52 },
+        { date: '20 May', clicks: 1654, volume: 42345, conversions: 48 },
+        { date: '21 May', clicks: 2134, volume: 67892, conversions: 67 },
+        { date: '22 May', clicks: 1987, volume: 54321, conversions: 59 },
+        { date: '23 May', clicks: 1765, volume: 48765, conversions: 51 },
+        { date: '24 May', clicks: 1543, volume: 43210, conversions: 45 },
+        { date: '25 May', clicks: 1547, volume: 58976, conversions: 64 }
       ];
 
       const chainData = [
@@ -1230,7 +1230,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       ];
 
       return {
-        content: `### 📊 Meta Ad Campaign Performance Report (Oct 15-21)
+        content: `### Meta Ad Campaign Performance Report (May 19-25)
 
 | Campaign Overview | Value |
 |------------------|-------|
@@ -1270,7 +1270,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 \`\`\`
 Performance Indicators
 ---------------------
-✓ Highest Day: Oct 17 (2,134 clicks, 67 conversions)
+✓ Highest Day: May 21 (2,134 clicks, 67 conversions)
 ✓ Best Chain: ETH (42.3% of volume)
 ✓ Top Region: US (28.7% of total clicks)
 ✓ Best Wallet: 0x7a23 (5.2% of total volume)
@@ -1870,13 +1870,13 @@ Performance Indicators
     try {
       // Fixed data for visualization
       const dailyData = [
-        { date: '15 Oct', clicks: 1823, volume: 45678, conversions: 52 },
-        { date: '16 Oct', clicks: 1654, volume: 42345, conversions: 48 },
-        { date: '17 Oct', clicks: 2134, volume: 67892, conversions: 67 },
-        { date: '18 Oct', clicks: 1987, volume: 54321, conversions: 59 },
-        { date: '19 Oct', clicks: 1765, volume: 48765, conversions: 51 },
-        { date: '20 Oct', clicks: 1543, volume: 43210, conversions: 45 },
-        { date: '21 Oct', clicks: 1547, volume: 58976, conversions: 64 }
+        { date: '19 May', clicks: 1823, volume: 45678, conversions: 52 },
+        { date: '20 May', clicks: 1654, volume: 42345, conversions: 48 },
+        { date: '21 May', clicks: 2134, volume: 67892, conversions: 67 },
+        { date: '22 May', clicks: 1987, volume: 54321, conversions: 59 },
+        { date: '23 May', clicks: 1765, volume: 48765, conversions: 51 },
+        { date: '24 May', clicks: 1543, volume: 43210, conversions: 45 },
+        { date: '25 May', clicks: 1547, volume: 58976, conversions: 64 }
       ];
 
       const chainData = [
@@ -1894,7 +1894,7 @@ Performance Indicators
       ];
 
       // Fixed response template
-      const response = `### 📊 Meta Ad Campaign Performance Report (Oct 15-21)
+      const response = `### Meta Ad Campaign Performance Report (May 19-25)
 
 | Campaign Overview | Value |
 |------------------|-------|
@@ -1934,7 +1934,7 @@ Performance Indicators
 \`\`\`
 Performance Indicators
 ---------------------
-✓ Highest Day: Oct 17 (2,134 clicks, 67 conversions)
+✓ Highest Day: May 21 (2,134 clicks, 67 conversions)
 ✓ Best Chain: ETH (42.3% of volume)
 ✓ Top Region: US (28.7% of total clicks)
 ✓ Best Wallet: 0x7a23 (5.2% of total volume)
