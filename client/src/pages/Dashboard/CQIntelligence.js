@@ -1131,130 +1131,80 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
-    // Special case for Meta ad campaign question
     if (message.toLowerCase().includes('meta ad') || message.toLowerCase().includes('facebook ad')) {
-      // Simulated Meta ad campaign data
-      const simulatedData = {
-        metaAd: {
-          campaign: {
-            name: "ZBU Token Launch Campaign",
-            period: "Oct 15-21, 2023",
-            metrics: {
-              reach: 156789,
-              impressions: 428935,
-              engagement: {
-                likes: 3267,
-                shares: 892,
-                comments: 456,
-                clickThroughRate: 2.9,
-                costPerClick: 0.42,
-                totalSpend: 5230
-              }
-            }
-          },
-          traffic: {
-            total: 12453,
-            unique: 10234,
-            returning: 2219,
-            avgSessionDuration: 263, // in seconds
-            bounceRate: 32.4,
-            conversionRate: 3.77,
-            countries: [
-              { code: "US", visitors: 3567, converted: 149 },
-              { code: "UK", visitors: 2134, converted: 81 },
-              { code: "DE", visitors: 1876, converted: 66 },
-              { code: "CA", visitors: 1543, converted: 60 },
-              { code: "AU", visitors: 1114, converted: 40 }
-            ]
-          },
-          web3: {
-            totalWallets: 386,
-            chains: {
-              Ethereum: { wallets: 156, volume: 234567, value: 982345 },
-              BNB: { wallets: 142, volume: 198234, value: 831582 },
-              Base: { wallets: 88, volume: 123456, value: 517915 }
-            },
-            topWallets: [
-              {
-                address: "0x7a23...45cd",
-                transactions: 23,
-                volume: 12345,
-                value: 51849,
-                activity: [
-                  { time: "2023-10-21 14:23", amount: 2500, value: 10500 },
-                  { time: "2023-10-20 09:15", amount: 4200, value: 17640 },
-                  { time: "2023-10-19 16:45", amount: 5645, value: 23709 }
-                ]
-              },
-              {
-                address: "0x8b34...67de",
-                transactions: 18,
-                volume: 10234,
-                value: 42983,
-                activity: [
-                  { time: "2023-10-21 11:30", amount: 3200, value: 13440 },
-                  { time: "2023-10-20 15:20", amount: 4100, value: 17220 },
-                  { time: "2023-10-18 13:10", amount: 2934, value: 12323 }
-                ]
-              },
-              {
-                address: "0x9c45...89ef",
-                transactions: 15,
-                volume: 8901,
-                value: 37384,
-                activity: [
-                  { time: "2023-10-21 16:05", amount: 3400, value: 14280 },
-                  { time: "2023-10-19 12:45", amount: 3200, value: 13440 },
-                  { time: "2023-10-18 10:30", amount: 2301, value: 9664 }
-                ]
-              }
-            ]
-          }
+      const data = {
+        daily: [
+          { date: '15 Oct', clicks: 1823, conv: 52, vol: 45678 },
+          { date: '16 Oct', clicks: 1654, conv: 48, vol: 42345 },
+          { date: '17 Oct', clicks: 2134, conv: 67, vol: 67892 },
+          { date: '18 Oct', clicks: 1987, conv: 59, vol: 54321 },
+          { date: '19 Oct', clicks: 1765, conv: 51, vol: 48765 },
+          { date: '20 Oct', clicks: 1543, conv: 45, vol: 43210 },
+          { date: '21 Oct', clicks: 1547, conv: 64, vol: 58976 }
+        ],
+        chains: {
+          ETH: { vol: 234567, val: 982345, txs: 1234 },
+          BNB: { vol: 198234, val: 831582, txs: 987 },
+          BASE: { vol: 123456, val: 517915, txs: 654 }
+        },
+        wallets: [
+          { id: '0x7a23', vol: 12345, val: 51849, txs: 23 },
+          { id: '0x8b34', vol: 10234, val: 42983, txs: 18 },
+          { id: '0x9c45', vol: 8901, val: 37384, txs: 15 },
+          { id: '0x1d67', vol: 7654, val: 32146, txs: 12 },
+          { id: '0x2e89', vol: 6543, val: 27480, txs: 10 }
+        ],
+        geo: {
+          US: { clicks: 3567, conv: 149, vol: 123456 },
+          UK: { clicks: 2134, conv: 81, vol: 98765 },
+          DE: { clicks: 1876, conv: 66, vol: 87654 },
+          CA: { clicks: 1543, conv: 60, vol: 76543 },
+          AU: { clicks: 1114, conv: 40, vol: 65432 }
         }
       };
 
-      return `
-### Campaign Metrics (${simulatedData.metaAd.campaign.period})
+      // Create ASCII bar chart for daily performance
+      const maxClicks = Math.max(...data.daily.map(d => d.clicks));
+      const barChart = data.daily.map(d => {
+        const barLength = Math.round((d.clicks / maxClicks) * 20);
+        const bar = '█'.repeat(barLength) + '░'.repeat(20 - barLength);
+        return \`\${d.date} |\${bar}| \${d.clicks}\`;
+      }).join('\\n');
 
-**Social Performance:**
-* Reach: ${simulatedData.metaAd.campaign.metrics.reach.toLocaleString()}
-* Impressions: ${simulatedData.metaAd.campaign.metrics.impressions.toLocaleString()}
-* Engagement: ${simulatedData.metaAd.campaign.metrics.engagement.likes.toLocaleString()} likes | ${simulatedData.metaAd.campaign.metrics.engagement.shares.toLocaleString()} shares | ${simulatedData.metaAd.campaign.metrics.engagement.comments.toLocaleString()} comments
-* CTR: ${simulatedData.metaAd.campaign.metrics.engagement.clickThroughRate}%
-* CPC: $${simulatedData.metaAd.campaign.metrics.engagement.costPerClick}
-* Spend: $${simulatedData.metaAd.campaign.metrics.engagement.totalSpend.toLocaleString()}
+      return \`
+### 📊 Meta Ad Performance (15-21 Oct)
 
-**Traffic Data:**
-* Total: ${simulatedData.metaAd.traffic.total.toLocaleString()}
-* Unique: ${simulatedData.metaAd.traffic.unique.toLocaleString()}
-* Returning: ${simulatedData.metaAd.traffic.returning.toLocaleString()}
-* Avg Session: ${Math.floor(simulatedData.metaAd.traffic.avgSessionDuration / 60)}m ${simulatedData.metaAd.traffic.avgSessionDuration % 60}s
-* Bounce Rate: ${simulatedData.metaAd.traffic.bounceRate}%
-* Conversion: ${simulatedData.metaAd.traffic.conversionRate}%
+\`\`\`
+Daily Clicks Trend:
+\${barChart}
+\`\`\`
 
-**Geographic Conversion:**
-${simulatedData.metaAd.traffic.countries.map(country => 
-  `* ${country.code}: ${country.visitors.toLocaleString()} visits → ${country.converted} conversions (${((country.converted/country.visitors)*100).toFixed(1)}%)`
-).join('\n')}
+| Chain | Volume (ZBU) | Value ($) | Txs |
+|-------|--------------|-----------|-----|
+| ETH   | \${data.chains.ETH.vol.toLocaleString()} | \${data.chains.ETH.val.toLocaleString()} | \${data.chains.ETH.txs} |
+| BNB   | \${data.chains.BNB.vol.toLocaleString()} | \${data.chains.BNB.val.toLocaleString()} | \${data.chains.BNB.txs} |
+| BASE  | \${data.chains.BASE.vol.toLocaleString()} | \${data.chains.BASE.val.toLocaleString()} | \${data.chains.BASE.txs} |
 
-**Chain Performance:**
-* ETH: ${simulatedData.metaAd.web3.chains.Ethereum.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.Ethereum.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.Ethereum.wallets} wallets
-* BNB: ${simulatedData.metaAd.web3.chains.BNB.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.BNB.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.BNB.wallets} wallets
-* Base: ${simulatedData.metaAd.web3.chains.Base.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.Base.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.Base.wallets} wallets
+Top Wallets:
+| Wallet | Vol (ZBU) | Val ($) | Txs |
+|--------|-----------|---------|-----|
+\${data.wallets.map(w => \`| \${w.id} | \${w.vol.toLocaleString()} | \${w.val.toLocaleString()} | \${w.txs} |\`).join('\\n')}
 
-**Top Wallet Activity:**
-${simulatedData.metaAd.web3.topWallets.map(wallet => `
-* ${wallet.address}:
-  - Total: ${wallet.volume.toLocaleString()} ZBU ($${wallet.value.toLocaleString()})
-  - Txns: ${wallet.transactions}
-  - Recent: ${wallet.activity.map(a => `${a.amount.toLocaleString()} ZBU ($${a.value.toLocaleString()})`).join(' | ')}`
-).join('\n')}
+Geo Data:
+| Region | Clicks | Conv | Vol (ZBU) |
+|--------|--------|------|-----------|
+\${Object.entries(data.geo).map(([k,v]) => \`| \${k} | \${v.clicks.toLocaleString()} | \${v.conv} | \${v.vol.toLocaleString()} |\`).join('\\n')}
 
-**Summary:**
-* Total Volume: ${(simulatedData.metaAd.web3.chains.Ethereum.volume + simulatedData.metaAd.web3.chains.BNB.volume + simulatedData.metaAd.web3.chains.Base.volume).toLocaleString()} ZBU
-* Total Value: $${(simulatedData.metaAd.web3.chains.Ethereum.value + simulatedData.metaAd.web3.chains.BNB.value + simulatedData.metaAd.web3.chains.Base.value).toLocaleString()}
-* Wallets: ${simulatedData.metaAd.web3.totalWallets}
-* ROI: ${(((simulatedData.metaAd.web3.chains.Ethereum.value + simulatedData.metaAd.web3.chains.BNB.value + simulatedData.metaAd.web3.chains.Base.value) / simulatedData.metaAd.campaign.metrics.engagement.totalSpend) * 100).toFixed(1)}x`;
+KPIs:
+▸ Total Vol: \${Object.values(data.chains).reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU
+▸ Total Val: $\${Object.values(data.chains).reduce((a,b) => a + b.val, 0).toLocaleString()}
+▸ Total Txs: \${Object.values(data.chains).reduce((a,b) => a + b.txs, 0).toLocaleString()}
+▸ Avg $/Tx: $\${Math.round(Object.values(data.chains).reduce((a,b) => a + b.val, 0) / Object.values(data.chains).reduce((a,b) => a + b.txs, 0)).toLocaleString()}
+
+Performance:
+📈 Clicks: \${data.daily.reduce((a,b) => a + b.clicks, 0).toLocaleString()}
+🔄 Conv: \${data.daily.reduce((a,b) => a + b.conv, 0)}
+💰 Vol: \${data.daily.reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU\`;
     }
 
     // Regular analytics processing for other queries
