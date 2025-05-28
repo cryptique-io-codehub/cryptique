@@ -560,14 +560,19 @@ export default function OnchainDashboard() {
     if (value === 0) return null;
     
     // Calculate positions for the line and label
-    const radius = outerRadius * 1.2; // Position further out from the pie
+    const radius = outerRadius * 1.4; // Increase the distance from the pie
     const x1 = cx + (outerRadius) * Math.cos(-midAngle * RADIAN);
     const y1 = cy + (outerRadius) * Math.sin(-midAngle * RADIAN);
     const x2 = cx + radius * Math.cos(-midAngle * RADIAN);
     const y2 = cy + radius * Math.sin(-midAngle * RADIAN);
     
-    // Determine label position
+    // Add extra vertical offset for top and bottom labels
+    const verticalOffset = Math.abs(Math.sin(-midAngle * RADIAN)) > 0.8 ? 
+      (Math.sin(-midAngle * RADIAN) > 0 ? 10 : -10) : 0;
+    
+    // Determine label position with adjusted vertical position
     const labelX = x2 + (Math.cos(-midAngle * RADIAN) >= 0 ? 10 : -10);
+    const labelY = y2 + verticalOffset;
 
     return (
       <g>
@@ -581,7 +586,7 @@ export default function OnchainDashboard() {
         {/* Label */}
         <text 
           x={labelX}
-          y={y2}
+          y={labelY}
           fill="black"
           textAnchor={Math.cos(-midAngle * RADIAN) >= 0 ? 'start' : 'end'}
           dominantBaseline="central"
@@ -693,7 +698,7 @@ export default function OnchainDashboard() {
           </div>
           <div className="flex items-center">
             <div className="w-1/2">
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={walletAgeData}
@@ -701,8 +706,8 @@ export default function OnchainDashboard() {
                     cy="50%"
                     labelLine={false}
                     label={renderCustomizedLabel}
-                    outerRadius={80}
-                    innerRadius={40}
+                    outerRadius={70}
+                    innerRadius={35}
                     fill="#8884d8"
                     dataKey="value"
                   >
