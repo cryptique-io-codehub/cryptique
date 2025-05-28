@@ -6,20 +6,80 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { isWeb3User, calculateAverageDuration, formatDuration } from '../../utils/analyticsHelpers';
+import {
+  LineChart, Line, BarChart as RechartsBarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts';
 
 // Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
 
-// Add knowledge base loading function
-const loadExpertKnowledge = async () => {
-  try {
-    const response = await fetch(expertKnowledge);
-    const knowledge = await response.text();
-    return knowledge;
-  } catch (error) {
-    console.error('Error loading expert knowledge:', error);
-    return '';
-  }
+// Add chart components
+const DailyPerformanceChart = ({ data }) => {
+  return (
+    <div className="h-80 w-full my-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis yAxisId="left" />
+          <YAxis yAxisId="right" orientation="right" />
+          <Tooltip />
+          <Legend />
+          <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#1d0c46" name="Clicks" />
+          <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#caa968" name="Volume (ZBU)" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const ChainDistributionChart = ({ data }) => {
+  const COLORS = ['#1d0c46', '#caa968', '#6b4c9a'];
+  return (
+    <div className="h-80 w-full my-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="volume"
+            nameKey="chain"
+            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const GeographicBarChart = ({ data }) => {
+  return (
+    <div className="h-80 w-full my-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsBarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="region" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="clicks" fill="#1d0c46" name="Clicks" />
+          <Bar dataKey="volume" fill="#caa968" name="Volume (ZBU)" />
+        </RechartsBarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 };
 
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
@@ -1132,71 +1192,206 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
     if (message.toLowerCase().includes('meta ad') || message.toLowerCase().includes('facebook ad')) {
-      return `### 📊 Meta Ad Campaign Performance Report (Oct 15-21)
+      // Create data for charts
+      const dailyData = [
+        { date: '15 Oct', clicks: 1823, volume: 45678, conversions: 52 },
+        { date: '16 Oct', clicks: 1654, volume: 42345, conversions: 48 },
+        { date: '17 Oct', clicks: 2134, volume: 67892, conversions: 67 },
+        { date: '18 Oct', clicks: 1987, volume: 54321, conversions: 59 },
+        { date: '19 Oct', clicks: 1765, volume: 48765, conversions: 51 },
+        { date: '20 Oct', clicks: 1543, volume: 43210, conversions: 45 },
+        { date: '21 Oct', clicks: 1547, volume: 58976, conversions: 64 }
+      ];
 
-Daily Performance Chart:
-\`\`\`
-Date     Clicks    Volume (ZBU)   Conversions
-15 Oct   =====>    1,823         52
-16 Oct   ====>     1,654         48
-17 Oct   ======>   2,134         67
-18 Oct   =====>    1,987         59
-19 Oct   =====>    1,765         51
-20 Oct   ====>     1,543         45
-21 Oct   ====>     1,547         64
-\`\`\`
+      const chainData = [
+        { chain: 'ETH', volume: 234567, value: 982345, transactions: 1234 },
+        { chain: 'BNB', volume: 198234, value: 831582, transactions: 987 },
+        { chain: 'BASE', volume: 123456, value: 517915, transactions: 654 }
+      ];
 
-Chain Distribution:
-\`\`\`
-ETH    =========>  234,567 ZBU (42.3%)
-BNB    =======>    198,234 ZBU (35.7%)
-BASE   =====>      123,456 ZBU (22.0%)
-\`\`\`
+      const geoData = [
+        { region: 'US', clicks: 3567, conversions: 149, volume: 123456 },
+        { region: 'UK', clicks: 2134, conversions: 81, volume: 98765 },
+        { region: 'DE', clicks: 1876, conversions: 66, volume: 87654 },
+        { region: 'CA', clicks: 1543, conversions: 60, volume: 76543 },
+        { region: 'AU', clicks: 1114, conversions: 40, volume: 65432 }
+      ];
 
-Chain Performance:
+      return {
+        content: `### 📊 Meta Ad Campaign Performance Report (Oct 15-21)
+
+| Campaign Overview | Value |
+|------------------|-------|
+| Total Clicks | 12,453 |
+| Total Conversions | 386 |
+| Total Volume | 556,257 ZBU |
+| Total Value | $2,331,842 |
+| Conversion Rate | 3.1% |
+
+### Daily Performance Trend
+<DailyPerformanceChart data={${JSON.stringify(dailyData)}} />
+
+### Chain Distribution
+<ChainDistributionChart data={${JSON.stringify(chainData)}} />
+
 | Chain | Volume (ZBU) | Value (USD) | Transactions |
 |-------|-------------|-------------|--------------|
 | ETH   | 234,567     | $982,345    | 1,234        |
 | BNB   | 198,234     | $831,582    | 987          |
 | BASE  | 123,456     | $517,915    | 654          |
 
-Top Performing Wallets:
-| Wallet ID | Volume (ZBU) | Value (USD) | Transactions |
-|-----------|-------------|-------------|--------------|
-| 0x7a23    | 12,345      | $51,849     | 23           |
-| 0x8b34    | 10,234      | $42,983     | 18           |
-| 0x9c45    | 8,901       | $37,384     | 15           |
-| 0x1d67    | 7,654       | $32,146     | 12           |
-| 0x2e89    | 6,543       | $27,480     | 10           |
+### Top Performing Wallets
 
-Geographic Distribution:
-| Region | Clicks | Conversions | Volume (ZBU) |
-|--------|--------|-------------|--------------|
-| US     | 3,567  | 149         | 123,456      |
-| UK     | 2,134  | 81          | 98,765       |
-| DE     | 1,876  | 66          | 87,654       |
-| CA     | 1,543  | 60          | 76,543       |
-| AU     | 1,114  | 40          | 65,432       |
+| Wallet | Volume (ZBU) | Value (USD) | Transactions |
+|--------|-------------|-------------|--------------|
+| 0x7a23 | 12,345      | $51,849     | 23           |
+| 0x8b34 | 10,234      | $42,983     | 18           |
+| 0x9c45 | 8,901       | $37,384     | 15           |
+| 0x1d67 | 7,654       | $32,146     | 12           |
+| 0x2e89 | 6,543       | $27,480     | 10           |
 
-Campaign Summary:
-| Metric             | Value          |
-|-------------------|----------------|
-| Total Volume      | 556,257 ZBU    |
-| Total Value       | $2,331,842     |
-| Total Clicks      | 12,467         |
-| Total Conversions | 386            |
-| Conversion Rate   | 3.1%           |
-| Avg Value/Tx      | $1,892         |
+### Geographic Distribution
+<GeographicBarChart data={${JSON.stringify(geoData)}} />
 
-Key Insights:
-• Highest performing day: Oct 17 with 2,134 clicks and 67 conversions
-• ETH chain dominates with 42.3% of total volume
-• US leads geographic performance with 28.7% of total clicks
-• Top wallet (0x7a23) accounts for 5.2% of total volume`;
+### Key Metrics
+
+\`\`\`
+Performance Indicators
+---------------------
+✓ Highest Day: Oct 17 (2,134 clicks, 67 conversions)
+✓ Best Chain: ETH (42.3% of volume)
+✓ Top Region: US (28.7% of total clicks)
+✓ Best Wallet: 0x7a23 (5.2% of total volume)
+\`\`\``,
+        charts: {
+          dailyData,
+          chainData,
+          geoData
+        }
+      };
     }
 
     // Regular analytics processing for other queries
     // ... existing code ...
+  };
+
+  // Update renderMessage to handle chart components
+  const renderMessage = (message) => {
+    const renderChart = (type, data) => {
+      switch (type) {
+        case 'DailyPerformanceChart':
+          return <DailyPerformanceChart data={data} />;
+        case 'ChainDistributionChart':
+          return <ChainDistributionChart data={data} />;
+        case 'GeographicBarChart':
+          return <GeographicBarChart data={data} />;
+        default:
+          return null;
+      }
+    };
+
+    const processMessageContent = (content) => {
+      if (typeof content === 'string') {
+        // Find chart placeholders and replace them with actual chart components
+        const parts = content.split(/(<\w+Chart data={.*?} \/>)/g);
+        return parts.map((part, index) => {
+          if (part.startsWith('<') && part.endsWith('/>')) {
+            const match = part.match(/<(\w+Chart) data={(.*?)} \/>/);
+            if (match) {
+              const [_, chartType, dataString] = match;
+              try {
+                const data = JSON.parse(dataString);
+                return <div key={index}>{renderChart(chartType, data)}</div>;
+              } catch (e) {
+                console.error('Error parsing chart data:', e);
+                return null;
+              }
+            }
+          }
+          return <ReactMarkdown key={index} remarkPlugins={[remarkGfm]} components={markdownComponents}>{part}</ReactMarkdown>;
+        });
+      }
+      return content;
+    };
+
+    const markdownComponents = {
+      h3: ({node, ...props}) => (
+        <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
+      ),
+      p: ({node, ...props}) => (
+        <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
+      ),
+      strong: ({node, ...props}) => (
+        <strong className="font-semibold text-[#1d0c46]" {...props} />
+      ),
+      em: ({node, ...props}) => (
+        <em className="text-gray-600 italic" {...props} />
+      ),
+      code: ({node, inline, ...props}) => 
+        inline ? (
+          <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
+        ) : (
+          <code className="block bg-gray-100 p-4 rounded-lg my-4 font-mono text-sm whitespace-pre" {...props} />
+        ),
+      hr: ({node, ...props}) => (
+        <hr className="my-6 border-t border-gray-200" {...props} />
+      ),
+      ul: ({node, ...props}) => (
+        <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
+      ),
+      li: ({node, ...props}) => (
+        <li className="text-gray-700" {...props} />
+      ),
+      blockquote: ({node, ...props}) => (
+        <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
+      ),
+      table: ({node, ...props}) => (
+        <div className="overflow-x-auto my-4">
+          <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" {...props} />
+        </div>
+      ),
+      thead: ({node, ...props}) => (
+        <thead className="bg-gray-50" {...props} />
+      ),
+      tbody: ({node, ...props}) => (
+        <tbody className="bg-white divide-y divide-gray-200" {...props} />
+      ),
+      tr: ({node, ...props}) => (
+        <tr className="hover:bg-gray-50 transition-colors" {...props} />
+      ),
+      th: ({node, ...props}) => (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" {...props} />
+      ),
+      td: ({node, ...props}) => (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" {...props} />
+      )
+    };
+
+    return (
+      <div className={`max-w-[90%] p-4 rounded-lg ${
+        message.role === 'user'
+          ? 'bg-[#1d0c46] text-white user-message'
+          : 'bg-white shadow-sm border border-gray-100 assistant-message'
+      }`}>
+        {message.role === 'assistant' && (
+          <div className="flex items-center mb-2">
+            <div className="logo-container mr-2">
+              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
+            </div>
+            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
+          </div>
+        )}
+        <div className="prose prose-sm max-w-none">
+          {message.role === 'assistant' ? (
+            <div className="markdown-content">
+              {processMessageContent(message.content)}
+            </div>
+          ) : (
+            message.content
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Helper function to process smart contract transaction data
@@ -2014,71 +2209,6 @@ If you have specific questions about your analytics, please try again later when
     return fullAnalytics;
   };
 
-  // Update the message rendering function
-  const renderMessage = (message) => {
-    return (
-      <div className={`max-w-[90%] p-4 rounded-lg ${
-        message.role === 'user'
-          ? 'bg-[#1d0c46] text-white user-message'
-          : 'bg-white shadow-sm border border-gray-100 assistant-message'
-      }`}>
-        {message.role === 'assistant' && (
-          <div className="flex items-center mb-2">
-            <div className="logo-container mr-2">
-              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
-            </div>
-            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
-          </div>
-        )}
-        <div className="prose prose-sm max-w-none">
-          {message.role === 'assistant' ? (
-            <div className="markdown-content">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h3: ({node, ...props}) => (
-                    <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
-                  ),
-                  p: ({node, ...props}) => (
-                    <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
-                  ),
-                  strong: ({node, ...props}) => (
-                    <strong className="font-semibold text-[#1d0c46]" {...props} />
-                  ),
-                  em: ({node, ...props}) => (
-                    <em className="text-gray-600 italic" {...props} />
-                  ),
-                  code: ({node, inline, ...props}) => 
-                    inline ? (
-                      <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
-                    ) : (
-                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />
-                    ),
-                  hr: ({node, ...props}) => (
-                    <hr className="my-6 border-t border-gray-200" {...props} />
-                  ),
-                  ul: ({node, ...props}) => (
-                    <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
-                  ),
-                  li: ({node, ...props}) => (
-                    <li className="text-gray-700" {...props} />
-                  ),
-                  blockquote: ({node, ...props}) => (
-                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
-                  )
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-              </div>
-          ) : (
-            message.content
-          )}
-            </div>
-          </div>
-    );
-  };
-
   // Add the 3D Cube Loading component
   const LoadingCube = () => {
     return (
@@ -2361,6 +2491,61 @@ If you have specific questions about your analytics, please try again later when
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
+    }
+
+    /* Table styling */
+    .markdown-content table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin: 1rem 0;
+    }
+
+    .markdown-content th {
+      background: #f8f9fa;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      color: #1d0c46;
+    }
+
+    .markdown-content td, .markdown-content th {
+      padding: 0.75rem 1rem;
+      border: 1px solid #e5e7eb;
+    }
+
+    .markdown-content tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    .markdown-content pre {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    /* ASCII chart styling */
+    .markdown-content pre.ascii-chart {
+      font-family: monospace;
+      white-space: pre;
+      overflow-x: auto;
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      color: #1d0c46;
+      line-height: 1.2;
     }
   `;
 
