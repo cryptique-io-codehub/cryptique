@@ -1138,105 +1138,123 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         metaAd: {
           campaign: {
             name: "ZBU Token Launch Campaign",
-            period: "Last Week (Oct 15-21, 2023)",
-            performance: {
+            period: "Oct 15-21, 2023",
+            metrics: {
               reach: 156789,
               impressions: 428935,
-              likes: 3267,
-              shares: 892,
-              comments: 456,
-              clicks: 12453
-            },
-            engagement: {
-              engagementRate: "2.8%",
-              costPerClick: "$0.42",
-              totalSpend: "$5,230"
+              engagement: {
+                likes: 3267,
+                shares: 892,
+                comments: 456,
+                clickThroughRate: 2.9,
+                costPerClick: 0.42,
+                totalSpend: 5230
+              }
             }
           },
-          websiteAnalytics: {
-            visitors: {
-              total: 12453,
-              uniqueVisitors: 10234,
-              returningVisitors: 2219
-            },
-            topCountries: [
-              { country: "United States", visitors: 3567, conversion: "4.2%" },
-              { country: "United Kingdom", visitors: 2134, conversion: "3.8%" },
-              { country: "Germany", visitors: 1876, conversion: "3.5%" },
-              { country: "Canada", visitors: 1543, conversion: "3.9%" },
-              { country: "Australia", visitors: 1114, conversion: "3.6%" }
-            ],
-            engagement: {
-              avgTimeOnSite: "4:23",
-              bounceRate: "32%",
-              pagesPerSession: 3.2
-            }
+          traffic: {
+            total: 12453,
+            unique: 10234,
+            returning: 2219,
+            avgSessionDuration: 263, // in seconds
+            bounceRate: 32.4,
+            conversionRate: 3.77,
+            countries: [
+              { code: "US", visitors: 3567, converted: 149 },
+              { code: "UK", visitors: 2134, converted: 81 },
+              { code: "DE", visitors: 1876, converted: 66 },
+              { code: "CA", visitors: 1543, converted: 60 },
+              { code: "AU", visitors: 1114, converted: 40 }
+            ]
           },
-          walletConversions: {
-            total: 386,
-            byChain: {
-              Ethereum: { wallets: 156, volume: "234,567 ZBU", value: "$982,345" },
-              BNB: { wallets: 142, volume: "198,234 ZBU", value: "$831,582" },
-              Base: { wallets: 88, volume: "123,456 ZBU", value: "$517,915" }
+          web3: {
+            totalWallets: 386,
+            chains: {
+              Ethereum: { wallets: 156, volume: 234567, value: 982345 },
+              BNB: { wallets: 142, volume: 198234, value: 831582 },
+              Base: { wallets: 88, volume: 123456, value: 517915 }
             },
             topWallets: [
-              { address: "0x7a23...45cd", volume: "12,345 ZBU", value: "$51,849" },
-              { address: "0x8b34...67de", volume: "10,234 ZBU", value: "$42,983" },
-              { address: "0x9c45...89ef", volume: "8,901 ZBU", value: "$37,384" }
+              {
+                address: "0x7a23...45cd",
+                transactions: 23,
+                volume: 12345,
+                value: 51849,
+                activity: [
+                  { time: "2023-10-21 14:23", amount: 2500, value: 10500 },
+                  { time: "2023-10-20 09:15", amount: 4200, value: 17640 },
+                  { time: "2023-10-19 16:45", amount: 5645, value: 23709 }
+                ]
+              },
+              {
+                address: "0x8b34...67de",
+                transactions: 18,
+                volume: 10234,
+                value: 42983,
+                activity: [
+                  { time: "2023-10-21 11:30", amount: 3200, value: 13440 },
+                  { time: "2023-10-20 15:20", amount: 4100, value: 17220 },
+                  { time: "2023-10-18 13:10", amount: 2934, value: 12323 }
+                ]
+              },
+              {
+                address: "0x9c45...89ef",
+                transactions: 15,
+                volume: 8901,
+                value: 37384,
+                activity: [
+                  { time: "2023-10-21 16:05", amount: 3400, value: 14280 },
+                  { time: "2023-10-19 12:45", amount: 3200, value: 13440 },
+                  { time: "2023-10-18 10:30", amount: 2301, value: 9664 }
+                ]
+              }
             ]
           }
         }
       };
 
       return `
-### Meta Ad Campaign Performance Analysis
+### Campaign Metrics (${simulatedData.metaAd.campaign.period})
 
-**Campaign Overview:**
-* **Campaign Name:** ${simulatedData.metaAd.campaign.name}
-* **Period:** ${simulatedData.metaAd.campaign.period}
-* **Total Spend:** ${simulatedData.metaAd.campaign.engagement.totalSpend}
-* **Cost per Click:** ${simulatedData.metaAd.campaign.engagement.costPerClick}
+**Social Performance:**
+* Reach: ${simulatedData.metaAd.campaign.metrics.reach.toLocaleString()}
+* Impressions: ${simulatedData.metaAd.campaign.metrics.impressions.toLocaleString()}
+* Engagement: ${simulatedData.metaAd.campaign.metrics.engagement.likes.toLocaleString()} likes | ${simulatedData.metaAd.campaign.metrics.engagement.shares.toLocaleString()} shares | ${simulatedData.metaAd.campaign.metrics.engagement.comments.toLocaleString()} comments
+* CTR: ${simulatedData.metaAd.campaign.metrics.engagement.clickThroughRate}%
+* CPC: $${simulatedData.metaAd.campaign.metrics.engagement.costPerClick}
+* Spend: $${simulatedData.metaAd.campaign.metrics.engagement.totalSpend.toLocaleString()}
 
-### Social Media Engagement
-**Post Performance:**
-* **Reach:** ${simulatedData.metaAd.campaign.performance.reach.toLocaleString()} users
-* **Impressions:** ${simulatedData.metaAd.campaign.performance.impressions.toLocaleString()}
-* **Likes:** ${simulatedData.metaAd.campaign.performance.likes.toLocaleString()}
-* **Shares:** ${simulatedData.metaAd.campaign.performance.shares.toLocaleString()}
-* **Comments:** ${simulatedData.metaAd.campaign.performance.comments.toLocaleString()}
-* **Engagement Rate:** ${simulatedData.metaAd.campaign.engagement.engagementRate}
+**Traffic Data:**
+* Total: ${simulatedData.metaAd.traffic.total.toLocaleString()}
+* Unique: ${simulatedData.metaAd.traffic.unique.toLocaleString()}
+* Returning: ${simulatedData.metaAd.traffic.returning.toLocaleString()}
+* Avg Session: ${Math.floor(simulatedData.metaAd.traffic.avgSessionDuration / 60)}m ${simulatedData.metaAd.traffic.avgSessionDuration % 60}s
+* Bounce Rate: ${simulatedData.metaAd.traffic.bounceRate}%
+* Conversion: ${simulatedData.metaAd.traffic.conversionRate}%
 
-### Website Traffic Analysis
-**Visitor Overview:**
-* **Total Clicks:** ${simulatedData.metaAd.campaign.performance.clicks.toLocaleString()}
-* **Unique Visitors:** ${simulatedData.metaAd.websiteAnalytics.visitors.uniqueVisitors.toLocaleString()}
-* **Returning Visitors:** ${simulatedData.metaAd.websiteAnalytics.visitors.returningVisitors.toLocaleString()}
-* **Average Time on Site:** ${simulatedData.metaAd.websiteAnalytics.engagement.avgTimeOnSite}
-
-**Top Countries by Traffic:**
-${simulatedData.metaAd.websiteAnalytics.topCountries.map(country => 
-  `* **${country.country}:** ${country.visitors.toLocaleString()} visitors (${country.conversion} conversion)`
+**Geographic Conversion:**
+${simulatedData.metaAd.traffic.countries.map(country => 
+  `* ${country.code}: ${country.visitors.toLocaleString()} visits → ${country.converted} conversions (${((country.converted/country.visitors)*100).toFixed(1)}%)`
 ).join('\n')}
 
-### Web3 Conversion Metrics
-**Total Wallet Conversions:** ${simulatedData.metaAd.walletConversions.total} wallets connected
+**Chain Performance:**
+* ETH: ${simulatedData.metaAd.web3.chains.Ethereum.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.Ethereum.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.Ethereum.wallets} wallets
+* BNB: ${simulatedData.metaAd.web3.chains.BNB.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.BNB.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.BNB.wallets} wallets
+* Base: ${simulatedData.metaAd.web3.chains.Base.volume.toLocaleString()} ZBU | $${simulatedData.metaAd.web3.chains.Base.value.toLocaleString()} | ${simulatedData.metaAd.web3.chains.Base.wallets} wallets
 
-**Performance by Chain:**
-* **Ethereum:** ${simulatedData.metaAd.walletConversions.byChain.Ethereum.volume} (${simulatedData.metaAd.walletConversions.byChain.Ethereum.value})
-* **BNB Chain:** ${simulatedData.metaAd.walletConversions.byChain.BNB.volume} (${simulatedData.metaAd.walletConversions.byChain.BNB.value})
-* **Base:** ${simulatedData.metaAd.walletConversions.byChain.Base.volume} (${simulatedData.metaAd.walletConversions.byChain.Base.value})
-
-**Top Converting Wallets:**
-${simulatedData.metaAd.walletConversions.topWallets.map(wallet => 
-  `* **${wallet.address}:** ${wallet.volume} (${wallet.value})`
+**Top Wallet Activity:**
+${simulatedData.metaAd.web3.topWallets.map(wallet => `
+* ${wallet.address}:
+  - Total: ${wallet.volume.toLocaleString()} ZBU ($${wallet.value.toLocaleString()})
+  - Txns: ${wallet.transactions}
+  - Recent: ${wallet.activity.map(a => `${a.amount.toLocaleString()} ZBU ($${a.value.toLocaleString()})`).join(' | ')}`
 ).join('\n')}
 
-### Key Insights
-1. The campaign achieved strong engagement with a ${simulatedData.metaAd.campaign.engagement.engagementRate} engagement rate
-2. Generated ${simulatedData.metaAd.walletConversions.total} wallet connections across three chains
-3. Total trading volume of ${parseInt(simulatedData.metaAd.walletConversions.byChain.Ethereum.value.replace(/[^0-9]/g, '')) + parseInt(simulatedData.metaAd.walletConversions.byChain.BNB.value.replace(/[^0-9]/g, '')) + parseInt(simulatedData.metaAd.walletConversions.byChain.Base.value.replace(/[^0-9]/g, ''))}$ achieved
-4. Strong geographic diversity with consistent conversion rates across regions
-`;
+**Summary:**
+* Total Volume: ${(simulatedData.metaAd.web3.chains.Ethereum.volume + simulatedData.metaAd.web3.chains.BNB.volume + simulatedData.metaAd.web3.chains.Base.volume).toLocaleString()} ZBU
+* Total Value: $${(simulatedData.metaAd.web3.chains.Ethereum.value + simulatedData.metaAd.web3.chains.BNB.value + simulatedData.metaAd.web3.chains.Base.value).toLocaleString()}
+* Wallets: ${simulatedData.metaAd.web3.totalWallets}
+* ROI: ${(((simulatedData.metaAd.web3.chains.Ethereum.value + simulatedData.metaAd.web3.chains.BNB.value + simulatedData.metaAd.web3.chains.Base.value) / simulatedData.metaAd.campaign.metrics.engagement.totalSpend) * 100).toFixed(1)}x`;
     }
 
     // Regular analytics processing for other queries
