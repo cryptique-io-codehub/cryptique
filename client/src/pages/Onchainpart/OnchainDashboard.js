@@ -559,29 +559,31 @@ export default function OnchainDashboard() {
     // Only show labels for segments with actual values
     if (value === 0) return null;
     
-    // Calculate radius based on segment size to prevent overlapping
-    // Larger segments get labels further out
-    const radius = innerRadius + (outerRadius - innerRadius) * (0.5 + (value / 200)); // Dynamic radius based on value
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    // Calculate positions for the line and label
+    const radius = outerRadius * 1.2; // Position further out from the pie
+    const x1 = cx + (outerRadius) * Math.cos(-midAngle * RADIAN);
+    const y1 = cy + (outerRadius) * Math.sin(-midAngle * RADIAN);
+    const x2 = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y2 = cy + radius * Math.sin(-midAngle * RADIAN);
+    
+    // Determine label position
+    const labelX = x2 + (Math.cos(-midAngle * RADIAN) >= 0 ? 10 : -10);
 
-    // Add a white background to make labels more readable
     return (
       <g>
-        <rect
-          x={x - 15}
-          y={y - 8}
-          width="30"
-          height="16"
-          fill="white"
-          fillOpacity="0.8"
-          rx="4"
+        {/* Line from pie to label */}
+        <path
+          d={`M ${x1},${y1} L ${x2},${y2}`}
+          stroke="#999999"
+          strokeWidth={1}
+          fill="none"
         />
+        {/* Label */}
         <text 
-          x={x} 
-          y={y} 
-          fill="black" 
-          textAnchor={x > cx ? 'start' : 'end'} 
+          x={labelX}
+          y={y2}
+          fill="black"
+          textAnchor={Math.cos(-midAngle * RADIAN) >= 0 ? 'start' : 'end'}
           dominantBaseline="central"
           fontSize="12"
           fontWeight="bold"
