@@ -1132,107 +1132,67 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
     if (message.toLowerCase().includes('meta ad') || message.toLowerCase().includes('facebook ad')) {
-      const data = {
-        daily: [
-          { date: '15 Oct', clicks: 1823, conv: 52, vol: 45678 },
-          { date: '16 Oct', clicks: 1654, conv: 48, vol: 42345 },
-          { date: '17 Oct', clicks: 2134, conv: 67, vol: 67892 },
-          { date: '18 Oct', clicks: 1987, conv: 59, vol: 54321 },
-          { date: '19 Oct', clicks: 1765, conv: 51, vol: 48765 },
-          { date: '20 Oct', clicks: 1543, conv: 45, vol: 43210 },
-          { date: '21 Oct', clicks: 1547, conv: 64, vol: 58976 }
-        ],
-        chains: {
-          ETH: { vol: 234567, val: 982345, txs: 1234 },
-          BNB: { vol: 198234, val: 831582, txs: 987 },
-          BASE: { vol: 123456, val: 517915, txs: 654 }
-        },
-        wallets: [
-          { id: '0x7a23', vol: 12345, val: 51849, txs: 23 },
-          { id: '0x8b34', vol: 10234, val: 42983, txs: 18 },
-          { id: '0x9c45', vol: 8901, val: 37384, txs: 15 },
-          { id: '0x1d67', vol: 7654, val: 32146, txs: 12 },
-          { id: '0x2e89', vol: 6543, val: 27480, txs: 10 }
-        ],
-        geo: {
-          US: { clicks: 3567, conv: 149, vol: 123456 },
-          UK: { clicks: 2134, conv: 81, vol: 98765 },
-          DE: { clicks: 1876, conv: 66, vol: 87654 },
-          CA: { clicks: 1543, conv: 60, vol: 76543 },
-          AU: { clicks: 1114, conv: 40, vol: 65432 }
-        }
-      };
+      return `### 📊 Meta Ad Campaign Performance Report (Oct 15-21)
 
-      // Create better ASCII charts
-      const maxClicks = Math.max(...data.daily.map(d => d.clicks));
-      const maxVol = Math.max(...data.daily.map(d => d.vol));
-      const chartWidth = 30;
-
-      // Function to create a bar with value indicator
-      const createBar = (value, max, width) => {
-        const barLength = Math.round((value / max) * width);
-        const bar = '='.repeat(barLength) + ' '.repeat(width - barLength);
-        return bar;
-      };
-
-      // Create combined chart showing clicks and volume
-      const combinedChart = data.daily.map(d => {
-        const clicksBar = createBar(d.clicks, maxClicks, chartWidth);
-        const volBar = createBar(d.vol, maxVol, chartWidth);
-        return `${d.date} Clicks |${clicksBar}| ${d.clicks.toString().padStart(5)}
-         Volume |${volBar}| ${d.vol.toString().padStart(6)}
------------------------------------------`;
-      }).join('\n');
-
-      // Create chain distribution chart
-      const totalVol = Object.values(data.chains).reduce((sum, chain) => sum + chain.vol, 0);
-      const chainChart = Object.entries(data.chains).map(([chain, data]) => {
-        const percentage = (data.vol / totalVol) * 100;
-        const barLength = Math.round((percentage / 100) * chartWidth);
-        const bar = '='.repeat(barLength) + ' '.repeat(chartWidth - barLength);
-        return `${chain.padEnd(4)} |${bar}| ${percentage.toFixed(1)}%`;
-      }).join('\n');
-
-      return `
-### 📊 Meta Ad Performance (15-21 Oct)
-
-Daily Performance:
+Daily Performance Chart:
 \`\`\`
-${combinedChart}
+Date     Clicks    Volume (ZBU)   Conversions
+15 Oct   =====>    1,823         52
+16 Oct   ====>     1,654         48
+17 Oct   ======>   2,134         67
+18 Oct   =====>    1,987         59
+19 Oct   =====>    1,765         51
+20 Oct   ====>     1,543         45
+21 Oct   ====>     1,547         64
 \`\`\`
 
 Chain Distribution:
 \`\`\`
-${chainChart}
+ETH    =========>  234,567 ZBU (42.3%)
+BNB    =======>    198,234 ZBU (35.7%)
+BASE   =====>      123,456 ZBU (22.0%)
 \`\`\`
 
 Chain Performance:
-| Chain | Volume (ZBU) | Value ($) | Transactions |
-|-------|-------------|-----------|--------------|
-| ETH   | ${data.chains.ETH.vol.toLocaleString()} | $${data.chains.ETH.val.toLocaleString()} | ${data.chains.ETH.txs.toLocaleString()} |
-| BNB   | ${data.chains.BNB.vol.toLocaleString()} | $${data.chains.BNB.val.toLocaleString()} | ${data.chains.BNB.txs.toLocaleString()} |
-| BASE  | ${data.chains.BASE.vol.toLocaleString()} | $${data.chains.BASE.val.toLocaleString()} | ${data.chains.BASE.txs.toLocaleString()} |
+| Chain | Volume (ZBU) | Value (USD) | Transactions |
+|-------|-------------|-------------|--------------|
+| ETH   | 234,567     | $982,345    | 1,234        |
+| BNB   | 198,234     | $831,582    | 987          |
+| BASE  | 123,456     | $517,915    | 654          |
 
 Top Performing Wallets:
-| Wallet | Volume (ZBU) | Value ($) | Txs |
-|--------|-------------|-----------|-----|
-${data.wallets.map(w => `| ${w.id} | ${w.vol.toLocaleString()} | $${w.val.toLocaleString()} | ${w.txs} |`).join('\n')}
+| Wallet ID | Volume (ZBU) | Value (USD) | Transactions |
+|-----------|-------------|-------------|--------------|
+| 0x7a23    | 12,345      | $51,849     | 23           |
+| 0x8b34    | 10,234      | $42,983     | 18           |
+| 0x9c45    | 8,901       | $37,384     | 15           |
+| 0x1d67    | 7,654       | $32,146     | 12           |
+| 0x2e89    | 6,543       | $27,480     | 10           |
 
 Geographic Distribution:
 | Region | Clicks | Conversions | Volume (ZBU) |
 |--------|--------|-------------|--------------|
-${Object.entries(data.geo).map(([k,v]) => `| ${k.padEnd(6)} | ${v.clicks.toLocaleString().padStart(6)} | ${v.conv.toString().padStart(11)} | ${v.vol.toLocaleString().padStart(10)} |`).join('\n')}
+| US     | 3,567  | 149         | 123,456      |
+| UK     | 2,134  | 81          | 98,765       |
+| DE     | 1,876  | 66          | 87,654       |
+| CA     | 1,543  | 60          | 76,543       |
+| AU     | 1,114  | 40          | 65,432       |
 
-Summary KPIs:
-| Metric | Value |
-|--------|-------|
-| Total Volume | ${Object.values(data.chains).reduce((a,b) => a + b.vol, 0).toLocaleString()} ZBU |
-| Total Value | $${Object.values(data.chains).reduce((a,b) => a + b.val, 0).toLocaleString()} |
-| Total Transactions | ${Object.values(data.chains).reduce((a,b) => a + b.txs, 0).toLocaleString()} |
-| Average Value/Tx | $${Math.round(Object.values(data.chains).reduce((a,b) => a + b.val, 0) / Object.values(data.chains).reduce((a,b) => a + b.txs, 0)).toLocaleString()} |
-| Total Clicks | ${data.daily.reduce((a,b) => a + b.clicks, 0).toLocaleString()} |
-| Total Conversions | ${data.daily.reduce((a,b) => a + b.conv, 0)} |
-| Conversion Rate | ${((data.daily.reduce((a,b) => a + b.conv, 0) / data.daily.reduce((a,b) => a + b.clicks, 0)) * 100).toFixed(2)}% |`;
+Campaign Summary:
+| Metric             | Value          |
+|-------------------|----------------|
+| Total Volume      | 556,257 ZBU    |
+| Total Value       | $2,331,842     |
+| Total Clicks      | 12,467         |
+| Total Conversions | 386            |
+| Conversion Rate   | 3.1%           |
+| Avg Value/Tx      | $1,892         |
+
+Key Insights:
+• Highest performing day: Oct 17 with 2,134 clicks and 67 conversions
+• ETH chain dominates with 42.3% of total volume
+• US leads geographic performance with 28.7% of total clicks
+• Top wallet (0x7a23) accounts for 5.2% of total volume`;
     }
 
     // Regular analytics processing for other queries
