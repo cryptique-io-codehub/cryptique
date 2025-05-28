@@ -15,6 +15,18 @@ import {
 // Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
 
+// Add knowledge base loading function
+const loadExpertKnowledge = async () => {
+  try {
+    const response = await fetch(expertKnowledge);
+    const knowledge = await response.text();
+    return knowledge;
+  } catch (error) {
+    console.error('Error loading expert knowledge:', error);
+    return '';
+  }
+};
+
 // Add chart components
 const DailyPerformanceChart = ({ data }) => {
   return (
