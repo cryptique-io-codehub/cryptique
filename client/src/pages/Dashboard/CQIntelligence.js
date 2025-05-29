@@ -1230,7 +1230,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       ];
 
       return {
-        content: `### Meta Ad Campaign Performance Report (May 19-25)
+        content: `### 𝕏 X Ad Campaign Performance Report (May 19-25)
 
 | Campaign Overview | Value |
 |------------------|-------|
@@ -1897,7 +1897,7 @@ Performance Indicators
       ];
 
       // Fixed response template
-      const response = `### Meta Ad Campaign Performance Report (May 19-25)
+      const response = `### 𝕏 X Ad Campaign Performance Report (May 19-25)
 
 | Campaign Overview | Value |
 |------------------|-------|
@@ -1956,7 +1956,7 @@ Performance Indicators
       await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
       
       // Even on error, show the same response
-      const response = `### Meta Ad Campaign Performance Report...`; // Same response as above
+      const response = `### 𝕏 X Ad Campaign Performance Report (May 19-25)...`; // Same response as above
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: response,
