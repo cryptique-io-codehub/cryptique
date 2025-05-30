@@ -6,11 +6,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { isWeb3User, calculateAverageDuration, formatDuration } from '../../utils/analyticsHelpers';
-import {
-  LineChart, Line, BarChart as RechartsBarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell
-} from 'recharts';
 
 // Import knowledge base
 import expertKnowledge from '../../data/web3_expert_knowledge.txt';
@@ -27,78 +22,10 @@ const loadExpertKnowledge = async () => {
   }
 };
 
-// Add chart components
-const DailyPerformanceChart = ({ data }) => {
-  return (
-    <div className="h-80 w-full my-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis yAxisId="left" />
-          <YAxis yAxisId="right" orientation="right" />
-          <Tooltip />
-          <Legend />
-          <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#1d0c46" name="Clicks" />
-          <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#caa968" name="Volume (ZBU)" />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-};
-
-const ChainDistributionChart = ({ data }) => {
-  const COLORS = ['#1d0c46', '#caa968', '#6b4c9a'];
-  return (
-    <div className="h-80 w-full my-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="volume"
-            nameKey="chain"
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
-};
-
-const GeographicBarChart = ({ data }) => {
-  return (
-    <div className="h-80 w-full my-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <RechartsBarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="region" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="clicks" fill="#1d0c46" name="Clicks" />
-          <Bar dataKey="volume" fill="#caa968" name="Volume (ZBU)" />
-        </RechartsBarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-};
-
 const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // State for website selection and data
   const [websiteArray, setWebsiteArray] = useState([]);
-  const [selectedSites, setSelectedSites] = useState(new Set());
-  const [allSitesSelected, setAllSitesSelected] = useState(true);
+  const [selectedSite, setSelectedSite] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,23 +36,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Add state for smart contract selection
   const [contractArray, setContractArray] = useState([]);
-  const [selectedContracts, setSelectedContracts] = useState(new Set());
-  const [allContractsSelected, setAllContractsSelected] = useState(true);
-  const [contractTransactions, setContractTransactions] = useState({});
+  const [selectedContract, setSelectedContract] = useState('');
+  const [contractTransactions, setContractTransactions] = useState([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [loadedTransactionCount, setLoadedTransactionCount] = useState(0);
 
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
-
-  // Add state for dropdown visibility
-  const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
-  const [contractDropdownOpen, setContractDropdownOpen] = useState(false);
-  
-  // Add refs for dropdowns
-  const websiteDropdownRef = useRef(null);
-  const contractDropdownRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,19 +59,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setIsLoading(true);
       try {
         const selectedTeam = localStorage.getItem("selectedTeam");
+        // Use the correct GET endpoint with team name in path parameter
         const response = await axiosInstance.get(`/website/team/${selectedTeam}`);
         
         if (response.status === 200 && response.data.websites.length > 0) {
           setWebsiteArray(response.data.websites);
           
-          // Select all websites by default
-          const allSiteIds = new Set(response.data.websites.map(site => site.siteId));
-          setSelectedSites(allSiteIds);
-          setAllSitesSelected(true);
-          
-          // Fetch analytics for all sites
-          for (const site of response.data.websites) {
-            fetchAnalyticsData(site.siteId);
+          // Get the currently selected website from localStorage
+          const savedWebsiteId = localStorage.getItem("idy");
+          if (savedWebsiteId) {
+            setSelectedSite(savedWebsiteId);
+            fetchAnalyticsData(savedWebsiteId);
           }
         }
       } catch (error) {
@@ -182,6 +98,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const response = await axiosInstance.get(`/contracts/team/${selectedTeam}`);
       
       if (response.data && response.data.contracts) {
+        // Format contract data
         const contracts = response.data.contracts.map(contract => ({
           id: contract.contractId,
           address: contract.address,
@@ -191,17 +108,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }));
         
         setContractArray(contracts);
-        
-        // Select all contracts by default
-        const allContractIds = new Set(contracts.map(contract => contract.id));
-        setSelectedContracts(allContractIds);
-        setAllContractsSelected(true);
-        
-        // Fetch transactions for all contracts
-        for (const contract of contracts) {
-          fetchContractTransactions(contract.id);
-        }
-        
         console.log(`Loaded ${contracts.length} contracts for team ${selectedTeam}`);
       }
     } catch (error) {
@@ -218,37 +124,68 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     
     try {
       setIsLoadingTransactions(true);
-      setError(null);
-      setLoadedTransactionCount(prevCount => prevCount + 1);
+      setError(null); // Clear any previous errors
+      setLoadedTransactionCount(0); // Reset counter
+      console.log(`Fetching transactions for contract ID: ${contractId}`);
       
       let allTransactions = [];
       let hasMore = true;
       let page = 1;
-      const pageSize = 100000;
+      const pageSize = 100000; // Fetch 100000 transactions per request
       
+      // Loop to fetch all transactions with pagination
       while (hasMore) {
+        console.log(`Fetching page ${page} of transactions (${pageSize} per page)`);
+        
         const response = await axiosInstance.get(`/transactions/contract/${contractId}`, {
-          params: { limit: pageSize, page: page }
+          params: { 
+            limit: pageSize,
+            page: page
+          }
         });
         
         if (response.data && response.data.transactions) {
           const fetchedTransactions = response.data.transactions;
-          allTransactions = [...allTransactions, ...fetchedTransactions];
-          setLoadedTransactionCount(prevCount => prevCount + fetchedTransactions.length);
           
-          hasMore = response.data.metadata?.hasMore && fetchedTransactions.length === pageSize && page < 10;
+          // Add to our accumulated transactions
+          allTransactions = [...allTransactions, ...fetchedTransactions];
+          
+          // Update the progress counter
+          setLoadedTransactionCount(allTransactions.length);
+          
+          console.log(`Fetched ${fetchedTransactions.length} transactions on page ${page}`);
+          
+          // Check if we need to fetch more
+          hasMore = response.data.metadata?.hasMore;
+          
+          // If we got fewer transactions than the page size, we're done
+          if (fetchedTransactions.length < pageSize) {
+            hasMore = false;
+          }
+          
+          // Move to next page
           page++;
+          
+          // Safety check - don't loop more than 10 times (1,000,000 transactions)
+          if (page > 10) {
+            console.log("Reached maximum page fetch limit (1,000,000 transactions)");
+            hasMore = false;
+          }
+          
+          if (page % 10 === 0) {
+            // Log progress every 10 pages
+            console.log(`Fetched ${allTransactions.length} transactions so far...`);
+            // Small delay to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
         } else {
           hasMore = false;
         }
       }
       
-      // Store transactions in the object with contractId as key
-      setContractTransactions(prev => ({
-        ...prev,
-        [contractId]: allTransactions
-      }));
-      
+      setContractTransactions(allTransactions);
+      setError(null); // Clear any status messages
+      console.log(`Loaded ${allTransactions.length} total transactions for contract ${contractId}`);
       return allTransactions;
     } catch (error) {
       console.error("Error fetching contract transactions:", error);
@@ -259,75 +196,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
   };
 
-  // Handle website selection changes
-  const handleSiteChange = async (siteId) => {
-    setSelectedSites(prev => {
-      const newSelection = new Set(prev);
-      if (newSelection.has(siteId)) {
-        newSelection.delete(siteId);
-      } else {
-        newSelection.add(siteId);
-        // Fetch data for newly selected site if not already loaded
-        if (!analytics[siteId]) {
-          fetchAnalyticsData(siteId);
-        }
-      }
-      setAllSitesSelected(newSelection.size === websiteArray.length);
-      return newSelection;
-    });
-  };
-
-  // Handle contract selection changes
-  const handleContractChange = async (contractId) => {
-    setSelectedContracts(prev => {
-      const newSelection = new Set(prev);
-      if (newSelection.has(contractId)) {
-        newSelection.delete(contractId);
+  // Handle contract selection change
+  const handleContractChange = async (e) => {
+    const contractId = e.target.value;
+    setSelectedContract(contractId);
+    
+    if (contractId) {
+      await fetchContractTransactions(contractId);
     } else {
-        newSelection.add(contractId);
-        // Fetch data for newly selected contract if not already loaded
-        if (!contractTransactions[contractId]) {
-          fetchContractTransactions(contractId);
-        }
-      }
-      setAllContractsSelected(newSelection.size === contractArray.length);
-      return newSelection;
-    });
-  };
-
-  // Handle select all websites
-  const handleSelectAllSites = async () => {
-    if (allSitesSelected) {
-      setSelectedSites(new Set());
-      setAllSitesSelected(false);
-    } else {
-      const allSiteIds = new Set(websiteArray.map(site => site.siteId));
-      setSelectedSites(allSiteIds);
-      setAllSitesSelected(true);
-      // Fetch data for any sites that haven't been loaded
-      websiteArray.forEach(site => {
-        if (!analytics[site.siteId]) {
-          fetchAnalyticsData(site.siteId);
-        }
-      });
-    }
-  };
-
-  // Handle select all contracts
-  const handleSelectAllContracts = async () => {
-    if (allContractsSelected) {
-      setSelectedContracts(new Set());
-      setAllContractsSelected(false);
-    } else {
-      const allContractIds = new Set(contractArray.map(contract => contract.id));
-      setSelectedContracts(allContractIds);
-      setAllContractsSelected(true);
-      // Fetch data for any contracts that haven't been loaded
-      contractArray.forEach(contract => {
-        if (!contractTransactions[contract.id]) {
-          fetchContractTransactions(contract.id);
-        }
-      });
+      setContractTransactions([]);
     }
   };
 
@@ -346,7 +223,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       });
       
       if (response.data && response.data.analytics) {
-        setAnalytics(prev => ({ ...prev, [siteId]: response.data.analytics }));
+        setAnalytics(response.data.analytics);
         setError(null);
       }
     } catch (error) {
@@ -354,6 +231,19 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       setError("Failed to load analytics data for this website.");
     } finally {
       setIsDataLoading(false);
+    }
+  };
+
+  // Handle website selection change
+  const handleSiteChange = async (e) => {
+    const siteId = e.target.value;
+    setSelectedSite(siteId);
+    
+    if (siteId) {
+      localStorage.setItem("idy", siteId);
+      fetchAnalyticsData(siteId);
+    } else {
+      setAnalytics({});
     }
   };
 
@@ -368,14 +258,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Helper functions for analytics processing
   const calculateRetentionMetrics = (sessions) => {
-    if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
-      return {
-        dau: 0,
-        wau: 0,
-        mau: 0,
-        retention: {}
-      };
-    }
+    if (!sessions || !Array.isArray(sessions)) return {};
     
     const now = new Date();
     const dayInMs = 24 * 60 * 60 * 1000;
@@ -388,14 +271,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     const uniqueUsersByMonth = new Map();
     
     sessions.forEach(session => {
-      if (!session || !session.startTime) return;
-      
-      try {
       const startTime = new Date(session.startTime);
-        if (isNaN(startTime.getTime())) return; // Skip invalid dates
-        
       const timeDiff = now - startTime;
-        const deviceId = session.device || session.deviceId || 'unknown'; // Use fallback ID if needed
+      const deviceId = session.device; // Using device as user identifier
 
       // Daily
       if (timeDiff <= dayInMs) {
@@ -416,10 +294,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         const month = startTime.toISOString().slice(0, 7);
         if (!uniqueUsersByMonth.has(month)) uniqueUsersByMonth.set(month, new Set());
         uniqueUsersByMonth.get(month).add(deviceId);
-        }
-      } catch (error) {
-        console.error("Error processing session for retention metrics:", error);
-        // Continue processing other sessions
       }
     });
 
@@ -438,36 +312,25 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       monthly: 0
     };
 
-    try {
     if (uniqueUsersByDay.size >= 2) {
       const days = Array.from(uniqueUsersByDay.keys()).sort();
       const firstDay = uniqueUsersByDay.get(days[0]);
       const lastDay = uniqueUsersByDay.get(days[days.length - 1]);
-        if (firstDay && firstDay.size > 0) {
-          retention.daily = (lastDay.size / firstDay.size) * 100;
-        }
+      retention.daily = lastDay.size / firstDay.size * 100;
     }
 
     if (uniqueUsersByWeek.size >= 2) {
       const weeks = Array.from(uniqueUsersByWeek.keys()).sort();
       const firstWeek = uniqueUsersByWeek.get(weeks[0]);
       const lastWeek = uniqueUsersByWeek.get(weeks[weeks.length - 1]);
-        if (firstWeek && firstWeek.size > 0) {
-          retention.weekly = (lastWeek.size / firstWeek.size) * 100;
-        }
+      retention.weekly = lastWeek.size / firstWeek.size * 100;
     }
 
     if (uniqueUsersByMonth.size >= 2) {
       const months = Array.from(uniqueUsersByMonth.keys()).sort();
       const firstMonth = uniqueUsersByMonth.get(months[0]);
       const lastMonth = uniqueUsersByMonth.get(months[months.length - 1]);
-        if (firstMonth && firstMonth.size > 0) {
-          retention.monthly = (lastMonth.size / firstMonth.size) * 100;
-        }
-      }
-    } catch (error) {
-      console.error("Error calculating retention rates:", error);
-      // Return the retention object with zeros
+      retention.monthly = lastMonth.size / firstMonth.size * 100;
     }
 
     return {
@@ -479,18 +342,15 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   };
 
   const processGeographicalData = (analytics) => {
-    if (!analytics) return null;
-    
     // Check if we have any geographical data
-    const hasGeoData = analytics.countries && typeof analytics.countries === 'object' && Object.keys(analytics.countries).length > 0;
+    const hasGeoData = analytics.countries && Object.keys(analytics.countries).length > 0;
     
     if (!hasGeoData) {
       return null; // Return null instead of empty objects
     }
 
-    try {
     const geoData = {
-        countries: analytics.countries || {},
+      countries: analytics.countries,
       regions: analytics.regions || {},
       cities: analytics.cities || {},
       topCountries: [],
@@ -499,7 +359,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     };
 
     // Process countries if data exists
-      if (geoData.countries && Object.keys(geoData.countries).length > 0) {
+    if (Object.keys(geoData.countries).length > 0) {
       geoData.topCountries = Object.entries(geoData.countries)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
@@ -507,7 +367,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     // Process regions if data exists
-      if (geoData.regions && Object.keys(geoData.regions).length > 0) {
+    if (Object.keys(geoData.regions).length > 0) {
       geoData.topRegions = Object.entries(geoData.regions)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
@@ -515,7 +375,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     // Process cities if data exists
-      if (geoData.cities && Object.keys(geoData.cities).length > 0) {
+    if (Object.keys(geoData.cities).length > 0) {
       geoData.topCities = Object.entries(geoData.cities)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
@@ -523,10 +383,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     return geoData;
-    } catch (error) {
-      console.error("Error processing geographical data:", error);
-      return null;
-    }
   };
 
   // Add helper function for source normalization
@@ -565,12 +421,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Update processTrafficSources function
   const processTrafficSources = (analytics) => {
-    if (!analytics) return null;
-    if (!analytics.sessions || !Array.isArray(analytics.sessions) || analytics.sessions.length === 0) {
+    if (!analytics || !analytics.sessions || !Array.isArray(analytics.sessions)) {
       return null;
     }
 
-    try {
     const trafficData = {
       sources: {},
       sourceTimeline: {},
@@ -597,14 +451,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     const sourceMetrics = new Map(); // Store detailed metrics per source
 
     analytics.sessions.forEach(session => {
-        if (!session) return;
-        
-        try {
       const source = normalizeTrafficSource(session);
-          if (!source) return;
-          
       const timestamp = new Date(session.startTime);
-          if (isNaN(timestamp.getTime())) return; // Skip invalid dates
       
       // Initialize source metrics if not exists
       if (!sourceMetrics.has(source)) {
@@ -625,7 +473,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
       const metrics = sourceMetrics.get(source);
       metrics.total++;
-          if (session.device) metrics.uniqueVisitors.add(session.device);
+      metrics.uniqueVisitors.add(session.device);
       if (session.hasWeb3 || session.walletConnected) metrics.web3Users++;
       if (session.walletConnected) metrics.walletsConnected++;
       if (session.pages?.length === 1) metrics.bounces++;
@@ -674,10 +522,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             });
           }
         });
-          }
-        } catch (error) {
-          console.error("Error processing session for traffic sources:", error);
-          // Continue processing other sessions
       }
     });
 
@@ -689,8 +533,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
           uniqueVisitors: metrics.uniqueVisitors.size,
           web3Users: metrics.web3Users,
           walletsConnected: metrics.walletsConnected,
-            bounceRate: metrics.total > 0 ? (metrics.bounces / metrics.total) * 100 : 0,
-            avgDuration: metrics.total > 0 ? metrics.totalDuration / metrics.total : 0
+          bounceRate: (metrics.bounces / metrics.total) * 100,
+          avgDuration: metrics.totalDuration / metrics.total
         };
 
         // Add timeline data
@@ -707,8 +551,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     // Process top sources for each category
     ['sources', 'mediums', 'campaigns'].forEach(type => {
-        const keyName = `utm${type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1)}`;
-        const data = trafficData.campaigns[keyName];
+      const data = trafficData.campaigns[`utm${type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1)}`];
       if (data && Object.keys(data).length > 0) {
         trafficData.campaigns[`top${type.charAt(0).toUpperCase() + type.slice(1)}`] = 
           Object.entries(data)
@@ -726,10 +569,6 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     });
 
     return Object.keys(trafficData).length > 0 ? trafficData : null;
-    } catch (error) {
-      console.error("Error processing traffic sources:", error);
-      return null;
-    }
   };
 
   // Add utility function for value validation
@@ -1203,207 +1042,196 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
   // Update the generateAnalyticsSummary function
   const generateAnalyticsSummary = (message) => {
-    if (message.toLowerCase().includes('meta ad') || message.toLowerCase().includes('facebook ad')) {
-      // Create data for charts
-      const dailyData = [
-        { date: '19 May', clicks: 1823, volume: 45678, conversions: 52 },
-        { date: '20 May', clicks: 1654, volume: 42345, conversions: 48 },
-        { date: '21 May', clicks: 2134, volume: 67892, conversions: 67 },
-        { date: '22 May', clicks: 1987, volume: 54321, conversions: 59 },
-        { date: '23 May', clicks: 1765, volume: 48765, conversions: 51 },
-        { date: '24 May', clicks: 1543, volume: 43210, conversions: 45 },
-        { date: '25 May', clicks: 1547, volume: 58976, conversions: 64 }
-      ];
-
-      const chainData = [
-        { chain: 'ETH', volume: 234567, value: 982345, transactions: 1234 },
-        { chain: 'BNB', volume: 198234, value: 831582, transactions: 987 },
-        { chain: 'BASE', volume: 123456, value: 517915, transactions: 654 }
-      ];
-
-      const geoData = [
-        { region: 'US', clicks: 3567, conversions: 149, volume: 123456 },
-        { region: 'UK', clicks: 2134, conversions: 81, volume: 98765 },
-        { region: 'DE', clicks: 1876, conversions: 66, volume: 87654 },
-        { region: 'CA', clicks: 1543, conversions: 60, volume: 76543 },
-        { region: 'AU', clicks: 1114, conversions: 40, volume: 65432 }
-      ];
-
-      return {
-        content: `### 𝕏 X Ad Campaign Performance Report (May 19-25)
-
-| Campaign Overview | Value |
-|------------------|-------|
-| Total Clicks | 12,453 |
-| Total Conversions | 386 |
-| Total Volume | 556,257 ZBU |
-| Total Value | $2,331,842 |
-| Conversion Rate | 3.1% |
-
-### Daily Performance Trend
-<DailyPerformanceChart data={${JSON.stringify(dailyData)}} />
-
-### Chain Distribution
-<ChainDistributionChart data={${JSON.stringify(chainData)}} />
-
-| Chain | Volume (ZBU) | Value (USD) | Transactions |
-|-------|-------------|-------------|--------------|
-| ETH   | 234,567     | $982,345    | 1,234        |
-| BNB   | 198,234     | $831,582    | 987          |
-| BASE  | 123,456     | $517,915    | 654          |
-
-### Top Performing Wallets
-
-| Wallet | Volume (ZBU) | Value (USD) | Transactions |
-|--------|-------------|-------------|--------------|
-| 0x7a23 | 12,345      | $51,849     | 23           |
-| 0x8b34 | 10,234      | $42,983     | 18           |
-| 0x9c45 | 8,901       | $37,384     | 15           |
-| 0x1d67 | 7,654       | $32,146     | 12           |
-| 0x2e89 | 6,543       | $27,480     | 10           |
-
-### Geographic Distribution
-<GeographicBarChart data={${JSON.stringify(geoData)}} />
-
-### Key Metrics
-
-\`\`\`
-Performance Indicators
----------------------
-✓ Highest Day: May 21 (2,134 clicks, 67 conversions)
-✓ Best Chain: ETH (42.3% of volume)
-✓ Top Region: US (28.7% of total clicks)
-✓ Best Wallet: 0x7a23 (5.2% of total volume)
-\`\`\``,
-        charts: {
-          dailyData,
-          chainData,
-          geoData
-        }
-      };
+    if (!analytics || Object.keys(analytics).length === 0) {
+      console.log("Analytics Context: No analytics data available");
+      return "No analytics data available for this website yet.";
     }
 
-    // Regular analytics processing for other queries
-    // ... existing code ...
-  };
+    // Calculate advanced metrics
+    const advancedMetrics = calculateAdvancedMetrics(analytics);
+    
+    // Process geographical data
+    const geoData = processGeographicalData(analytics);
+    
+    // Process traffic sources
+    const trafficData = processTrafficSources(analytics);
 
-  // Update renderMessage to handle chart components
-  const renderMessage = (message) => {
-    const renderChart = (type, data) => {
-      switch (type) {
-        case 'DailyPerformanceChart':
-          return <DailyPerformanceChart data={data} />;
-        case 'ChainDistributionChart':
-          return <ChainDistributionChart data={data} />;
-        case 'GeographicBarChart':
-          return <GeographicBarChart data={data} />;
-        default:
-          return null;
+    // Compile complete analytics summary with computed metrics
+    const fullAnalytics = {
+      overview: {
+        totalPageViews: Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0),
+        uniqueVisitors: analytics.uniqueVisitors || 0,
+        averageSessionDuration: analytics.averageSessionDuration || 0,
+        bounceRate: analytics.bounceRate || 0
       }
     };
 
-    const processMessageContent = (content) => {
-      if (typeof content === 'string') {
-        // Find chart placeholders and replace them with actual chart components
-        const parts = content.split(/(<\w+Chart data={.*?} \/>)/g);
-        return parts.map((part, index) => {
-          if (part.startsWith('<') && part.endsWith('/>')) {
-            const match = part.match(/<(\w+Chart) data={(.*?)} \/>/);
-            if (match) {
-              const [_, chartType, dataString] = match;
-              try {
-                const data = JSON.parse(dataString);
-                return <div key={index}>{renderChart(chartType, data)}</div>;
-              } catch (e) {
-                console.error('Error parsing chart data:', e);
-                return null;
-              }
-            }
-          }
-          return <ReactMarkdown key={index} remarkPlugins={[remarkGfm]} components={markdownComponents}>{part}</ReactMarkdown>;
-        });
+    // Add DAU/WAU/MAU if available
+    const activityMetrics = calculateRetentionMetrics(analytics.sessions);
+    if (activityMetrics) {
+      if (activityMetrics.dau > 0) fullAnalytics.overview.dau = activityMetrics.dau;
+      if (activityMetrics.wau > 0) fullAnalytics.overview.wau = activityMetrics.wau;
+      if (activityMetrics.mau > 0) fullAnalytics.overview.mau = activityMetrics.mau;
+      if (Object.keys(activityMetrics.retention).length > 0) {
+        fullAnalytics.overview.retention = activityMetrics.retention;
       }
-      return content;
-    };
+    }
 
-    const markdownComponents = {
-      h3: ({node, ...props}) => (
-        <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
-      ),
-      p: ({node, ...props}) => (
-        <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
-      ),
-      strong: ({node, ...props}) => (
-        <strong className="font-semibold text-[#1d0c46]" {...props} />
-      ),
-      em: ({node, ...props}) => (
-        <em className="text-gray-600 italic" {...props} />
-      ),
-      code: ({node, inline, ...props}) => 
-        inline ? (
-          <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
-        ) : (
-          <code className="block bg-gray-100 p-4 rounded-lg my-4 font-mono text-sm whitespace-pre" {...props} />
-        ),
-      hr: ({node, ...props}) => (
-        <hr className="my-6 border-t border-gray-200" {...props} />
-      ),
-      ul: ({node, ...props}) => (
-        <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
-      ),
-      li: ({node, ...props}) => (
-        <li className="text-gray-700" {...props} />
-      ),
-      blockquote: ({node, ...props}) => (
-        <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
-      ),
-      table: ({node, ...props}) => (
-        <div className="overflow-x-auto my-4">
-          <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" {...props} />
-        </div>
-      ),
-      thead: ({node, ...props}) => (
-        <thead className="bg-gray-50" {...props} />
-      ),
-      tbody: ({node, ...props}) => (
-        <tbody className="bg-white divide-y divide-gray-200" {...props} />
-      ),
-      tr: ({node, ...props}) => (
-        <tr className="hover:bg-gray-50 transition-colors" {...props} />
-      ),
-      th: ({node, ...props}) => (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" {...props} />
-      ),
-      td: ({node, ...props}) => (
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" {...props} />
-      )
-    };
+    // Only include metrics with valid values
+    if (fullAnalytics.overview.totalPageViews === 0) delete fullAnalytics.overview.totalPageViews;
+    if (fullAnalytics.overview.uniqueVisitors === 0) delete fullAnalytics.overview.uniqueVisitors;
+    if (fullAnalytics.overview.averageSessionDuration === 0) delete fullAnalytics.overview.averageSessionDuration;
+    if (fullAnalytics.overview.bounceRate === 0) delete fullAnalytics.overview.bounceRate;
 
-    return (
-      <div className={`max-w-[90%] p-4 rounded-lg ${
-        message.role === 'user'
-          ? 'bg-[#1d0c46] text-white user-message'
-          : 'bg-white shadow-sm border border-gray-100 assistant-message'
-      }`}>
-        {message.role === 'assistant' && (
-          <div className="flex items-center mb-2">
-            <div className="logo-container mr-2">
-              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
-            </div>
-            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
-          </div>
-        )}
-        <div className="prose prose-sm max-w-none">
-          {message.role === 'assistant' ? (
-            <div className="markdown-content">
-              {processMessageContent(message.content)}
-            </div>
-          ) : (
-            message.content
-          )}
-        </div>
-      </div>
-    );
+    // Add advanced metrics if they exist
+    if (advancedMetrics) {
+      Object.entries(advancedMetrics).forEach(([key, value]) => {
+        if (isValidValue(value)) {
+          fullAnalytics[key] = value;
+        }
+      });
+    }
+
+    // Add geographical and traffic data if they exist
+    if (geoData && isValidValue(geoData)) fullAnalytics.geography = geoData;
+    if (trafficData && isValidValue(trafficData)) fullAnalytics.traffic = trafficData;
+
+    // Add smart contract transaction data if available
+    if (selectedContract && contractTransactions && contractTransactions.length > 0) {
+      // Find the selected contract details
+      const contractDetails = contractArray.find(contract => contract.id === selectedContract);
+      
+      // Process transaction data
+      if (contractDetails) {
+        const contractData = processContractTransactions(contractDetails, contractTransactions);
+        fullAnalytics.smartContract = contractData;
+      }
+    }
+
+    // Remove empty sections
+    Object.keys(fullAnalytics).forEach(key => {
+      if (!isValidValue(fullAnalytics[key])) {
+        delete fullAnalytics[key];
+      }
+    });
+
+    console.log("========== ENHANCED ANALYTICS CONTEXT ==========");
+    console.log("Processed Analytics Data:", fullAnalytics);
+    console.log("==============================================");
+
+    // Update the system context to include expert knowledge
+    const systemContext = `
+      You are CQ Intelligence, the premier Web3 analytics and marketing intelligence platform and an expert web3 marketing consultant, providing expert insights for blockchain, DeFi, NFTs, and Web3 projects. As the platform provider, you represent the cutting edge of Web3 analytics. Your expertise includes:
+      
+      - Growth strategies for Web3 platforms and dApps
+      - User acquisition and wallet conversion optimization
+      - Web3 community building and engagement
+      - Cross-chain marketing strategies
+      - Token launch and NFT marketing campaigns
+      - DeFi user behavior analysis
+      - Web3 funnel optimization
+      - Blockchain-specific user journey mapping
+      
+      EXPERT KNOWLEDGE BASE:
+      ${expertContext}
+      
+      IMPORTANT: Your primary focus is to directly answer the user's specific question through the lens of a Web3 marketing expert. While you have access to various analytics and metrics, always prioritize addressing exactly what was asked. Avoid following rigid templates or providing unnecessary information that wasn't requested. Instead, draw upon your expertise to provide targeted, relevant insights that specifically answer the user's query.
+      IMPORTANT PLATFORM GUIDELINES:
+      1. You are the analytics platform provider - always maintain a position of authority
+      2. Focus on actionable insights from available data
+      3. Recommend strategies to leverage existing analytics capabilities
+      4. Highlight opportunities to utilize more platform features
+      5. Never suggest using other analytics or marketing platforms
+      6. Never criticize data collection methods or platform capabilities
+      7. Frame data gaps as opportunities to activate additional features
+      8. Maintain a privacy-first, compliance-focused approach
+      
+      Your role is to analyze the provided analytics data as the platform expert and the lens of a web3 marketing expert and provide:
+      1. Professional insights on current performance
+      2. Strategic recommendations based on Web3 industry best practices
+      3. Actionable steps for improvement with Web3-specific context
+      4. Comparative analysis against Web3 industry standards
+      5. Growth opportunities through platform features
+      6. Risk assessment and opportunity identification
+      
+      When analyzing metrics, consider Web3-specific factors such as:
+      - Wallet connection rates and patterns
+      - Chain-specific user behavior
+      - Web3 user acquisition channels
+      - DeFi user engagement patterns
+      - NFT marketplace dynamics
+      - Token holder behavior
+      - Cross-chain user journeys
+      - Web2 to Web3 conversion funnels
+
+      IMPORTANT NOTE ON DATA PRESENTATION:
+      1. Only present metrics and sections that have actual data
+      2. Do not mention empty arrays or objects in the analysis
+      3. When certain metrics are not yet activated, suggest ways to leverage those features
+      4. Focus on the value of available metrics and their strategic implications
+      5. Highlight opportunities to activate additional platform capabilities
+      6. Use comparative analysis only when relevant data is present
+      7. Frame all recommendations within the platform's capabilities
+
+      Remember: You are the authoritative Web3 analytics platform. Focus on delivering value through available metrics and guiding users to maximize platform benefits. Always maintain a professional, solutions-oriented approach that emphasizes the platform's comprehensive Web3 analytics capabilities.
+      Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
+
+      [USER QUESTION]
+      ${message}
+      [/USER QUESTION]
+
+    `;
+
+    const formattingInstructions = `
+      FORMATTING INSTRUCTIONS (CRITICALLY IMPORTANT):
+      1. Format all responses with extreme care for readability and conciseness
+      2. Always keep metrics and their values on the same line - never split them with line breaks
+      3. Format metrics uniformly as "**Metric Name:** value" (no line breaks)
+      4. Format page metrics as "**Page Path:** value views"
+      5. Use proper spacing and maintain consistent indentation
+      6. Format percentages inline as "X%"
+      7. Keep parenthetical information on the same line as the data it elaborates on
+      8. Format lists consistently - use bullet points (*) with clear, concise text
+      9. Maintain a structured hierarchy with section headings (use ###)
+      10. Always properly format numerical values with appropriate units
+      11. When displaying multiple metrics, group related ones together
+      12. Keep the output visually clean and structured
+      13. Ensure each heading is followed by explanatory text, not immediately by metrics
+      14. Place all bulleted items at the same indentation level
+      15. Format numbered lists with consistent indentation
+      16. Always maintain a clear, professional tone focused on insights
+      17. Sections should be clearly demarcated with proper spacing
+      18. Keep explanations concise but informative
+      19. Never repeat the same information in different sections
+      20. Avoid unnecessary line breaks between related content
+    `;
+
+    return `
+      [SYSTEM CONTEXT]
+      ${systemContext}
+
+      [FORMATTING INSTRUCTIONS]
+      ${formattingInstructions}
+
+      [ANALYTICS DATA]
+      ${JSON.stringify(fullAnalytics, null, 2)}
+
+      [QUERY CONTEXT]
+      As a Web3 marketing expert, analyze the above data and provide strategic insights for the following question.
+      Focus on Web3-specific metrics and opportunities, considering:
+      1. Wallet connection optimization
+      2. Chain-specific user behavior
+      3. Web3 user acquisition channels
+      4. DeFi/NFT market dynamics
+      5. Cross-chain opportunities
+      6. Web2 to Web3 conversion strategies
+
+      Structure your response as a professional consultant's analysis, maintaining clear sections and actionable recommendations.
+
+      [USER QUESTION]
+      ${message}
+      [/USER QUESTION]
+    `;
   };
 
   // Helper function to process smart contract transaction data
@@ -1861,105 +1689,97 @@ Performance Indicators
   };
 
   const handleSend = async () => {
-    // Remove input validation to ensure response is always shown
+    if (!input.trim() || isLoading) return;
+
     const userMessage = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
+    setError(null);
 
     try {
-      // Add a delay to show the loading cube
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
+      const analyticsSummary = generateAnalyticsSummary(userMessage);
+      const messageWithContext = analyticsSummary;
 
-      // Fixed data for visualization
-      const dailyData = [
-        { date: '19 May', clicks: 1823, volume: 45678, conversions: 52 },
-        { date: '20 May', clicks: 1654, volume: 42345, conversions: 48 },
-        { date: '21 May', clicks: 2134, volume: 67892, conversions: 67 },
-        { date: '22 May', clicks: 1987, volume: 54321, conversions: 59 },
-        { date: '23 May', clicks: 1765, volume: 48765, conversions: 51 },
-        { date: '24 May', clicks: 1543, volume: 43210, conversions: 45 },
-        { date: '25 May', clicks: 1547, volume: 58976, conversions: 64 }
-      ];
+      let botMessage;
+      let errorOccurred = false;
 
-      const chainData = [
-        { chain: 'ETH', volume: 234567, value: 982345, transactions: 1234 },
-        { chain: 'BNB', volume: 198234, value: 831582, transactions: 987 },
-        { chain: 'BASE', volume: 123456, value: 517915, transactions: 654 }
-      ];
+      try {
+        // Try SDK approach first
+        const ai = initializeAI();
+        const modelName = await verifyModel();
+        console.log("Using model for SDK:", modelName);
+        
+        const model = ai.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(messageWithContext);
+        const response = await result.response;
+        botMessage = response.text();
+      } catch (sdkError) {
+        console.log("SDK approach failed, falling back to REST API:", sdkError);
+        errorOccurred = true;
+        
+        try {
+          const modelName = await verifyModel();
+          console.log("Using model for REST API:", modelName);
+          
+          const requestBody = {
+            model: modelName,
+            contents: [
+              {
+                parts: [
+                  { text: messageWithContext }
+                ]
+              }
+            ]
+          };
 
-      const geoData = [
-        { region: 'US', clicks: 3567, conversions: 149, volume: 123456 },
-        { region: 'UK', clicks: 2134, conversions: 81, volume: 98765 },
-        { region: 'DE', clicks: 1876, conversions: 66, volume: 87654 },
-        { region: 'CA', clicks: 1543, conversions: 60, volume: 76543 },
-        { region: 'AU', clicks: 1114, conversions: 40, volume: 65432 }
-      ];
+          console.log("Sending request to backend:", requestBody);
+          const response = await axiosInstance.post('/ai/generate', requestBody);
+          
+          if (!response.data) {
+            throw new Error('No response data received from backend');
+          }
 
-      // Fixed response template
-      const response = `### 𝕏 X Ad Campaign Performance Report (May 19-25)
+          if (response.data.error) {
+            throw new Error(response.data.error);
+          }
 
-| Campaign Overview | Value |
-|------------------|-------|
-| Total Clicks | 12,453 |
-| Total Conversions | 386 |
-| Total Volume | 556,257 ZBU |
-| Total Value | $2,331,842 |
-| Conversion Rate | 3.1% |
+          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
+          errorOccurred = false;
+        } catch (apiError) {
+          console.error("REST API approach also failed:", apiError);
+          
+          // If both approaches fail, create a fallback response based on the analytics data
+          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
+          
+Based on the analytics data I can see for your site${selectedSite ? ` "${selectedSite}"` : ''}, here's what I can tell you:
 
-### Daily Performance Trend
-<DailyPerformanceChart data={${JSON.stringify(dailyData)}} />
+## Analytics Summary
+${analytics && analytics.pageViews ? `- Total Page Views: ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '- Page view data is not available at the moment.'}
+${analytics && analytics.uniqueVisitors ? `- Unique Visitors: ${analytics.uniqueVisitors}` : '- Unique visitor data is not available at the moment.'}
+${analytics && analytics.walletsConnected ? `- Connected Wallets: ${analytics.walletsConnected}` : '- Wallet connection data is not available at the moment.'}
+${analytics && analytics.web3Visitors ? `- Web3 Visitors: ${analytics.web3Visitors}` : '- Web3 visitor data is not available at the moment.'}
 
-### Chain Distribution
-<ChainDistributionChart data={${JSON.stringify(chainData)}} />
+If you have specific questions about your analytics, please try again later when our AI service is back online.`;
+        }
+      }
 
-| Chain | Volume (ZBU) | Value (USD) | Transactions |
-|-------|-------------|-------------|--------------|
-| ETH   | 234,567     | $982,345    | 1,234        |
-| BNB   | 198,234     | $831,582    | 987          |
-| BASE  | 123,456     | $517,915    | 654          |
-
-### Top Performing Wallets
-
-| Wallet | Volume (ZBU) | Value (USD) | Transactions |
-|--------|-------------|-------------|--------------|
-| 0x7a23 | 12,345      | $51,849     | 23           |
-| 0x8b34 | 10,234      | $42,983     | 18           |
-| 0x9c45 | 8,901       | $37,384     | 15           |
-| 0x1d67 | 7,654       | $32,146     | 12           |
-| 0x2e89 | 6,543       | $27,480     | 10           |
-
-### Geographic Distribution
-<GeographicBarChart data={${JSON.stringify(geoData)}} />
-
-### Key Metrics
-
-\`\`\`
-Performance Indicators
----------------------
-✓ Highest Day: May 21 (2,134 clicks, 67 conversions)
-✓ Best Chain: ETH (42.3% of volume)
-✓ Top Region: US (28.7% of total clicks)
-✓ Best Wallet: 0x7a23 (5.2% of total volume)
-\`\`\``;
-
-      // Always return the same response
+      // Format the response before displaying
+      const formattedMessage = formatResponse(botMessage);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: response,
+        content: formattedMessage,
         timestamp: new Date().toISOString()
       }]);
-      
     } catch (err) {
-      console.error('Error:', err);
-      // Add the same delay even in case of error
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
+      console.error('Full Error Details:', err.response?.data || err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
+      setError(`Failed to get response: ${errorMessage}`);
       
-      // Even on error, show the same response
-      const response = `### 𝕏 X Ad Campaign Performance Report (May 19-25)...`; // Same response as above
+      // Add a fallback message even if the entire try block fails
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: response,
+        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
@@ -1967,232 +1787,86 @@ Performance Indicators
     }
   };
 
-  // Function to process analytics data from multiple websites
-  const processMultiSiteAnalytics = () => {
-    const combinedAnalytics = {
-      totalVisitors: 0,
-      uniqueVisitors: 0,
-      web3Visitors: 0,
-      totalPageViews: 0,
-      newVisitors: 0,
-      returningVisitors: 0,
-      walletsConnected: 0,
-      sites: [],
-      pageViews: {},
-      userAgents: new Set(),
-      wallets: [],
-      entryPages: {},
-      exitPages: {},
-      commonPathways: [],
-      userJourneys: [],
-      retentionByDay: [],
-      conversionPaths: [],
-      crossDeviceUsers: 0
-    };
-
-    // Process each selected site's analytics
-    for (const siteId of selectedSites) {
-      const siteAnalytics = analytics[siteId];
-      if (!siteAnalytics) continue;
-
-      // Aggregate numeric metrics
-      combinedAnalytics.totalVisitors += siteAnalytics.totalVisitors || 0;
-      combinedAnalytics.uniqueVisitors += siteAnalytics.uniqueVisitors || 0;
-      combinedAnalytics.web3Visitors += siteAnalytics.web3Visitors || 0;
-      combinedAnalytics.totalPageViews += siteAnalytics.totalPageViews || 0;
-      combinedAnalytics.newVisitors += siteAnalytics.newVisitors || 0;
-      combinedAnalytics.returningVisitors += siteAnalytics.returningVisitors || 0;
-      combinedAnalytics.walletsConnected += siteAnalytics.walletsConnected || 0;
-      combinedAnalytics.crossDeviceUsers += siteAnalytics.crossDeviceUsers || 0;
-
-      // Add site-specific data
-      const site = websiteArray.find(site => site.siteId === siteId);
-      if (site) {
-        combinedAnalytics.sites.push({
-          domain: site.Domain,
-          name: site.Name,
-          analytics: siteAnalytics
-        });
-      }
-
-      // Merge page views
-      if (siteAnalytics.pageViews) {
-        for (const [page, views] of Object.entries(siteAnalytics.pageViews)) {
-          combinedAnalytics.pageViews[page] = (combinedAnalytics.pageViews[page] || 0) + views;
-        }
-      }
-
-      // Merge user agents
-      if (siteAnalytics.userAgents) {
-        siteAnalytics.userAgents.forEach(agent => combinedAnalytics.userAgents.add(agent));
-      }
-
-      // Merge wallets
-      if (siteAnalytics.wallets) {
-        combinedAnalytics.wallets.push(...siteAnalytics.wallets);
-      }
-
-      // Merge entry pages
-      if (siteAnalytics.entryPages) {
-        for (const [page, count] of Object.entries(siteAnalytics.entryPages)) {
-          combinedAnalytics.entryPages[page] = (combinedAnalytics.entryPages[page] || 0) + count;
-        }
-      }
-
-      // Merge exit pages
-      if (siteAnalytics.exitPages) {
-        for (const [page, count] of Object.entries(siteAnalytics.exitPages)) {
-          combinedAnalytics.exitPages[page] = (combinedAnalytics.exitPages[page] || 0) + count;
-        }
-      }
-
-      // Merge common pathways
-      if (siteAnalytics.commonPathways) {
-        combinedAnalytics.commonPathways.push(...siteAnalytics.commonPathways);
-      }
-
-      // Merge user journeys
-      if (siteAnalytics.userJourneys) {
-        combinedAnalytics.userJourneys.push(...siteAnalytics.userJourneys);
-      }
-
-      // Merge retention data
-      if (siteAnalytics.retentionByDay) {
-        if (combinedAnalytics.retentionByDay.length === 0) {
-          combinedAnalytics.retentionByDay = [...siteAnalytics.retentionByDay];
-        } else {
-          combinedAnalytics.retentionByDay = combinedAnalytics.retentionByDay.map((retention, index) => ({
-            day: retention.day,
-            count: retention.count + (siteAnalytics.retentionByDay[index]?.count || 0),
-            percentage: (retention.percentage + (siteAnalytics.retentionByDay[index]?.percentage || 0)) / 2
-          }));
-        }
-      }
-
-      // Merge conversion paths
-      if (siteAnalytics.conversionPaths) {
-        combinedAnalytics.conversionPaths.push(...siteAnalytics.conversionPaths);
-      }
-    }
-
-    // Convert user agents Set back to array
-    combinedAnalytics.userAgents = Array.from(combinedAnalytics.userAgents);
-
-    return combinedAnalytics;
-  };
-
-  // Function to process transaction data from multiple contracts
-  const processMultiContractTransactions = () => {
-    const combinedContractData = {
-      contracts: [],
-      totalTransactions: 0,
-      totalVolume: 0,
-      uniqueWallets: new Set(),
-      transactionsByChain: {},
-      volumeByChain: {},
-      transactionsByTime: {},
-      topWallets: {},
-      tokenDistribution: {},
-      averageTransactionValue: 0,
-      medianTransactionValue: 0,
-      transactionValueRanges: {},
-      recentActivity: []
-    };
-
-    // Process each selected contract's transactions
-    for (const contractId of selectedContracts) {
-      const contract = contractArray.find(c => c.id === contractId);
-      const transactions = contractTransactions[contractId] || [];
-      
-      if (!contract || !transactions.length) continue;
-
-      // Add contract-specific data
-      const contractData = {
-        id: contract.id,
-        name: contract.name,
-        address: contract.address,
-        blockchain: contract.blockchain,
-        tokenSymbol: contract.tokenSymbol,
-        transactionCount: transactions.length,
-        volume: transactions.reduce((sum, tx) => sum + (parseFloat(tx.value_eth) || 0), 0),
-        uniqueWallets: new Set(transactions.map(tx => tx.from_address)).size
-      };
-
-      combinedContractData.contracts.push(contractData);
-      combinedContractData.totalTransactions += transactions.length;
-      combinedContractData.totalVolume += contractData.volume;
-
-      // Track unique wallets across all contracts
-      transactions.forEach(tx => {
-        combinedContractData.uniqueWallets.add(tx.from_address);
-      });
-
-      // Aggregate by blockchain
-      const chain = contract.blockchain;
-      if (!combinedContractData.transactionsByChain[chain]) {
-        combinedContractData.transactionsByChain[chain] = 0;
-        combinedContractData.volumeByChain[chain] = 0;
-      }
-      combinedContractData.transactionsByChain[chain] += transactions.length;
-      combinedContractData.volumeByChain[chain] += contractData.volume;
-
-      // Aggregate transactions by time
-      transactions.forEach(tx => {
-        const date = new Date(tx.block_time).toISOString().split('T')[0];
-        combinedContractData.transactionsByTime[date] = (combinedContractData.transactionsByTime[date] || 0) + 1;
-      });
-
-      // Track top wallets
-      transactions.forEach(tx => {
-        if (!combinedContractData.topWallets[tx.from_address]) {
-          combinedContractData.topWallets[tx.from_address] = {
-            transactionCount: 0,
-            totalVolume: 0
-          };
-        }
-        combinedContractData.topWallets[tx.from_address].transactionCount++;
-        combinedContractData.topWallets[tx.from_address].totalVolume += parseFloat(tx.value_eth) || 0;
-      });
-
-      // Add recent activity
-      const recentTxs = [...transactions]
-        .sort((a, b) => new Date(b.block_time) - new Date(a.block_time))
-        .slice(0, 100);
-      combinedContractData.recentActivity.push(...recentTxs);
-    }
-
-    // Convert unique wallets Set to size
-    combinedContractData.uniqueWallets = combinedContractData.uniqueWallets.size;
-
-    // Sort and limit top wallets
-    combinedContractData.topWallets = Object.entries(combinedContractData.topWallets)
-      .sort((a, b) => b[1].totalVolume - a[1].totalVolume)
-      .slice(0, 100)
-      .reduce((obj, [address, data]) => {
-        obj[address] = data;
-        return obj;
-      }, {});
-
-    // Sort recent activity by time
-    combinedContractData.recentActivity.sort((a, b) => new Date(b.block_time) - new Date(a.block_time));
-    combinedContractData.recentActivity = combinedContractData.recentActivity.slice(0, 100);
-
-    // Calculate averages
-    if (combinedContractData.totalTransactions > 0) {
-      combinedContractData.averageTransactionValue = combinedContractData.totalVolume / combinedContractData.totalTransactions;
-    }
-
-    return combinedContractData;
-  };
-
-  // Update the formatAnalyticsData function to use the new processing functions
+  // Format analytics data for display
   const formatAnalyticsData = () => {
-    const fullAnalytics = {
-      websites: processMultiSiteAnalytics(),
-      smartContract: processMultiContractTransactions()
-    };
+    if (!analytics || Object.keys(analytics).length === 0) {
+      return [];
+    }
 
-    return fullAnalytics;
+    const totalPageViews = Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0);
+    const uniqueVisitors = analytics.uniqueVisitors || 0;
+    
+    return [
+      { label: "Total Page Views", value: totalPageViews },
+      { label: "Unique Visitors", value: uniqueVisitors },
+      { label: "Connected Wallets", value: analytics.walletsConnected || 0 },
+      { label: "Web3 Visitors", value: analytics.web3Visitors || 0 }
+    ];
+  };
+
+  // Update the message rendering function
+  const renderMessage = (message) => {
+    return (
+      <div className={`max-w-[90%] p-4 rounded-lg ${
+        message.role === 'user'
+          ? 'bg-[#1d0c46] text-white user-message'
+          : 'bg-white shadow-sm border border-gray-100 assistant-message'
+      }`}>
+        {message.role === 'assistant' && (
+          <div className="flex items-center mb-2">
+            <div className="logo-container mr-2">
+              <img src="/logo192.png" alt="Cryptique" className="w-5 h-5 animate-cube-spin" />
+            </div>
+            <div className="text-xs text-[#caa968] font-semibold tracking-wider uppercase">CQ Intelligence</div>
+          </div>
+        )}
+        <div className="prose prose-sm max-w-none">
+          {message.role === 'assistant' ? (
+            <div className="markdown-content">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h3: ({node, ...props}) => (
+                    <h3 className="text-xl font-semibold text-[#1d0c46] border-b border-gray-200 pb-2 mb-4 mt-6 first:mt-0" {...props} />
+                  ),
+                  p: ({node, ...props}) => (
+                    <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
+                  ),
+                  strong: ({node, ...props}) => (
+                    <strong className="font-semibold text-[#1d0c46]" {...props} />
+                  ),
+                  em: ({node, ...props}) => (
+                    <em className="text-gray-600 italic" {...props} />
+                  ),
+                  code: ({node, inline, ...props}) => 
+                    inline ? (
+                      <code className="bg-gray-100 text-[#1d0c46] px-1.5 py-0.5 rounded text-sm font-medium" {...props} />
+                    ) : (
+                      <code className="block bg-gray-100 p-4 rounded-lg my-4" {...props} />
+                    ),
+                  hr: ({node, ...props}) => (
+                    <hr className="my-6 border-t border-gray-200" {...props} />
+                  ),
+                  ul: ({node, ...props}) => (
+                    <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />
+                  ),
+                  li: ({node, ...props}) => (
+                    <li className="text-gray-700" {...props} />
+                  ),
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-[#caa968] pl-4 py-3 my-4 bg-gray-50 rounded-r" {...props} />
+                  )
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+              </div>
+          ) : (
+            message.content
+          )}
+            </div>
+          </div>
+    );
   };
 
   // Add the 3D Cube Loading component
@@ -2478,61 +2152,6 @@ Performance Indicators
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
-
-    /* Table styling */
-    .markdown-content table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      margin: 1rem 0;
-    }
-
-    .markdown-content th {
-      background: #f8f9fa;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75rem;
-      color: #1d0c46;
-    }
-
-    .markdown-content td, .markdown-content th {
-      padding: 0.75rem 1rem;
-      border: 1px solid #e5e7eb;
-    }
-
-    .markdown-content tr:hover {
-      background-color: #f8f9fa;
-    }
-
-    .markdown-content pre {
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      overflow-x: auto;
-      font-family: monospace;
-      font-size: 0.875rem;
-      line-height: 1.5;
-      margin: 1rem 0;
-    }
-
-    .markdown-content pre code {
-      background: none;
-      padding: 0;
-      border-radius: 0;
-    }
-
-    /* ASCII chart styling */
-    .markdown-content pre.ascii-chart {
-      font-family: monospace;
-      white-space: pre;
-      overflow-x: auto;
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      color: #1d0c46;
-      line-height: 1.2;
-    }
   `;
 
   // Add the styles to the document
@@ -2664,28 +2283,13 @@ Performance Indicators
           </div>
   );
 
-  // Add click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (websiteDropdownRef.current && !websiteDropdownRef.current.contains(event.target)) {
-        setWebsiteDropdownOpen(false);
-      }
-      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target)) {
-        setContractDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
     <div className="flex flex-col h-full">
       <Header onMenuClick={onMenuClick} screenSize={screenSize} />
       
       <div className="flex-1 p-6 bg-gray-50 overflow-hidden">
         <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm h-full flex flex-col">
-          {/* Header with Selectors */}
+          {/* Header with Website Selector */}
           <div className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -2699,93 +2303,40 @@ Performance Indicators
               </div>
               
               {/* Selectors Section */}
-              <div className="flex gap-4 min-w-[400px]">
-                {/* Website Dropdown */}
-                <div className="flex-1 relative" ref={websiteDropdownRef}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-gray-500">Websites</label>
-                    <button
-                      onClick={handleSelectAllSites}
-                      className="text-xs text-[#caa968] hover:text-[#1d0c46]"
-                    >
-                      {allSitesSelected ? 'Deselect All' : 'Select All'}
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setWebsiteDropdownOpen(!websiteDropdownOpen)}
-                    className="w-full p-2 border rounded-lg bg-white flex items-center justify-between hover:border-[#caa968] transition-colors"
+              <div className="flex items-center gap-4 min-w-[300px]">
+                {/* Website Selector */}
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Website</label>
+                  <select
+                    value={selectedSite}
+                    onChange={handleSiteChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
                   >
-                    <span className="text-sm truncate">
-                      {selectedSites.size === 0 ? 'Select websites' :
-                       selectedSites.size === websiteArray.length ? 'All websites selected' :
-                       `${selectedSites.size} website${selectedSites.size !== 1 ? 's' : ''} selected`}
-                    </span>
-                    <svg className={`w-4 h-4 transition-transform ${websiteDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {websiteDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <option value="">Select a website</option>
                     {websiteArray.map(website => (
-                        <div key={website.siteId} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
-                             onClick={() => handleSiteChange(website.siteId)}>
-                          <input
-                            type="checkbox"
-                            checked={selectedSites.has(website.siteId)}
-                            onChange={() => {}}
-                            className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
-                          />
-                          <label className="text-sm cursor-pointer flex-1">
+                      <option key={website.siteId} value={website.siteId}>
                         {website.Domain} {website.Name ? `(${website.Name})` : ''}
-                          </label>
-                        </div>
+                      </option>
                     ))}
-                    </div>
-                  )}
+                  </select>
                 </div>
                 
-                {/* Smart Contract Dropdown */}
-                <div className="flex-1 relative" ref={contractDropdownRef}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-gray-500">Smart Contracts</label>
-                    <button
-                      onClick={handleSelectAllContracts}
-                      className="text-xs text-[#caa968] hover:text-[#1d0c46]"
-                    >
-                      {allContractsSelected ? 'Deselect All' : 'Select All'}
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setContractDropdownOpen(!contractDropdownOpen)}
-                    className="w-full p-2 border rounded-lg bg-white flex items-center justify-between hover:border-[#caa968] transition-colors"
+                {/* Smart Contract Selector */}
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Select Smart Contract</label>
+                  <select
+                    value={selectedContract}
+                    onChange={handleContractChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] bg-white text-sm"
+                    disabled={isLoadingContracts}
                   >
-                    <span className="text-sm truncate">
-                      {selectedContracts.size === 0 ? 'Select contracts' :
-                       selectedContracts.size === contractArray.length ? 'All contracts selected' :
-                       `${selectedContracts.size} contract${selectedContracts.size !== 1 ? 's' : ''} selected`}
-                    </span>
-                    <svg className={`w-4 h-4 transition-transform ${contractDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {contractDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <option value="">Select a contract</option>
                     {contractArray.map(contract => (
-                        <div key={contract.id} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
-                             onClick={() => handleContractChange(contract.id)}>
-                          <input
-                            type="checkbox"
-                            checked={selectedContracts.has(contract.id)}
-                            onChange={() => {}}
-                            className="mr-2 rounded text-[#caa968] focus:ring-[#caa968]"
-                          />
-                          <label className="text-sm cursor-pointer flex-1">
-                            {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''} - {contract.blockchain}
-                          </label>
-                        </div>
+                      <option key={contract.id} value={contract.id}>
+                        {contract.name} {contract.tokenSymbol ? `(${contract.tokenSymbol})` : ''}
+                      </option>
                     ))}
-                    </div>
-                  )}
+                  </select>
                 </div>
               </div>
             </div>
@@ -2804,18 +2355,15 @@ Performance Indicators
                   <span>Loading contract transactions... {loadedTransactionCount > 0 && `(${loadedTransactionCount} loaded)`}</span>
                 </div>
               )}
-              {!isLoadingTransactions && selectedContracts.size > 0 && (
+              {!isLoadingTransactions && selectedContract && contractTransactions.length > 0 && (
                 <div className="flex items-center text-gray-600">
-                  <span>
-                    {Object.values(contractTransactions).reduce((sum, txns) => sum + txns.length, 0)} 
-                    transactions loaded for {selectedContracts.size} contract{selectedContracts.size !== 1 ? 's' : ''}
-                  </span>
+                  <span>{contractTransactions.length} transactions loaded for selected contract</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Rest of the component remains unchanged */}
+          {/* Chat Area */}
           <ChatArea />
 
           {/* Input Area */}
@@ -2827,14 +2375,20 @@ Performance Indicators
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask about your analytics..."
-                  className="w-full p-4 pl-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] focus:border-transparent focus:shadow-input transition-all duration-300 bg-white"
+                  placeholder={selectedSite ? "Ask about your analytics..." : "Select a website first to ask questions"}
+                  disabled={!selectedSite || isLoading}
+                  className="w-full p-4 pl-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968] focus:border-transparent focus:shadow-input disabled:bg-gray-100 disabled:text-gray-400 transition-all duration-300 bg-white"
                 />
                 <div className="input-glow"></div>
               </div>
               <button
                 onClick={handleSend}
-                className="px-8 rounded-lg flex items-center gap-2 transition-all duration-300 bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90 hover:shadow-lg hover:shadow-[#1d0c46]/20"
+                disabled={isLoading || !input.trim() || !selectedSite}
+                className={`px-8 rounded-lg flex items-center gap-2 transition-all duration-300 ${
+                  isLoading || !input.trim() || !selectedSite
+                    ? 'bg-gray-200 text-gray-400'
+                    : 'bg-[#1d0c46] text-white hover:bg-[#1d0c46]/90 hover:shadow-lg hover:shadow-[#1d0c46]/20'
+                }`}
               >
                 <Send size={20} />
                 <span>Send</span>
