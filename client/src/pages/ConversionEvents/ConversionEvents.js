@@ -8,33 +8,128 @@ const ConversionEvents = () => {
   const [selectedWebsite, setSelectedWebsite] = useState('');
   const [websites, setWebsites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchWebsites = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        const response = await axiosInstance.get(`/website/team/${teamId}`);
-        if (response.data && response.data.websites) {
-          setWebsites(response.data.websites);
+        // First check for preloaded website data in sessionStorage
+        const preloadedWebsites = sessionStorage.getItem("preloadedWebsites");
+        
+        if (preloadedWebsites) {
+          console.log("Using preloaded website data in ConversionEvents");
+          const websites = JSON.parse(preloadedWebsites);
+          setWebsites(websites);
           
-          // Select the first website by default if available
-          if (response.data.websites.length > 0) {
-            setSelectedWebsite(response.data.websites[0].siteId);
+          // Get the saved website from localStorage
+          const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+          const savedSiteId = localStorage.getItem("idy");
+          
+          if (savedSiteId && savedWebsiteDomain) {
+            // Find the website in the array
+            const currentWebsite = websites.find(
+              website => website.Domain === savedWebsiteDomain
+            );
+            
+            if (currentWebsite) {
+              setSelectedWebsite(currentWebsite.siteId);
+            } else if (websites.length > 0) {
+              // If saved website not found, use the first one
+              setSelectedWebsite(websites[0].siteId);
+            }
+          } else if (websites.length > 0) {
+            // If no saved website, use the first one
+            setSelectedWebsite(websites[0].siteId);
+          }
+          
+          setLoading(false);
+          return; // Skip API call
+        }
+        
+        // If no preloaded data, fetch from API
+        if (!teamId) {
+          throw new Error('Team ID is required');
+        }
+
+        const response = await axiosInstance.get(`/website/team/${teamId}`);
+        
+        if (response.data && response.data.websites) {
+          const fetchedWebsites = response.data.websites;
+          setWebsites(fetchedWebsites);
+          
+          // Store in sessionStorage for future use
+          sessionStorage.setItem("preloadedWebsites", JSON.stringify(fetchedWebsites));
+          
+          // Get the saved website from localStorage
+          const savedWebsiteDomain = localStorage.getItem("selectedWebsite");
+          const savedSiteId = localStorage.getItem("idy");
+          
+          if (savedSiteId && savedWebsiteDomain) {
+            // Find the website in the array
+            const currentWebsite = fetchedWebsites.find(
+              website => website.Domain === savedWebsiteDomain
+            );
+            
+            if (currentWebsite) {
+              setSelectedWebsite(currentWebsite.siteId);
+            } else if (fetchedWebsites.length > 0) {
+              // If saved website not found, use the first one
+              setSelectedWebsite(fetchedWebsites[0].siteId);
+              localStorage.setItem("idy", fetchedWebsites[0].siteId);
+              localStorage.setItem("selectedWebsite", fetchedWebsites[0].Domain);
+            }
+          } else if (fetchedWebsites.length > 0) {
+            // If no saved website, use the first one
+            setSelectedWebsite(fetchedWebsites[0].siteId);
+            localStorage.setItem("idy", fetchedWebsites[0].siteId);
+            localStorage.setItem("selectedWebsite", fetchedWebsites[0].Domain);
           }
         }
       } catch (error) {
         console.error('Error fetching websites:', error);
+        setError(error.message || 'Failed to load websites');
       } finally {
         setLoading(false);
       }
     };
 
-    if (teamId) {
-      fetchWebsites();
-    }
+    fetchWebsites();
+    
+    // Listen for team changes
+    const checkTeamChange = () => {
+      const currentTeamId = teamId;
+      const newTeamId = localStorage.getItem("selectedTeam");
+      
+      if (newTeamId && newTeamId !== currentTeamId) {
+        console.log(`Team changed in ConversionEvents: ${currentTeamId} → ${newTeamId}, refreshing data`);
+        // Clear cached website data
+        sessionStorage.removeItem("preloadedWebsites");
+        // Refresh websites
+        fetchWebsites();
+      }
+    };
+    
+    // Check for team changes every 2 seconds
+    const intervalId = setInterval(checkTeamChange, 2000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [teamId]);
 
   const handleWebsiteChange = (e) => {
-    setSelectedWebsite(e.target.value);
+    const newSiteId = e.target.value;
+    setSelectedWebsite(newSiteId);
+    
+    // Update localStorage with the selected website
+    const selectedSite = websites.find(site => site.siteId === newSiteId);
+    if (selectedSite) {
+      localStorage.setItem("idy", selectedSite.siteId);
+      localStorage.setItem("selectedWebsite", selectedSite.Domain);
+    }
   };
 
   return (
@@ -53,6 +148,8 @@ const ConversionEvents = () => {
         >
           {loading ? (
             <option>Loading websites...</option>
+          ) : error ? (
+            <option>Error: {error}</option>
           ) : websites.length > 0 ? (
             websites.map((website) => (
               <option key={website.siteId} value={website.siteId}>
