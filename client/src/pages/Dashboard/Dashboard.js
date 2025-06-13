@@ -11,7 +11,7 @@ import OnchainExplorer from './OnchainExplorer.js'
 import ManageWebsites from './ManageWebsites.js'
 import ImportUsers from './ImportUsers.js'
 import History from "./History.js";
-import ConversionEvents from './ConversionEvents.js'
+import ConversionEvents from '../ConversionEvents/ConversionEvents.js'
 import Campaigns from './Campaigns.js'
 import Advertise from './Advertise.js'
 import CQIntelligence from './CQIntelligence.js'

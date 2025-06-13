@@ -1,5 +1,6 @@
 const Analytics = require("../models/analytics");
 const Session = require("../models/session");
+const GranularEvent = require("../models/granularEvents");
 const { HourlyStats, DailyStats, WeeklyStats, MonthlyStats } = require("../models/stats");
 const Website = require("../models/website");
 
@@ -149,9 +150,37 @@ exports.postAnalytics = async (req, res) => {
     
     // Handle payload events
     if (payload) {
-      console.log("Processing payload event:", payload);
-      const { siteId, websiteUrl, userId, pagePath } = payload;
+      console.log("Processing payload event:", payload.type);
+      const { siteId, websiteUrl, userId, pagePath, sessionId, type, eventData } = payload;
       
+      // Handle ELEMENT_CLICK event type
+      if (type === 'ELEMENT_CLICK') {
+        try {
+          // Create a new granular event record
+          const clickEvent = new GranularEvent({
+            siteId,
+            userId,
+            sessionId,
+            eventType: type,
+            eventData,
+            pagePath,
+            timestamp: new Date()
+          });
+          
+          await clickEvent.save();
+          console.log(`Saved click event for ${siteId}, element: ${eventData.tagName}${eventData.dataId ? ` with data-id ${eventData.dataId}` : ''}`);
+          
+          return res.status(200).json({ 
+            success: true, 
+            message: "Click event recorded" 
+          });
+        } catch (error) {
+          console.error("Error saving click event:", error);
+          return res.status(500).json({ error: 'Error saving click event' });
+        }
+      }
+      
+      // Handle other event types (existing code)
       if (!siteId || !userId) {
         return res.status(400).json({ error: 'Site ID and User ID are required' });
       }
@@ -537,6 +566,41 @@ exports.updateMonthlyAnalyticsStats = async (req,res) => {
   } catch (error) {
     console.error("Error while updating analytics stats", error);
     res.status(500).json({ message: "Error while updating analytics stats", error: error.message });
+  }
+};
+
+// New endpoint to fetch click events
+exports.getClickEvents = async (req, res) => {
+  try {
+    const { siteId, pagePath } = req.query;
+    
+    if (!siteId) {
+      return res.status(400).json({ error: 'Site ID is required' });
+    }
+    
+    // Build query
+    const query = {
+      siteId,
+      eventType: 'ELEMENT_CLICK'
+    };
+    
+    // Add page path filter if provided
+    if (pagePath) {
+      query.pagePath = pagePath;
+    }
+    
+    // Get click events from database
+    const clickEvents = await GranularEvent.find(query)
+      .sort({ timestamp: -1 })
+      .limit(100); // Limit to prevent large responses
+    
+    return res.status(200).json({ 
+      success: true,
+      clickEvents 
+    });
+  } catch (error) {
+    console.error("Error fetching click events:", error);
+    return res.status(500).json({ error: 'Error fetching click events' });
   }
 };
 

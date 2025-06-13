@@ -1,5 +1,5 @@
 const express = require('express');
-const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats, updateDailyAnalyticsStats, updateWeeklyAnalyticsStats, updateMonthlyAnalyticsStats} = require('../controllers/sdkController');
+const { postAnalytics, getAnalytics, updateHourlyAnalyticsStats, updateDailyAnalyticsStats, updateWeeklyAnalyticsStats, updateMonthlyAnalyticsStats, getClickEvents} = require('../controllers/sdkController');
 const cors = require('cors');
 
 const router = express.Router();
@@ -50,6 +50,16 @@ router.get('/analytics/:siteId', async (req, res) => {
     await getAnalytics(req, res);
   } catch (error) {
     console.error('Error in analytics endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// New route for fetching click events
+router.get('/click-events', async (req, res) => {
+  try {
+    await getClickEvents(req, res);
+  } catch (error) {
+    console.error('Error in click-events endpoint:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
