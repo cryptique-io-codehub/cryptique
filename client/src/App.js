@@ -13,7 +13,7 @@ import OnchainExplorer from "./pages/Dashboard/OnchainExplorer.js";
 import ManageWebsites from "./pages/Dashboard/ManageWebsites.js";
 import ImportUsers from "./pages/Dashboard/ImportUsers.js";
 import History from "./pages/Dashboard/History.js";
-import ConversionEvents from "./pages/Dashboard/ConversionEvents.js";
+import ConversionEvents from "./pages/ConversionEvents/ConversionEvents.js";
 import Campaigns from "./pages/Dashboard/Campaigns.js";
 import Advertise from "./pages/Dashboard/Advertise.js";
 import { useLocation } from "react-router-dom";
