@@ -313,6 +313,7 @@ app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 app.use("/api/migration", cors(mainCorsOptions), require("./routes/migration"));
+app.use("/api/rag", cors(mainCorsOptions), require("./routes/ragRouter"));
 
 // Load AI router with explicit error handling
 try {
