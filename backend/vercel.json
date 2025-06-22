@@ -7,63 +7,6 @@
       "memory": 1024
     }
   },
-  "routes": [
-    {
-      "src": "/health",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/analytics/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/users/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/teams/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/websites/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/smartcontracts/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/sdk/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/onchain/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/campaigns/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/transactions/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/migration/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/vector/(.*)",
-      "dest": "/index.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/index.js"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
   "rewrites": [
     {
       "source": "/(.*)",
