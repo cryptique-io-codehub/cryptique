@@ -506,6 +506,12 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+// Export the Express app for Vercel serverless deployment
+module.exports = app;

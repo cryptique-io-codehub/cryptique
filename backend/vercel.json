@@ -1,16 +1,10 @@
 {
   "version": 2,
   "name": "cryptique-backend-optimized",
-  "functions": {
-    "index.js": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.js"
+      "destination": "/api"
     }
   ]
 }
