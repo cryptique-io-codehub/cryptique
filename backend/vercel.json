@@ -1,15 +1,15 @@
 {
   "version": 2,
-  "name": "cryptique-backend-optimized",
+  "name": "cryptique-backend",
   "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node@3"
+    "index.js": {
+      "runtime": "@vercel/node@3.0.7"
     }
   },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/index.js"
     }
   ],
   "env": {

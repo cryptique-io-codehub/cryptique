@@ -131,92 +131,38 @@ connectToDatabase()
 
 // Define CORS options for different routes
 const mainCorsOptions = {
-  origin: [
-    "http://localhost:3000", 
-    "https://app.cryptique.io", 
-    "https://cryptique.io",
-    "https://cryptique.vercel.app"
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'Accept', 
-    'Origin', 
-    'X-Requested-With',
-    'x-cryptique-site-id'
-  ],
+  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
-  maxAge: 86400,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  maxAge: 86400
 };
 
 // SDK CORS configuration with explicit headers
 const sdkCorsOptions = {
   origin: function(origin, callback) {
     // Allow specific origins instead of wildcard
-    const allowedOrigins = [
-      'https://app.cryptique.io', 
-      'https://cryptique.io', 
-      'https://cryptique.vercel.app',
-      'http://localhost:3000'
-    ];
+    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
     
     // Check if origin is in our allowed list or if it's not provided (like in REST clients)
     const originAllowed = !origin || allowedOrigins.includes(origin);
     
     if (originAllowed) {
-      callback(null, origin || '*');
+      callback(null, origin);
     } else {
-      console.log('CORS blocked origin:', origin);
-      callback(null, origin); // Allow anyway for now to debug
+      callback(new Error('CORS not allowed'));
     }
   },
-  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'x-cryptique-site-id',
-    'Accept',
-    'Origin',
-    'X-Requested-With'
-  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: true,
+  credentials: true, // Changed to true to allow credentials
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
 
 // Parse cookies
 app.use(cookieParser());
-
-// Global CORS middleware to handle all requests first
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://app.cryptique.io',
-    'https://cryptique.io', 
-    'https://cryptique.vercel.app',
-    'http://localhost:3000'
-  ];
-  
-  // Always set CORS headers for allowed origins
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, x-cryptique-site-id');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-  }
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  
-  next();
-});
 
 // Use Helmet for security headers (except for SDK routes)
 app.use((req, res, next) => {
@@ -367,7 +313,8 @@ app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 app.use("/api/migration", cors(mainCorsOptions), require("./routes/migration"));
-app.use("/api/rag", cors(mainCorsOptions), require("./routes/ragRouter"));
+// Temporarily disabled RAG router to fix deployment
+// app.use("/api/rag", cors(mainCorsOptions), require("./routes/ragRouter"));
 
 // Load AI router with explicit error handling
 try {
