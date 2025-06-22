@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// Use the actual production URL with https, fallback to localhost for development (but use https everywhere)
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://localhost:3001';
+// Use the actual production URL with https, fallback to localhost for development
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 
+  (process.env.NODE_ENV === 'production' ? 'https://app.cryptique.io' : 'http://localhost:3001');
 
 console.log('API Server URL:', baseURL);
 

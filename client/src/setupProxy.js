@@ -5,7 +5,7 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'https://cryptique-backend.vercel.app',
+      target: process.env.REACT_APP_API_SERVER_URL || 'http://localhost:3001',
       changeOrigin: true,
       pathRewrite: {
         '^/api': '/api', // No rewrite needed

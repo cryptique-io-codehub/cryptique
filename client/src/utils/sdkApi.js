@@ -7,7 +7,8 @@ import axios from 'axios';
 import axiosInstance from '../axiosInstance';
 
 // Base URL for API calls
-const baseURL = process.env.REACT_APP_API_SERVER_URL || 'https://cryptique-backend.vercel.app';
+const baseURL = process.env.REACT_APP_API_SERVER_URL || 
+  (process.env.NODE_ENV === 'production' ? 'https://app.cryptique.io' : 'http://localhost:3001');
 
 // Create specialized SDK axios instance that doesn't use credentials
 const sdkAxiosInstance = axios.create({
