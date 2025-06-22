@@ -2,60 +2,73 @@
   "version": 2,
   "name": "cryptique-backend-optimized",
   "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 30
+    "index.js": {
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "routes": [
     {
       "src": "/health",
-      "dest": "/api/health"
+      "dest": "/index.js"
     },
     {
       "src": "/api/analytics/(.*)",
-      "dest": "/api/analytics/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/users/(.*)",
-      "dest": "/api/users/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/teams/(.*)",
-      "dest": "/api/teams/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/websites/(.*)",
-      "dest": "/api/websites/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/smartcontracts/(.*)",
-      "dest": "/api/smartcontracts/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/sdk/(.*)",
-      "dest": "/api/sdk/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/onchain/(.*)",
-      "dest": "/api/onchain/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/campaigns/(.*)",
-      "dest": "/api/campaigns/$1"
+      "dest": "/index.js"
     },
     {
       "src": "/api/transactions/(.*)",
-      "dest": "/api/transactions/$1"
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/migration/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/vector/(.*)",
+      "dest": "/index.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/index.js"
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "MONGODB_URI": "@mongodb_uri",
-    "GEMINI_API_KEY": "@gemini_api_key"
-  }
+    "NODE_ENV": "production"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.js"
+    }
+  ]
 }
+
