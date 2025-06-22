@@ -1,56 +1,69 @@
 {
   "version": 2,
+  "name": "cryptique-backend-optimized",
   "builds": [
     {
       "src": "index.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
     {
-      "src": "/api/sdk/(.*)",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-cryptique-site-id, Accept",
-        "Access-Control-Max-Age": "86400"
-      },
-      "continue": true
-    },
-    {
-      "src": "/api/sdk/(.*)",
-      "methods": ["OPTIONS"],
+      "src": "/health",
       "dest": "/index.js"
     },
     {
-      "src": "/(.*)",
-      "headers": {
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://app.cryptique.io https://cryptique.io; connect-src 'self' https://api.cryptique.io https://cryptique-backend.vercel.app https://ipinfo.io *; img-src 'self' data: https: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; object-src 'none'; media-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'",
-        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload"
-      },
+      "src": "/api/analytics/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/users/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/teams/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/websites/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/smartcontracts/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/sdk/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/onchain/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/campaigns/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/transactions/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/api/(.*)",
       "dest": "/index.js"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/sdk/update-all-analytics-stats-hourly",
-      "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/sdk/update-all-analytics-stats-daily",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/sdk/update-all-analytics-stats-weekly",
-        "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/sdk/update-all-analytics-stats-monthly",
-      "schedule": "*/30 * * * *"
+  "env": {
+    "NODE_ENV": "production",
+    "MONGODB_URI": "@mongodb_uri",
+    "GEMINI_API_KEY": "@gemini_api_key"
+  },
+  "functions": {
+    "index.js": {
+      "maxDuration": 30
     }
-  ]
+  }
 }

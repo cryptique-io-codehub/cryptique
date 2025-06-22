@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const sessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
-    userId: { type: String, required: true },
-    siteId: { type: String, required: true },
+    userId: { type: String, required: true, index: true },
+    siteId: { type: String, required: true, index: true },
     referrer: { type: String },
     utmData: {
         source: { type: String },
@@ -18,13 +18,13 @@ const sessionSchema = new mongoose.Schema({
         walletType: { type: String, default: "" },
         chainName: { type: String, default: "" }
     },
-    startTime: { type: Date, required: true },
+    startTime: { type: Date, required: true, index: true },
     endTime: { type: Date },
     pagesViewed: { type: Number, default: 0 },
     duration: { type: Number, default: 0 },
     isBounce: { type: Boolean, default: true },
     lastActivity: { type: Date },
-    country: { type: String },
+    country: { type: String, index: true },
     browser: {
         name: { type: String },
         version: { type: String },
@@ -33,14 +33,14 @@ const sessionSchema = new mongoose.Schema({
         type: { type: String },
         os: { type: String },
     },
-    isWeb3User: { type: Boolean, default: false },
+    isWeb3User: { type: Boolean, default: false, index: true },
     
-    // New fields for enhanced user journey tracking
-    sessionNumber: { type: Number, default: 1 }, // Tracks which session number this is for the user (1st, 2nd, etc.)
-    previousSessionId: { type: String }, // Reference to the user's previous session
-    timeSinceLastSession: { type: Number }, // Time in seconds since user's last session
-    entryPage: { type: String }, // First page of the session
-    exitPage: { type: String }, // Last page of the session
+    // Enhanced user journey tracking
+    sessionNumber: { type: Number, default: 1 },
+    previousSessionId: { type: String },
+    timeSinceLastSession: { type: Number },
+    entryPage: { type: String, index: true },
+    exitPage: { type: String },
     
     // Track visited pages
     visitedPages: [{
@@ -49,11 +49,39 @@ const sessionSchema = new mongoose.Schema({
         duration: { type: Number },
         isEntry: { type: Boolean, default: false },
         isExit: { type: Boolean, default: false }
-    }]
+    }],
+    
+    // Vector search field for RAG implementation
+    contentVector: {
+        type: [Number],
+        sparse: true,
+        select: false
+    },
+    
+    // Text content for vector generation
+    textContent: {
+        type: String,
+        select: false
+    },
+    
+    // TTL for automatic data cleanup - 1 year retention for sessions
+    expiresAt: {
+        type: Date,
+        default: () => {
+            const date = new Date();
+            date.setFullYear(date.getFullYear() + 1);
+            return date;
+        },
+        index: { expires: 0 }
+    }
 }, { timestamps: true });
 
-// Add index for sessionId and userId
+// Compound indexes for efficient querying
 sessionSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
+sessionSchema.index({ siteId: 1, isWeb3User: 1 });
+sessionSchema.index({ siteId: 1, startTime: -1 });
+sessionSchema.index({ userId: 1, startTime: -1 });
+sessionSchema.index({ 'wallet.walletAddress': 1 }, { sparse: true });
 
 // Pre-save middleware to update session data
 sessionSchema.pre('save', function(next) {
@@ -101,6 +129,9 @@ sessionSchema.pre('save', function(next) {
         this.visitedPages[this.visitedPages.length - 1].isExit = true;
     }
     
+    // Generate text content for vector search
+    this.generateTextContent();
+    
     next();
 });
 
@@ -145,13 +176,134 @@ sessionSchema.methods.addPageView = async function(pagePath) {
     await this.save();
 };
 
-// Add a static method to find previous session of a user
+// Instance method to generate text content for vector search
+sessionSchema.methods.generateTextContent = function() {
+    let text = '';
+    
+    if (this.siteId) {
+        text += `Site ID: ${this.siteId}\n`;
+    }
+    
+    if (this.userId) {
+        text += `User ID: ${this.userId}\n`;
+    }
+    
+    if (this.country) {
+        text += `Country: ${this.country}\n`;
+    }
+    
+    if (this.browser && this.browser.name) {
+        text += `Browser: ${this.browser.name} ${this.browser.version || ''}\n`;
+    }
+    
+    if (this.device && this.device.os) {
+        text += `Device: ${this.device.type || 'Unknown'} - ${this.device.os}\n`;
+    }
+    
+    if (this.isWeb3User && this.wallet) {
+        text += `Web3 User: ${this.wallet.walletType || 'Unknown'} wallet on ${this.wallet.chainName || 'Unknown'} chain\n`;
+    }
+    
+    text += `Session Duration: ${this.duration} seconds\n`;
+    text += `Pages Viewed: ${this.pagesViewed}\n`;
+    text += `Bounce: ${this.isBounce ? 'Yes' : 'No'}\n`;
+    
+    if (this.entryPage) {
+        text += `Entry Page: ${this.entryPage}\n`;
+    }
+    
+    if (this.exitPage) {
+        text += `Exit Page: ${this.exitPage}\n`;
+    }
+    
+    if (this.utmData && this.utmData.source) {
+        text += `Traffic Source: ${this.utmData.source} / ${this.utmData.medium || 'Unknown'}\n`;
+        if (this.utmData.campaign) {
+            text += `Campaign: ${this.utmData.campaign}\n`;
+        }
+    }
+    
+    // Add visited pages information
+    if (this.visitedPages && this.visitedPages.length > 0) {
+        text += 'Page Journey:\n';
+        this.visitedPages.forEach((page, index) => {
+            text += `${index + 1}. ${page.path}\n`;
+        });
+    }
+    
+    this.textContent = text;
+    return text;
+};
+
+// Static method to find previous session of a user
 sessionSchema.statics.findPreviousSession = async function(userId, siteId, currentSessionStartTime) {
     return this.findOne({
         userId: userId,
         siteId: siteId,
         startTime: { $lt: currentSessionStartTime }
     }).sort({ startTime: -1 });
+};
+
+// Static method to get session analytics for a site
+sessionSchema.statics.getSessionAnalytics = async function(siteId, dateRange = {}) {
+    const matchStage = { siteId };
+    
+    if (dateRange.start && dateRange.end) {
+        matchStage.startTime = {
+            $gte: new Date(dateRange.start),
+            $lte: new Date(dateRange.end)
+        };
+    }
+    
+    const pipeline = [
+        { $match: matchStage },
+        {
+            $group: {
+                _id: null,
+                totalSessions: { $sum: 1 },
+                uniqueUsers: { $addToSet: '$userId' },
+                web3Sessions: {
+                    $sum: { $cond: [{ $eq: ['$isWeb3User', true] }, 1, 0] }
+                },
+                totalDuration: { $sum: '$duration' },
+                totalPageViews: { $sum: '$pagesViewed' },
+                bounces: {
+                    $sum: { $cond: [{ $eq: ['$isBounce', true] }, 1, 0] }
+                },
+                avgPagesPerSession: { $avg: '$pagesViewed' },
+                countries: { $addToSet: '$country' },
+                browsers: { $addToSet: '$browser.name' }
+            }
+        },
+        {
+            $addFields: {
+                uniqueVisitors: { $size: '$uniqueUsers' },
+                avgSessionDuration: {
+                    $cond: [
+                        { $gt: ['$totalSessions', 0] },
+                        { $divide: ['$totalDuration', '$totalSessions'] },
+                        0
+                    ]
+                },
+                bounceRate: {
+                    $cond: [
+                        { $gt: ['$totalSessions', 0] },
+                        { $multiply: [{ $divide: ['$bounces', '$totalSessions'] }, 100] },
+                        0
+                    ]
+                },
+                web3ConversionRate: {
+                    $cond: [
+                        { $gt: ['$totalSessions', 0] },
+                        { $multiply: [{ $divide: ['$web3Sessions', '$totalSessions'] }, 100] },
+                        0
+                    ]
+                }
+            }
+        }
+    ];
+    
+    return this.aggregate(pipeline);
 };
 
 const Session = mongoose.model('Session', sessionSchema);
