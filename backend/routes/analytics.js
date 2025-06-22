@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const cors = require('cors');
 const AnalyticsProcessor = require('../utils/analyticsProcessor');
-const analyticsController = require('../controllers/analyticsController');
-const { authMiddleware } = require('../middleware/authMiddleware');
 
 // Configure CORS for analytics endpoints
 const corsOptions = {
@@ -337,23 +335,5 @@ router.post('/process-journeys', async (req, res) => {
     });
   }
 });
-
-// Analytics overview - main dashboard data
-router.get('/overview/:siteId', authMiddleware, analyticsController.getAnalyticsOverview);
-
-// Session data with filtering and pagination
-router.get('/sessions/:siteId', authMiddleware, analyticsController.getSessionData);
-
-// Page analytics - page views, entry/exit pages
-router.get('/pages/:siteId', authMiddleware, analyticsController.getPageAnalytics);
-
-// Event analytics - granular event tracking
-router.get('/events/:siteId', authMiddleware, analyticsController.getEventAnalytics);
-
-// Real-time analytics - live data
-router.get('/realtime/:siteId', authMiddleware, analyticsController.getRealTimeAnalytics);
-
-// Update analytics - trigger recalculation
-router.post('/update', authMiddleware, analyticsController.updateAnalytics);
 
 module.exports = router; 

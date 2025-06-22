@@ -312,8 +312,6 @@ app.use("/api/onchain", cors(mainCorsOptions), require("./routes/onChainRouter")
 app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
-app.use("/api/migration", cors(mainCorsOptions), require("./routes/migration"));
-app.use("/api/rag", cors(mainCorsOptions), require("./routes/ragRouter"));
 
 // Load AI router with explicit error handling
 try {
@@ -507,12 +505,6 @@ async function handleSubscriptionEvent(subscription, eventType) {
   }
 }
 
-// For local development
-if (process.env.NODE_ENV !== 'production') {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-}
-
-// Export the Express app for Vercel serverless deployment
-module.exports = app;
