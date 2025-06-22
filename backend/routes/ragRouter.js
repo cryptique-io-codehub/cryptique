@@ -2,13 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const RAGService = require('../services/ragService');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 // Initialize RAG service
 const ragService = new RAGService();
 
 // Middleware for all RAG routes
-router.use(verifyToken);
+router.use(authMiddleware);
 
 /**
  * POST /api/rag/insights

@@ -1,19 +1,10 @@
 {
   "version": 2,
-  "name": "cryptique-backend",
-  "functions": {
-    "index.js": {
-      "runtime": "@vercel/node@3.0.7"
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.js"
+      "source": "/(.*)",
+      "destination": "/api"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
 
