@@ -1,69 +1,61 @@
 {
   "version": 2,
   "name": "cryptique-backend-optimized",
-  "builds": [
-    {
-      "src": "index.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/health",
-      "dest": "/index.js"
+      "dest": "/api/health"
     },
     {
       "src": "/api/analytics/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/analytics/$1"
     },
     {
       "src": "/api/users/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/users/$1"
     },
     {
       "src": "/api/teams/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/teams/$1"
     },
     {
       "src": "/api/websites/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/websites/$1"
     },
     {
       "src": "/api/smartcontracts/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/smartcontracts/$1"
     },
     {
       "src": "/api/sdk/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/sdk/$1"
     },
     {
       "src": "/api/onchain/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/onchain/$1"
     },
     {
       "src": "/api/campaigns/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/campaigns/$1"
     },
     {
       "src": "/api/transactions/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/transactions/$1"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/index.js"
+      "dest": "/api/$1"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "MONGODB_URI": "@mongodb_uri",
     "GEMINI_API_KEY": "@gemini_api_key"
-  },
-  "functions": {
-    "index.js": {
-      "maxDuration": 30
-    }
   }
 }

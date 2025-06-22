@@ -2,22 +2,23 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "api/handler.js",
   "scripts": {
-    "start": "nodemon index.js",
+    "start": "nodemon api/handler.js",
     "test:pre-deploy": "node scripts/preDeploymentTest.js",
     "migrate:phase1": "node scripts/migration/phase1Migration.js",
     "migrate:rollback": "node scripts/migration/phase1Migration.js --rollback",
     "deploy:phase1": "node scripts/deploy.js",
-    "deploy:phase1:full": "node scripts/deploy.js --migrate --deploy"
+    "deploy:phase1:full": "node scripts/deploy.js --migrate --deploy",
+    "vercel-build": "echo 'Building Vercel deployment'"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@duneanalytics/client-sdk": "^0.2.5",
     "@google/generative-ai": "^0.19.0",
+    "@vercel/node": "^3.0.0",
     "axios": "^1.8.4",
-    "backend": "file:",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cheerio": "^1.0.0",
@@ -35,5 +36,8 @@
     "puppeteer": "^24.5.0",
     "stripe": "^18.1.0",
     "uuid": "^11.1.0"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }
