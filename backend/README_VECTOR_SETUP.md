@@ -288,7 +288,7 @@ Monitor system performance:
 ```javascript
 const geminiService = require('./services/geminiEmbeddingService');
 
-// Listen to service events
+// Listen to service event
 geminiService.on('embeddingGenerated', (data) => {
   console.log('Embedding generated:', data);
 });
