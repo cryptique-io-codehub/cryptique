@@ -1,0 +1,888 @@
+const mongoose = require('mongoose');
+const EventEmitter = require('events');
+const PipelineOrchestrationService = require('../services/pipelineOrchestrationService');
+const EmbeddingJob = require('../models/embeddingJob');
+const EmbeddingStats = require('../models/embeddingStats');
+
+// Mock data for testing
+const mockJobData = {
+  source: 'analytics',
+  documentIds: [
+    new mongoose.Types.ObjectId(),
+    new mongoose.Types.ObjectId(),
+    new mongoose.Types.ObjectId()
+  ],
+  batchSize: 10,
+  priority: 'medium',
+  configuration: {
+    chunkSize: 1000,
+    chunkOverlap: 200
+  },
+  metadata: {
+    testJob: true,
+    requestedBy: 'test-suite'
+  }
+};
+
+const mockHighPriorityJob = {
+  ...mockJobData,
+  priority: 'high',
+  source: 'transactions'
+};
+
+const mockLowPriorityJob = {
+  ...mockJobData,
+  priority: 'low',
+  source: 'users'
+};
+
+// Mock mongoose models for testing
+const mockAnalyticsModel = {
+  find: jest.fn(),
+  findById: jest.fn()
+};
+
+const mockTransactionsModel = {
+  find: jest.fn(),
+  findById: jest.fn()
+};
+
+describe('PipelineOrchestrationService', () => {
+  let service;
+  let eventSpy;
+  
+  before(async () => {
+    // Connect to test database
+    const mongoUri = process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/cryptique_test';
+    await mongoose.connect(mongoUri);
+    
+    // Mock mongoose models
+    const originalModel = mongoose.model;
+    mongoose.model = function(modelName) {
+      switch (modelName) {
+        case 'analytics':
+          return mockAnalyticsModel;
+        case 'transactions':
+          return mockTransactionsModel;
+        default:
+          return mockAnalyticsModel;
+      }
+    };
+  });
+  
+  beforeEach(async () => {
+    // Clean up test data
+    await EmbeddingJob.deleteMany({});
+    await EmbeddingStats.deleteMany({});
+    
+    // Create service with test configuration
+    service = new PipelineOrchestrationService({
+      maxConcurrentJobs: 2,
+      maxRetries: 2,
+      retryDelayMs: 100,
+      healthCheckInterval: 1000,
+      cleanupInterval: 5000,
+      jobTimeout: 5000,
+      documentProcessing: {
+        chunkSize: 500,
+        chunkOverlap: 100,
+        batchSize: 5
+      }
+    });
+    
+    // Set up event spy
+    eventSpy = {
+      'job-queued': function() {},
+      'job-started': function() {},
+      'job-completed': function() {},
+      'job-failed': function() {},
+      'job-retry': function() {},
+      'job-timeout': function() {},
+      'health-check': function() {},
+      'pipeline-paused': function() {},
+      'pipeline-resumed': function() {},
+      'pipeline-stopped': function() {}
+    };
+    
+    Object.keys(eventSpy).forEach(event => {
+      service.on(event, eventSpy[event]);
+    });
+    
+    // Mock document data
+    mockAnalyticsModel.find = function() {
+      return Promise.resolve([
+        { _id: new mongoose.Types.ObjectId(), content: 'Analytics doc 1' },
+        { _id: new mongoose.Types.ObjectId(), content: 'Analytics doc 2' }
+      ]);
+    };
+    
+    mockTransactionsModel.find = function() {
+      return Promise.resolve([
+        { _id: new mongoose.Types.ObjectId(), content: 'Transaction doc 1' }
+      ]);
+    };
+  });
+  
+  afterEach(async () => {
+    await service.stop();
+    service.removeAllListeners();
+  });
+  
+  after(async () => {
+    await mongoose.connection.close();
+  });
+
+  describe('Job Queue Management', () => {
+    test('should add job to queue successfully', async () => {
+      const jobId = await service.addJob(mockJobData);
+      
+      expect(jobId).toBeDefined();
+      expect(typeof jobId).toBe('string');
+      
+      // Check job was created in database
+      const job = await EmbeddingJob.findById(jobId);
+      expect(job).toBeDefined();
+      expect(job.source).toBe('analytics');
+      expect(job.status).toBe('queued');
+      expect(job.priority).toBe('medium');
+      
+      // Check event was emitted
+      expect(eventSpy['job-queued']).toHaveBeenCalledWith({
+        jobId,
+        source: 'analytics',
+        priority: 'medium',
+        queuePosition: 1
+      });
+    });
+
+    test('should validate job data before adding', async () => {
+      const invalidJobs = [
+        {}, // Missing source
+        { source: '' }, // Empty source
+        { source: 'test', priority: 'invalid' }, // Invalid priority
+        { source: 'test', batchSize: 0 }, // Invalid batch size
+        { source: 'test', batchSize: 2000 } // Batch size too large
+      ];
+      
+      for (const invalidJob of invalidJobs) {
+        await expect(service.addJob(invalidJob)).rejects.toThrow();
+      }
+    });
+
+    test('should handle multiple jobs in queue', async () => {
+      const jobs = [mockJobData, mockHighPriorityJob, mockLowPriorityJob];
+      const jobIds = [];
+      
+      for (const jobData of jobs) {
+        const jobId = await service.addJob(jobData);
+        jobIds.push(jobId);
+      }
+      
+      expect(jobIds.length).toBe(3);
+      
+      // Check queue metrics
+      const metrics = service.getMetrics();
+      expect(metrics.queueLength).toBeGreaterThanOrEqual(0); // Jobs may have started processing
+    });
+
+    test('should start processing automatically when jobs are added', async () => {
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait a bit for processing to start
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check that job processing started
+      expect(eventSpy['job-queued']).toHaveBeenCalled();
+      
+      // Job should eventually start processing
+      const job = await EmbeddingJob.findById(jobId);
+      expect(job.queuedAt).toBeDefined();
+    });
+  });
+
+  describe('Queue Behavior Under Load', () => {
+    test('should handle high volume of jobs', async () => {
+      const numJobs = 20;
+      const jobPromises = [];
+      
+      // Add many jobs quickly
+      for (let i = 0; i < numJobs; i++) {
+        const jobData = {
+          ...mockJobData,
+          source: `test-source-${i}`,
+          metadata: { jobIndex: i }
+        };
+        jobPromises.push(service.addJob(jobData));
+      }
+      
+      const jobIds = await Promise.all(jobPromises);
+      
+      expect(jobIds.length).toBe(numJobs);
+      
+      // All jobs should be unique
+      const uniqueIds = new Set(jobIds);
+      expect(uniqueIds.size).toBe(numJobs);
+      
+      // Check that jobs were created in database
+      const jobs = await EmbeddingJob.find({ 'metadata.jobIndex': { $exists: true } });
+      expect(jobs.length).toBe(numJobs);
+    });
+
+    test('should respect max concurrent jobs limit', async () => {
+      const maxConcurrent = 2;
+      service.maxConcurrentJobs = maxConcurrent;
+      
+      // Add more jobs than the concurrent limit
+      const jobPromises = [];
+      for (let i = 0; i < 5; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `concurrent-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Wait for processing to start
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Should not exceed max concurrent jobs
+      expect(service.activeJobs.size).toBeLessThanOrEqual(maxConcurrent);
+    });
+
+    test('should maintain queue order for same priority jobs', async () => {
+      const jobs = [];
+      
+      // Add jobs with same priority in sequence
+      for (let i = 0; i < 5; i++) {
+        const jobId = await service.addJob({
+          ...mockJobData,
+          source: `ordered-test-${i}`,
+          priority: 'medium',
+          metadata: { order: i }
+        });
+        jobs.push(jobId);
+      }
+      
+      // Check that jobs were queued in order
+      const queuedJobs = await EmbeddingJob.find({
+        'metadata.order': { $exists: true }
+      }).sort({ queuedAt: 1 });
+      
+      queuedJobs.forEach((job, index) => {
+        expect(job.metadata.order).toBe(index);
+      });
+    });
+
+    test('should handle queue processing when service is busy', async () => {
+      // Fill up the active jobs
+      const activeJobPromises = [];
+      for (let i = 0; i < service.maxConcurrentJobs; i++) {
+        activeJobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `busy-test-${i}`
+        }));
+      }
+      
+      await Promise.all(activeJobPromises);
+      
+      // Add more jobs that should be queued
+      const queuedJobPromises = [];
+      for (let i = 0; i < 3; i++) {
+        queuedJobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `queued-test-${i}`
+        }));
+      }
+      
+      const queuedJobIds = await Promise.all(queuedJobPromises);
+      
+      // These jobs should be queued, not immediately active
+      const metrics = service.getMetrics();
+      expect(metrics.queueLength + metrics.activeJobs).toBeGreaterThanOrEqual(queuedJobIds.length);
+    });
+  });
+
+  describe('Progress Tracking', () => {
+    test('should track job progress accurately', async () => {
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for job to start
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const job = await EmbeddingJob.findById(jobId);
+      
+      expect(job.progress).toBeDefined();
+      expect(job.progress).toHaveProperty('stage');
+      expect(job.progress).toHaveProperty('percentage');
+      expect(job.progress.percentage).toBeGreaterThanOrEqual(0);
+      expect(job.progress.percentage).toBeLessThanOrEqual(100);
+    });
+
+    test('should update progress through different stages', async () => {
+      const jobId = await service.addJob(mockJobData);
+      
+      // Monitor progress changes
+      const progressUpdates = [];
+      const checkProgress = async () => {
+        const job = await EmbeddingJob.findById(jobId);
+        if (job) {
+          progressUpdates.push({
+            stage: job.progress.stage,
+            percentage: job.progress.percentage,
+            timestamp: new Date()
+          });
+        }
+      };
+      
+      // Check progress periodically
+      const interval = setInterval(checkProgress, 50);
+      
+      // Wait for job to complete or timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      clearInterval(interval);
+      
+      // Should have multiple progress updates
+      expect(progressUpdates.length).toBeGreaterThan(0);
+      
+      // Progress should be monotonically increasing
+      for (let i = 1; i < progressUpdates.length; i++) {
+        expect(progressUpdates[i].percentage).toBeGreaterThanOrEqual(
+          progressUpdates[i - 1].percentage
+        );
+      }
+    }, 10000);
+
+    test('should track performance metrics', async () => {
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for job to complete or make significant progress
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const job = await EmbeddingJob.findById(jobId);
+      
+      expect(job.performance).toBeDefined();
+      expect(job.performance.totalTime).toBeGreaterThanOrEqual(0);
+      
+      if (job.status === 'completed') {
+        expect(job.performance.documentsProcessed).toBeGreaterThanOrEqual(0);
+        expect(job.performance.chunksGenerated).toBeGreaterThanOrEqual(0);
+        expect(job.performance.embeddingsGenerated).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    test('should maintain accurate queue and active job counts', async () => {
+      const initialMetrics = service.getMetrics();
+      
+      // Add several jobs
+      const jobPromises = [];
+      for (let i = 0; i < 4; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `metrics-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Check metrics after adding jobs
+      const metricsAfterAdd = service.getMetrics();
+      expect(metricsAfterAdd.queueLength + metricsAfterAdd.activeJobs).toBeGreaterThan(
+        initialMetrics.queueLength + initialMetrics.activeJobs
+      );
+      
+      // Wait for some processing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Metrics should be updated
+      const finalMetrics = service.getMetrics();
+      expect(finalMetrics.totalJobsProcessed).toBeGreaterThanOrEqual(initialMetrics.totalJobsProcessed);
+    });
+  });
+
+  describe('Failure Recovery', () => {
+    test('should retry failed jobs', async () => {
+      // Mock a service that will fail initially
+      const originalExecuteJob = service.executeJob;
+      let attemptCount = 0;
+      
+      service.executeJob = async function(job) {
+        attemptCount++;
+        if (attemptCount <= 2) {
+          throw new Error('Simulated processing error');
+        }
+        return originalExecuteJob.call(service, job);
+      };
+      
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for retries to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check that job was retried
+      // expect(eventSpy['job-retry']).toHaveBeenCalled();
+      expect(attemptCount).to.be.greaterThan(1);
+      
+      const job = await EmbeddingJob.findById(jobId);
+      expect(job.retryCount).toBeGreaterThan(0);
+    });
+
+    test('should fail job after max retry attempts', async () => {
+      // Mock a service that always fails
+      service.executeJob = jest.fn().mockRejectedValue(new Error('Persistent error'));
+      
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for all retries to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const job = await EmbeddingJob.findById(jobId);
+      
+      expect(job.status).toBe('failed');
+      expect(job.retryCount).toBe(service.maxRetries);
+      expect(job.error).toBeDefined();
+      expect(job.error.message).toBe('Persistent error');
+      expect(job.failedAt).toBeDefined();
+      
+      // Should emit job failed event
+      expect(eventSpy['job-failed']).toHaveBeenCalled();
+    });
+
+    test('should handle job timeout', async () => {
+      // Mock a service that takes too long
+      service.executeJob = jest.fn().mockImplementation(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Longer than timeout
+      });
+      
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for timeout to occur
+      await new Promise(resolve => setTimeout(resolve, 6000));
+      
+      const job = await EmbeddingJob.findById(jobId);
+      
+      expect(job.status).toBe('failed');
+      expect(job.error.type).toBe('TIMEOUT');
+      expect(eventSpy['job-timeout']).toHaveBeenCalled();
+    }, 15000);
+
+    test('should handle database connection errors gracefully', async () => {
+      // Mock database error
+      const originalFindById = EmbeddingJob.findById;
+      EmbeddingJob.findById = jest.fn().mockRejectedValue(new Error('Database connection lost'));
+      
+      const jobId = await service.addJob(mockJobData);
+      
+      // Wait for error to occur
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Service should handle the error gracefully
+      const metrics = service.getMetrics();
+      expect(metrics.totalJobsFailed).toBeGreaterThanOrEqual(0);
+      
+      // Restore original method
+      EmbeddingJob.findById = originalFindById;
+    });
+
+    test('should recover from service errors and continue processing', async () => {
+      let errorCount = 0;
+      const originalExecuteJob = service.executeJob;
+      
+      service.executeJob = jest.fn().mockImplementation(async (job) => {
+        errorCount++;
+        if (errorCount <= 1) {
+          throw new Error('Temporary service error');
+        }
+        return originalExecuteJob.call(service, job);
+      });
+      
+      // Add multiple jobs
+      const jobPromises = [];
+      for (let i = 0; i < 3; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `recovery-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Some jobs should succeed despite initial failures
+      const jobs = await EmbeddingJob.find({
+        source: { $regex: /^recovery-test-/ }
+      });
+      
+      const succeededJobs = jobs.filter(job => job.status === 'completed');
+      const failedJobs = jobs.filter(job => job.status === 'failed');
+      
+      expect(succeededJobs.length + failedJobs.length).toBe(3);
+      expect(succeededJobs.length).toBeGreaterThan(0); // At least some should succeed
+    });
+  });
+
+  describe('Monitoring and Health Checks', () => {
+    test('should perform regular health checks', async () => {
+      // Wait for at least one health check
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      expect(eventSpy['health-check']).toHaveBeenCalled();
+      
+      const healthStatus = service.getHealthStatus();
+      expect(healthStatus).toHaveProperty('status');
+      expect(healthStatus).toHaveProperty('uptime');
+      expect(healthStatus).toHaveProperty('activeJobs');
+      expect(healthStatus).toHaveProperty('queueLength');
+      expect(healthStatus).toHaveProperty('successRate');
+    });
+
+    test('should provide comprehensive metrics', async () => {
+      const metrics = service.getMetrics();
+      
+      expect(metrics).toHaveProperty('totalJobsProcessed');
+      expect(metrics).toHaveProperty('totalJobsFailed');
+      expect(metrics).toHaveProperty('averageProcessingTime');
+      expect(metrics).toHaveProperty('queueLength');
+      expect(metrics).toHaveProperty('activeJobs');
+      expect(metrics).toHaveProperty('healthStatus');
+      expect(metrics).toHaveProperty('performance');
+      expect(metrics).toHaveProperty('services');
+      
+      expect(metrics.services).toHaveProperty('documentProcessor');
+      expect(metrics.services).toHaveProperty('embeddingService');
+    });
+
+    test('should track performance metrics over time', async () => {
+      // Add and process some jobs
+      const jobPromises = [];
+      for (let i = 0; i < 3; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `perf-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const metrics = service.getMetrics();
+      
+      // Performance arrays should be populated
+      expect(Array.isArray(metrics.performance.processedJobs)).toBe(true);
+      expect(Array.isArray(metrics.performance.errorRates)).toBe(true);
+      expect(Array.isArray(metrics.performance.throughput)).toBe(true);
+      expect(Array.isArray(metrics.performance.resourceUsage)).toBe(true);
+    });
+
+    test('should monitor database health', async () => {
+      const health = await service.performHealthCheck();
+      
+      expect(health).toHaveProperty('checks');
+      expect(health.checks).toHaveProperty('database');
+      expect(health.checks.database).toHaveProperty('healthy');
+      
+      if (health.checks.database.healthy) {
+        expect(health.checks.database).toHaveProperty('responseTime');
+      } else {
+        expect(health.checks.database).toHaveProperty('error');
+      }
+    });
+
+    test('should monitor service health', async () => {
+      const health = await service.performHealthCheck();
+      
+      expect(health.checks).toHaveProperty('embeddingService');
+      expect(health.checks).toHaveProperty('processingService');
+      
+      expect(health.checks.embeddingService).toHaveProperty('healthy');
+      expect(health.checks.processingService).toHaveProperty('healthy');
+    });
+
+    test('should calculate overall health status', async () => {
+      const health = await service.performHealthCheck();
+      
+      expect(['healthy', 'degraded', 'unhealthy']).toContain(health.status);
+      
+      // Status should reflect the state of individual checks
+      const failedChecks = Object.values(health.checks).filter(check => !check.healthy);
+      
+      if (failedChecks.length === 0) {
+        expect(health.status).toBe('healthy');
+      } else if (failedChecks.length === Object.keys(health.checks).length) {
+        expect(health.status).toBe('unhealthy');
+      } else {
+        expect(health.status).toBe('degraded');
+      }
+    });
+  });
+
+  describe('Concurrent Job Processing', () => {
+    test('should process multiple jobs concurrently', async () => {
+      const jobPromises = [];
+      const startTime = Date.now();
+      
+      // Add jobs that should be processed concurrently
+      for (let i = 0; i < 4; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `concurrent-${i}`,
+          metadata: { startTime, index: i }
+        }));
+      }
+      
+      const jobIds = await Promise.all(jobPromises);
+      
+      // Wait for processing to start
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Should have jobs running concurrently
+      expect(service.activeJobs.size).toBeGreaterThan(0);
+      expect(service.activeJobs.size).toBeLessThanOrEqual(service.maxConcurrentJobs);
+      
+      // Wait for more processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check that jobs were processed
+      const jobs = await EmbeddingJob.find({
+        _id: { $in: jobIds }
+      });
+      
+      const processingJobs = jobs.filter(job => 
+        job.status === 'processing' || job.status === 'completed'
+      );
+      
+      expect(processingJobs.length).toBeGreaterThan(0);
+    });
+
+    test('should handle concurrent job failures', async () => {
+      // Mock failures for some jobs
+      let jobCount = 0;
+      const originalExecuteJob = service.executeJob;
+      
+      service.executeJob = jest.fn().mockImplementation(async (job) => {
+        jobCount++;
+        if (jobCount % 2 === 0) {
+          throw new Error(`Concurrent job ${jobCount} failed`);
+        }
+        return originalExecuteJob.call(service, job);
+      });
+      
+      const jobPromises = [];
+      for (let i = 0; i < 4; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `concurrent-fail-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Should have both successful and failed jobs
+      const metrics = service.getMetrics();
+      expect(metrics.totalJobsProcessed + metrics.totalJobsFailed).toBeGreaterThan(0);
+    });
+
+    test('should maintain job isolation during concurrent processing', async () => {
+      const jobs = [];
+      
+      // Add jobs with different configurations
+      for (let i = 0; i < 3; i++) {
+        const jobId = await service.addJob({
+          source: `isolation-test-${i}`,
+          batchSize: 5 + i,
+          priority: i === 0 ? 'high' : 'medium',
+          configuration: {
+            chunkSize: 1000 + (i * 200),
+            chunkOverlap: 200 + (i * 50)
+          },
+          metadata: { isolationTest: true, jobIndex: i }
+        });
+        jobs.push(jobId);
+      }
+      
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check that each job maintained its configuration
+      const dbJobs = await EmbeddingJob.find({
+        _id: { $in: jobs }
+      });
+      
+      dbJobs.forEach((job, index) => {
+        expect(job.metadata.jobIndex).toBe(index);
+        expect(job.batchSize).toBe(5 + index);
+        expect(job.configuration.chunkSize).toBe(1000 + (index * 200));
+      });
+    });
+
+    test('should handle resource contention gracefully', async () => {
+      // Create a high-load scenario
+      const highLoadJobs = [];
+      
+      for (let i = 0; i < 10; i++) {
+        highLoadJobs.push(service.addJob({
+          ...mockJobData,
+          source: `load-test-${i}`,
+          batchSize: 20,
+          metadata: { loadTest: true }
+        }));
+      }
+      
+      await Promise.all(highLoadJobs);
+      
+      // Monitor resource usage
+      const initialMetrics = service.getMetrics();
+      
+      // Wait for processing under load
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const finalMetrics = service.getMetrics();
+      
+      // System should remain stable
+      expect(finalMetrics.healthStatus).not.toBe('unhealthy');
+      expect(service.activeJobs.size).toBeLessThanOrEqual(service.maxConcurrentJobs);
+    });
+  });
+
+  describe('Service Management', () => {
+    test('should pause and resume processing', async () => {
+      // Add jobs
+      const jobPromises = [];
+      for (let i = 0; i < 3; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `pause-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Pause processing
+      service.pause();
+      expect(eventSpy['pipeline-paused']).toHaveBeenCalled();
+      
+      // Wait and check that processing is paused
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Resume processing
+      service.resume();
+      expect(eventSpy['pipeline-resumed']).toHaveBeenCalled();
+      
+      // Processing should continue
+      await new Promise(resolve => setTimeout(resolve, 500));
+    });
+
+    test('should stop service gracefully', async () => {
+      // Add a job
+      await service.addJob(mockJobData);
+      
+      // Stop service
+      await service.stop();
+      
+      expect(eventSpy['pipeline-stopped']).toHaveBeenCalled();
+      expect(service.processingQueue).toBe(false);
+      expect(service.activeJobs.size).toBe(0);
+      expect(service.jobQueue.length).toBe(0);
+    });
+
+    test('should clean up completed jobs', async () => {
+      // Create some old completed jobs
+      const oldJob = new EmbeddingJob({
+        source: 'cleanup-test',
+        status: 'completed',
+        completedAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago
+        queuedAt: new Date(Date.now() - 26 * 60 * 60 * 1000)
+      });
+      
+      await oldJob.save();
+      
+      // Trigger cleanup
+      await service.cleanupCompletedJobs();
+      
+      // Old job should be removed
+      const cleanedJob = await EmbeddingJob.findById(oldJob._id);
+      expect(cleanedJob).toBeNull();
+    });
+  });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle malformed job data', async () => {
+      const malformedJobs = [
+        null,
+        undefined,
+        '',
+        123,
+        [],
+        { source: null },
+        { source: 'test', documentIds: 'not-an-array' }
+      ];
+      
+      for (const malformedJob of malformedJobs) {
+        await expect(service.addJob(malformedJob)).rejects.toThrow();
+      }
+    });
+
+    test('should handle database errors during job creation', async () => {
+      // Mock database save error
+      const originalSave = EmbeddingJob.prototype.save;
+      EmbeddingJob.prototype.save = jest.fn().mockRejectedValue(new Error('Database error'));
+      
+      await expect(service.addJob(mockJobData)).rejects.toThrow('Database error');
+      
+      // Restore original method
+      EmbeddingJob.prototype.save = originalSave;
+    });
+
+    test('should handle missing source models', async () => {
+      mongoose.model = jest.fn().mockImplementation(() => {
+        throw new Error('Model not found');
+      });
+      
+      const jobId = await service.addJob({
+        ...mockJobData,
+        source: 'nonexistent-source'
+      });
+      
+      // Wait for processing to attempt
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const job = await EmbeddingJob.findById(jobId);
+      
+      // Job should fail due to missing model
+      expect(job.status).toBe('failed');
+      expect(job.error).toBeDefined();
+    });
+
+    test('should handle service shutdown during active processing', async () => {
+      // Add jobs
+      const jobPromises = [];
+      for (let i = 0; i < 3; i++) {
+        jobPromises.push(service.addJob({
+          ...mockJobData,
+          source: `shutdown-test-${i}`
+        }));
+      }
+      
+      await Promise.all(jobPromises);
+      
+      // Wait for processing to start
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const activeJobsBeforeShutdown = service.activeJobs.size;
+      
+      // Shutdown during processing
+      await service.stop();
+      
+      // Service should clean up gracefully
+      expect(service.activeJobs.size).toBe(0);
+      expect(service.processingQueue).toBe(false);
+    });
+  });
+}); 

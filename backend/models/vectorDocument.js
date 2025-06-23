@@ -38,15 +38,15 @@ const vectorDocumentSchema = new mongoose.Schema({
     index: true
   },
   
-  // Vector embedding (768 dimensions for Gemini text-embedding-004)
+  // Vector embedding (1536 dimensions for Gemini text-embedding-004)
   embedding: {
     type: [Number],
     required: true,
     validate: {
       validator: function(arr) {
-        return arr.length === 768; // Gemini embedding dimension
+        return arr.length === 1536; // Gemini embedding dimension
       },
-      message: 'Embedding must have exactly 768 dimensions'
+      message: 'Embedding must have exactly 1536 dimensions'
     }
   },
   
@@ -55,6 +55,15 @@ const vectorDocumentSchema = new mongoose.Schema({
     type: String,
     required: true,
     maxlength: 8000 // Reasonable limit for content
+  },
+
+  // Source reference for backward compatibility
+  source: {
+    type: String,
+    required: true,
+    default: function() {
+      return `${this.sourceType}:${this.sourceId}`;
+    }
   },
   
   // Content summary for quick reference

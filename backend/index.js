@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
+const logger = require("./config/logger");
 const userRouter = require("./routes/userRouter");
 const campaignRouter = require("./routes/campaignRouter");
 const stripeRouter = require("./routes/stripeRouter");
@@ -122,10 +123,17 @@ console.log('Main app environment check:', {
 // Connect to MongoDB using secure configuration
 connectToDatabase()
   .then(() => {
-    console.log('MongoDB connection established successfully');
+    logger.info('MongoDB connection established successfully', {
+      component: 'database',
+      nodeEnv: process.env.NODE_ENV
+    });
   })
   .catch(err => {
-    console.error('MongoDB connection failed:', err);
+    logger.error('MongoDB connection failed', {
+      error: err.message,
+      stack: err.stack,
+      component: 'database'
+    });
     process.exit(1); // Exit on database connection failure
   });
 

@@ -1,0 +1,632 @@
+const mongoose = require('mongoose');
+const DocumentProcessingService = require('../services/documentProcessingService');
+
+// Mock models for testing
+const mockAnalyticsDoc = {
+  _id: new mongoose.Types.ObjectId(),
+  content: 'This is a sample analytics document with user interaction data. The user clicked on button A and then navigated to page B. Session duration was 5 minutes with 3 page views. Transaction hash 0x1234567890abcdef shows successful payment.',
+  eventType: 'click',
+  websiteId: 'website123',
+  userId: 'user456',
+  sessionId: 'session789',
+  createdAt: new Date('2024-01-15'),
+  updatedAt: new Date('2024-01-15')
+};
+
+const mockTransactionDoc = {
+  _id: new mongoose.Types.ObjectId(),
+  content: 'Smart contract transaction executed successfully. Contract address 0xabcdef1234567890 on Ethereum mainnet. Gas used: 21000, Gas price: 20 gwei. Block number 18500000. User transferred 1.5 ETH to recipient address.',
+  transactionHash: '0xabcdef1234567890abcdef1234567890abcdef12',
+  contractAddress: '0x1234567890abcdef1234567890abcdef12345678',
+  chainId: 1,
+  blockNumber: 18500000,
+  createdAt: new Date('2024-01-14'),
+  updatedAt: new Date('2024-01-14')
+};
+
+const mockUserDoc = {
+  _id: new mongoose.Types.ObjectId(),
+  content: 'User profile information and preferences. Premium subscriber since 2023. Active in DeFi protocols including Uniswap and Compound. Portfolio value approximately $50k. Risk tolerance: moderate.',
+  userType: 'premium',
+  createdAt: new Date('2023-06-01'),
+  updatedAt: new Date('2024-01-10')
+};
+
+const mockCampaignDoc = {
+  _id: new mongoose.Types.ObjectId(),
+  content: 'Marketing campaign for Q4 2024 DeFi protocol launch. Target audience: crypto enthusiasts aged 25-45. Budget: $100k. Expected ROI: 300%. Campaign includes social media, influencer partnerships, and community events.',
+  type: 'marketing',
+  status: 'active',
+  startDate: new Date('2024-01-01'),
+  endDate: new Date('2024-03-31'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-15')
+};
+
+// Long content for chunk testing
+const longContent = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(100) +
+  'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. '.repeat(50) +
+  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. '.repeat(30) +
+  'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum. '.repeat(40) +
+  'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui. '.repeat(25) +
+  'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis. '.repeat(35);
+
+const mockLongDoc = {
+  _id: new mongoose.Types.ObjectId(),
+  content: longContent,
+  type: 'long-form',
+  createdAt: new Date('2024-01-15'),
+  updatedAt: new Date('2024-01-15')
+};
+
+describe('DocumentProcessingService', () => {
+  let service;
+  
+  before(async () => {
+    // Connect to test database
+    const mongoUri = process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/cryptique_test';
+    await mongoose.connect(mongoUri);
+  });
+  
+  beforeEach(() => {
+    service = new DocumentProcessingService({
+      chunkSize: 500,
+      chunkOverlap: 100,
+      batchSize: 10,
+      maxConcurrentJobs: 2,
+      memoryThreshold: 50 * 1024 * 1024 // 50MB for testing
+    });
+  });
+  
+  afterEach(() => {
+    service.resetStats();
+  });
+  
+  after(async () => {
+    await mongoose.connection.close();
+  });
+
+  describe('Document Processing', () => {
+    it('should process single document successfully', async () => {
+      const result = await service.processDocument(mockAnalyticsDoc, 'analytics');
+      
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      
+      const firstChunk = result[0];
+      expect(firstChunk).toHaveProperty('content');
+      expect(firstChunk).toHaveProperty('contentType');
+      expect(firstChunk).toHaveProperty('sourceId');
+      expect(firstChunk).toHaveProperty('sourceCollection', 'analytics');
+      expect(firstChunk).toHaveProperty('metadata');
+      expect(firstChunk).toHaveProperty('tags');
+      expect(firstChunk).toHaveProperty('timeframe');
+      expect(firstChunk).toHaveProperty('searchKeywords');
+    });
+
+    test('should handle empty content gracefully', async () => {
+      const emptyDoc = { ...mockAnalyticsDoc, content: '' };
+      const result = await service.processDocument(emptyDoc, 'analytics');
+      
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+
+    test('should throw error for invalid document', async () => {
+      await expect(service.processDocument(null, 'analytics')).rejects.toThrow();
+      await expect(service.processDocument({}, 'analytics')).rejects.toThrow();
+    });
+  });
+
+  describe('Text Chunking', () => {
+    test('should create chunks with correct size and overlap', async () => {
+      const result = await service.processDocument(mockLongDoc, 'test');
+      
+      expect(result.length).toBeGreaterThan(1);
+      
+      // Check chunk sizes
+      result.forEach((chunk, index) => {
+        expect(chunk.content.length).toBeLessThanOrEqual(service.chunkSize + 100); // Allow some flexibility
+        expect(chunk.metadata.chunkIndex).toBe(index);
+        expect(chunk.metadata.chunkLength).toBe(chunk.content.length);
+        expect(chunk.metadata.wordCount).toBeGreaterThan(0);
+      });
+    });
+
+    test('should handle small documents without chunking', async () => {
+      const smallDoc = {
+        ...mockAnalyticsDoc,
+        content: 'This is a small document with minimal content.'
+      };
+      
+      const result = await service.processDocument(smallDoc, 'test');
+      
+      expect(result.length).toBe(1);
+      expect(result[0].content).toBe('This is a small document with minimal content.');
+    });
+
+    test('should respect custom chunk sizes', async () => {
+      const customService = new DocumentProcessingService({
+        chunkSize: 200,
+        chunkOverlap: 50
+      });
+      
+      const result = await customService.processDocument(mockLongDoc, 'test');
+      
+      result.forEach(chunk => {
+        expect(chunk.content.length).toBeLessThanOrEqual(250); // 200 + some flexibility
+      });
+    });
+
+    test('should create meaningful overlap between chunks', async () => {
+      const result = await service.processDocument(mockLongDoc, 'test');
+      
+      if (result.length > 1) {
+        // Check that consecutive chunks have some overlapping content
+        for (let i = 0; i < result.length - 1; i++) {
+          const chunk1 = result[i].content;
+          const chunk2 = result[i + 1].content;
+          
+          // Extract end of first chunk and beginning of second chunk
+          const chunk1End = chunk1.slice(-service.chunkOverlap);
+          const chunk2Start = chunk2.slice(0, service.chunkOverlap);
+          
+          // There should be some similarity or overlap
+          expect(chunk1End.length).toBeGreaterThan(0);
+          expect(chunk2Start.length).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
+
+  describe('Metadata Extraction', () => {
+    test('should extract analytics metadata correctly', async () => {
+      const result = await service.processDocument(mockAnalyticsDoc, 'analytics');
+      const metadata = result[0].metadata;
+      
+      expect(metadata.source).toBe('analytics');
+      expect(metadata.eventType).toBe('click');
+      expect(metadata.websiteId).toBe('website123');
+      expect(metadata.userId).toBe('user456');
+      expect(metadata.sessionId).toBe('session789');
+      expect(metadata.documentId).toEqual(mockAnalyticsDoc._id);
+    });
+
+    test('should extract transaction metadata correctly', async () => {
+      const result = await service.processDocument(mockTransactionDoc, 'transactions');
+      const metadata = result[0].metadata;
+      
+      expect(metadata.source).toBe('transactions');
+      expect(metadata.transactionHash).toBe('0xabcdef1234567890abcdef1234567890abcdef12');
+      expect(metadata.contractAddress).toBe('0x1234567890abcdef1234567890abcdef12345678');
+      expect(metadata.chainId).toBe(1);
+      expect(metadata.blockNumber).toBe(18500000);
+    });
+
+    test('should extract user metadata correctly', async () => {
+      const result = await service.processDocument(mockUserDoc, 'users');
+      const metadata = result[0].metadata;
+      
+      expect(metadata.source).toBe('users');
+      expect(metadata.userType).toBe('premium');
+      expect(metadata.registrationDate).toEqual(mockUserDoc.createdAt);
+    });
+
+    test('should extract campaign metadata correctly', async () => {
+      const result = await service.processDocument(mockCampaignDoc, 'campaigns');
+      const metadata = result[0].metadata;
+      
+      expect(metadata.source).toBe('campaigns');
+      expect(metadata.campaignType).toBe('marketing');
+      expect(metadata.status).toBe('active');
+      expect(metadata.startDate).toEqual(mockCampaignDoc.startDate);
+      expect(metadata.endDate).toEqual(mockCampaignDoc.endDate);
+    });
+
+    test('should handle generic metadata for unknown sources', async () => {
+      const genericDoc = {
+        _id: new mongoose.Types.ObjectId(),
+        content: 'Generic document content',
+        type: 'generic',
+        status: 'active',
+        category: 'test',
+        createdAt: new Date()
+      };
+      
+      const result = await service.processDocument(genericDoc, 'unknown');
+      const metadata = result[0].metadata;
+      
+      expect(metadata.source).toBe('unknown');
+      expect(metadata.type).toBe('generic');
+      expect(metadata.status).toBe('active');
+      expect(metadata.category).toBe('test');
+    });
+  });
+
+  describe('Source Tracking', () => {
+    test('should track source collection correctly', async () => {
+      const sources = ['analytics', 'transactions', 'users', 'campaigns'];
+      
+      for (const source of sources) {
+        const result = await service.processDocument(mockAnalyticsDoc, source);
+        
+        expect(result[0].sourceCollection).toBe(source);
+        expect(result[0].metadata.source).toBe(source);
+      }
+    });
+
+    test('should maintain source consistency across chunks', async () => {
+      const result = await service.processDocument(mockLongDoc, 'test-source');
+      
+      result.forEach(chunk => {
+        expect(chunk.sourceCollection).toBe('test-source');
+        expect(chunk.metadata.source).toBe('test-source');
+      });
+    });
+
+    test('should track document IDs correctly', async () => {
+      const docs = [mockAnalyticsDoc, mockTransactionDoc, mockUserDoc];
+      
+      for (const doc of docs) {
+        const result = await service.processDocument(doc, 'test');
+        
+        result.forEach(chunk => {
+          expect(chunk.sourceId).toEqual(doc._id);
+          expect(chunk.metadata.documentId).toEqual(doc._id);
+        });
+      }
+    });
+  });
+
+  describe('Batch Processing', () => {
+    test('should process batch of documents', async () => {
+      const documents = [mockAnalyticsDoc, mockTransactionDoc, mockUserDoc, mockCampaignDoc];
+      const result = await service.processBatch(documents, 'mixed');
+      
+      expect(result).toHaveProperty('totalDocuments', 4);
+      expect(result).toHaveProperty('processedDocuments');
+      expect(result).toHaveProperty('totalChunks');
+      expect(result).toHaveProperty('errors');
+      expect(result).toHaveProperty('processingTime');
+      expect(result).toHaveProperty('batches');
+      
+      expect(result.processedDocuments).toBeGreaterThan(0);
+      expect(result.totalChunks).toBeGreaterThan(0);
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(Array.isArray(result.batches)).toBe(true);
+    });
+
+    test('should respect batch size limits', async () => {
+      const documents = Array(25).fill(null).map((_, index) => ({
+        ...mockAnalyticsDoc,
+        _id: new mongoose.Types.ObjectId(),
+        content: `Document ${index} content with some text to process.`
+      }));
+      
+      const result = await service.processBatch(documents, 'test', { batchSize: 5 });
+      
+      expect(result.batches.length).toBe(5); // 25 docs / 5 per batch = 5 batches
+      
+      result.batches.forEach((batch, index) => {
+        expect(batch.batchNumber).toBe(index + 1);
+        expect(batch).toHaveProperty('processedCount');
+        expect(batch).toHaveProperty('chunksCreated');
+        expect(batch).toHaveProperty('errors');
+        expect(batch).toHaveProperty('processingTime');
+      });
+    });
+
+    test('should handle empty batch gracefully', async () => {
+      const result = await service.processBatch([], 'test');
+      
+      expect(result.totalDocuments).toBe(0);
+      expect(result.processedDocuments).toBe(0);
+      expect(result.totalChunks).toBe(0);
+      expect(result.batches.length).toBe(0);
+    });
+
+    test('should continue processing despite individual document errors', async () => {
+      const documents = [
+        mockAnalyticsDoc,
+        { ...mockTransactionDoc, content: null }, // This should cause an error
+        mockUserDoc,
+        mockCampaignDoc
+      ];
+      
+      const result = await service.processBatch(documents, 'test');
+      
+      expect(result.totalDocuments).toBe(4);
+      expect(result.processedDocuments).toBe(3); // 3 successful, 1 failed
+      expect(result.errors.length).toBeGreaterThan(0);
+      
+      // Check that error information is captured
+      const documentError = result.errors.find(err => err.type === 'DOCUMENT_ERROR');
+      expect(documentError).toBeDefined();
+      expect(documentError.docIndex).toBe(1);
+    });
+  });
+
+  describe('Memory Usage Patterns', () => {
+    test('should track memory usage during processing', async () => {
+      const initialMemory = service.memoryUsage.current;
+      
+      // Process a large batch
+      const largeDocs = Array(20).fill(null).map((_, index) => ({
+        ...mockLongDoc,
+        _id: new mongoose.Types.ObjectId(),
+        content: longContent + ` Document ${index} additional content.`
+      }));
+      
+      await service.processBatch(largeDocs, 'memory-test');
+      
+      const stats = service.getStats();
+      expect(stats.memoryUsage).toBeDefined();
+      expect(stats.memoryUsage.peak).toBeGreaterThanOrEqual(stats.memoryUsage.current);
+    });
+
+    test('should handle memory threshold checks', async () => {
+      // Set a very low memory threshold for testing
+      const lowMemoryService = new DocumentProcessingService({
+        memoryThreshold: 1024 // 1KB - very low for testing
+      });
+      
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      
+      await lowMemoryService.processBatch([mockLongDoc], 'memory-test');
+      
+      // Memory warning should have been triggered
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Memory usage high:')
+      );
+      
+      consoleSpy.mockRestore();
+    });
+
+    test('should manage memory across multiple batches', async () => {
+      const batches = [];
+      const batchSize = 5;
+      
+      for (let i = 0; i < 3; i++) {
+        const batch = Array(batchSize).fill(null).map((_, index) => ({
+          ...mockAnalyticsDoc,
+          _id: new mongoose.Types.ObjectId(),
+          content: `Batch ${i} Document ${index} with content to process.`
+        }));
+        batches.push(batch);
+      }
+      
+      const initialPeak = service.memoryUsage.peak;
+      
+      for (const batch of batches) {
+        await service.processBatch(batch, 'memory-test');
+        
+        // Memory should be managed between batches
+        expect(service.memoryUsage.current).toBeDefined();
+        expect(service.memoryUsage.peak).toBeGreaterThanOrEqual(initialPeak);
+      }
+    });
+  });
+
+  describe('Content Analysis', () => {
+    test('should determine content types correctly', async () => {
+      const testCases = [
+        {
+          doc: { ...mockTransactionDoc, content: 'Transaction 0x123 on Ethereum' },
+          expected: 'blockchain'
+        },
+        {
+          doc: { ...mockAnalyticsDoc, content: 'User session analytics data' },
+          expected: 'analytics'
+        },
+        {
+          doc: { ...mockCampaignDoc, content: 'Marketing campaign for new product' },
+          expected: 'marketing'
+        },
+        {
+          doc: { content: 'Error occurred during processing: exception thrown' },
+          expected: 'error'
+        },
+        {
+          doc: { content: 'General information about the system' },
+          expected: 'general'
+        }
+      ];
+      
+      for (const testCase of testCases) {
+        const result = await service.processDocument(testCase.doc, 'test');
+        expect(result[0].contentType).toBe(testCase.expected);
+      }
+    });
+
+    test('should generate relevant tags', async () => {
+      const result = await service.processDocument(mockTransactionDoc, 'transactions');
+      const tags = result[0].tags;
+      
+      expect(tags).toContain('transactions');
+      expect(tags).toContain('transaction');
+      expect(tags).toContain('smart-contract');
+      expect(tags).toContain('ethereum');
+    });
+
+    test('should calculate importance scores', async () => {
+      const docs = [mockAnalyticsDoc, mockTransactionDoc, mockUserDoc];
+      
+      for (const doc of docs) {
+        const result = await service.processDocument(doc, 'test');
+        const score = result[0].metadata.importanceScore;
+        
+        expect(score).toBeGreaterThanOrEqual(0);
+        expect(score).toBeLessThanOrEqual(1);
+        expect(typeof score).toBe('number');
+      }
+    });
+
+    test('should extract search keywords', async () => {
+      const result = await service.processDocument(mockTransactionDoc, 'test');
+      const keywords = result[0].searchKeywords;
+      
+      expect(Array.isArray(keywords)).toBe(true);
+      expect(keywords.length).toBeGreaterThan(0);
+      expect(keywords.length).toBeLessThanOrEqual(10);
+      
+      // Should not contain stop words
+      const stopWords = ['the', 'and', 'for', 'are'];
+      keywords.forEach(keyword => {
+        expect(stopWords).not.toContain(keyword);
+      });
+    });
+
+    test('should extract timeframe information', async () => {
+      const result = await service.processDocument(mockAnalyticsDoc, 'test');
+      const timeframe = result[0].timeframe;
+      
+      expect(timeframe).toBeDefined();
+      expect(timeframe.timestamp).toBeInstanceOf(Date);
+      expect(timeframe.year).toBe(2024);
+      expect(timeframe.month).toBe(1);
+      expect(timeframe.day).toBe(15);
+      expect(timeframe.quarter).toBe(1);
+      expect(typeof timeframe.dayOfWeek).toBe('number');
+      expect(typeof timeframe.hour).toBe('number');
+    });
+  });
+
+  describe('Statistics and Monitoring', () => {
+    test('should track processing statistics', async () => {
+      const initialStats = service.getStats();
+      expect(initialStats.documentsProcessed).toBe(0);
+      expect(initialStats.chunksCreated).toBe(0);
+      
+      await service.processDocument(mockAnalyticsDoc, 'test');
+      await service.processBatch([mockTransactionDoc, mockUserDoc], 'test');
+      
+      const finalStats = service.getStats();
+      expect(finalStats.documentsProcessed).toBe(3);
+      expect(finalStats.chunksCreated).toBeGreaterThan(0);
+      expect(finalStats.lastProcessedAt).toBeInstanceOf(Date);
+      expect(finalStats.totalProcessingTime).toBeGreaterThan(0);
+    });
+
+    test('should track error statistics', async () => {
+      const initialStats = service.getStats();
+      expect(initialStats.errors).toBe(0);
+      
+      // Cause an error
+      try {
+        await service.processDocument(null, 'test');
+      } catch (error) {
+        // Expected error
+      }
+      
+      const finalStats = service.getStats();
+      expect(finalStats.errors).toBe(1);
+    });
+
+    test('should provide configuration information', async () => {
+      const stats = service.getStats();
+      
+      expect(stats.config).toBeDefined();
+      expect(stats.config.chunkSize).toBe(500);
+      expect(stats.config.chunkOverlap).toBe(100);
+      expect(stats.config.batchSize).toBe(10);
+      expect(stats.config.maxConcurrentJobs).toBe(2);
+    });
+
+    test('should reset statistics correctly', async () => {
+      // Generate some stats
+      await service.processDocument(mockAnalyticsDoc, 'test');
+      
+      let stats = service.getStats();
+      expect(stats.documentsProcessed).toBeGreaterThan(0);
+      
+      // Reset stats
+      service.resetStats();
+      
+      stats = service.getStats();
+      expect(stats.documentsProcessed).toBe(0);
+      expect(stats.chunksCreated).toBe(0);
+      expect(stats.errors).toBe(0);
+      expect(stats.lastProcessedAt).toBeNull();
+    });
+  });
+
+  describe('Edge Cases and Error Handling', () => {
+    test('should handle malformed documents', async () => {
+      const malformedDocs = [
+        { content: null },
+        { content: undefined },
+        { content: '' },
+        { content: 123 },
+        { content: [] },
+        { content: {} }
+      ];
+      
+      for (const doc of malformedDocs) {
+        try {
+          const result = await service.processDocument(doc, 'test');
+          if (doc.content === '' || doc.content == null) {
+            expect(result.length).toBe(0);
+          }
+        } catch (error) {
+          // Some malformed docs should throw errors
+          expect(error).toBeDefined();
+        }
+      }
+    });
+
+    test('should handle special characters in content', async () => {
+      const specialDoc = {
+        ...mockAnalyticsDoc,
+        content: 'Special chars: !@#$%^&*()_+{}|:"<>?[]\\;\',./ and émojis 🚀💎'
+      };
+      
+      const result = await service.processDocument(specialDoc, 'test');
+      
+      expect(result.length).toBe(1);
+      expect(result[0].content).toBeDefined();
+      expect(result[0].content.length).toBeGreaterThan(0);
+    });
+
+    test('should handle very large content', async () => {
+      const veryLargeContent = 'Large content section. '.repeat(10000);
+      const largeDoc = {
+        ...mockAnalyticsDoc,
+        content: veryLargeContent
+      };
+      
+      const result = await service.processDocument(largeDoc, 'test');
+      
+      expect(result.length).toBeGreaterThan(1);
+      
+      // Check that all chunks are reasonable size
+      result.forEach(chunk => {
+        expect(chunk.content.length).toBeLessThanOrEqual(service.chunkSize * 1.2);
+      });
+    });
+
+    test('should handle concurrent processing', async () => {
+      const documents = Array(10).fill(null).map((_, index) => ({
+        ...mockAnalyticsDoc,
+        _id: new mongoose.Types.ObjectId(),
+        content: `Concurrent document ${index} with processing content.`
+      }));
+      
+      // Process multiple batches concurrently
+      const promises = [
+        service.processBatch(documents.slice(0, 3), 'concurrent-1'),
+        service.processBatch(documents.slice(3, 6), 'concurrent-2'),
+        service.processBatch(documents.slice(6, 10), 'concurrent-3')
+      ];
+      
+      const results = await Promise.all(promises);
+      
+      // All batches should complete successfully
+      results.forEach(result => {
+        expect(result.totalDocuments).toBeGreaterThan(0);
+        expect(result.processedDocuments).toBeGreaterThan(0);
+      });
+    });
+  });
+}); 
