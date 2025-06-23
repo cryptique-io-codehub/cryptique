@@ -166,7 +166,7 @@ describe('Gemini Embedding Service Tests', function() {
     it('should use cache when available', async function() {
       const testText = 'Cached test text';
       const cachedResult = {
-        embedding: new Array(1536).fill(0.5),
+        embedding: new Array(768).fill(0.5),
         tokensUsed: 100,
         cost: 0.01,
         responseTime: 50
@@ -194,14 +194,14 @@ describe('Gemini Embedding Service Tests', function() {
       // Mock successful API response
       const mockModel = {
         embedContent: sinon.stub().resolves({
-          embedding: { values: new Array(1536).fill(0.3) }
+          embedding: { values: new Array(768).fill(0.3) }
         })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
       
       const result = await geminiEmbeddingService.generateEmbedding(testText);
       
-      expect(result.embedding).to.have.lengthOf(1536);
+      expect(result.embedding).to.have.lengthOf(768);
       expect(mockCache.set.calledOnce).to.be.true;
       
       const stats = geminiEmbeddingService.getStats();
@@ -214,7 +214,7 @@ describe('Gemini Embedding Service Tests', function() {
       // Mock successful API response
       const mockModel = {
         embedContent: sinon.stub().resolves({
-          embedding: { values: new Array(1536).fill(0.3) }
+          embedding: { values: new Array(768).fill(0.3) }
         })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -279,7 +279,7 @@ describe('Gemini Embedding Service Tests', function() {
   describe('API Integration Tests', function() {
     it('should handle successful API responses', async function() {
       const testText = 'API integration test';
-      const mockEmbedding = new Array(1536).fill(0.7);
+      const mockEmbedding = new Array(768).fill(0.7);
       
       const mockModel = {
         embedContent: sinon.stub().resolves({
@@ -292,7 +292,7 @@ describe('Gemini Embedding Service Tests', function() {
       const result = await geminiEmbeddingService.generateEmbedding(testText);
       
       expect(result.embedding).to.deep.equal(mockEmbedding);
-      expect(result.dimensions).to.equal(1536);
+      expect(result.dimensions).to.equal(768);
       expect(result.tokensUsed).to.be.a('number');
       expect(result.cost).to.be.a('number');
       expect(result.responseTime).to.be.a('number');
@@ -328,7 +328,7 @@ describe('Gemini Embedding Service Tests', function() {
         embedContent: sinon.stub()
           .onFirstCall().rejects({ status: 429, message: 'Rate limit' })
           .onSecondCall().resolves({
-            embedding: { values: new Array(1536).fill(0.5) }
+            embedding: { values: new Array(768).fill(0.5) }
           })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -336,7 +336,7 @@ describe('Gemini Embedding Service Tests', function() {
       
       const result = await geminiEmbeddingService.generateEmbedding(testText);
       
-      expect(result.embedding).to.have.lengthOf(1536);
+      expect(result.embedding).to.have.lengthOf(768);
       expect(mockModel.embedContent.calledTwice).to.be.true;
     });
     
@@ -366,7 +366,7 @@ describe('Gemini Embedding Service Tests', function() {
       
       const mockModel = {
         embedContent: sinon.stub().resolves({
-          embedding: { values: new Array(1536).fill(0.4) }
+          embedding: { values: new Array(768).fill(0.4) }
         })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -387,11 +387,11 @@ describe('Gemini Embedding Service Tests', function() {
       const mockModel = {
         embedContent: sinon.stub()
           .onFirstCall().resolves({
-            embedding: { values: new Array(1536).fill(0.4) }
+            embedding: { values: new Array(768).fill(0.4) }
           })
           .onSecondCall().rejects(new Error('API Error'))
           .onThirdCall().resolves({
-            embedding: { values: new Array(1536).fill(0.4) }
+            embedding: { values: new Array(768).fill(0.4) }
           })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -409,7 +409,7 @@ describe('Gemini Embedding Service Tests', function() {
     it('should track statistics correctly', async function() {
       const mockModel = {
         embedContent: sinon.stub().resolves({
-          embedding: { values: new Array(1536).fill(0.6) }
+          embedding: { values: new Array(768).fill(0.6) }
         })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -459,7 +459,7 @@ describe('Gemini Embedding Service Tests', function() {
     it('should return healthy status on successful health check', async function() {
       const mockModel = {
         embedContent: sinon.stub().resolves({
-          embedding: { values: new Array(1536).fill(0.8) }
+          embedding: { values: new Array(768).fill(0.8) }
         })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -470,7 +470,7 @@ describe('Gemini Embedding Service Tests', function() {
       expect(health.status).to.equal('healthy');
       expect(health.timestamp).to.be.a('number');
       expect(health.stats).to.be.an('object');
-      expect(health.testEmbedding.dimensions).to.equal(1536);
+      expect(health.testEmbedding.dimensions).to.equal(768);
     });
     
     it('should return unhealthy status on failed health check', async function() {
@@ -497,7 +497,7 @@ describe('Gemini Embedding Service Tests', function() {
           .onCall(0).rejects({ status: 429 })
           .onCall(1).rejects({ status: 503 })
           .onCall(2).resolves({
-            embedding: { values: new Array(1536).fill(0.9) }
+            embedding: { values: new Array(768).fill(0.9) }
           })
       };
       mockGoogleGenerativeAI.getGenerativeModel.returns(mockModel);
@@ -507,7 +507,7 @@ describe('Gemini Embedding Service Tests', function() {
       const result = await geminiEmbeddingService.generateEmbedding(testText);
       const endTime = Date.now();
       
-      expect(result.embedding).to.have.lengthOf(1536);
+      expect(result.embedding).to.have.lengthOf(768);
       expect(mockModel.embedContent.callCount).to.equal(3);
       expect(endTime - startTime).to.be.greaterThan(1000); // Should have delays
     });
