@@ -4,12 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "nodemon index.js",
+    "test": "mocha test/**/*.test.js --timeout 30000",
+    "test:vector": "node scripts/testVectorInfrastructure.js",
+    "test:watch": "mocha test/**/*.test.js --timeout 30000 --watch"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@duneanalytics/client-sdk": "^0.2.5",
+    "@google/generative-ai": "^0.20.0",
     "axios": "^1.8.4",
     "backend": "file:",
     "bcrypt": "^5.1.1",
@@ -23,11 +27,18 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.1",
+    "node-cache": "^5.1.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
     "puppeteer": "^24.5.0",
     "stripe": "^18.1.0",
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.1",
+    "chalk": "^4.1.2"
   }
 }
