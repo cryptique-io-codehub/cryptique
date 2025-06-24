@@ -51,22 +51,18 @@ const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 // Helper function to validate and clean model name
 const cleanModelName = (modelName) => {
-    // Remove 'models/' prefix if it exists
-    const cleaned = modelName.replace(/^models\//, '');
-    
-    // Add 'models/' prefix if it doesn't exist
-    return cleaned.startsWith('models/') ? cleaned : `models/${cleaned}`;
+    // Remove any version prefix if it exists
+    const cleaned = modelName.replace(/^models\//, '').replace(/^v1beta\//, '');
+    return cleaned;
 };
 
 // Helper function to create Google API request config
 const createGoogleApiConfig = (additionalHeaders = {}) => {
-    // Check for environment variable, then use fallback
-    const apiKey = process.env.GEMINI_API || 'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
-    console.log('API Key check:', { hasKey: !!apiKey, length: apiKey ? apiKey.length : 0 });
+    const apiKey = process.env.GEMINI_API || process.env.GOOGLE_API_KEY;
     
     if (!apiKey) {
-        console.error('Missing GEMINI_API environment variable and fallback key');
-        throw new Error('No API key available for Gemini');
+        console.error('Missing API key for Gemini');
+        throw new Error('No API key available');
     }
     
     return {
@@ -84,23 +80,13 @@ const createGoogleApiConfig = (additionalHeaders = {}) => {
 router.get('/models', async (req, res) => {
     try {
         console.log('Handling /models request');
-        const apiKey = process.env.GEMINI_API || 'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
-        console.log('API Key status:', { exists: !!apiKey, length: apiKey ? apiKey.length : 0 });
-
+        const apiKey = process.env.GEMINI_API || process.env.GOOGLE_API_KEY;
+        
         if (!apiKey) {
-            console.error('Missing GEMINI_API environment variable');
+            console.error('Missing API key configuration');
             return res.status(503).json({
                 error: 'AI service temporarily unavailable',
-                details: 'The AI service is not properly configured. Please contact support if this persists.'
-            });
-        }
-
-        // Validate API key format
-        if (apiKey.length < 30) {
-            console.error('Invalid API key format');
-            return res.status(503).json({
-                error: 'AI service temporarily unavailable',
-                details: 'The AI service configuration is invalid. Please contact support if this persists.'
+                details: 'The AI service is not properly configured. Please contact support.'
             });
         }
 
@@ -111,8 +97,14 @@ router.get('/models', async (req, res) => {
                 createGoogleApiConfig()
             );
 
-            console.log('Models fetched successfully');
-            res.json(response.data);
+            // Filter for only Gemini models
+            const models = response.data.models?.filter(m => 
+                m.name.includes('gemini') && 
+                m.supportedGenerationMethods?.includes('generateContent')
+            ) || [];
+
+            console.log('Models fetched successfully:', models.map(m => m.name));
+            res.json({ models });
         } catch (apiError) {
             console.error('Google AI API Error:', {
                 status: apiError.response?.status,
@@ -120,18 +112,10 @@ router.get('/models', async (req, res) => {
                 message: apiError.message
             });
 
-            // Handle specific API errors
             if (apiError.response?.status === 401 || apiError.response?.status === 403) {
                 return res.status(503).json({
                     error: 'AI service temporarily unavailable',
-                    details: 'Authentication error with AI service. Please contact support.'
-                });
-            }
-
-            if (apiError.response?.status === 429) {
-                return res.status(503).json({
-                    error: 'AI service temporarily unavailable',
-                    details: 'AI service rate limit exceeded. Please try again in a few minutes.'
+                    details: 'Authentication error with AI service. Please verify API key configuration.'
                 });
             }
 
@@ -141,11 +125,7 @@ router.get('/models', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error in /models endpoint:', {
-            message: error.message,
-            stack: error.stack
-        });
-
+        console.error('Error in /models endpoint:', error);
         res.status(503).json({
             error: 'AI service temporarily unavailable',
             details: 'An unexpected error occurred. Please try again later.'
@@ -160,34 +140,48 @@ router.post('/generate', async (req, res) => {
         const { model, contents } = req.body;
         
         if (!model || !contents) {
-            return res.status(400).json({ error: 'Model and contents are required' });
+            return res.status(400).json({ 
+                error: 'Invalid request',
+                details: 'Model and contents are required'
+            });
         }
 
         const cleanedModelName = cleanModelName(model);
         console.log('Using model:', cleanedModelName);
         
-        const response = await axios.post(
-            `${GOOGLE_AI_BASE_URL}/models/${cleanedModelName}:generateContent`,
-            { contents },
-            createGoogleApiConfig()
-        );
+        try {
+            const response = await axios.post(
+                `${GOOGLE_AI_BASE_URL}/models/${cleanedModelName}:generateContent`,
+                { contents },
+                createGoogleApiConfig()
+            );
 
-        console.log('Content generated successfully');
-        res.json(response.data);
+            console.log('Content generated successfully');
+            res.json(response.data);
+        } catch (apiError) {
+            console.error('Error generating content:', {
+                status: apiError.response?.status,
+                data: apiError.response?.data,
+                message: apiError.message
+            });
+
+            if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: 'Authentication error with AI service. Please verify API key configuration.'
+                });
+            }
+
+            res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'Failed to generate content. Please try again later.'
+            });
+        }
     } catch (error) {
-        console.error('Error in /generate endpoint:', {
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
-            message: error.message,
-            requestedModel: req.body?.model,
-            cleanedModel: cleanModelName(req.body?.model || ''),
-            requestBody: req.body
-        });
-
-        res.status(error.response?.status || 500).json({
-            error: 'Failed to generate content',
-            details: error.response?.data || error.message
+        console.error('Error in /generate endpoint:', error);
+        res.status(503).json({
+            error: 'AI service temporarily unavailable',
+            details: 'An unexpected error occurred. Please try again later.'
         });
     }
 });

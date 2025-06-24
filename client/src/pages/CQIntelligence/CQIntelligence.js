@@ -20,6 +20,8 @@ import {
   ScatterChart,
   Scatter
 } from 'recharts';
+import axios from 'axios';
+import GoogleGenerativeAI from '../../lib/GoogleGenerativeAI';
 
 const CQIntelligence = () => {
   const [selectedSite, setSelectedSite] = useState('');
@@ -702,6 +704,51 @@ const CQIntelligence = () => {
       }]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Initialize Gemini AI
+  const initializeAI = () => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API || 
+                  window.ENV?.NEXT_PUBLIC_GEMINI_API || 
+                  'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+    return new GoogleGenerativeAI(apiKey);
+  };
+
+  // Verify model availability
+  const verifyModel = async () => {
+    try {
+      console.log('Fetching available models...');
+      const response = await axios.get('/ai/models');
+      const data = response.data;
+      console.log("Available models:", data.models?.map(m => m.name));
+      
+      // Define preferred models in order of preference
+      const preferredModels = [
+        'gemini-pro',
+        'gemini-1.0-pro',
+        'gemini-1.0-pro-latest',
+        'gemini-pro-vision'
+      ];
+      
+      const models = data.models || [];
+      
+      // Try to find any of our preferred models
+      for (const preferredModel of preferredModels) {
+        const hasModel = models.some(m => m.name.includes(preferredModel));
+        if (hasModel) {
+          console.log(`Using preferred model: ${preferredModel}`);
+          return preferredModel;
+        }
+      }
+      
+      // If no preferred model found, use default
+      console.log('Falling back to default model: gemini-pro');
+      return 'gemini-pro';
+    } catch (error) {
+      console.error('Error fetching models:', error);
+      console.log('API call failed, using safe fallback model: gemini-pro');
+      return 'gemini-pro';
     }
   };
 
