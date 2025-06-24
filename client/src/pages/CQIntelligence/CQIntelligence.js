@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot } from 'lucide-react';
+import GoogleGenerativeAI from '../../lib/GoogleGenerativeAI';
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -21,7 +22,6 @@ import {
   Scatter
 } from 'recharts';
 import axios from 'axios';
-import GoogleGenerativeAI from '../../lib/GoogleGenerativeAI';
 
 const CQIntelligence = () => {
   const [selectedSite, setSelectedSite] = useState('');
@@ -637,60 +637,54 @@ const CQIntelligence = () => {
       let aiResponse;
       let errorOccurred = false;
 
+      // For now, skip the backend API and use direct Gemini API
       try {
-        // Try the AI API endpoint first
-        const response = await fetch('/api/ai/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            query: userMessage,
-            siteId: siteId,
-            teamId: teamId,
-            timeframe: {
-              start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-              end: new Date().toISOString()
-            }
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
-        }
-
-        const apiData = await response.json();
+        console.log('Using direct Gemini API approach...');
+        const apiKey = process.env.REACT_APP_GEMINI_API || 
+                      process.env.NEXT_PUBLIC_GEMINI_API || 
+                      'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
         
-        if (apiData.success && apiData.data) {
-          aiResponse = {
-            content: `Based on your data analysis: ${userMessage}`,
-            ...apiData.data
-          };
-        } else {
-          throw new Error('Invalid API response format');
-        }
-      } catch (apiError) {
-        console.error('AI API Error:', apiError);
+        const ai = new GoogleGenerativeAI(apiKey);
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        
+        // Generate analytics summary
+        const analyticsSummary = generateAnalyticsSummary ? generateAnalyticsSummary(userMessage) : 
+          `User is asking about: ${userMessage}`;
+        
+        const result = await model.generateContent(analyticsSummary);
+        const response = await result.response;
+        const botMessage = response.text();
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: botMessage,
+          visualizations: [],
+          tables: [],
+          metrics: [],
+          insights: []
+        }]);
+        
+        return; // Exit early on success
+      } catch (directApiError) {
+        console.error('Direct API Error:', directApiError);
         errorOccurred = true;
         
-        // Fallback to local processing
+        // Fall back to enhanced mock response
         console.log('Falling back to local processing...');
         aiResponse = generateEnhancedResponse(userMessage);
         
         // Add a note about using fallback data
-        aiResponse.content = `${aiResponse.content}\n\n_Note: The AI service is temporarily unavailable. Showing analytics based on local processing._`;
+        aiResponse.content = `${aiResponse.content}\n\n_Note: Using demo data while AI service is being configured._`;
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: aiResponse.content,
+          visualizations: aiResponse.visualizations || [],
+          tables: aiResponse.tables || [],
+          metrics: aiResponse.metrics || [],
+          insights: aiResponse.insights || []
+        }]);
       }
-      
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: aiResponse.content,
-        visualizations: aiResponse.visualizations || [],
-        tables: aiResponse.tables || [],
-        metrics: aiResponse.metrics || [],
-        insights: aiResponse.insights || []
-      }]);
 
     } catch (err) {
       console.error('CQ Intelligence Error:', err);
