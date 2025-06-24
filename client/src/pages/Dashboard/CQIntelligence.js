@@ -1554,50 +1554,26 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Verify model availability
   const verifyModel = async () => {
     try {
-      console.log('Fetching available models...');
-      const response = await axiosInstance.get('/ai/models');
-      const data = response.data;
-      console.log("Available models:", data.models?.map(m => m.name));
+      console.log('Skipping backend API, using direct model selection...');
       
       // Define preferred models in order of preference
       const preferredModels = [
+        'gemini-2.5-pro',
         'gemini-2.0-flash',
         'gemini-1.5-pro',
-        'gemini-pro',
         'gemini-1.5-pro-latest'
       ];
       
-      const models = data.models || [];
+      // For now, just return the first preferred model without calling the backend
+      const selectedModel = preferredModels[0];
+      console.log(`Using preferred model: ${selectedModel}`);
+      return selectedModel;
       
-      // Try to find any of our preferred models
-      for (const preferredModel of preferredModels) {
-        const hasModel = models.some(m => m.name.includes(preferredModel));
-        if (hasModel) {
-          console.log(`Using preferred model: ${preferredModel}`);
-          return preferredModel;
-        }
-      }
-      
-      // If no preferred model found, find first model that supports generateContent
-      const modelName = models.find(m => 
-        m.supportedGenerationMethods?.includes('generateContent') &&
-        m.name.includes('pro') // Prefer pro models
-      )?.name;
-      
-      if (modelName) {
-        const cleanedName = modelName.replace('models/', '');
-        console.log(`Using alternative model: ${cleanedName}`);
-        return cleanedName;
-      }
-      
-      // Default fallback
-      console.log('Falling back to default model: gemini-1.5-pro');
-      return 'gemini-1.5-pro';
     } catch (error) {
-      console.error("Error fetching models:", error.response?.data || error);
-      // If the API call fails, still provide a reasonable default
-      console.log('API call failed, using safe fallback model: gemini-pro');
-      return 'gemini-pro';
+      console.error("Error in model verification:", error);
+      // Fallback to a safe default
+      console.log('Using safe fallback model: gemini-1.5-pro');
+      return 'gemini-1.5-pro';
     }
   };
 
@@ -1702,10 +1678,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       const messageWithContext = analyticsSummary;
 
       let botMessage;
-      let errorOccurred = false;
 
       try {
-        // Try SDK approach first
+        // Use SDK approach only (skip backend API)
         const ai = initializeAI();
         const modelName = await verifyModel();
         console.log("Using model for SDK:", modelName);
@@ -1715,53 +1690,30 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         const response = await result.response;
         botMessage = response.text();
       } catch (sdkError) {
-        console.log("SDK approach failed, falling back to REST API:", sdkError);
-        errorOccurred = true;
+        console.log("SDK approach failed, using fallback response:", sdkError);
         
-        try {
-          const modelName = await verifyModel();
-          console.log("Using model for REST API:", modelName);
-          
-          const requestBody = {
-            model: modelName,
-            contents: [
-              {
-                parts: [
-                  { text: messageWithContext }
-                ]
-              }
-            ]
-          };
+        // Create a fallback response based on the analytics data
+        botMessage = `I'm currently experiencing connectivity issues with the AI service, but I can provide you with some insights based on your analytics data:
 
-          console.log("Sending request to backend:", requestBody);
-          const response = await axiosInstance.post('/ai/generate', requestBody);
-          
-          if (!response.data) {
-            throw new Error('No response data received from backend');
-          }
+## Analytics Summary for ${selectedSite ? `"${selectedSite}"` : 'your website'}
 
-          if (response.data.error) {
-            throw new Error(response.data.error);
-          }
+${analytics && analytics.pageViews ? `**Total Page Views:** ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '**Page Views:** Data not available at the moment'}
 
-          botMessage = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process your request.";
-          errorOccurred = false;
-        } catch (apiError) {
-          console.error("REST API approach also failed:", apiError);
-          
-          // If both approaches fail, create a fallback response based on the analytics data
-          botMessage = `I'm sorry, but I'm currently experiencing connectivity issues with our AI service. 
-          
-Based on the analytics data I can see for your site${selectedSite ? ` "${selectedSite}"` : ''}, here's what I can tell you:
+${analytics && analytics.uniqueVisitors ? `**Unique Visitors:** ${analytics.uniqueVisitors}` : '**Unique Visitors:** Data not available at the moment'}
 
-## Analytics Summary
-${analytics && analytics.pageViews ? `- Total Page Views: ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '- Page view data is not available at the moment.'}
-${analytics && analytics.uniqueVisitors ? `- Unique Visitors: ${analytics.uniqueVisitors}` : '- Unique visitor data is not available at the moment.'}
-${analytics && analytics.walletsConnected ? `- Connected Wallets: ${analytics.walletsConnected}` : '- Wallet connection data is not available at the moment.'}
-${analytics && analytics.web3Visitors ? `- Web3 Visitors: ${analytics.web3Visitors}` : '- Web3 visitor data is not available at the moment.'}
+${analytics && analytics.walletsConnected ? `**Connected Wallets:** ${analytics.walletsConnected}` : '**Connected Wallets:** Data not available at the moment'}
 
-If you have specific questions about your analytics, please try again later when our AI service is back online.`;
-        }
+${analytics && analytics.web3Visitors ? `**Web3 Visitors:** ${analytics.web3Visitors}` : '**Web3 Visitors:** Data not available at the moment'}
+
+### What you asked about: "${userMessage}"
+
+Based on your question, here are some general insights:
+
+- **Website Performance**: Your site analytics show visitor engagement patterns
+- **Web3 Integration**: Wallet connections indicate user Web3 adoption
+- **User Behavior**: Session data reveals how users interact with your platform
+
+*Note: Full AI analysis is temporarily unavailable. Please try again in a few minutes for detailed insights.*`;
       }
 
       // Format the response before displaying
@@ -1772,14 +1724,13 @@ If you have specific questions about your analytics, please try again later when
         timestamp: new Date().toISOString()
       }]);
     } catch (err) {
-      console.error('Full Error Details:', err.response?.data || err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.details || err.message;
-      setError(`Failed to get response: ${errorMessage}`);
+      console.error('Full Error Details:', err);
+      setError('Failed to get response. Please try again.');
       
       // Add a fallback message even if the entire try block fails
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary API limits or connectivity issues. Please try again in a few minutes.',
+        content: 'I apologize, but I encountered an error processing your request. This might be due to temporary connectivity issues. Please try again in a few minutes.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
