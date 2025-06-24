@@ -1,0 +1,10 @@
+{
+  "currentPhase": null,
+  "totalRecords": 100,
+  "processedRecords": 50,
+  "failedRecords": 0,
+  "startTime": null,
+  "estimatedCompletion": null,
+  "errors": [],
+  "rollbackData": {}
+}

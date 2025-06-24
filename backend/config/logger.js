@@ -2,11 +2,21 @@ const winston = require('winston');
 require('winston-daily-rotate-file');
 const path = require('path');
 
-// Create logs directory if it doesn't exist
+// Check if we're in a serverless environment (Vercel, Netlify, etc.)
+const isServerless = process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+// Create logs directory only if not in serverless environment
 const fs = require('fs');
-const logsDir = path.join(__dirname, '..', 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+let logsDir;
+if (!isServerless) {
+  logsDir = path.join(__dirname, '..', 'logs');
+  if (!fs.existsSync(logsDir)) {
+    try {
+      fs.mkdirSync(logsDir, { recursive: true });
+    } catch (error) {
+      console.warn('Could not create logs directory, using console logging only:', error.message);
+    }
+  }
 }
 
 // Custom format for production logs
@@ -47,89 +57,97 @@ const logger = winston.createLogger({
   transports: []
 });
 
-// Production transports
-if (process.env.NODE_ENV === 'production') {
-  // Error logs
-  logger.add(new winston.transports.DailyRotateFile({
-    filename: path.join(logsDir, 'error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'error',
-    maxSize: '20m',
-    maxFiles: '30d',
-    auditFile: path.join(logsDir, 'error-audit.json'),
-    zippedArchive: true
-  }));
+// Production transports - only add file transports if not in serverless environment
+if (process.env.NODE_ENV === 'production' && !isServerless && logsDir) {
+  try {
+    // Error logs
+    logger.add(new winston.transports.DailyRotateFile({
+      filename: path.join(logsDir, 'error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      level: 'error',
+      maxSize: '20m',
+      maxFiles: '30d',
+      auditFile: path.join(logsDir, 'error-audit.json'),
+      zippedArchive: true
+    }));
 
-  // Combined logs
-  logger.add(new winston.transports.DailyRotateFile({
-    filename: path.join(logsDir, 'combined-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    maxSize: '50m',
-    maxFiles: '30d',
-    auditFile: path.join(logsDir, 'combined-audit.json'),
-    zippedArchive: true
-  }));
+    // Combined logs
+    logger.add(new winston.transports.DailyRotateFile({
+      filename: path.join(logsDir, 'combined-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      maxSize: '50m',
+      maxFiles: '30d',
+      auditFile: path.join(logsDir, 'combined-audit.json'),
+      zippedArchive: true
+    }));
 
-  // Performance logs
-  logger.add(new winston.transports.DailyRotateFile({
-    filename: path.join(logsDir, 'performance-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'info',
-    maxSize: '20m',
-    maxFiles: '7d',
-    auditFile: path.join(logsDir, 'performance-audit.json'),
-    zippedArchive: true,
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json(),
-      winston.format((info) => {
-        // Only log performance-related messages
-        if (info.type === 'performance' || info.performance) {
-          return info;
-        }
-        return false;
-      })()
-    )
-  }));
+    // Performance logs
+    logger.add(new winston.transports.DailyRotateFile({
+      filename: path.join(logsDir, 'performance-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      level: 'info',
+      maxSize: '20m',
+      maxFiles: '7d',
+      auditFile: path.join(logsDir, 'performance-audit.json'),
+      zippedArchive: true,
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json(),
+        winston.format((info) => {
+          // Only log performance-related messages
+          if (info.type === 'performance' || info.performance) {
+            return info;
+          }
+          return false;
+        })()
+      )
+    }));
 
-  // Security logs
-  logger.add(new winston.transports.DailyRotateFile({
-    filename: path.join(logsDir, 'security-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'warn',
-    maxSize: '10m',
-    maxFiles: '90d',
-    auditFile: path.join(logsDir, 'security-audit.json'),
-    zippedArchive: true,
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json(),
-      winston.format((info) => {
-        // Only log security-related messages
-        if (info.type === 'security' || info.security || info.level === 'warn' || info.level === 'error') {
-          return info;
-        }
-        return false;
-      })()
-    )
-  }));
+    // Security logs
+    logger.add(new winston.transports.DailyRotateFile({
+      filename: path.join(logsDir, 'security-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      level: 'warn',
+      maxSize: '10m',
+      maxFiles: '90d',
+      auditFile: path.join(logsDir, 'security-audit.json'),
+      zippedArchive: true,
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json(),
+        winston.format((info) => {
+          // Only log security-related messages
+          if (info.type === 'security' || info.security || info.level === 'warn' || info.level === 'error') {
+            return info;
+          }
+          return false;
+        })()
+      )
+    }));
+  } catch (error) {
+    console.warn('Could not set up file logging, using console only:', error.message);
+  }
 }
 
-// Development and console transport
-if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_CONSOLE_LOGS === 'true') {
+// Always add console transport for serverless environments or when file logging fails
+if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_CONSOLE_LOGS === 'true' || isServerless) {
   logger.add(new winston.transports.Console({
     handleExceptions: true,
     handleRejections: true
   }));
 }
 
-// Add file transport for development
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.File({
-    filename: path.join(logsDir, 'development.log'),
-    maxsize: 10485760, // 10MB
-    maxFiles: 5
-  }));
+// Add file transport for development only if not serverless
+if (process.env.NODE_ENV !== 'production' && !isServerless && logsDir) {
+  try {
+    logger.add(new winston.transports.File({
+      filename: path.join(logsDir, 'development.log'),
+      maxsize: 10485760, // 10MB
+      maxFiles: 5
+    }));
+  } catch (error) {
+    console.warn('Could not set up development file logging:', error.message);
+  }
 }
 
 // Helper methods for different log types

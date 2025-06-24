@@ -628,22 +628,73 @@ const CQIntelligence = () => {
     setError(null);
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Get user context from localStorage or context
+      const teamId = localStorage.getItem('teamId');
+      const siteId = selectedSite || localStorage.getItem('selectedSiteId');
       
-      const enhancedResponse = generateEnhancedResponse(userMessage);
+      // Call the actual API endpoint
+      const response = await fetch('/api/ai/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          query: userMessage,
+          siteId: siteId,
+          teamId: teamId,
+          timeframe: {
+            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
+            end: new Date().toISOString()
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const apiData = await response.json();
+      
+      // If API returns data, use it; otherwise fall back to enhanced mock response
+      let enhancedResponse;
+      if (apiData.success && apiData.data) {
+        enhancedResponse = {
+          content: `Based on your data analysis: ${userMessage}`,
+          ...apiData.data
+        };
+      } else {
+        // Fallback to mock response for development/testing
+        enhancedResponse = generateEnhancedResponse(userMessage);
+      }
       
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: enhancedResponse.content,
-        visualizations: enhancedResponse.visualizations,
-        tables: enhancedResponse.tables,
-        metrics: enhancedResponse.metrics,
-        insights: enhancedResponse.insights
+        visualizations: enhancedResponse.visualizations || [],
+        tables: enhancedResponse.tables || [],
+        metrics: enhancedResponse.metrics || [],
+        insights: enhancedResponse.insights || []
       }]);
     } catch (err) {
-      setError('Failed to get response. Please try again.');
-      console.error('Error:', err);
+      console.error('CQ Intelligence API Error:', err);
+      
+      // Fallback to mock response if API fails
+      try {
+        const enhancedResponse = generateEnhancedResponse(userMessage);
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `${enhancedResponse.content}\n\n*Note: Currently showing demo data. Full integration coming soon.*`,
+          visualizations: enhancedResponse.visualizations || [],
+          tables: enhancedResponse.tables || [],
+          metrics: enhancedResponse.metrics || [],
+          insights: enhancedResponse.insights || []
+        }]);
+      } catch (fallbackErr) {
+        setError('Failed to get response. Please try again.');
+        console.error('Fallback error:', fallbackErr);
+      }
     } finally {
       setIsLoading(false);
     }

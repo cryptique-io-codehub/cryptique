@@ -139,24 +139,57 @@ connectToDatabase()
 
 // Define CORS options for different routes
 const mainCorsOptions = {
-  origin: ["http://localhost:3000", "https://app.cryptique.io", "https://cryptique.io"],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  origin: function(origin, callback) {
+    // Define allowed origins
+    const allowedOrigins = [
+      "http://localhost:3000", 
+      "https://app.cryptique.io", 
+      "https://cryptique.io",
+      "https://www.cryptique.io"
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Accept', 
+    'Origin', 
+    'X-Requested-With',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Set-Cookie'],
   credentials: true,
-  maxAge: 86400
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // 24 hours
 };
 
 // SDK CORS configuration with explicit headers
 const sdkCorsOptions = {
   origin: function(origin, callback) {
     // Allow specific origins instead of wildcard
-    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
+    const allowedOrigins = [
+      'https://app.cryptique.io', 
+      'https://cryptique.io', 
+      'https://www.cryptique.io',
+      'http://localhost:3000'
+    ];
     
     // Check if origin is in our allowed list or if it's not provided (like in REST clients)
     const originAllowed = !origin || allowedOrigins.includes(origin);
     
     if (originAllowed) {
-      callback(null, origin);
+      callback(null, origin || '*');
     } else {
       callback(new Error('CORS not allowed'));
     }
@@ -164,7 +197,7 @@ const sdkCorsOptions = {
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-cryptique-site-id'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
-  credentials: true, // Changed to true to allow credentials
+  credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
@@ -209,9 +242,6 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
-// We'll handle CORS per-route instead of globally
-// This prevents conflicts between different CORS policies
-
 // Global middleware to handle CORS headers more explicitly
 app.use((req, res, next) => {
   // Set common security headers
@@ -220,13 +250,17 @@ app.use((req, res, next) => {
   res.header('X-XSS-Protection', '1; mode=block');
   
   const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://app.cryptique.io', 
+    'https://cryptique.io', 
+    'https://www.cryptique.io',
+    'http://localhost:3000'
+  ];
   
   // For SDK routes, use origin-specific CORS instead of wide open
   if (req.path.startsWith('/api/sdk/')) {
-    const allowedOrigins = ['https://app.cryptique.io', 'https://cryptique.io', 'http://localhost:3000'];
-    
-    if (origin && allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
+    if (!origin || allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || 'https://app.cryptique.io');
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cryptique-site-id');
       res.header('Access-Control-Allow-Credentials', 'true');
@@ -238,15 +272,34 @@ app.use((req, res, next) => {
       return res.status(204).end();
     }
   } 
+  // For auth routes, ensure proper CORS headers
+  else if (req.path.startsWith('/api/auth/')) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || 'https://app.cryptique.io');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, Access-Control-Request-Method, Access-Control-Request-Headers');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+      res.header('Access-Control-Max-Age', '86400');
+    }
+    
+    // Handle preflight OPTIONS requests for auth routes immediately
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+  }
   // For all other routes, use more restrictive CORS
-  else if (origin && (origin.includes('app.cryptique.io') || 
-             origin.includes('cryptique.io') || 
-             origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  else if (!origin || allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || 'https://app.cryptique.io');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
+    
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
   }
   
   next();

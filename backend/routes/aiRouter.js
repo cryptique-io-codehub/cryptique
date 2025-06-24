@@ -4,7 +4,7 @@ const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
 const VectorDocument = require('../models/vectorDocument');
-const { GeminiEmbeddingService } = require('../services/geminiEmbeddingService');
+const GeminiEmbeddingService = require('../services/geminiEmbeddingService');
 const { performSemanticSearch } = require('../services/documentProcessingService');
 
 // Configure CORS specifically for AI endpoints

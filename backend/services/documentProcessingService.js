@@ -523,6 +523,113 @@ class DocumentProcessingService {
     this.memoryUsage.current = 0;
     this.memoryUsage.peak = 0;
   }
+
+  /**
+   * Perform semantic search using vector similarity
+   * @param {Array} queryEmbedding - Query embedding vector
+   * @param {Object} filters - Search filters (siteId, teamId, etc.)
+   * @param {Object} options - Search options (limit, threshold, etc.)
+   * @returns {Promise<Array>} Array of relevant documents
+   */
+  async performSemanticSearch(queryEmbedding, filters = {}, options = {}) {
+    try {
+      const limit = options.limit || 10;
+      const threshold = options.threshold || 0.7;
+      
+      // Build MongoDB aggregation pipeline for vector similarity search
+      const pipeline = [
+        // Match basic filters
+        {
+          $match: {
+            ...(filters.siteId && { siteId: filters.siteId }),
+            ...(filters.teamId && { teamId: new mongoose.Types.ObjectId(filters.teamId) }),
+            ...(filters.sourceType && { sourceType: filters.sourceType }),
+            status: filters.status || 'active'
+          }
+        },
+        
+        // Add vector similarity score
+        {
+          $addFields: {
+            similarity: {
+              $let: {
+                vars: {
+                  dotProduct: {
+                    $reduce: {
+                      input: { $range: [0, { $size: "$embedding" }] },
+                      initialValue: 0,
+                      in: {
+                        $add: [
+                          "$$value",
+                          {
+                            $multiply: [
+                              { $arrayElemAt: ["$embedding", "$$this"] },
+                              { $arrayElemAt: [queryEmbedding.embedding || queryEmbedding, "$$this"] }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                in: "$$dotProduct"
+              }
+            }
+          }
+        },
+        
+        // Filter by similarity threshold
+        {
+          $match: {
+            similarity: { $gte: threshold }
+          }
+        },
+        
+        // Sort by similarity (descending)
+        {
+          $sort: { similarity: -1 }
+        },
+        
+        // Limit results
+        {
+          $limit: limit
+        },
+        
+        // Project relevant fields
+        {
+          $project: {
+            documentId: 1,
+            sourceType: 1,
+            sourceId: 1,
+            siteId: 1,
+            teamId: 1,
+            content: 1,
+            summary: 1,
+            metadata: 1,
+            similarity: 1,
+            createdAt: 1
+          }
+        }
+      ];
+      
+      // Execute search
+      const results = await VectorDocument.aggregate(pipeline);
+      
+      // Log search performance
+      console.log(`Semantic search completed: ${results.length} results found with similarity >= ${threshold}`);
+      
+      return results;
+      
+    } catch (error) {
+      console.error('Error performing semantic search:', error);
+      throw error;
+    }
+  }
 }
 
-module.exports = DocumentProcessingService; 
+// Create a singleton instance for the semantic search function
+const documentProcessingService = new DocumentProcessingService();
+
+// Export both the class and the semantic search function
+module.exports = DocumentProcessingService;
+module.exports.performSemanticSearch = documentProcessingService.performSemanticSearch.bind(documentProcessingService); 
