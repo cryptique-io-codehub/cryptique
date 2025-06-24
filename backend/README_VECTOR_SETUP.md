@@ -303,7 +303,6 @@ geminiService.on('error', (error) => {
 ```
 
 ## 📈 Performance Expectations
-
 ### Benchmarks (on moderate hardware)
 
 - **Database Operations**: < 50ms for indexed queries
