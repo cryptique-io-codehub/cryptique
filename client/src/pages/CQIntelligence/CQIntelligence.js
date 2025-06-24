@@ -632,69 +632,74 @@ const CQIntelligence = () => {
       const teamId = localStorage.getItem('teamId');
       const siteId = selectedSite || localStorage.getItem('selectedSiteId');
       
-      // Call the actual API endpoint
-      const response = await fetch('/api/ai/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          query: userMessage,
-          siteId: siteId,
-          teamId: teamId,
-          timeframe: {
-            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
-            end: new Date().toISOString()
-          }
-        })
-      });
+      let aiResponse;
+      let errorOccurred = false;
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
+      try {
+        // Try the AI API endpoint first
+        const response = await fetch('/api/ai/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            query: userMessage,
+            siteId: siteId,
+            teamId: teamId,
+            timeframe: {
+              start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+              end: new Date().toISOString()
+            }
+          })
+        });
 
-      const apiData = await response.json();
-      
-      // If API returns data, use it; otherwise fall back to enhanced mock response
-      let enhancedResponse;
-      if (apiData.success && apiData.data) {
-        enhancedResponse = {
-          content: `Based on your data analysis: ${userMessage}`,
-          ...apiData.data
-        };
-      } else {
-        // Fallback to mock response for development/testing
-        enhancedResponse = generateEnhancedResponse(userMessage);
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+
+        const apiData = await response.json();
+        
+        if (apiData.success && apiData.data) {
+          aiResponse = {
+            content: `Based on your data analysis: ${userMessage}`,
+            ...apiData.data
+          };
+        } else {
+          throw new Error('Invalid API response format');
+        }
+      } catch (apiError) {
+        console.error('AI API Error:', apiError);
+        errorOccurred = true;
+        
+        // Fallback to local processing
+        console.log('Falling back to local processing...');
+        aiResponse = generateEnhancedResponse(userMessage);
+        
+        // Add a note about using fallback data
+        aiResponse.content = `${aiResponse.content}\n\n_Note: The AI service is temporarily unavailable. Showing analytics based on local processing._`;
       }
       
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: enhancedResponse.content,
-        visualizations: enhancedResponse.visualizations || [],
-        tables: enhancedResponse.tables || [],
-        metrics: enhancedResponse.metrics || [],
-        insights: enhancedResponse.insights || []
+        content: aiResponse.content,
+        visualizations: aiResponse.visualizations || [],
+        tables: aiResponse.tables || [],
+        metrics: aiResponse.metrics || [],
+        insights: aiResponse.insights || []
       }]);
+
     } catch (err) {
-      console.error('CQ Intelligence API Error:', err);
+      console.error('CQ Intelligence Error:', err);
+      setError('An error occurred while processing your request. Please try again later.');
       
-      // Fallback to mock response if API fails
-      try {
-        const enhancedResponse = generateEnhancedResponse(userMessage);
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `${enhancedResponse.content}\n\n*Note: Currently showing demo data. Full integration coming soon.*`,
-          visualizations: enhancedResponse.visualizations || [],
-          tables: enhancedResponse.tables || [],
-          metrics: enhancedResponse.metrics || [],
-          insights: enhancedResponse.insights || []
-        }]);
-      } catch (fallbackErr) {
-        setError('Failed to get response. Please try again.');
-        console.error('Fallback error:', fallbackErr);
-      }
+      // Add a user-friendly error message
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I apologize, but I encountered an error while processing your request. This might be due to temporary service unavailability or connectivity issues. Please try again in a few minutes.',
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setIsLoading(false);
     }

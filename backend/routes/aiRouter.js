@@ -88,29 +88,67 @@ router.get('/models', async (req, res) => {
         console.log('API Key status:', { exists: !!apiKey, length: apiKey ? apiKey.length : 0 });
 
         if (!apiKey) {
-            throw new Error('No API key available for Gemini');
+            console.error('Missing GEMINI_API environment variable');
+            return res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'The AI service is not properly configured. Please contact support if this persists.'
+            });
+        }
+
+        // Validate API key format
+        if (apiKey.length < 30) {
+            console.error('Invalid API key format');
+            return res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'The AI service configuration is invalid. Please contact support if this persists.'
+            });
         }
 
         console.log('Fetching models from Google AI API...');
-        const response = await axios.get(
-            `${GOOGLE_AI_BASE_URL}/models`,
-            createGoogleApiConfig()
-        );
+        try {
+            const response = await axios.get(
+                `${GOOGLE_AI_BASE_URL}/models`,
+                createGoogleApiConfig()
+            );
 
-        console.log('Models fetched successfully');
-        res.json(response.data);
+            console.log('Models fetched successfully');
+            res.json(response.data);
+        } catch (apiError) {
+            console.error('Google AI API Error:', {
+                status: apiError.response?.status,
+                data: apiError.response?.data,
+                message: apiError.message
+            });
+
+            // Handle specific API errors
+            if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: 'Authentication error with AI service. Please contact support.'
+                });
+            }
+
+            if (apiError.response?.status === 429) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: 'AI service rate limit exceeded. Please try again in a few minutes.'
+                });
+            }
+
+            res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'The AI service is currently unavailable. Please try again later.'
+            });
+        }
     } catch (error) {
         console.error('Error in /models endpoint:', {
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
             message: error.message,
             stack: error.stack
         });
 
-        res.status(error.response?.status || 500).json({
-            error: 'Failed to fetch models',
-            details: error.response?.data || error.message
+        res.status(503).json({
+            error: 'AI service temporarily unavailable',
+            details: 'An unexpected error occurred. Please try again later.'
         });
     }
 });
