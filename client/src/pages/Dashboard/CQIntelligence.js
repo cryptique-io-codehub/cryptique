@@ -1556,12 +1556,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     try {
       console.log('Skipping backend API, using direct model selection...');
       
-      // Define preferred models in order of preference
+      // Define preferred models in order of preference (prioritizing models with higher quotas)
       const preferredModels = [
-        'gemini-2.5-pro',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-1.5-pro-latest'
+        'gemini-1.5-flash',        // Higher free tier quotas
+        'gemini-1.5-flash-002',    // Alternative flash model
+        'gemini-1.5-pro',          // Fallback to pro model
+        'gemini-2.0-flash',        // Newer flash model
+        'gemini-2.5-pro'           // Last resort (lower quotas)
       ];
       
       // For now, just return the first preferred model without calling the backend
@@ -1571,9 +1572,9 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       
     } catch (error) {
       console.error("Error in model verification:", error);
-      // Fallback to a safe default
-      console.log('Using safe fallback model: gemini-1.5-pro');
-      return 'gemini-1.5-pro';
+      // Fallback to a safe default with higher quotas
+      console.log('Using safe fallback model: gemini-1.5-flash');
+      return 'gemini-1.5-flash';
     }
   };
 
@@ -1692,8 +1693,37 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       } catch (sdkError) {
         console.log("SDK approach failed, using fallback response:", sdkError);
         
-        // Create a fallback response based on the analytics data
-        botMessage = `I'm currently experiencing connectivity issues with the AI service, but I can provide you with some insights based on your analytics data:
+        // Check if it's a quota/rate limit error
+        const isQuotaError = sdkError.message?.includes('quota') || 
+                           sdkError.message?.includes('429') ||
+                           sdkError.message?.includes('rate limit');
+        
+        if (isQuotaError) {
+          // Create a quota-specific fallback response
+          botMessage = `I'm currently experiencing high demand and have temporarily reached API limits. However, I can still provide you with insights based on your analytics data:
+
+## Analytics Summary for ${selectedSite ? `"${selectedSite}"` : 'your website'}
+
+${analytics && analytics.pageViews ? `**Total Page Views:** ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)}` : '**Page Views:** Data not available at the moment'}
+
+${analytics && analytics.uniqueVisitors ? `**Unique Visitors:** ${analytics.uniqueVisitors}` : '**Unique Visitors:** Data not available at the moment'}
+
+${analytics && analytics.walletsConnected ? `**Connected Wallets:** ${analytics.walletsConnected}` : '**Connected Wallets:** Data not available at the moment'}
+
+${analytics && analytics.web3Visitors ? `**Web3 Visitors:** ${analytics.web3Visitors}` : '**Web3 Visitors:** Data not available at the moment'}
+
+### Regarding your question: "${userMessage}"
+
+Based on your analytics data, here are some insights I can provide:
+
+- **Performance Trends**: Your current visitor metrics show ${analytics?.uniqueVisitors > 0 ? 'active user engagement' : 'baseline activity levels'}
+- **Web3 Adoption**: ${analytics?.walletsConnected > 0 ? `${analytics.walletsConnected} wallet connections indicate growing Web3 user adoption` : 'Web3 integration is ready for user adoption'}
+- **User Engagement**: ${analytics?.pageViews ? `With ${Object.values(analytics.pageViews || {}).reduce((sum, views) => sum + views, 0)} page views, your content is attracting visitor attention` : 'User engagement metrics are being tracked'}
+
+*Note: AI analysis is temporarily limited due to high demand. Please try again in a few minutes for full AI-powered insights, or consider upgrading to a paid plan for unlimited access.*`;
+        } else {
+          // Generic fallback for other errors
+          botMessage = `I'm currently experiencing connectivity issues with the AI service, but I can provide you with some insights based on your analytics data:
 
 ## Analytics Summary for ${selectedSite ? `"${selectedSite}"` : 'your website'}
 
@@ -1714,6 +1744,7 @@ Based on your question, here are some general insights:
 - **User Behavior**: Session data reveals how users interact with your platform
 
 *Note: Full AI analysis is temporarily unavailable. Please try again in a few minutes for detailed insights.*`;
+        }
       }
 
       // Format the response before displaying
