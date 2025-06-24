@@ -725,30 +725,51 @@ const CQIntelligence = () => {
       
       // Define preferred models in order of preference
       const preferredModels = [
-        'gemini-pro',
-        'gemini-1.0-pro',
-        'gemini-1.0-pro-latest',
-        'gemini-pro-vision'
+        'gemini-2.5-pro',
+        'gemini-2.0-pro',
+        'gemini-1.5-pro',
+        'gemini-1.5-pro-latest',
+        'gemini-1.5-pro-002',
+        'gemini-2.5-pro-preview'
       ];
       
       const models = data.models || [];
       
       // Try to find any of our preferred models
       for (const preferredModel of preferredModels) {
-        const hasModel = models.some(m => m.name.includes(preferredModel));
-        if (hasModel) {
-          console.log(`Using preferred model: ${preferredModel}`);
-          return preferredModel;
+        const matchingModel = models.find(m => 
+          m.name.includes(preferredModel) && 
+          m.supportedGenerationMethods?.includes('generateContent')
+        );
+        if (matchingModel) {
+          // Extract the full model name from the path
+          const modelName = matchingModel.name.split('/').pop();
+          console.log(`Using preferred model: ${modelName}`);
+          return modelName;
         }
       }
       
-      // If no preferred model found, use default
-      console.log('Falling back to default model: gemini-pro');
-      return 'gemini-pro';
+      // If no preferred model found, find any suitable Gemini model
+      const fallbackModel = models.find(m => 
+        m.name.includes('gemini') && 
+        !m.name.includes('vision') && 
+        !m.name.includes('embedding') &&
+        m.supportedGenerationMethods?.includes('generateContent')
+      );
+
+      if (fallbackModel) {
+        const modelName = fallbackModel.name.split('/').pop();
+        console.log(`Using fallback model: ${modelName}`);
+        return modelName;
+      }
+      
+      // Last resort fallback
+      console.log('No suitable model found, using default: gemini-2.5-pro');
+      return 'gemini-2.5-pro';
     } catch (error) {
       console.error('Error fetching models:', error);
-      console.log('API call failed, using safe fallback model: gemini-pro');
-      return 'gemini-pro';
+      console.log('API call failed, using safe fallback model: gemini-2.5-pro');
+      return 'gemini-2.5-pro';
     }
   };
 

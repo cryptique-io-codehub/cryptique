@@ -7,11 +7,14 @@ class GoogleGenerativeAI {
   }
 
   getGenerativeModel({ model }) {
+    // Ensure model name has the correct format
+    const modelName = model.startsWith('models/') ? model : `models/${model}`;
+
     return {
       generateContent: async (prompt) => {
         try {
           const response = await axios.post(
-            `${this.baseUrl}/models/${model}:generateContent`,
+            `${this.baseUrl}/${modelName}:generateContent`,
             {
               contents: [{ parts: [{ text: prompt }] }]
             },
@@ -35,7 +38,7 @@ class GoogleGenerativeAI {
         } catch (error) {
           console.error('Error generating content:', error);
           if (error.response?.status === 404) {
-            throw new Error(`Model ${model} not found or not supported for generateContent`);
+            throw new Error(`Model ${modelName} not found or not supported for generateContent`);
           }
           throw error;
         }

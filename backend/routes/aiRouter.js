@@ -51,9 +51,12 @@ const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 // Helper function to validate and clean model name
 const cleanModelName = (modelName) => {
-    // Remove any version prefix if it exists
-    const cleaned = modelName.replace(/^models\//, '').replace(/^v1beta\//, '');
-    return cleaned;
+    // If the model name already includes 'models/', return as is
+    if (modelName.startsWith('models/')) {
+        return modelName;
+    }
+    // Otherwise, add the 'models/' prefix
+    return `models/${modelName}`;
 };
 
 // Helper function to create Google API request config
@@ -97,9 +100,11 @@ router.get('/models', async (req, res) => {
                 createGoogleApiConfig()
             );
 
-            // Filter for only Gemini models
+            // Filter for only text generation Gemini models
             const models = response.data.models?.filter(m => 
                 m.name.includes('gemini') && 
+                !m.name.includes('vision') &&
+                !m.name.includes('embedding') &&
                 m.supportedGenerationMethods?.includes('generateContent')
             ) || [];
 
@@ -151,7 +156,7 @@ router.post('/generate', async (req, res) => {
         
         try {
             const response = await axios.post(
-                `${GOOGLE_AI_BASE_URL}/models/${cleanedModelName}:generateContent`,
+                `${GOOGLE_AI_BASE_URL}/${cleanedModelName}:generateContent`,
                 { contents },
                 createGoogleApiConfig()
             );
@@ -162,8 +167,16 @@ router.post('/generate', async (req, res) => {
             console.error('Error generating content:', {
                 status: apiError.response?.status,
                 data: apiError.response?.data,
-                message: apiError.message
+                message: apiError.message,
+                model: cleanedModelName
             });
+
+            if (apiError.response?.status === 404) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: `Model ${model} is not available. Please try a different model.`
+                });
+            }
 
             if (apiError.response?.status === 401 || apiError.response?.status === 403) {
                 return res.status(503).json({
