@@ -3,6 +3,9 @@ const router = express.Router();
 const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
+const VectorDocument = require('../models/vectorDocument');
+const { GeminiEmbeddingService } = require('../services/geminiEmbeddingService');
+const { performSemanticSearch } = require('../services/documentProcessingService');
 
 // Configure CORS specifically for AI endpoints
 const aiCorsOptions = {
@@ -157,6 +160,83 @@ router.get('/test', (req, res) => {
         message: 'AI router is working',
         timestamp: new Date().toISOString()
     });
+});
+
+const embeddingService = new GeminiEmbeddingService();
+
+router.post('/query', async (req, res) => {
+  try {
+    const { query, siteId, teamId, timeframe } = req.body;
+    
+    // Generate embedding for the query
+    const queryEmbedding = await embeddingService.generateEmbedding(query);
+    
+    // Perform semantic search
+    const relevantDocuments = await performSemanticSearch(
+      queryEmbedding,
+      {
+        siteId,
+        teamId,
+        timeframe,
+        status: 'active'
+      }
+    );
+    
+    // Aggregate data from relevant documents
+    const aggregatedData = {
+      metrics: [],
+      visualizations: [],
+      tables: [],
+      insights: []
+    };
+    
+    // Process each relevant document
+    for (const doc of relevantDocuments) {
+      switch (doc.metadata.dataType) {
+        case 'metric':
+          aggregatedData.metrics.push({
+            title: doc.metadata.metricType,
+            value: doc.content,
+            change: doc.metadata.change
+          });
+          break;
+          
+        case 'event':
+          // Add to time series data for visualizations
+          if (doc.metadata.aggregationLevel) {
+            aggregatedData.visualizations.push({
+              type: 'multiLine',
+              title: `${doc.metadata.metricType} Trend`,
+              data: JSON.parse(doc.content)
+            });
+          }
+          break;
+          
+        case 'insight':
+          aggregatedData.insights.push(doc.content);
+          break;
+          
+        case 'journey':
+          aggregatedData.tables.push({
+            title: 'User Journey Analysis',
+            data: JSON.parse(doc.content)
+          });
+          break;
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: aggregatedData
+    });
+    
+  } catch (error) {
+    console.error('Error processing CQ Intelligence query:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error processing query'
+    });
+  }
 });
 
 module.exports = router; 
