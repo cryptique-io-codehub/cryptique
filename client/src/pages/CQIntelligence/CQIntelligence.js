@@ -30,6 +30,7 @@ const CQIntelligence = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [rateLimitStatus, setRateLimitStatus] = useState({ queueLength: 0, isProcessing: false });
+  const [serviceHealth, setServiceHealth] = useState({ healthy: true, status: 'unknown' });
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -39,6 +40,34 @@ const CQIntelligence = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Periodic health check
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const response = await axios.get('/api/ai/health');
+        setServiceHealth({
+          healthy: response.data.status === 'healthy',
+          status: response.data.geminiStatus || 'available',
+          timestamp: response.data.timestamp
+        });
+      } catch (error) {
+        setServiceHealth({
+          healthy: false,
+          status: error.response?.status === 503 ? 'service_unavailable' : 'error',
+          timestamp: new Date().toISOString()
+        });
+      }
+    };
+
+    // Check immediately
+    checkHealth();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkHealth, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Enhanced chart colors
   const chartColors = {
@@ -673,6 +702,20 @@ const CQIntelligence = () => {
         
         const ai = new GoogleGenerativeAI(apiKey);
         
+        // Check service health first
+        console.log('Checking service health...');
+        const healthStatus = await ai.checkServiceHealth();
+        console.log('Service health status:', healthStatus);
+        setServiceHealth(healthStatus);
+        
+        if (!healthStatus.healthy) {
+          console.log('Service is unhealthy, using fallback response');
+          if (healthStatus.status === 'service_unavailable') {
+            throw new Error('SERVICE_UNAVAILABLE');
+          }
+          throw new Error('SERVICE_ERROR');
+        }
+        
         // Use flash model for better rate limiting
         const preferredModel = await verifyModel();
         console.log(`Using preferred model: ${preferredModel}`);
@@ -720,6 +763,10 @@ const CQIntelligence = () => {
         let fallbackNote = '';
         if (directApiError.message === 'QUOTA_EXCEEDED') {
           fallbackNote = '\n\n⚠️ _API quota exceeded. Showing demo data while service recovers. Please try again in a few minutes._';
+        } else if (directApiError.message === 'SERVICE_UNAVAILABLE') {
+          fallbackNote = '\n\n🔧 _AI service is temporarily unavailable (503 error). Showing demo data while Google\'s service recovers. Please try again in a few minutes._';
+        } else if (directApiError.message === 'SERVER_ERROR') {
+          fallbackNote = '\n\n🚨 _AI service is experiencing server issues. Showing demo data while the service is restored. Please try again later._';
         } else if (directApiError.message === 'QUEUE_BUSY') {
           fallbackNote = '\n\n⏳ _Service is busy processing other requests. Showing demo data. Please try again shortly._';
         } else {
@@ -850,18 +897,43 @@ const CQIntelligence = () => {
               </select>
             </div>
             
-            {/* Rate Limit Status */}
-            {(rateLimitStatus.queueLength > 0 || rateLimitStatus.isProcessing) && (
-              <div className="ml-4 text-xs text-gray-500">
+            {/* Service Health & Rate Limit Status */}
+            <div className="ml-4 text-xs space-y-1">
+              {/* Service Health Indicator */}
+              {serviceHealth.status !== 'unknown' && (
                 <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    serviceHealth.healthy 
+                      ? 'bg-green-400' 
+                      : serviceHealth.status === 'service_unavailable' 
+                        ? 'bg-red-400 animate-pulse' 
+                        : 'bg-orange-400'
+                  }`}></div>
+                  <span className={
+                    serviceHealth.healthy 
+                      ? 'text-green-600' 
+                      : serviceHealth.status === 'service_unavailable' 
+                        ? 'text-red-600' 
+                        : 'text-orange-600'
+                  }>
+                    {serviceHealth.healthy ? 'AI Online' : 
+                     serviceHealth.status === 'service_unavailable' ? 'AI Offline (503)' : 
+                     'AI Issues'}
+                  </span>
+                </div>
+              )}
+              
+              {/* Rate Limit Status */}
+              {(rateLimitStatus.queueLength > 0 || rateLimitStatus.isProcessing) && (
+                <div className="flex items-center gap-1 text-gray-500">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
                   <span>Queue: {rateLimitStatus.queueLength}</span>
+                  {rateLimitStatus.isProcessing && (
+                    <span className="text-blue-600">Processing...</span>
+                  )}
                 </div>
-                {rateLimitStatus.isProcessing && (
-                  <div className="text-xs text-blue-600">Processing...</div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -959,8 +1031,18 @@ const CQIntelligence = () => {
 
         {/* Input Area */}
         <div className="p-6 border-t bg-gray-50">
+          {/* Service Health Warning */}
+          {!serviceHealth.healthy && serviceHealth.status === 'service_unavailable' && (
+            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <span>AI service is temporarily unavailable (503 error). Using demo data until service recovers.</span>
+              </div>
+            </div>
+          )}
+          
           {/* Rate Limit Warning */}
-          {rateLimitStatus.queueLength > 3 && (
+          {rateLimitStatus.queueLength > 3 && serviceHealth.healthy && (
             <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>

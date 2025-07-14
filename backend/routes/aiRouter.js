@@ -112,14 +112,23 @@ Provide a concise, helpful response about web3 analytics, user behavior, convers
       });
     }
     
-    if (error.message.includes('quota') || error.message.includes('429')) {
-      return res.status(429).json({
-        success: false,
-        error: 'API quota exceeded. Please try again later.',
-        fallback: true,
-        retryAfter: 60
-      });
-    }
+         if (error.message.includes('quota') || error.message.includes('429')) {
+       return res.status(429).json({
+         success: false,
+         error: 'API quota exceeded. Please try again later.',
+         fallback: true,
+         retryAfter: 60
+       });
+     }
+     
+     if (error.message.includes('503') || error.message.includes('Service Unavailable')) {
+       return res.status(503).json({
+         success: false,
+         error: 'AI service is temporarily unavailable. Please try again later.',
+         fallback: true,
+         retryAfter: 300 // 5 minutes
+       });
+     }
     
     res.status(500).json({
       success: false,
@@ -138,13 +147,33 @@ router.get('/status', (req, res) => {
   });
 });
 
-// Health check
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    service: 'AI Router',
-    timestamp: new Date().toISOString()
-  });
+// Health check with Gemini API status
+router.get('/health', async (req, res) => {
+  try {
+    // Quick health check to Gemini API
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const testResult = await model.generateContent({
+      contents: [{ parts: [{ text: 'Hello' }] }],
+      generationConfig: { maxOutputTokens: 10 }
+    });
+    
+    res.json({
+      status: 'healthy',
+      service: 'AI Router',
+      geminiStatus: 'available',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    const status = error.message.includes('503') ? 'service_unavailable' : 'error';
+    
+    res.status(error.message.includes('503') ? 503 : 500).json({
+      status: 'unhealthy',
+      service: 'AI Router',
+      geminiStatus: status,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 module.exports = router; 

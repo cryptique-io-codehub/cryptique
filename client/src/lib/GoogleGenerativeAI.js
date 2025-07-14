@@ -80,6 +80,20 @@ class GoogleGenerativeAI {
           throw new Error('QUOTA_EXCEEDED');
         }
         
+        // Check if it's a service unavailable error
+        if (error.response?.status === 503) {
+          console.log(`Service unavailable (503). Attempt ${attempt}/${maxRetries}`);
+          throw new Error('SERVICE_UNAVAILABLE');
+        }
+        
+        // Check if it's a server error (5xx)
+        if (error.response?.status >= 500) {
+          console.log(`Server error ${error.response.status}. Attempt ${attempt}/${maxRetries}`);
+          if (attempt === maxRetries) {
+            throw new Error('SERVER_ERROR');
+          }
+        }
+        
         // For other errors, throw immediately if it's the last attempt
         if (attempt === maxRetries) {
           throw error;
@@ -201,6 +215,33 @@ class GoogleGenerativeAI {
       isProcessing: this.isProcessingQueue,
       recentRequests: this.rateLimiter.requests.length
     };
+  }
+
+  // Check service health
+  async checkServiceHealth() {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/models`,
+        {
+          params: { key: this.apiKey },
+          timeout: 5000 // 5 second timeout for health check
+        }
+      );
+      
+      return {
+        healthy: true,
+        status: 'available',
+        modelsCount: response.data.models?.length || 0,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return {
+        healthy: false,
+        status: error.response?.status === 503 ? 'service_unavailable' : 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
   }
 }
 
