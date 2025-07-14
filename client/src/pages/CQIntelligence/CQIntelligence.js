@@ -29,8 +29,6 @@ const CQIntelligence = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [rateLimitStatus, setRateLimitStatus] = useState({ queueLength: 0, isProcessing: false });
-  const [serviceHealth, setServiceHealth] = useState({ healthy: true, status: 'unknown' });
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -40,34 +38,6 @@ const CQIntelligence = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Periodic health check
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const response = await axios.get('/api/ai/health');
-        setServiceHealth({
-          healthy: response.data.status === 'healthy',
-          status: response.data.geminiStatus || 'available',
-          timestamp: response.data.timestamp
-        });
-      } catch (error) {
-        setServiceHealth({
-          healthy: false,
-          status: error.response?.status === 503 ? 'service_unavailable' : 'error',
-          timestamp: new Date().toISOString()
-        });
-      }
-    };
-
-    // Check immediately
-    checkHealth();
-
-    // Check every 30 seconds
-    const interval = setInterval(checkHealth, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Enhanced chart colors
   const chartColors = {
@@ -667,76 +637,20 @@ const CQIntelligence = () => {
       let aiResponse;
       let errorOccurred = false;
 
-      // Try backend API first, then direct Gemini API with rate limiting
+      // For now, skip the backend API and use direct Gemini API
       try {
-        console.log('Attempting backend API...');
-        const response = await axios.post('/api/ai/query', {
-          message: userMessage,
-          teamId,
-          siteId,
-          context: 'analytics'
-        });
-        
-        if (response.data.success) {
-          const botMessage = response.data.response;
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: botMessage,
-            visualizations: [],
-            tables: [],
-            metrics: [],
-            insights: []
-          }]);
-          return; // Exit early on success
-        }
-      } catch (backendError) {
-        console.log('Backend API failed, trying direct Gemini API with rate limiting...');
-      }
-
-      // Fallback to direct Gemini API with enhanced rate limiting
-      try {
-        console.log('Skipping backend API, using direct model selection...');
+        console.log('Using direct Gemini API approach...');
         const apiKey = process.env.REACT_APP_GEMINI_API || 
                       process.env.NEXT_PUBLIC_GEMINI_API || 
-                      'AIzaSyCGeKpBs18-Ie7uAIYEiT3Yyop6Jd9HBo0';
+                      'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
         
         const ai = new GoogleGenerativeAI(apiKey);
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
         
-        // Check service health first
-        console.log('Checking service health...');
-        const healthStatus = await ai.checkServiceHealth();
-        console.log('Service health status:', healthStatus);
-        setServiceHealth(healthStatus);
-        
-        if (!healthStatus.healthy) {
-          console.log('Service is unhealthy, using fallback response');
-          if (healthStatus.status === 'service_unavailable') {
-            throw new Error('SERVICE_UNAVAILABLE');
-          }
-          throw new Error('SERVICE_ERROR');
-        }
-        
-        // Use flash model for better rate limiting
-        const preferredModel = await verifyModel();
-        console.log(`Using preferred model: ${preferredModel}`);
-        
-        const model = ai.getGenerativeModel({ model: preferredModel });
-        
-        // Check queue status before making request
-        const queueStatus = ai.getQueueStatus();
-        console.log('Queue status:', queueStatus);
-        setRateLimitStatus(queueStatus);
-        
-        if (queueStatus.queueLength > 5) {
-          console.log('Queue is busy, using fallback response');
-          throw new Error('QUEUE_BUSY');
-        }
-        
-        // Generate optimized analytics summary
+        // Generate analytics summary
         const analyticsSummary = generateAnalyticsSummary ? generateAnalyticsSummary(userMessage) : 
-          `Analyze this analytics query briefly: ${userMessage}. Provide insights about web3 analytics, user behavior, or conversion patterns.`;
+          `User is asking about: ${userMessage}`;
         
-        console.log(`Using model for SDK: ${preferredModel}`);
         const result = await model.generateContent(analyticsSummary);
         const response = await result.response;
         const botMessage = response.text();
@@ -752,28 +666,15 @@ const CQIntelligence = () => {
         
         return; // Exit early on success
       } catch (directApiError) {
-        console.log('SDK approach failed, using fallback response:', directApiError.message);
+        console.error('Direct API Error:', directApiError);
         errorOccurred = true;
         
         // Fall back to enhanced mock response
         console.log('Falling back to local processing...');
         aiResponse = generateEnhancedResponse(userMessage);
         
-        // Add appropriate note based on error type
-        let fallbackNote = '';
-        if (directApiError.message === 'QUOTA_EXCEEDED') {
-          fallbackNote = '\n\n⚠️ _API quota exceeded. Showing demo data while service recovers. Please try again in a few minutes._';
-        } else if (directApiError.message === 'SERVICE_UNAVAILABLE') {
-          fallbackNote = '\n\n🔧 _AI service is temporarily unavailable (503 error). Showing demo data while Google\'s service recovers. Please try again in a few minutes._';
-        } else if (directApiError.message === 'SERVER_ERROR') {
-          fallbackNote = '\n\n🚨 _AI service is experiencing server issues. Showing demo data while the service is restored. Please try again later._';
-        } else if (directApiError.message === 'QUEUE_BUSY') {
-          fallbackNote = '\n\n⏳ _Service is busy processing other requests. Showing demo data. Please try again shortly._';
-        } else {
-          fallbackNote = '\n\n🔄 _Using demo data while AI service is being configured. Real-time data will be available once service is restored._';
-        }
-        
-        aiResponse.content = `${aiResponse.content}${fallbackNote}`;
+        // Add a note about using fallback data
+        aiResponse.content = `${aiResponse.content}\n\n_Note: Using demo data while AI service is being configured._`;
         
         setMessages(prev => [...prev, { 
           role: 'assistant', 
@@ -816,15 +717,14 @@ const CQIntelligence = () => {
       const data = response.data;
       console.log("Available models:", data.models?.map(m => m.name));
       
-      // Define preferred models in order of preference (flash models first for better rate limits)
+      // Define preferred models in order of preference
       const preferredModels = [
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-flash-002',
-        'gemini-2.0-flash-exp',
+        'gemini-2.5-pro',
+        'gemini-2.0-pro',
         'gemini-1.5-pro',
         'gemini-1.5-pro-latest',
-        'gemini-1.5-pro-002'
+        'gemini-1.5-pro-002',
+        'gemini-2.5-pro-preview'
       ];
       
       const models = data.models || [];
@@ -858,12 +758,12 @@ const CQIntelligence = () => {
       }
       
       // Last resort fallback
-      console.log('No suitable model found, using default: gemini-1.5-flash');
-      return 'gemini-1.5-flash';
+      console.log('No suitable model found, using default: gemini-2.5-pro');
+      return 'gemini-2.5-pro';
     } catch (error) {
       console.error('Error fetching models:', error);
-      console.log('API call failed, using safe fallback model: gemini-1.5-flash');
-      return 'gemini-1.5-flash';
+      console.log('API call failed, using safe fallback model: gemini-2.5-pro');
+      return 'gemini-2.5-pro';
     }
   };
 
@@ -883,58 +783,16 @@ const CQIntelligence = () => {
 
         {/* Website Selector */}
         <div className="p-6 border-b bg-gray-50">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
-              <select
-                value={selectedSite}
-                onChange={(e) => setSelectedSite(e.target.value)}
-                className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
-              >
-                <option value="">Select a website</option>
-                <option value="site1">Site 1</option>
-                <option value="site2">Site 2</option>
-              </select>
-            </div>
-            
-            {/* Service Health & Rate Limit Status */}
-            <div className="ml-4 text-xs space-y-1">
-              {/* Service Health Indicator */}
-              {serviceHealth.status !== 'unknown' && (
-                <div className="flex items-center gap-1">
-                  <div className={`w-2 h-2 rounded-full ${
-                    serviceHealth.healthy 
-                      ? 'bg-green-400' 
-                      : serviceHealth.status === 'service_unavailable' 
-                        ? 'bg-red-400 animate-pulse' 
-                        : 'bg-orange-400'
-                  }`}></div>
-                  <span className={
-                    serviceHealth.healthy 
-                      ? 'text-green-600' 
-                      : serviceHealth.status === 'service_unavailable' 
-                        ? 'text-red-600' 
-                        : 'text-orange-600'
-                  }>
-                    {serviceHealth.healthy ? 'AI Online' : 
-                     serviceHealth.status === 'service_unavailable' ? 'AI Offline (503)' : 
-                     'AI Issues'}
-                  </span>
-                </div>
-              )}
-              
-              {/* Rate Limit Status */}
-              {(rateLimitStatus.queueLength > 0 || rateLimitStatus.isProcessing) && (
-                <div className="flex items-center gap-1 text-gray-500">
-                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                  <span>Queue: {rateLimitStatus.queueLength}</span>
-                  {rateLimitStatus.isProcessing && (
-                    <span className="text-blue-600">Processing...</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
+          <select
+            value={selectedSite}
+            onChange={(e) => setSelectedSite(e.target.value)}
+            className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
+          >
+            <option value="">Select a website</option>
+            <option value="site1">Site 1</option>
+            <option value="site2">Site 2</option>
+          </select>
         </div>
 
         {/* Chat Area */}
@@ -1031,26 +889,6 @@ const CQIntelligence = () => {
 
         {/* Input Area */}
         <div className="p-6 border-t bg-gray-50">
-          {/* Service Health Warning */}
-          {!serviceHealth.healthy && serviceHealth.status === 'service_unavailable' && (
-            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-                <span>AI service is temporarily unavailable (503 error). Using demo data until service recovers.</span>
-              </div>
-            </div>
-          )}
-          
-          {/* Rate Limit Warning */}
-          {rateLimitStatus.queueLength > 3 && serviceHealth.healthy && (
-            <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                <span>High traffic detected. Responses may be slower or use demo data.</span>
-              </div>
-            </div>
-          )}
-          
           <div className="flex gap-3">
             <input
               type="text"
@@ -1070,7 +908,7 @@ const CQIntelligence = () => {
               }`}
             >
               <Send size={20} />
-              <span>{isLoading ? 'Sending...' : 'Send'}</span>
+              <span>Send</span>
             </button>
           </div>
         </div>

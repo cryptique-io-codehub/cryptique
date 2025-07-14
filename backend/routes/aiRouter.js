@@ -1,177 +1,285 @@
 const express = require('express');
 const router = express.Router();
-const rateLimit = require('express-rate-limit');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios');
+const cors = require('cors');
+require('dotenv').config();
+const VectorDocument = require('../models/vectorDocument');
+const GeminiEmbeddingService = require('../services/geminiEmbeddingService');
+const { performSemanticSearch } = require('../services/documentProcessingService');
 
-// Rate limiting middleware
-const aiRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5, // 5 requests per minute per IP
-  message: {
-    error: 'Too many AI requests, please try again later',
-    retryAfter: 60
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Configure CORS specifically for AI endpoints
+const aiCorsOptions = {
+  origin: ['http://localhost:3000', 'https://app.cryptique.io', 'https://cryptique.io'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Apply CORS middleware specifically to this router
+router.use(cors(aiCorsOptions));
 
-// Queue for managing requests
-const requestQueue = [];
-let isProcessing = false;
-
-async function processQueue() {
-  if (isProcessing || requestQueue.length === 0) return;
-  
-  isProcessing = true;
-  
-  while (requestQueue.length > 0) {
-    const { prompt, resolve, reject } = requestQueue.shift();
-    
-    try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
-      const result = await model.generateContent({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 800,
-        },
-      });
-      
-      const response = await result.response;
-      resolve(response.text());
-      
-    } catch (error) {
-      console.error('AI Generation Error:', error);
-      reject(error);
-    }
-    
-    // Small delay between requests
-    await new Promise(resolve => setTimeout(resolve, 1000));
+// Middleware to ensure CORS headers are set correctly
+router.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('app.cryptique.io') || 
+                 origin.includes('cryptique.io') || 
+                 origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
   }
   
-  isProcessing = false;
-}
+  // Handle preflight OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
+  next();
+});
 
-// AI query endpoint
-router.post('/query', aiRateLimit, async (req, res) => {
-  try {
-    const { message, teamId, siteId, context } = req.body;
+// Debug environment variables
+console.log('Environment check on router load:', {
+    hasGeminiApi: !!process.env.GEMINI_API,
+    envKeys: Object.keys(process.env),
+});
+
+// Base URL for Google's Generative AI API
+const GOOGLE_AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+// Helper function to validate and clean model name
+const cleanModelName = (modelName) => {
+    // If the model name already includes 'models/', return as is
+    if (modelName.startsWith('models/')) {
+        return modelName;
+    }
+    // Otherwise, add the 'models/' prefix
+    return `models/${modelName}`;
+};
+
+// Helper function to create Google API request config
+const createGoogleApiConfig = (additionalHeaders = {}) => {
+    const apiKey = process.env.GEMINI_API || process.env.GOOGLE_API_KEY;
     
-    if (!message || !message.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Message is required'
-      });
+    if (!apiKey) {
+        console.error('Missing API key for Gemini');
+        throw new Error('No API key available');
     }
     
-    // Optimize prompt for analytics context
-    const optimizedPrompt = `
-As a web3 analytics expert, analyze this query: "${message.trim()}"
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            ...additionalHeaders
+        },
+        params: {
+            key: apiKey
+        }
+    };
+};
 
-Context: ${context || 'general analytics'}
-Team: ${teamId || 'unknown'}
-Site: ${siteId || 'unknown'}
+// Get available models
+router.get('/models', async (req, res) => {
+    try {
+        console.log('Handling /models request');
+        const apiKey = process.env.GEMINI_API || process.env.GOOGLE_API_KEY;
+        
+        if (!apiKey) {
+            console.error('Missing API key configuration');
+            return res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'The AI service is not properly configured. Please contact support.'
+            });
+        }
 
-Provide a concise, helpful response about web3 analytics, user behavior, conversion patterns, or related insights. Keep response under 500 words.
-    `.trim();
-    
-    // Add to queue
-    const responsePromise = new Promise((resolve, reject) => {
-      requestQueue.push({ prompt: optimizedPrompt, resolve, reject });
-      processQueue();
+        console.log('Fetching models from Google AI API...');
+        try {
+            const response = await axios.get(
+                `${GOOGLE_AI_BASE_URL}/models`,
+                createGoogleApiConfig()
+            );
+
+            // Filter for only text generation Gemini models
+            const models = response.data.models?.filter(m => 
+                m.name.includes('gemini') && 
+                !m.name.includes('vision') &&
+                !m.name.includes('embedding') &&
+                m.supportedGenerationMethods?.includes('generateContent')
+            ) || [];
+
+            console.log('Models fetched successfully:', models.map(m => m.name));
+            res.json({ models });
+        } catch (apiError) {
+            console.error('Google AI API Error:', {
+                status: apiError.response?.status,
+                data: apiError.response?.data,
+                message: apiError.message
+            });
+
+            if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: 'Authentication error with AI service. Please verify API key configuration.'
+                });
+            }
+
+            res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'The AI service is currently unavailable. Please try again later.'
+            });
+        }
+    } catch (error) {
+        console.error('Error in /models endpoint:', error);
+        res.status(503).json({
+            error: 'AI service temporarily unavailable',
+            details: 'An unexpected error occurred. Please try again later.'
+        });
+    }
+});
+
+// Generate content
+router.post('/generate', async (req, res) => {
+    try {
+        console.log('Handling /generate request');
+        const { model, contents } = req.body;
+        
+        if (!model || !contents) {
+            return res.status(400).json({ 
+                error: 'Invalid request',
+                details: 'Model and contents are required'
+            });
+        }
+
+        const cleanedModelName = cleanModelName(model);
+        console.log('Using model:', cleanedModelName);
+        
+        try {
+            const response = await axios.post(
+                `${GOOGLE_AI_BASE_URL}/${cleanedModelName}:generateContent`,
+                { contents },
+                createGoogleApiConfig()
+            );
+
+            console.log('Content generated successfully');
+            res.json(response.data);
+        } catch (apiError) {
+            console.error('Error generating content:', {
+                status: apiError.response?.status,
+                data: apiError.response?.data,
+                message: apiError.message,
+                model: cleanedModelName
+            });
+
+            if (apiError.response?.status === 404) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: `Model ${model} is not available. Please try a different model.`
+                });
+            }
+
+            if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+                return res.status(503).json({
+                    error: 'AI service temporarily unavailable',
+                    details: 'Authentication error with AI service. Please verify API key configuration.'
+                });
+            }
+
+            res.status(503).json({
+                error: 'AI service temporarily unavailable',
+                details: 'Failed to generate content. Please try again later.'
+            });
+        }
+    } catch (error) {
+        console.error('Error in /generate endpoint:', error);
+        res.status(503).json({
+            error: 'AI service temporarily unavailable',
+            details: 'An unexpected error occurred. Please try again later.'
+        });
+    }
+});
+
+// Debug route to test router
+router.get('/test', (req, res) => {
+    res.json({
+        message: 'AI router is working',
+        timestamp: new Date().toISOString()
     });
+});
+
+const embeddingService = new GeminiEmbeddingService();
+
+router.post('/query', async (req, res) => {
+  try {
+    const { query, siteId, teamId, timeframe } = req.body;
     
-    // Set timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 30000);
-    });
+    // Generate embedding for the query
+    const queryEmbedding = await embeddingService.generateEmbedding(query);
     
-    const aiResponse = await Promise.race([responsePromise, timeoutPromise]);
+    // Perform semantic search
+    const relevantDocuments = await performSemanticSearch(
+      queryEmbedding,
+      {
+        siteId,
+        teamId,
+        timeframe,
+        status: 'active'
+      }
+    );
+    
+    // Aggregate data from relevant documents
+    const aggregatedData = {
+      metrics: [],
+      visualizations: [],
+      tables: [],
+      insights: []
+    };
+    
+    // Process each relevant document
+    for (const doc of relevantDocuments) {
+      switch (doc.metadata.dataType) {
+        case 'metric':
+          aggregatedData.metrics.push({
+            title: doc.metadata.metricType,
+            value: doc.content,
+            change: doc.metadata.change
+          });
+          break;
+          
+        case 'event':
+          // Add to time series data for visualizations
+          if (doc.metadata.aggregationLevel) {
+            aggregatedData.visualizations.push({
+              type: 'multiLine',
+              title: `${doc.metadata.metricType} Trend`,
+              data: JSON.parse(doc.content)
+            });
+          }
+          break;
+          
+        case 'insight':
+          aggregatedData.insights.push(doc.content);
+          break;
+          
+        case 'journey':
+          aggregatedData.tables.push({
+            title: 'User Journey Analysis',
+            data: JSON.parse(doc.content)
+          });
+          break;
+      }
+    }
     
     res.json({
       success: true,
-      response: aiResponse,
-      queueLength: requestQueue.length
+      data: aggregatedData
     });
     
   } catch (error) {
-    console.error('AI Query Error:', error);
-    
-    // Handle specific error types
-    if (error.message === 'Request timeout') {
-      return res.status(408).json({
-        success: false,
-        error: 'Request timeout. Please try again.',
-        fallback: true
-      });
-    }
-    
-         if (error.message.includes('quota') || error.message.includes('429')) {
-       return res.status(429).json({
-         success: false,
-         error: 'API quota exceeded. Please try again later.',
-         fallback: true,
-         retryAfter: 60
-       });
-     }
-     
-     if (error.message.includes('503') || error.message.includes('Service Unavailable')) {
-       return res.status(503).json({
-         success: false,
-         error: 'AI service is temporarily unavailable. Please try again later.',
-         fallback: true,
-         retryAfter: 300 // 5 minutes
-       });
-     }
-    
+    console.error('Error processing CQ Intelligence query:', error);
     res.status(500).json({
       success: false,
-      error: 'AI service temporarily unavailable',
-      fallback: true
-    });
-  }
-});
-
-// Get queue status
-router.get('/status', (req, res) => {
-  res.json({
-    queueLength: requestQueue.length,
-    isProcessing,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Health check with Gemini API status
-router.get('/health', async (req, res) => {
-  try {
-    // Quick health check to Gemini API
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const testResult = await model.generateContent({
-      contents: [{ parts: [{ text: 'Hello' }] }],
-      generationConfig: { maxOutputTokens: 10 }
-    });
-    
-    res.json({
-      status: 'healthy',
-      service: 'AI Router',
-      geminiStatus: 'available',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    const status = error.message.includes('503') ? 'service_unavailable' : 'error';
-    
-    res.status(error.message.includes('503') ? 503 : 500).json({
-      status: 'unhealthy',
-      service: 'AI Router',
-      geminiStatus: status,
-      error: error.message,
-      timestamp: new Date().toISOString()
+      error: 'Error processing query'
     });
   }
 });
