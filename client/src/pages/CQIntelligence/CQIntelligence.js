@@ -29,6 +29,7 @@ const CQIntelligence = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [rateLimitStatus, setRateLimitStatus] = useState({ queueLength: 0, isProcessing: false });
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -637,20 +638,62 @@ const CQIntelligence = () => {
       let aiResponse;
       let errorOccurred = false;
 
-      // For now, skip the backend API and use direct Gemini API
+      // Try backend API first, then direct Gemini API with rate limiting
       try {
-        console.log('Using direct Gemini API approach...');
+        console.log('Attempting backend API...');
+        const response = await axios.post('/api/ai/query', {
+          message: userMessage,
+          teamId,
+          siteId,
+          context: 'analytics'
+        });
+        
+        if (response.data.success) {
+          const botMessage = response.data.response;
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: botMessage,
+            visualizations: [],
+            tables: [],
+            metrics: [],
+            insights: []
+          }]);
+          return; // Exit early on success
+        }
+      } catch (backendError) {
+        console.log('Backend API failed, trying direct Gemini API with rate limiting...');
+      }
+
+      // Fallback to direct Gemini API with enhanced rate limiting
+      try {
+        console.log('Skipping backend API, using direct model selection...');
         const apiKey = process.env.REACT_APP_GEMINI_API || 
                       process.env.NEXT_PUBLIC_GEMINI_API || 
-                      'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+                      'AIzaSyCGeKpBs18-Ie7uAIYEiT3Yyop6Jd9HBo0';
         
         const ai = new GoogleGenerativeAI(apiKey);
-        const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
         
-        // Generate analytics summary
+        // Use flash model for better rate limiting
+        const preferredModel = await verifyModel();
+        console.log(`Using preferred model: ${preferredModel}`);
+        
+        const model = ai.getGenerativeModel({ model: preferredModel });
+        
+        // Check queue status before making request
+        const queueStatus = ai.getQueueStatus();
+        console.log('Queue status:', queueStatus);
+        setRateLimitStatus(queueStatus);
+        
+        if (queueStatus.queueLength > 5) {
+          console.log('Queue is busy, using fallback response');
+          throw new Error('QUEUE_BUSY');
+        }
+        
+        // Generate optimized analytics summary
         const analyticsSummary = generateAnalyticsSummary ? generateAnalyticsSummary(userMessage) : 
-          `User is asking about: ${userMessage}`;
+          `Analyze this analytics query briefly: ${userMessage}. Provide insights about web3 analytics, user behavior, or conversion patterns.`;
         
+        console.log(`Using model for SDK: ${preferredModel}`);
         const result = await model.generateContent(analyticsSummary);
         const response = await result.response;
         const botMessage = response.text();
@@ -666,15 +709,24 @@ const CQIntelligence = () => {
         
         return; // Exit early on success
       } catch (directApiError) {
-        console.error('Direct API Error:', directApiError);
+        console.log('SDK approach failed, using fallback response:', directApiError.message);
         errorOccurred = true;
         
         // Fall back to enhanced mock response
         console.log('Falling back to local processing...');
         aiResponse = generateEnhancedResponse(userMessage);
         
-        // Add a note about using fallback data
-        aiResponse.content = `${aiResponse.content}\n\n_Note: Using demo data while AI service is being configured._`;
+        // Add appropriate note based on error type
+        let fallbackNote = '';
+        if (directApiError.message === 'QUOTA_EXCEEDED') {
+          fallbackNote = '\n\n⚠️ _API quota exceeded. Showing demo data while service recovers. Please try again in a few minutes._';
+        } else if (directApiError.message === 'QUEUE_BUSY') {
+          fallbackNote = '\n\n⏳ _Service is busy processing other requests. Showing demo data. Please try again shortly._';
+        } else {
+          fallbackNote = '\n\n🔄 _Using demo data while AI service is being configured. Real-time data will be available once service is restored._';
+        }
+        
+        aiResponse.content = `${aiResponse.content}${fallbackNote}`;
         
         setMessages(prev => [...prev, { 
           role: 'assistant', 
@@ -717,14 +769,15 @@ const CQIntelligence = () => {
       const data = response.data;
       console.log("Available models:", data.models?.map(m => m.name));
       
-      // Define preferred models in order of preference
+      // Define preferred models in order of preference (flash models first for better rate limits)
       const preferredModels = [
-        'gemini-2.5-pro',
-        'gemini-2.0-pro',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash-002',
+        'gemini-2.0-flash-exp',
         'gemini-1.5-pro',
         'gemini-1.5-pro-latest',
-        'gemini-1.5-pro-002',
-        'gemini-2.5-pro-preview'
+        'gemini-1.5-pro-002'
       ];
       
       const models = data.models || [];
@@ -758,12 +811,12 @@ const CQIntelligence = () => {
       }
       
       // Last resort fallback
-      console.log('No suitable model found, using default: gemini-2.5-pro');
-      return 'gemini-2.5-pro';
+      console.log('No suitable model found, using default: gemini-1.5-flash');
+      return 'gemini-1.5-flash';
     } catch (error) {
       console.error('Error fetching models:', error);
-      console.log('API call failed, using safe fallback model: gemini-2.5-pro');
-      return 'gemini-2.5-pro';
+      console.log('API call failed, using safe fallback model: gemini-1.5-flash');
+      return 'gemini-1.5-flash';
     }
   };
 
@@ -783,16 +836,33 @@ const CQIntelligence = () => {
 
         {/* Website Selector */}
         <div className="p-6 border-b bg-gray-50">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
-          <select
-            value={selectedSite}
-            onChange={(e) => setSelectedSite(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
-          >
-            <option value="">Select a website</option>
-            <option value="site1">Site 1</option>
-            <option value="site2">Site 2</option>
-          </select>
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Website</label>
+              <select
+                value={selectedSite}
+                onChange={(e) => setSelectedSite(e.target.value)}
+                className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
+              >
+                <option value="">Select a website</option>
+                <option value="site1">Site 1</option>
+                <option value="site2">Site 2</option>
+              </select>
+            </div>
+            
+            {/* Rate Limit Status */}
+            {(rateLimitStatus.queueLength > 0 || rateLimitStatus.isProcessing) && (
+              <div className="ml-4 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                  <span>Queue: {rateLimitStatus.queueLength}</span>
+                </div>
+                {rateLimitStatus.isProcessing && (
+                  <div className="text-xs text-blue-600">Processing...</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Chat Area */}
@@ -889,6 +959,16 @@ const CQIntelligence = () => {
 
         {/* Input Area */}
         <div className="p-6 border-t bg-gray-50">
+          {/* Rate Limit Warning */}
+          {rateLimitStatus.queueLength > 3 && (
+            <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                <span>High traffic detected. Responses may be slower or use demo data.</span>
+              </div>
+            </div>
+          )}
+          
           <div className="flex gap-3">
             <input
               type="text"
@@ -908,7 +988,7 @@ const CQIntelligence = () => {
               }`}
             >
               <Send size={20} />
-              <span>Send</span>
+              <span>{isLoading ? 'Sending...' : 'Send'}</span>
             </button>
           </div>
         </div>
