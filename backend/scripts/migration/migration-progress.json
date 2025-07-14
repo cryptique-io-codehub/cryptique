@@ -1,10 +1,1429 @@
 {
-  "currentPhase": null,
-  "totalRecords": 100,
-  "processedRecords": 50,
-  "failedRecords": 0,
-  "startTime": null,
-  "estimatedCompletion": null,
-  "errors": [],
-  "rollbackData": {}
+  "currentPhase": "completed",
+  "totalRecords": 1,
+  "processedRecords": 1,
+  "failedRecords": 235,
+  "startTime": "2025-07-14T14:53:06.287Z",
+  "estimatedCompletion": "2025-07-14T15:54:47.582Z",
+  "errors": [
+    {
+      "phase": "transformation",
+      "recordId": "67f93a99c44d2754a1096398",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.561Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f93f172da8c894efaa405d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.562Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f940ab9fee5f45533affab",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.563Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f941d1689abf345c2ad0e3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.564Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9424b20e6694291cd08f2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.565Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f94807bc8fb2247c62c70b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.566Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9486c49443dadec8bfe46",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.567Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f94b24892f35b83972ba89",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.568Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9525a8eda9cc924896a96",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.569Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f95548802dd9611e476237",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.570Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f95837dae4b0e2ed25e87c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.572Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f96393afe44415004a5ecd",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.572Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9ff09fe2098365aaf690c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.574Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa384edfa31a686e4167b1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.575Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa43b224a0ddfa012bb0a3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.577Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa501de4580e11b7b792ba",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.578Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb86ee9bb887be9f503faf",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.580Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb88271c857389f8bd99ff",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.581Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb966be75c55f0de815d91",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.582Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fca520c00fd7be1283930e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.583Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab4440b74f05d6ec4c84",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.584Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb54003a4537d21ae952a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.585Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb8b7b4a88adf15f81be4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.587Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcbb84da74fdf80597a097",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.589Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fceac353a62569399401fe",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.590Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf7163865f62475349b22",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.591Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fd5879c66aea2fb29ed650",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.592Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdadd0b41bdab5ba8a6df8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.593Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdb5f7d548bb1a26dc2faa",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.594Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdcde01821125e33bec52d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.595Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd4ea6c163ad153064d0b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.596Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdda4deb5bc33867e23917",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.597Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde4854820beab99d112ca",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.598Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe3eab3e68778d462199d5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.599Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5ce75229fca81133d80f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.600Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5e5d5229fca81133dc52",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.602Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe7fd83a6a1067e5c7698f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.603Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe875179665f72580bfda8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.604Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68125db3ac28bd1cb9f5ae74",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.606Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68177ce764dc668c3ce8ef87",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.607Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "681909bd2c2a29eb219357ee",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.608Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "682085ca215a4d0fabc5d72a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.610Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68208a09086800e8f8606507",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.610Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639013f7a5abde0e3210e3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.611Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6863927860c277675b855889",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.612Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639e86291cfff1b4962dba",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.614Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6864a3487b240fe02d713a35",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.614Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f93a9ac44d2754a109639c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.685Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f93f172da8c894efaa405f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.686Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f940ac9fee5f45533affad",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.686Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f941d2689abf345c2ad0e5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.687Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9424b20e6694291cd08f4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.687Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f94807bc8fb2247c62c70d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.687Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9486c49443dadec8bfe48",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.688Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f94b24892f35b83972ba8b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.688Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9525a8eda9cc924896a98",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.689Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f95548802dd9611e476239",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.689Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f95837dae4b0e2ed25e87e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.690Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f96393afe44415004a5ecf",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.690Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9ff09fe2098365aaf690e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.691Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa384fdfa31a686e4167b3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.691Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa43b224a0ddfa012bb0a5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.692Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa501de4580e11b7b792bc",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.693Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb86ee9bb887be9f503fb1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.694Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb88281c857389f8bd9a07",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.694Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb9677d788270ce0a1b269",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.695Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fca55cd788270ce0a21b42",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.695Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab5dd788270ce0a21b79",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.696Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb55dd788270ce0a315e0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.696Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb8dcd788270ce0a42fd3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.697Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcbbc2d788270ce0a6c03e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.697Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fceaded788270ce0bd56ed",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.698Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf736d25a2278dc6962f0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.698Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fd5890cb422751cf3a9dc1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.699Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdadfacb422751cf3ac41e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.699Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdb610cb422751cf3ac50f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.700Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdcdf1cb422751cf3ac6a4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.701Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd524cb422751cf3ac8f5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.701Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdda59cb422751cf3ac901",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.702Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde497cb422751cf3acaf7",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.703Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe3eddcb422751cf3adbce",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.703Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5d07cb422751cf3ae0af",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.704Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5e70cb422751cf3ae0b3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.705Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe8017cb422751cf3ae5b8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.705Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe878acb422751cf3ae78a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.706Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68125db3ac28bd1cb9f5ae76",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.706Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68177ce764dc668c3ce8ef89",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.707Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "681909bd2c2a29eb219357f0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.707Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "682085ca215a4d0fabc5d72c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.708Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68208a0a086800e8f8606509",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.708Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639013f7a5abde0e3210e5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.709Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6863927960c277675b85588b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.710Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639e86291cfff1b4962dbc",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.710Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6864a3497b240fe02d713a37",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.710Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f96393afe44415004a5ed2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.711Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9ff09fe2098365aaf6911",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.711Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa384fdfa31a686e4167b6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.712Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3876d788270ce0a16b97",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.712Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3877d788270ce0a16b99",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.713Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3877d788270ce0a16b9a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.713Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3878d788270ce0a16b9b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.714Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3879d788270ce0a16b9c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.714Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa3879d788270ce0a16b9d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.714Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa387ad788270ce0a16b9e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.715Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa387ad788270ce0a16b9f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.715Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa387bd788270ce0a16ba1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.716Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa387bd788270ce0a16ba2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.716Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa387cd788270ce0a16ba3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.717Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa43b224a0ddfa012bb0a8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.717Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa501ee4580e11b7b792bf",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.717Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb86ef9bb887be9f503fb4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.718Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb88281c857389f8bd9a0a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.718Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb96edd788270ce0a1b26a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.719Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fca5b4d788270ce0a21b4f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.719Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab77d788270ce0a21b7c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.720Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb628d788270ce0a316a8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.720Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb994d788270ce0a4d0b3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.721Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcbbf4d788270ce0a6ed5c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.721Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcead4d788270ce0bd56e6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.721Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf7c6d25a2278dc69f183",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.722Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fd58f3cb422751cf3a9dc4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.722Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdae84cb422751cf3ac48c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.723Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdb6a4cb422751cf3ac53e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.723Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdce26cb422751cf3ac6a5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.724Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd52acb422751cf3ac8f6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.724Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fddb0fcb422751cf3ac95e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.725Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde5a7cb422751cf3acb0c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.725Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe3fbccb422751cf3adbd4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.726Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5d13cb422751cf3ae0b1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.726Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5f6bcb422751cf3ae0c0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.727Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe8036cb422751cf3ae5ce",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.727Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe8865cb422751cf3ae79f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.728Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68125db3ac28bd1cb9f5ae79",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.728Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68177ce864dc668c3ce8ef8c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.729Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "681909bd2c2a29eb219357f3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.729Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "682085ca215a4d0fabc5d72f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.730Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68208a0a086800e8f860650c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.730Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639013f7a5abde0e3210e8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.731Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6863927960c277675b85588e",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.731Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639e86291cfff1b4962dbf",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.731Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6864a3497b240fe02d713a3a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.732Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f96393afe44415004a5ed5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.732Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9ff0afe2098365aaf6914",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.733Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa384fdfa31a686e4167b9",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.733Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b4d788270ce0a16bf8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.734Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b5d788270ce0a16bfa",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.735Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b5d788270ce0a16bfb",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.735Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b6d788270ce0a16bfc",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.736Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b6d788270ce0a16bfd",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.736Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b7d788270ce0a16bfe",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.737Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b8d788270ce0a16bff",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.738Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b8d788270ce0a16c00",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.738Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b9d788270ce0a16c01",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.739Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39b9d788270ce0a16c03",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.739Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39bad788270ce0a16c04",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.740Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa43b224a0ddfa012bb0ab",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.740Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa501ee4580e11b7b792c2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.741Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb86ef9bb887be9f503fb7",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.741Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb88281c857389f8bd9a0d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.742Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb970ed788270ce0a1b272",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.742Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fca6d3d788270ce0a21b5d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.743Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab99d788270ce0a21b7d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.744Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb748d788270ce0a32531",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.744Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb9a1d788270ce0a4dcf0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.744Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcbbdfd788270ce0a6da8d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.745Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fced17d788270ce0bd579d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.745Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf8dad25a2278dc6afbe9",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.745Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fd58efcb422751cf3a9dc3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.746Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdaf9bcb422751cf3ac4b7",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.746Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdb6b7cb422751cf3ac540",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.747Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdce35cb422751cf3ac6a6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.748Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd53ccb422751cf3ac8f7",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.748Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fddc4ccb422751cf3ac9b7",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.748Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde59ccb422751cf3acb0a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.749Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe40fecb422751cf3adbda",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.749Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5d0fcb422751cf3ae0b0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.749Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5f67cb422751cf3ae0bf",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.750Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe8059cb422751cf3ae5db",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.750Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe876acb422751cf3ae789",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.750Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68125db3ac28bd1cb9f5ae7c",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.751Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68177ce864dc668c3ce8ef8f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.751Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "681909bd2c2a29eb219357f6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.751Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "682085ca215a4d0fabc5d732",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.752Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68208a0a086800e8f860650f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.752Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639014f7a5abde0e3210eb",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.752Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6863927960c277675b855891",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.753Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639e87291cfff1b4962dc2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.753Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6864a3497b240fe02d713a3d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.753Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f96394afe44415004a5ed8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.754Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67f9ff0afe2098365aaf6917",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.754Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa384fdfa31a686e4167bc",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.754Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a6d788270ce0a16bea",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.754Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a7d788270ce0a16beb",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.755Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a8d788270ce0a16bed",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.755Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a8d788270ce0a16bee",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.755Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a9d788270ce0a16bef",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.756Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39a9d788270ce0a16bf0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.756Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39aad788270ce0a16bf1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.757Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39aad788270ce0a16bf2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.757Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39abd788270ce0a16bf3",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.758Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39acd788270ce0a16bf4",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.758Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa39acd788270ce0a16bf5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.759Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa43b224a0ddfa012bb0ae",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.759Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fa501ee4580e11b7b792c5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.759Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb86ef9bb887be9f503fba",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.760Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb88291c857389f8bd9a10",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.760Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fb9956d788270ce0a1b30d",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.760Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab6dd788270ce0a21b7a",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.761Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcab6dd788270ce0a21b7b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.761Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb9a6d788270ce0a4e1a6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.761Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcb9a7d788270ce0a4e20b",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.761Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcc087d788270ce0aa61e2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf8e5d25a2278dc6b0755",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fcf8e6d25a2278dc6b07e0",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fd6263cb422751cf3a9f92",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdafb3cb422751cf3ac4b8",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdb6adcb422751cf3ac53f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.762Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd2becb422751cf3ac847",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.763Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fdd9cdcb422751cf3ac900",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.763Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde0d5cb422751cf3aca91",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.763Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fde7e7cb422751cf3acb37",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.763Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe4368cb422751cf3adbe6",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.763Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5f88cb422751cf3ae0c1",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.764Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe5f89cb422751cf3ae0c2",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.764Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe8291cb422751cf3ae609",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.764Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "67fe89b0cb422751cf3ae800",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.764Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68125db3ac28bd1cb9f5ae7f",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.765Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68177ce864dc668c3ce8ef92",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.765Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "681909bd2c2a29eb219357f9",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.765Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "682085cb215a4d0fabc5d735",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.765Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68208a0a086800e8f8606512",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.766Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639014f7a5abde0e3210ee",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.766Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6863927960c277675b855894",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.766Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "68639e87291cfff1b4962dc5",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.767Z"
+    },
+    {
+      "phase": "transformation",
+      "recordId": "6864a3497b240fe02d713a40",
+      "message": "Invalid time value",
+      "timestamp": "2025-07-14T14:53:10.767Z"
+    },
+    {
+      "phase": "completed",
+      "message": "The `uri` parameter to `openUri()` must be a string, got \"undefined\". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.",
+      "stack": "MongooseError: The `uri` parameter to `openUri()` must be a string, got \"undefined\". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.\n    at NativeConnection.createClient (C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\node_modules\\mongoose\\lib\\drivers\\node-mongodb-native\\connection.js:237:11)\n    at NativeConnection.openUri (C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\node_modules\\mongoose\\lib\\connection.js:1071:34)\n    at Mongoose.connect (C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\node_modules\\mongoose\\lib\\mongoose.js:450:15)\n    at migrateAnalyticsData (C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\scripts\\migration\\analytics-data-migration.js:53:22)\n    at Object.<anonymous> (C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\scripts\\migration\\analytics-data-migration.js:865:3)\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)",
+      "timestamp": "2025-07-14T15:54:47.582Z"
+    }
+  ],
+  "rollbackData": {
+    "createdDocumentIds": []
+  }
 }

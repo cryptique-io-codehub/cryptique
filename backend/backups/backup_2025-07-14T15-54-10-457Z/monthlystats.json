@@ -1,0 +1,1711 @@
+[
+  {
+    "_id": "67f96394afe44415004a5ed8",
+    "siteId": "02366b3d-9fb9-446f-9fa6-7f0ca5fop",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f96393afe44415004a5ecd",
+        "hour": "2025-04-11T18:46:43.601Z",
+        "_id": "67f96394afe44415004a5ed9"
+      },
+      {
+        "analyticsId": "67f96393afe44415004a5ecd",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6820f3ce2b992fed41a4a266"
+      },
+      {
+        "analyticsId": "67f96393afe44415004a5ecd",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684887d5d9f880987afc4f0e"
+      },
+      {
+        "analyticsId": "67f96393afe44415004a5ecd",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687014eaca34688329e75b32"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-10T19:30:50.865Z",
+    "__v": 0
+  },
+  {
+    "_id": "67f9ff0afe2098365aaf6917",
+    "siteId": "898d822d-3ca3-455e-ba28-a9e9f7783c6b",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f9ff09fe2098365aaf690c",
+        "hour": "2025-04-12T05:50:01.739Z",
+        "_id": "67f9ff0afe2098365aaf6918"
+      },
+      {
+        "analyticsId": "67f9ff09fe2098365aaf690c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68218e834afe5a0a24a6376b"
+      },
+      {
+        "analyticsId": "67f9ff09fe2098365aaf690c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68492281ff17a0e7b9f051cc"
+      },
+      {
+        "analyticsId": "67f9ff09fe2098365aaf690c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870af9ac82ed84337a74925"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T06:30:50.661Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fa384fdfa31a686e4167bc",
+    "siteId": "3f2e3565-b84a-41ec-be68-3c93f15ee1c8",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fa384edfa31a686e4167b1",
+        "hour": "2025-04-12T09:54:23.135Z",
+        "_id": "67fa384fdfa31a686e4167bd"
+      },
+      {
+        "analyticsId": "67fa384edfa31a686e4167b1",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c7be86f276cdaefd7f"
+      },
+      {
+        "analyticsId": "67fa384edfa31a686e4167b1",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac579960bd2eac8ba19"
+      },
+      {
+        "analyticsId": "67fa384edfa31a686e4167b1",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7dfea8d73abf14c39e2"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:55.361Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fa39a6d788270ce0a16bea",
+    "siteId": "02366b3d-9fb9-446f-9fa6-7f0ca597aa5f",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f93a99c44d2754a1096398",
+        "hour": "2025-04-12T10:00:06.533Z",
+        "_id": "67fa39a68f4d1149586fafcd"
+      },
+      {
+        "analyticsId": "67f93a99c44d2754a1096398",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c0be86f276cdaefd2e"
+      },
+      {
+        "analyticsId": "67f93a99c44d2754a1096398",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495abe79960bd2eac8b9cf"
+      },
+      {
+        "analyticsId": "67f93a99c44d2754a1096398",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7d8ea8d73abf14c398b"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:48.624Z"
+  },
+  {
+    "_id": "67fa39a7d788270ce0a16beb",
+    "siteId": "3e289b0f-a4e8-4c08-bdd7-d930161da707",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f93f172da8c894efaa405d",
+        "hour": "2025-04-12T10:00:07.370Z",
+        "_id": "67fa39a78f4d1149586fafd1"
+      },
+      {
+        "analyticsId": "67f93f172da8c894efaa405d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c0be86f276cdaefd3f"
+      },
+      {
+        "analyticsId": "67f93f172da8c894efaa405d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495abf79960bd2eac8b9d5"
+      },
+      {
+        "analyticsId": "67f93f172da8c894efaa405d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7d9ea8d73abf14c3992"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:49.202Z"
+  },
+  {
+    "_id": "67fa39a8d788270ce0a16bed",
+    "siteId": "49cf97d5-4374-4c47-a417-2cf02b92e887",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f940ab9fee5f45533affab",
+        "hour": "2025-04-12T10:00:07.950Z",
+        "_id": "67fa39a78f4d1149586fafd6"
+      },
+      {
+        "analyticsId": "67f940ab9fee5f45533affab",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c1be86f276cdaefd46"
+      },
+      {
+        "analyticsId": "67f940ab9fee5f45533affab",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495abf79960bd2eac8b9db"
+      },
+      {
+        "analyticsId": "67f940ab9fee5f45533affab",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7d9ea8d73abf14c3999"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:49.780Z"
+  },
+  {
+    "_id": "67fa39a8d788270ce0a16bee",
+    "siteId": "b45a7051-acb1-4204-b579-b14ce5981b45",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f941d1689abf345c2ad0e3",
+        "hour": "2025-04-12T10:00:08.533Z",
+        "_id": "67fa39a88f4d1149586fafda"
+      },
+      {
+        "analyticsId": "67f941d1689abf345c2ad0e3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c2be86f276cdaefd50"
+      },
+      {
+        "analyticsId": "67f941d1689abf345c2ad0e3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac079960bd2eac8b9e1"
+      },
+      {
+        "analyticsId": "67f941d1689abf345c2ad0e3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7daea8d73abf14c39a0"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:50.358Z"
+  },
+  {
+    "_id": "67fa39a9d788270ce0a16bef",
+    "siteId": "bd5c1aba-7b2c-4b11-b95a-803a5210078c",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f9424b20e6694291cd08f2",
+        "hour": "2025-04-12T10:00:09.117Z",
+        "_id": "67fa39a98f4d1149586fafde"
+      },
+      {
+        "analyticsId": "67f9424b20e6694291cd08f2",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c2be86f276cdaefd56"
+      },
+      {
+        "analyticsId": "67f9424b20e6694291cd08f2",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac079960bd2eac8b9e7"
+      },
+      {
+        "analyticsId": "67f9424b20e6694291cd08f2",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7daea8d73abf14c39a7"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:50.934Z"
+  },
+  {
+    "_id": "67fa39a9d788270ce0a16bf0",
+    "siteId": "02366b3d-9fb9-446f-9fa6-7f0ca597aamn5f",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f94807bc8fb2247c62c70b",
+        "hour": "2025-04-12T10:00:09.699Z",
+        "_id": "67fa39a98f4d1149586fafe2"
+      },
+      {
+        "analyticsId": "67f94807bc8fb2247c62c70b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c3be86f276cdaefd5b"
+      },
+      {
+        "analyticsId": "67f94807bc8fb2247c62c70b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac179960bd2eac8b9ed"
+      },
+      {
+        "analyticsId": "67f94807bc8fb2247c62c70b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7dbea8d73abf14c39ae"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:51.513Z"
+  },
+  {
+    "_id": "67fa39aad788270ce0a16bf1",
+    "siteId": "02366b3d-9fb9-446f-9fa6-7f0ca597aaf",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f9486c49443dadec8bfe46",
+        "hour": "2025-04-12T10:00:10.280Z",
+        "_id": "67fa39aa8f4d1149586fafe6"
+      },
+      {
+        "analyticsId": "67f9486c49443dadec8bfe46",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c3be86f276cdaefd60"
+      },
+      {
+        "analyticsId": "67f9486c49443dadec8bfe46",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac279960bd2eac8b9f3"
+      },
+      {
+        "analyticsId": "67f9486c49443dadec8bfe46",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7dcea8d73abf14c39b5"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:52.090Z"
+  },
+  {
+    "_id": "67fa39aad788270ce0a16bf2",
+    "siteId": "02366b3d-9fb9-446f-9fa6-7f0ca5f",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f94b24892f35b83972ba89",
+        "hour": "2025-04-12T10:00:10.863Z",
+        "_id": "67fa39aa8f4d1149586fafea"
+      },
+      {
+        "analyticsId": "67f94b24892f35b83972ba89",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c4be86f276cdaefd65"
+      },
+      {
+        "analyticsId": "67f94b24892f35b83972ba89",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac279960bd2eac8b9f9"
+      },
+      {
+        "analyticsId": "67f94b24892f35b83972ba89",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7dcea8d73abf14c39bc"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:52.666Z"
+  },
+  {
+    "_id": "67fa39abd788270ce0a16bf3",
+    "siteId": "9b0d6604-8423-4997-9fa4-af01fc0b8750",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f9525a8eda9cc924896a96",
+        "hour": "2025-04-12T10:00:11.459Z",
+        "_id": "67fa39ab8f4d1149586fafee"
+      },
+      {
+        "analyticsId": "67f9525a8eda9cc924896a96",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c4be86f276cdaefd6a"
+      },
+      {
+        "analyticsId": "67f9525a8eda9cc924896a96",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac379960bd2eac8b9ff"
+      },
+      {
+        "analyticsId": "67f9525a8eda9cc924896a96",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7ddea8d73abf14c39c3"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:53.243Z"
+  },
+  {
+    "_id": "67fa39acd788270ce0a16bf4",
+    "siteId": "944161fd-2808-424c-9f31-7215efb95eac",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f95548802dd9611e476237",
+        "hour": "2025-04-12T10:00:12.041Z",
+        "_id": "67fa39ac8f4d1149586faff2"
+      },
+      {
+        "analyticsId": "67f95548802dd9611e476237",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c5be86f276cdaefd6f"
+      },
+      {
+        "analyticsId": "67f95548802dd9611e476237",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac479960bd2eac8ba05"
+      },
+      {
+        "analyticsId": "67f95548802dd9611e476237",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7ddea8d73abf14c39ca"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:53.819Z"
+  },
+  {
+    "_id": "67fa39acd788270ce0a16bf5",
+    "siteId": "4ae92515-7743-4d75-92c6-089066e7433f",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67f95837dae4b0e2ed25e87c",
+        "hour": "2025-04-12T10:00:12.632Z",
+        "_id": "67fa39ac8f4d1149586faff6"
+      },
+      {
+        "analyticsId": "67f95837dae4b0e2ed25e87c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821c6c6be86f276cdaefd74"
+      },
+      {
+        "analyticsId": "67f95837dae4b0e2ed25e87c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68495ac479960bd2eac8ba0b"
+      },
+      {
+        "analyticsId": "67f95837dae4b0e2ed25e87c",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870e7deea8d73abf14c39d1"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T10:30:54.398Z"
+  },
+  {
+    "_id": "67fa43b224a0ddfa012bb0ae",
+    "siteId": "542c832c-2859-429e-9f18-cef80843a5cc",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fa43b224a0ddfa012bb0a3",
+        "hour": "2025-04-12T10:42:58.343Z",
+        "_id": "67fa43b224a0ddfa012bb0af"
+      },
+      {
+        "analyticsId": "67fa43b224a0ddfa012bb0a3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821d4d3821c20f07864bcad"
+      },
+      {
+        "analyticsId": "67fa43b224a0ddfa012bb0a3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684968d62edcfa1c5b86edac"
+      },
+      {
+        "analyticsId": "67fa43b224a0ddfa012bb0a3",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6870f5ea9fd583698f2f33c5"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T11:30:50.990Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fa501ee4580e11b7b792c5",
+    "siteId": "e1e4ebf7-ef4a-46df-918a-bb85c09eba63",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fa501de4580e11b7b792ba",
+        "hour": "2025-04-12T11:35:57.929Z",
+        "_id": "67fa501ee4580e11b7b792c6"
+      },
+      {
+        "analyticsId": "67fa501de4580e11b7b792ba",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6821e2e3031d7b633431aa25"
+      },
+      {
+        "analyticsId": "67fa501de4580e11b7b792ba",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684976e6e6061d81e469b5b2"
+      },
+      {
+        "analyticsId": "67fa501de4580e11b7b792ba",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687103fb76e4a012f8807e3d"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-11T12:30:51.423Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fb86ef9bb887be9f503fba",
+    "siteId": "75f508e3-fea9-4752-8f73-f5b96b587a5c",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fb86ee9bb887be9f503faf",
+        "hour": "2025-04-13T09:42:06.949Z",
+        "_id": "67fb86ef9bb887be9f503fbb"
+      },
+      {
+        "analyticsId": "67fb86ee9bb887be9f503faf",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6823183f5db21d0c8081a596"
+      },
+      {
+        "analyticsId": "67fb86ee9bb887be9f503faf",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684aac41462ebda9ab5c2f24"
+      },
+      {
+        "analyticsId": "67fb86ee9bb887be9f503faf",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6872395b7d5de84942a6c06e"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-12T10:30:51.463Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fb88291c857389f8bd9a10",
+    "siteId": "05c8cbe4-cb20-42a9-95d9-e00fd0c7dbb2",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fb88271c857389f8bd99ff",
+        "hour": "2025-04-13T09:47:20.342Z",
+        "_id": "67fb88291c857389f8bd9a11"
+      },
+      {
+        "analyticsId": "67fb88271c857389f8bd99ff",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6823183f5db21d0c8081a59b"
+      },
+      {
+        "analyticsId": "67fb88271c857389f8bd99ff",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684aac42462ebda9ab5c2f2a"
+      },
+      {
+        "analyticsId": "67fb88271c857389f8bd99ff",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6872395c7d5de84942a6c075"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-12T10:30:52.043Z",
+    "__v": 0
+  },
+  {
+    "_id": "67fb9956d788270ce0a1b30d",
+    "siteId": "b84b5f10-9603-4ecf-99fc-aa3b34a5cd91",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fb966be75c55f0de815d91",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fb9956975d34a24baec566"
+      },
+      {
+        "analyticsId": "67fb966be75c55f0de815d91",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68232d57c27993e43ae6a52c"
+      },
+      {
+        "analyticsId": "67fb966be75c55f0de815d91",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684ac15a057ad8d8827c367b"
+      },
+      {
+        "analyticsId": "67fb966be75c55f0de815d91",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68724e73006734e86f0d5238"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-12T12:00:51.864Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcab6dd788270ce0a21b7a",
+    "siteId": "c91b2893-84af-4c5e-a1eb-bde9bca2f2ce",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fca520c00fd7be1283930e",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcab6d44c29c52f914f277"
+      },
+      {
+        "analyticsId": "67fca520c00fd7be1283930e",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "682438911cb5a4139bef4735"
+      },
+      {
+        "analyticsId": "67fca520c00fd7be1283930e",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684bcc8b50c505dd28da567e"
+      },
+      {
+        "analyticsId": "67fca520c00fd7be1283930e",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687359a3dd5f739aab805561"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T07:00:51.896Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcab6dd788270ce0a21b7b",
+    "siteId": "d9ce777d-9cff-4365-b6fa-e900c0e2a96e",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fcab4440b74f05d6ec4c84",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcab6d44c29c52f914f27b"
+      },
+      {
+        "analyticsId": "67fcab4440b74f05d6ec4c84",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "682438921cb5a4139bef473a"
+      },
+      {
+        "analyticsId": "67fcab4440b74f05d6ec4c84",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684bcc8c50c505dd28da5684"
+      },
+      {
+        "analyticsId": "67fcab4440b74f05d6ec4c84",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687359a4dd5f739aab805568"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T07:00:52.472Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcb9a6d788270ce0a4e1a6",
+    "siteId": "d0084e54-7fdb-488b-b630-e5fc05dcf1b4",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fcb54003a4537d21ae952a",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcb9a6795184040a9fa7a9"
+      },
+      {
+        "analyticsId": "67fcb54003a4537d21ae952a",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68244da4c35ad2e55601fd71"
+      },
+      {
+        "analyticsId": "67fcb54003a4537d21ae952a",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684be1a707ee6fe30a2602a1"
+      },
+      {
+        "analyticsId": "67fcb54003a4537d21ae952a",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68736ebca11ceb006edee589"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T08:30:52.591Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcb9a7d788270ce0a4e20b",
+    "siteId": "27c752cb-b25f-4688-b7a2-c5b72edb834e",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fcb8b7b4a88adf15f81be4",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcb9a7795184040a9fa7ad"
+      },
+      {
+        "analyticsId": "67fcb8b7b4a88adf15f81be4",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68244da5c35ad2e55601fd76"
+      },
+      {
+        "analyticsId": "67fcb8b7b4a88adf15f81be4",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684be1a807ee6fe30a2602a7"
+      },
+      {
+        "analyticsId": "67fcb8b7b4a88adf15f81be4",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68736ebda11ceb006edee590"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T08:30:53.176Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcc087d788270ce0aa61e2",
+    "siteId": "d51dcfd2-d0a5-424f-925b-dbfcb1ab2ca2",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fcbb84da74fdf80597a097",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcc086ab5ab8dd60161204"
+      },
+      {
+        "analyticsId": "67fcbb84da74fdf80597a097",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68244da5c35ad2e55601fd7b"
+      },
+      {
+        "analyticsId": "67fcbb84da74fdf80597a097",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684be1a907ee6fe30a2602ad"
+      },
+      {
+        "analyticsId": "67fcbb84da74fdf80597a097",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68736ebda11ceb006edee597"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T08:30:53.758Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcf8e5d25a2278dc6b0755",
+    "siteId": "2e89d08b-b4c4-490f-9cd2-75822deea2dd",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fceac353a62569399401fe",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcf8e526162c4bb6c179ae"
+      },
+      {
+        "analyticsId": "67fceac353a62569399401fe",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68248ce8e2bd216923bb76fa"
+      },
+      {
+        "analyticsId": "67fceac353a62569399401fe",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684c20f004dc59f2f27e2308"
+      },
+      {
+        "analyticsId": "67fceac353a62569399401fe",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6873ae05f45725884b2d11e0"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T13:00:53.124Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fcf8e6d25a2278dc6b07e0",
+    "siteId": "e68b74d2-e01f-493f-b97b-6699fe51b9c4",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fcf7163865f62475349b22",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fcf8e626162c4bb6c179b2"
+      },
+      {
+        "analyticsId": "67fcf7163865f62475349b22",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68248ce9e2bd216923bb76ff"
+      },
+      {
+        "analyticsId": "67fcf7163865f62475349b22",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684c20f104dc59f2f27e230e"
+      },
+      {
+        "analyticsId": "67fcf7163865f62475349b22",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6873ae05f45725884b2d11e7"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T13:00:53.715Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fd6263cb422751cf3a9f92",
+    "siteId": "7c883e78-187a-4865-92a0-f363334b1cb8",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fd5879c66aea2fb29ed650",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fd6263e4623ed262ab8f13"
+      },
+      {
+        "analyticsId": "67fd5879c66aea2fb29ed650",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6824f665425d26fe8eaf00b7"
+      },
+      {
+        "analyticsId": "67fd5879c66aea2fb29ed650",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684c8a68159ba09b6e1bc696"
+      },
+      {
+        "analyticsId": "67fd5879c66aea2fb29ed650",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6874177e07924f83686fa220"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-13T20:30:54.202Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fdafb3cb422751cf3ac4b8",
+    "siteId": "6255d5e2-7f8f-49dd-853a-e95508ddbbb1",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fdadd0b41bdab5ba8a6df8",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fdafb33d94dff3c90b3aec"
+      },
+      {
+        "analyticsId": "67fdadd0b41bdab5ba8a6df8",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6825439f18516b2ef7f8da24"
+      },
+      {
+        "analyticsId": "67fdadd0b41bdab5ba8a6df8",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684cd0b858451d6747745742"
+      },
+      {
+        "analyticsId": "67fdadd0b41bdab5ba8a6df8",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68745dcec679df652362c239"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T01:30:54.463Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fdb6adcb422751cf3ac53f",
+    "siteId": "cc3365a0-12d2-44ee-a856-772afcc5593c",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fdb5f7d548bb1a26dc2faa",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fdb6ad5e7d7885254ecfcb"
+      },
+      {
+        "analyticsId": "67fdb5f7d548bb1a26dc2faa",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68254aa7d19f3e160ca323a4"
+      },
+      {
+        "analyticsId": "67fdb5f7d548bb1a26dc2faa",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684cd7c05698b6a7c3c4636e"
+      },
+      {
+        "analyticsId": "67fdb5f7d548bb1a26dc2faa",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687464d617f719fa3213b571"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T02:00:54.643Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fdd2becb422751cf3ac847",
+    "siteId": "710f0306-84fd-4672-8e96-4c4c64567b61",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fdcde01821125e33bec52d",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fdd2be99882c51f31c21b5"
+      },
+      {
+        "analyticsId": "67fdcde01821125e33bec52d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68255fbf2548c2822b9bcfa0"
+      },
+      {
+        "analyticsId": "67fdcde01821125e33bec52d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684cecd8c035bb21fd6623e3"
+      },
+      {
+        "analyticsId": "67fdcde01821125e33bec52d",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687479eefaa2f1ae76bdd02f"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T03:30:54.994Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fdd9cdcb422751cf3ac900",
+    "siteId": "c2f70b84-3912-4669-a71b-279371fc371d",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fdd4ea6c163ad153064d0b",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fdd9cd8503fb7567b70af2"
+      },
+      {
+        "analyticsId": "67fdd4ea6c163ad153064d0b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68256dcf18b8dc931877bed1"
+      },
+      {
+        "analyticsId": "67fdd4ea6c163ad153064d0b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684cfae93e0fb3e4a3f2509d"
+      },
+      {
+        "analyticsId": "67fdd4ea6c163ad153064d0b",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687487fffaa2f1ae76bf23c2"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T04:30:55.010Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fde0d5cb422751cf3aca91",
+    "siteId": "e77b7aee-9599-4086-8529-80d624039d59",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fdda4deb5bc33867e23917",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fde0d596a934009972ac75"
+      },
+      {
+        "analyticsId": "67fdda4deb5bc33867e23917",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "682574d8569a557aef6e7a81"
+      },
+      {
+        "analyticsId": "67fdda4deb5bc33867e23917",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684d01f23e0fb3e4a3f2ad92"
+      },
+      {
+        "analyticsId": "67fdda4deb5bc33867e23917",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68748f07ba7e135a091ed67d"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T05:00:55.373Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fde7e7cb422751cf3acb37",
+    "siteId": "36c7d251-e2c6-42be-ba71-8627cba5519a",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fde4854820beab99d112ca",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fde7e62bfa8ebb959c45d5"
+      },
+      {
+        "analyticsId": "67fde4854820beab99d112ca",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68257be018b8dc9318789737"
+      },
+      {
+        "analyticsId": "67fde4854820beab99d112ca",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684d08f93e0fb3e4a3f30df5"
+      },
+      {
+        "analyticsId": "67fde4854820beab99d112ca",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6874960f7afce783e4fd9a74"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T05:30:55.558Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fe4368cb422751cf3adbe6",
+    "siteId": "4abceb2c-fe1f-48ec-bfda-904e2c5e8e83",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fe3eab3e68778d462199d5",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fe436863e3fe39de1b30c6"
+      },
+      {
+        "analyticsId": "67fe3eab3e68778d462199d5",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6825d7485fea9c33deff5b0b"
+      },
+      {
+        "analyticsId": "67fe3eab3e68778d462199d5",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684d6462c4049e2e2547551d"
+      },
+      {
+        "analyticsId": "67fe3eab3e68778d462199d5",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6874f1770ea1c7b03869feab"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T12:00:55.942Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fe5f88cb422751cf3ae0c1",
+    "siteId": "d37788d7-cb1a-45c4-8699-19c7c591b521",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fe5ce75229fca81133d80f",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fe5f88c39c2413a115e575"
+      },
+      {
+        "analyticsId": "67fe5ce75229fca81133d80f",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6825f368aac590dc86c0da05"
+      },
+      {
+        "analyticsId": "67fe5ce75229fca81133d80f",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684d8081a2a97ed5c25fc4cc"
+      },
+      {
+        "analyticsId": "67fe5ce75229fca81133d80f",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68750d97f26efdc70e77d50a"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T14:00:55.957Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fe5f89cb422751cf3ae0c2",
+    "siteId": "c4cd30c5-910b-46f3-aa5c-3a711d7ee438",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fe5e5d5229fca81133dc52",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fe5f88c39c2413a115e579"
+      },
+      {
+        "analyticsId": "67fe5e5d5229fca81133dc52",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6825f369aac590dc86c0da0a"
+      },
+      {
+        "analyticsId": "67fe5e5d5229fca81133dc52",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684d8082a2a97ed5c25fc4d2"
+      },
+      {
+        "analyticsId": "67fe5e5d5229fca81133dc52",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68750d98f26efdc70e77d511"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T14:00:56.628Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fe8291cb422751cf3ae609",
+    "siteId": "10ec3e16-e59b-4c93-9332-111a2fa248a1",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fe7fd83a6a1067e5c7698f",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fe82914cede4d2821b47b8"
+      },
+      {
+        "analyticsId": "67fe7fd83a6a1067e5c7698f",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68261691580e8c105371baac"
+      },
+      {
+        "analyticsId": "67fe7fd83a6a1067e5c7698f",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684da3ab8e5c8de024707e4d"
+      }
+    ],
+    "lastSnapshotAt": "2025-06-14T16:30:35.709Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "67fe89b0cb422751cf3ae800",
+    "siteId": "f99af21c-5137-4150-8042-b6f95b7b0cc9",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "67fe875179665f72580bfda8",
+        "visitors": 0,
+        "wallets": 0,
+        "pageViews": 0,
+        "_id": "67fe89b07b0c79004f53c887"
+      },
+      {
+        "analyticsId": "67fe875179665f72580bfda8",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68261d999e541e3761edbe94"
+      },
+      {
+        "analyticsId": "67fe875179665f72580bfda8",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684daab38e5c8de02470db69"
+      }
+    ],
+    "lastSnapshotAt": "2025-06-14T17:00:35.013Z",
+    "timezone": "UTC"
+  },
+  {
+    "_id": "68125db3ac28bd1cb9f5ae7f",
+    "siteId": "6408961d-6f30-4d20-afe3-db70b620158d",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68125db3ac28bd1cb9f5ae74",
+        "timestamp": "2025-04-30T17:28:19.262Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "68125db3ac28bd1cb9f5ae80"
+      },
+      {
+        "analyticsId": "68125db3ac28bd1cb9f5ae74",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "6839eb36a0815c64ce53245a"
+      },
+      {
+        "analyticsId": "68125db3ac28bd1cb9f5ae74",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "686178503e7adc19dc7d6097"
+      }
+    ],
+    "lastSnapshotAt": "2025-06-29T17:30:56.251Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "68177ce864dc668c3ce8ef92",
+    "siteId": "a64246c9-3e1f-4668-9798-4d5098e6a5f4",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68177ce764dc668c3ce8ef87",
+        "timestamp": "2025-05-04T14:42:47.985Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "68177ce864dc668c3ce8ef93"
+      },
+      {
+        "analyticsId": "68177ce764dc668c3ce8ef87",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "683f0e13e0847e6d5a3ed11e"
+      },
+      {
+        "analyticsId": "68177ce764dc668c3ce8ef87",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68669b292a7a864802b68755"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-03T15:00:57.009Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "681909bd2c2a29eb219357f9",
+    "siteId": "625dba2e-7f6c-430d-8ffb-e0113f651e29",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "681909bd2c2a29eb219357ee",
+        "timestamp": "2025-05-05T18:55:57.310Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "681909bd2c2a29eb219357fa"
+      },
+      {
+        "analyticsId": "681909bd2c2a29eb219357ee",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "684097ce822530ebfc221e8d"
+      },
+      {
+        "analyticsId": "681909bd2c2a29eb219357ee",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "686824ee0d643c80d7a6f394"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-04T19:01:02.200Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "682085cb215a4d0fabc5d735",
+    "siteId": "d12f8d53-afbc-40b6-bdb0-2ed24d2a41e1",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "682085ca215a4d0fabc5d72a",
+        "timestamp": "2025-05-11T11:11:06.461Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "682085cb215a4d0fabc5d736"
+      },
+      {
+        "analyticsId": "682085ca215a4d0fabc5d72a",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68481756453fefe03f22b1cf"
+      },
+      {
+        "analyticsId": "682085ca215a4d0fabc5d72a",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "686fa47044010d0e84ef75b0"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-10T11:30:56.134Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "68208a0a086800e8f8606512",
+    "siteId": "de99f681-4043-4670-980e-903209a55fdb",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68208a09086800e8f8606507",
+        "timestamp": "2025-05-11T11:29:14.196Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "68208a0a086800e8f8606513"
+      },
+      {
+        "analyticsId": "68208a09086800e8f8606507",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "68481757453fefe03f22b1d4"
+      },
+      {
+        "analyticsId": "68208a09086800e8f8606507",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "686fa47044010d0e84ef75b6"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-10T11:30:56.709Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "68639014f7a5abde0e3210ee",
+    "siteId": "30189a47-a365-409b-b9b9-0e859ca0908d",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68639013f7a5abde0e3210e3",
+        "timestamp": "2025-07-01T07:36:51.624Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "68639014f7a5abde0e3210ef"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-01T07:36:51.624Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "6863927960c277675b855894",
+    "siteId": "75c6d265-aac1-4a45-997e-f8d4978777fa",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "6863927860c277675b855889",
+        "timestamp": "2025-07-01T07:47:05.064Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "6863927960c277675b855895"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-01T07:47:05.064Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "68639e87291cfff1b4962dc5",
+    "siteId": "2665466b-aa30-449e-8b05-5c377c09cc98",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68639e86291cfff1b4962dba",
+        "timestamp": "2025-07-01T08:38:30.718Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "68639e87291cfff1b4962dc6"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-01T08:38:30.718Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "6864a3497b240fe02d713a40",
+    "siteId": "2d5e7dc2-c70c-42ac-9e10-399182873d9d",
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "6864a3487b240fe02d713a35",
+        "timestamp": "2025-07-02T03:11:05.214Z",
+        "visitors": 1,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 1,
+        "_id": "6864a3497b240fe02d713a41"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-02T03:11:05.214Z",
+    "timezone": "UTC",
+    "__v": 0
+  },
+  {
+    "_id": "687522b2a38581f6bc0e8bf0",
+    "siteId": "test-site-001",
+    "__v": 0,
+    "analyticsSnapshot": [
+      {
+        "analyticsId": "68751c95e8c158dd81c1f379",
+        "visitors": 0,
+        "web3Users": 0,
+        "walletsConnected": 0,
+        "pageViews": 0,
+        "_id": "687522b228785d6ea7efdbd9"
+      }
+    ],
+    "lastSnapshotAt": "2025-07-14T15:30:58.706Z",
+    "timezone": "UTC"
+  }
+]

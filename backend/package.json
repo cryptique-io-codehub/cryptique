@@ -16,7 +16,10 @@
     "logs:production": "pm2 logs",
     "monit:production": "pm2 monit",
     "backup": "./scripts/backup.sh",
-    "health-check": "./scripts/health-check.sh"
+    "health-check": "./scripts/health-check.sh",
+    "migrate:analytics": "node scripts/migration/run-analytics-migration.js",
+    "migrate:analytics:test": "node scripts/migration/test-analytics-migration.js",
+    "create:embedding-jobs": "node scripts/migration/create-embedding-jobs.js"
   },
   "author": "",
   "license": "ISC",
@@ -28,6 +31,7 @@
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cheerio": "^1.0.0",
+    "commander": "^11.1.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -41,6 +45,7 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
+    "ora": "^5.4.1",
     "puppeteer": "^24.5.0",
     "stripe": "^18.1.0",
     "uuid": "^11.1.0",

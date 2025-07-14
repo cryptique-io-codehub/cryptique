@@ -1,0 +1,35 @@
+{
+  "startTime": "2025-07-14T15:04:52.817Z",
+  "endTime": "2025-07-14T15:04:53.786Z",
+  "success": false,
+  "phases": {
+    "setup": {
+      "success": false,
+      "error": "E11000 duplicate key error collection: Cryptique-Test-Server.analytics index: siteId_1 dup key: { siteId: \"test-site-001\" }"
+    },
+    "extraction": {
+      "success": false,
+      "error": null,
+      "count": 0
+    },
+    "transformation": {
+      "success": false,
+      "error": null,
+      "count": 0
+    },
+    "validation": {
+      "success": false,
+      "error": null,
+      "count": 0
+    },
+    "jobCreation": {
+      "success": false,
+      "error": null,
+      "count": 0
+    },
+    "cleanup": {
+      "success": false,
+      "error": null
+    }
+  }
+}
