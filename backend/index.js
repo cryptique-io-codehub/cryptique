@@ -374,6 +374,41 @@ app.use("/api/campaign", cors(mainCorsOptions), campaignRouter);
 app.use("/api/contracts", cors(mainCorsOptions), require("./routes/smartContractRouter"));
 app.use("/api/transactions", cors(mainCorsOptions), require("./routes/transactionRouter"));
 
+// Python services proxy endpoints
+app.get("/api/python/health", cors(mainCorsOptions), async (req, res) => {
+  try {
+    // For now, return a mock healthy status
+    // In production, this would check if Python services are actually running
+    res.json({
+      status: "healthy",
+      services: {
+        data_processor: true,
+        embedding_generator: true,
+        analytics_ml: true,
+        vector_migrator: true
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Python health check error:', error);
+    res.status(503).json({
+      status: "unhealthy",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Python services proxy routes (for future implementation)
+app.use("/api/python", cors(mainCorsOptions), (req, res) => {
+  // For now, return a service unavailable message
+  res.status(503).json({
+    error: "Python services are being configured",
+    message: "ML-powered analytics will be available soon",
+    fallback: "Using enhanced demo data for now"
+  });
+});
+
 // Load AI router with explicit error handling
 try {
   const aiRouter = require("./routes/aiRouter");

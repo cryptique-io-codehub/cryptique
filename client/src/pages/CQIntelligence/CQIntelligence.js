@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, TrendingUp, Users, Activity, BarChart3 } from 'lucide-react';
 import GoogleGenerativeAI from '../../lib/GoogleGenerativeAI';
 import { 
   ResponsiveContainer, 
@@ -29,6 +29,7 @@ const CQIntelligence = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [pythonServicesAvailable, setPythonServicesAvailable] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -38,6 +39,25 @@ const CQIntelligence = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Check Python services availability on component mount
+  useEffect(() => {
+    checkPythonServices();
+  }, []);
+
+  const checkPythonServices = async () => {
+    try {
+      // Check if Python services are available
+      const response = await axios.get('/api/python/health', { timeout: 5000 });
+      if (response.data.status === 'healthy') {
+        setPythonServicesAvailable(true);
+        console.log('Python services are available');
+      }
+    } catch (error) {
+      console.log('Python services not available, using fallback mode');
+      setPythonServicesAvailable(false);
+    }
+  };
 
   // Enhanced chart colors
   const chartColors = {
@@ -49,6 +69,65 @@ const CQIntelligence = () => {
     danger: '#ef4444',
     info: '#3b82f6'
   };
+
+  // MetricCard component
+  const MetricCard = ({ title, value, change, icon: Icon }) => (
+    <div className="p-4 bg-white rounded-lg shadow-md border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm text-gray-600 font-medium">{title}</h4>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-gray-900">{value}</span>
+            {change !== null && change !== undefined && (
+              <span className={`text-sm font-medium ${
+                change > 0 ? 'text-green-500' : change < 0 ? 'text-red-500' : 'text-gray-500'
+              }`}>
+                {change > 0 ? '+' : ''}{change}%
+              </span>
+            )}
+          </div>
+        </div>
+        {Icon && (
+          <div className="p-2 bg-gray-50 rounded-lg">
+            <Icon className="w-5 h-5 text-gray-600" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // DataTable component
+  const DataTable = ({ title, columns, data }) => (
+    <div className="mb-8 overflow-x-auto bg-white rounded-lg shadow-md">
+      <div className="p-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((column, index) => (
+                <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {data.map((row, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-gray-50">
+                {columns.map((column, colIndex) => (
+                  <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {column.format ? column.format(row[column.key]) : row[column.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   const VisualizationComponent = ({ visualization }) => {
     const { type, title, description, data } = visualization;
@@ -64,7 +143,7 @@ const CQIntelligence = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                {Object.keys(data[0]).filter(key => key !== 'name').map((key, index) => (
+                {Object.keys(data[0] || {}).filter(key => key !== 'name').map((key, index) => (
                   <Line 
                     key={key}
                     type="monotone"
@@ -86,7 +165,7 @@ const CQIntelligence = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                {Object.keys(data[0]).filter(key => key !== 'name').map((key, index) => (
+                {Object.keys(data[0] || {}).filter(key => key !== 'name').map((key, index) => (
                   <Bar 
                     key={key}
                     dataKey={key}
@@ -151,6 +230,26 @@ const CQIntelligence = () => {
             </ResponsiveContainer>
           );
 
+        case 'area':
+          return (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#1d0c46" 
+                  fill="#1d0c46" 
+                  fillOpacity={0.3}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          );
+
         default:
           return null;
       }
@@ -165,60 +264,17 @@ const CQIntelligence = () => {
     );
   };
 
-  const MetricsComponent = ({ metrics }) => (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      {metrics.map((metric, index) => (
-        <div key={index} className="p-4 bg-white rounded-lg shadow-md">
-          <h4 className="text-sm text-gray-600">{metric.title}</h4>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold">{metric.value}</span>
-            {metric.change !== null && (
-              <span className={`text-sm ${metric.change > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {metric.change > 0 ? '+' : ''}{metric.change}%
-              </span>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const TableComponent = ({ table }) => (
-    <div className="mb-8 overflow-x-auto">
-      <h3 className="text-xl font-semibold mb-4">{table.title}</h3>
-      <table className="min-w-full bg-white rounded-lg shadow-md">
-        <thead>
-          <tr className="bg-gray-50">
-            {table.columns.map((column, index) => (
-              <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {column.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {table.data.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {table.columns.map((column, colIndex) => (
-                <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {column.format ? column.format(row[column.key]) : row[column.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
   const InsightsComponent = ({ insights }) => (
     <div className="mb-8 p-4 bg-white rounded-lg shadow-md">
-      <h3 className="text-xl font-semibold mb-4">Key Insights</h3>
+      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <TrendingUp className="w-5 h-5 text-blue-500" />
+        Key Insights
+      </h3>
       <ul className="space-y-2">
         {insights.map((insight, index) => (
           <li key={index} className="flex items-start gap-2">
-            <span className="text-blue-500">•</span>
-            <span>{insight}</span>
+            <span className="text-blue-500 mt-1">•</span>
+            <span className="text-gray-700">{insight}</span>
           </li>
         ))}
       </ul>
@@ -228,10 +284,14 @@ const CQIntelligence = () => {
   const ResponseComponent = ({ response }) => {
     return (
       <div className="space-y-6">
-        <p className="text-lg">{response.content}</p>
+        <p className="text-lg text-gray-800">{response.content}</p>
         
         {response.metrics?.length > 0 && (
-          <MetricsComponent metrics={response.metrics} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {response.metrics.map((metric, index) => (
+              <MetricCard key={index} {...metric} />
+            ))}
+          </div>
         )}
         
         {response.visualizations?.map((visualization, index) => (
@@ -239,7 +299,7 @@ const CQIntelligence = () => {
         ))}
         
         {response.tables?.map((table, index) => (
-          <TableComponent key={index} table={table} />
+          <DataTable key={index} {...table} />
         ))}
         
         {response.insights?.length > 0 && (
@@ -247,6 +307,137 @@ const CQIntelligence = () => {
         )}
       </div>
     );
+  };
+
+  // Python services integration
+  const queryPythonServices = async (userMessage, siteId, teamId) => {
+    try {
+      const query = userMessage.toLowerCase();
+      
+      // Determine the type of analysis needed
+      let endpoint = '/api/python/process/analytics';
+      let requestData = {
+        site_id: siteId,
+        start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        end_date: new Date().toISOString(),
+        data_types: ['analytics', 'sessions', 'transactions']
+      };
+
+      // Route to specific Python service endpoints based on query
+      if (query.includes('journey') || query.includes('funnel')) {
+        endpoint = '/api/python/process/user-journeys';
+        requestData = { site_id: siteId, time_window: 30 };
+      } else if (query.includes('time') || query.includes('trend') || query.includes('forecast')) {
+        endpoint = '/api/python/process/time-series';
+        requestData = { site_id: siteId, metric: 'sessions', time_window: 90 };
+      } else if (query.includes('web3') || query.includes('wallet') || query.includes('transaction')) {
+        endpoint = '/api/python/process/web3-patterns';
+        requestData = { site_id: siteId, time_window: 30 };
+      } else if (query.includes('predict') || query.includes('churn') || query.includes('conversion')) {
+        endpoint = '/api/python/ml/predict';
+        requestData = { 
+          site_id: siteId, 
+          prediction_type: query.includes('churn') ? 'churn' : 'conversion',
+          time_window: 30 
+        };
+      }
+
+      console.log(`Querying Python service: ${endpoint}`, requestData);
+      
+      const response = await axios.post(endpoint, requestData, {
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data,
+          source: 'python_services'
+        };
+      } else {
+        throw new Error(response.data.error || 'Python service returned unsuccessful response');
+      }
+    } catch (error) {
+      console.error('Python services error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to query Python services'
+      };
+    }
+  };
+
+  // Enhanced RAG query using vector search
+  const queryVectorDatabase = async (userMessage, siteId, teamId) => {
+    try {
+      const response = await axios.post('/api/ai/query', {
+        query: userMessage,
+        siteId: siteId,
+        teamId: teamId,
+        timeframe: '30d'
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data,
+          source: 'vector_database'
+        };
+      } else {
+        throw new Error('Vector database query failed');
+      }
+    } catch (error) {
+      console.error('Vector database error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to query vector database'
+      };
+    }
+  };
+
+  // Generate enhanced response with AI
+  const generateAIResponse = async (userMessage, contextData) => {
+    try {
+      const apiKey = process.env.REACT_APP_GEMINI_API || 
+                    process.env.NEXT_PUBLIC_GEMINI_API || 
+                    'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+      
+      const ai = new GoogleGenerativeAI(apiKey);
+      const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      
+      const contextPrompt = `
+        You are CQ Intelligence, an advanced analytics AI assistant for Cryptique.
+        
+        User Query: "${userMessage}"
+        
+        Context Data: ${JSON.stringify(contextData, null, 2)}
+        
+        Please provide a comprehensive analysis based on the data provided. Include:
+        1. Direct answer to the user's question
+        2. Key insights from the data
+        3. Actionable recommendations
+        4. Relevant trends or patterns
+        
+        Keep your response conversational and insightful, focusing on business value.
+      `;
+      
+      const result = await model.generateContent(contextPrompt);
+      const response = await result.response;
+      
+      return {
+        success: true,
+        content: response.text(),
+        source: 'ai_enhanced'
+      };
+    } catch (error) {
+      console.error('AI generation error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to generate AI response'
+      };
+    }
   };
 
   const generateEnhancedResponse = (userMessage) => {
@@ -634,57 +825,124 @@ const CQIntelligence = () => {
       const teamId = localStorage.getItem('teamId');
       const siteId = selectedSite || localStorage.getItem('selectedSiteId');
       
-      let aiResponse;
-      let errorOccurred = false;
-
-      // For now, skip the backend API and use direct Gemini API
-      try {
-        console.log('Using direct Gemini API approach...');
-        const apiKey = process.env.REACT_APP_GEMINI_API || 
-                      process.env.NEXT_PUBLIC_GEMINI_API || 
-                      'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
+      let finalResponse = null;
+      
+      // Try Python services first if available
+      if (pythonServicesAvailable && siteId) {
+        console.log('Attempting to use Python services...');
+        const pythonResult = await queryPythonServices(userMessage, siteId, teamId);
         
-        const ai = new GoogleGenerativeAI(apiKey);
-        const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
-        
-        // Generate analytics summary
-        const analyticsSummary = generateAnalyticsSummary ? generateAnalyticsSummary(userMessage) : 
-          `User is asking about: ${userMessage}`;
-        
-        const result = await model.generateContent(analyticsSummary);
-        const response = await result.response;
-        const botMessage = response.text();
-        
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: botMessage,
-          visualizations: [],
-          tables: [],
-          metrics: [],
-          insights: []
-        }]);
-        
-        return; // Exit early on success
-      } catch (directApiError) {
-        console.error('Direct API Error:', directApiError);
-        errorOccurred = true;
-        
-        // Fall back to enhanced mock response
-        console.log('Falling back to local processing...');
-        aiResponse = generateEnhancedResponse(userMessage);
-        
-        // Add a note about using fallback data
-        aiResponse.content = `${aiResponse.content}\n\n_Note: Using demo data while AI service is being configured._`;
-        
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: aiResponse.content,
-          visualizations: aiResponse.visualizations || [],
-          tables: aiResponse.tables || [],
-          metrics: aiResponse.metrics || [],
-          insights: aiResponse.insights || []
-        }]);
+        if (pythonResult.success) {
+          console.log('Python services successful');
+          
+          // Try to get additional context from vector database
+          const vectorResult = await queryVectorDatabase(userMessage, siteId, teamId);
+          
+          // Combine data from both sources
+          const combinedData = {
+            python_analysis: pythonResult.data,
+            vector_context: vectorResult.success ? vectorResult.data : null
+          };
+          
+          // Generate AI-enhanced response
+          const aiResult = await generateAIResponse(userMessage, combinedData);
+          
+          if (aiResult.success) {
+            finalResponse = {
+              content: aiResult.content,
+              visualizations: pythonResult.data.visualizations || [],
+              tables: pythonResult.data.tables || [],
+              metrics: pythonResult.data.metrics || [],
+              insights: pythonResult.data.insights || [],
+              source: 'python_ai_enhanced'
+            };
+          } else {
+            // Use Python data with fallback formatting
+            finalResponse = {
+              content: `Based on your analytics data:\n\n${JSON.stringify(pythonResult.data, null, 2)}`,
+              visualizations: pythonResult.data.visualizations || [],
+              tables: pythonResult.data.tables || [],
+              metrics: pythonResult.data.metrics || [],
+              insights: pythonResult.data.insights || [],
+              source: 'python_services'
+            };
+          }
+        }
       }
+      
+      // If Python services failed or unavailable, try vector database
+      if (!finalResponse && siteId) {
+        console.log('Attempting vector database query...');
+        const vectorResult = await queryVectorDatabase(userMessage, siteId, teamId);
+        
+        if (vectorResult.success) {
+          console.log('Vector database successful');
+          
+          // Generate AI response with vector context
+          const aiResult = await generateAIResponse(userMessage, vectorResult.data);
+          
+          if (aiResult.success) {
+            finalResponse = {
+              content: aiResult.content,
+              visualizations: vectorResult.data.visualizations || [],
+              tables: vectorResult.data.tables || [],
+              metrics: vectorResult.data.metrics || [],
+              insights: vectorResult.data.insights || [],
+              source: 'vector_ai_enhanced'
+            };
+          }
+        }
+      }
+      
+      // If all else fails, use direct AI or fallback
+      if (!finalResponse) {
+        console.log('Using fallback approach...');
+        
+        try {
+          // Try direct AI approach
+          const aiResult = await generateAIResponse(userMessage, {});
+          
+          if (aiResult.success) {
+            finalResponse = {
+              content: aiResult.content,
+              visualizations: [],
+              tables: [],
+              metrics: [],
+              insights: [],
+              source: 'ai_direct'
+            };
+          }
+        } catch (directError) {
+          console.error('Direct AI failed:', directError);
+          
+          // Ultimate fallback to enhanced mock response
+          finalResponse = generateEnhancedResponse(userMessage);
+          finalResponse.content = `${finalResponse.content}\n\n_Note: Using demo data while services are being configured._`;
+          finalResponse.source = 'fallback_demo';
+        }
+      }
+      
+      // Add source indicator
+      if (finalResponse.source) {
+        const sourceLabels = {
+          'python_ai_enhanced': '🚀 Powered by Python ML + AI',
+          'python_services': '🔬 Powered by Python ML Services',
+          'vector_ai_enhanced': '🧠 Powered by Vector Database + AI',
+          'ai_direct': '🤖 Powered by AI',
+          'fallback_demo': '📊 Demo Data'
+        };
+        
+        finalResponse.content = `${finalResponse.content}\n\n---\n*${sourceLabels[finalResponse.source] || 'CQ Intelligence'}*`;
+      }
+      
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: finalResponse.content,
+        visualizations: finalResponse.visualizations || [],
+        tables: finalResponse.tables || [],
+        metrics: finalResponse.metrics || [],
+        insights: finalResponse.insights || []
+      }]);
 
     } catch (err) {
       console.error('CQ Intelligence Error:', err);
@@ -776,7 +1034,14 @@ const CQIntelligence = () => {
             <Bot className="text-[#caa968]" size={24} />
             <div>
               <h1 className="text-2xl font-bold text-[#1d0c46]">CQ Intelligence</h1>
-              <p className="text-gray-500 mt-1">Comprehensive analytics with off-chain and on-chain correlations</p>
+              <p className="text-gray-500 mt-1">
+                Advanced analytics with ML-powered insights and real-time correlations
+                {pythonServicesAvailable && (
+                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    ML Services Active
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -800,15 +1065,19 @@ const CQIntelligence = () => {
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-12">
               <Bot size={64} className="mb-6 text-[#caa968]" />
-              <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">Welcome to Enhanced CQ Intelligence</h2>
+              <h2 className="text-xl font-semibold text-[#1d0c46] mb-2">
+                Welcome to CQ Intelligence {pythonServicesAvailable ? 'Pro' : ''}
+              </h2>
               <p className="text-gray-600 max-w-md mb-4">
-                I can provide comprehensive analytics with rich visualizations, correlations between off-chain and on-chain data, and actionable insights.
+                I provide comprehensive analytics with rich visualizations, ML-powered predictions, 
+                and actionable insights from your data.
               </p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>Try asking:</p>
-                <p>• "Compare my current traffic with last month"</p>
-                <p>• "Show me the correlation between sessions and transactions"</p>
-                <p>• "Analyze my conversion funnel over 30 days"</p>
+                <p>• "Predict user churn for the next 30 days"</p>
+                <p>• "Analyze conversion funnel with ML insights"</p>
+                <p>• "Show me Web3 transaction patterns"</p>
+                <p>• "Detect anomalies in user behavior"</p>
               </div>
             </div>
           ) : (
@@ -851,14 +1120,7 @@ const CQIntelligence = () => {
                       
                       {/* Insights */}
                       {message.insights && message.insights.length > 0 && (
-                        <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
-                          <h4 className="font-semibold text-blue-800 mb-2">Key Insights</h4>
-                          <ul className="space-y-1 text-blue-700">
-                            {message.insights.map((insight, idx) => (
-                              <li key={idx} className="text-sm">• {insight}</li>
-                            ))}
-                          </ul>
-                        </div>
+                        <InsightsComponent insights={message.insights} />
                       )}
                     </div>
                   )}
@@ -869,10 +1131,13 @@ const CQIntelligence = () => {
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-gray-100 p-4 rounded-lg">
-                <div className="flex space-x-2">
+                <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                  <span className="text-sm text-gray-600 ml-2">
+                    {pythonServicesAvailable ? 'Running ML analysis...' : 'Processing query...'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -895,7 +1160,10 @@ const CQIntelligence = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask about traffic, conversions, correlations, or any analytics..."
+              placeholder={pythonServicesAvailable ? 
+                "Ask about predictions, trends, anomalies, or any analytics..." : 
+                "Ask about traffic, conversions, correlations, or any analytics..."
+              }
               className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#caa968]"
             />
             <button

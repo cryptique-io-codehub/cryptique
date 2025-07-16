@@ -125,7 +125,7 @@ class VectorInfrastructureValidator {
         sourceId: new mongoose.Types.ObjectId(),
         siteId: 'test-site',
         teamId: new mongoose.Types.ObjectId(),
-        embedding: new Array(768).fill(0.1),
+        embedding: new Array(1536).fill(0.1),
         content: 'Connection test document'
       });
       
@@ -146,7 +146,7 @@ class VectorInfrastructureValidator {
         sourceId: new mongoose.Types.ObjectId(),
         siteId: 'test-site',
         teamId: new mongoose.Types.ObjectId(),
-        embedding: new Array(768).fill(0.2),
+        embedding: new Array(1536).fill(0.2),
         content: 'Schema validation test',
         metadata: {
           dataType: 'metric',
@@ -227,7 +227,7 @@ class VectorInfrastructureValidator {
           sourceId: new mongoose.Types.ObjectId(),
           siteId,
           teamId,
-          embedding: new Array(768).fill(0.1),
+          embedding: new Array(1536).fill(0.1),
           content: `Static method test ${i}`
         }).save();
         docs.push(doc);
@@ -472,7 +472,7 @@ class VectorInfrastructureValidator {
           sourceId: new mongoose.Types.ObjectId(),
           siteId: `site-${i % 10}`,
           teamId: new mongoose.Types.ObjectId(),
-          embedding: new Array(768).fill(Math.random()),
+          embedding: new Array(1536).fill(Math.random()),
           content: `Performance test document ${i}`
         });
       }
@@ -547,7 +547,7 @@ class VectorInfrastructureValidator {
             sourceId: new mongoose.Types.ObjectId(),
             siteId: 'concurrent-test',
             teamId: new mongoose.Types.ObjectId(),
-            embedding: new Array(768).fill(Math.random()),
+            embedding: new Array(1536).fill(Math.random()),
             content: `Concurrent test document ${i}`
           }).save()
         );
