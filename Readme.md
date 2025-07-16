@@ -16,6 +16,29 @@ cryptique/
 
 ## Components Overview
 
+### RAG (Retrieval-Augmented Generation) Service
+
+The RAG service enhances the platform's AI capabilities by providing context-aware responses using a combination of vector search and large language models.
+
+- **Technologies**: Pinecone, Google Gemini, LangChain
+- **Key Features**:
+  - Context-based response generation
+  - Vector similarity search
+  - Dynamic knowledge base
+  - Multi-source information retrieval
+  - Real-time context augmentation
+
+#### Key Components:
+- **ragService.js**: Core RAG service implementation
+- **ragRoutes.js**: API endpoints for RAG functionality
+- **Scripts**:
+  - `initRagService.js`: Initialize the RAG service with sample data
+  - `testRagService.js`: Test the RAG service endpoints
+  - `monitorRagService.js`: Monitor RAG service performance
+
+#### Documentation:
+See [RAG-INTEGRATION.md](RAG-INTEGRATION.md) for detailed documentation on the RAG service.
+
 ### 1. Client Application (`/client`)
 
 The frontend React application that provides the user interface for the analytics dashboard.

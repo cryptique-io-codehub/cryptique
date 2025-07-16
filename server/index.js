@@ -99,6 +99,10 @@ app.use('/api/retention', rateLimiters.sensitive, retentionRoutes);
 const enterpriseConfigRoutes = require('./routes/admin/enterpriseConfig');
 app.use('/api/admin/enterprise', rateLimiters.sensitive, enterpriseConfigRoutes);
 
+// RAG (Retrieval-Augmented Generation) routes
+const ragRoutes = require('./routes/ragRoutes');
+app.use('/api/rag', rateLimiters.sensitive, ragRoutes);
+
 // Architecture monitoring routes - for internal/admin use only
 app.use('/api/admin/architecture', rateLimiters.sensitive, (req, res) => {
   res.json({

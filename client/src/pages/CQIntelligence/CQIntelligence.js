@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, TrendingUp, Users, Activity, BarChart3 } from 'lucide-react';
 import GoogleGenerativeAI from '../../lib/GoogleGenerativeAI';
+import ragService from '../../services/ragService';
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -397,45 +398,177 @@ const CQIntelligence = () => {
     }
   };
 
+  // Extract relevant context from data to reduce token usage
+  const extractRelevantContext = async (query, data) => {
+    try {
+      // If data is already in a simplified format, return as is
+      if (typeof data === 'string' || (data && data.content)) {
+        return data;
+      }
+
+      // Convert data to string for processing
+      let dataStr = typeof data === 'string' ? data : JSON.stringify(data);
+      
+      // If data is small enough, return as is
+      if (dataStr.length < 1000) {
+        return dataStr;
+      }
+
+      // For larger data, extract key information
+      const keyInfo = {
+        query,
+        timestamp: new Date().toISOString(),
+        summary: 'Relevant context extracted from data',
+        data: {}
+      };
+
+      // Extract key metrics if available
+      if (data.metrics) {
+        keyInfo.data.metrics = Array.isArray(data.metrics) 
+          ? data.metrics.slice(0, 5) // Limit to top 5 metrics
+          : data.metrics;
+      }
+
+      // Extract key insights if available
+      if (data.insights) {
+        keyInfo.data.insights = Array.isArray(data.insights)
+          ? data.insights.slice(0, 3) // Limit to top 3 insights
+          : data.insights;
+      }
+
+      // Extract relevant data based on query
+      const queryTerms = query.toLowerCase().split(/\s+/);
+      
+      // Check for common query patterns
+      const isMetricQuery = queryTerms.some(term => 
+        ['metric', 'kpi', 'number', 'count', 'total'].includes(term)
+      );
+      
+      const isTrendQuery = queryTerms.some(term =>
+        ['trend', 'change', 'growth', 'compare', 'vs', 'versus'].includes(term)
+      );
+
+      // Add relevant data based on query type
+      if (isMetricQuery) {
+        keyInfo.data.type = 'metrics';
+        keyInfo.data.values = data.metrics || data.keyMetrics || {};
+      } else if (isTrendQuery) {
+        keyInfo.data.type = 'trends';
+        keyInfo.data.timeSeries = data.timeSeries || data.trends || [];
+      } else {
+        // Default to a general summary
+        keyInfo.data.summary = 'Context extracted from data';
+      }
+
+      return keyInfo;
+    } catch (error) {
+      console.error('Error extracting relevant context:', error);
+      // Return a minimal context on error
+      return {
+        query,
+        timestamp: new Date().toISOString(),
+        error: 'Error processing context',
+        data: {}
+      };
+    }
+  };
+
   // Generate enhanced response with AI
   const generateAIResponse = async (userMessage, contextData) => {
     try {
+      // Check if we should use the RAG approach
+      const useRAG = !contextData.limitedContext;
+      
       const apiKey = process.env.REACT_APP_GEMINI_API || 
                     process.env.NEXT_PUBLIC_GEMINI_API || 
                     'AIzaSyDqoE8RDAPrPOXDudqrzKRkBi7s-J4H9qs';
       
       const ai = new GoogleGenerativeAI(apiKey);
-      const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
       
-      const contextPrompt = `
-        You are CQ Intelligence, an advanced analytics AI assistant for Cryptique.
-        
-        User Query: "${userMessage}"
-        
-        Context Data: ${JSON.stringify(contextData, null, 2)}
-        
-        Please provide a comprehensive analysis based on the data provided. Include:
-        1. Direct answer to the user's question
-        2. Key insights from the data
-        3. Actionable recommendations
-        4. Relevant trends or patterns
-        
-        Keep your response conversational and insightful, focusing on business value.
-      `;
+      // Use a smaller model for faster responses when possible
+      const modelName = useRAG ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+      const model = ai.getGenerativeModel({ model: modelName });
       
-      const result = await model.generateContent(contextPrompt);
+      // Prepare the context based on the approach
+      let contextPrompt;
+      
+      if (useRAG) {
+        // For RAG, we already have the most relevant context
+        contextPrompt = `
+          You are CQ Intelligence, an advanced analytics AI assistant for Cryptique.
+          
+          User Query: "${userMessage}"
+          
+          Context Data: ${typeof contextData === 'string' ? contextData : JSON.stringify(contextData, null, 2)}
+          
+          Please provide a concise and accurate response based on the context provided.
+          Focus on directly answering the user's question using the available data.
+          
+          If the context contains specific metrics, numbers, or insights, be sure to:
+          1. Reference them directly in your response
+          2. Explain what they mean in simple terms
+          3. Highlight any important trends or patterns
+          
+          Keep your response focused and avoid making up information not present in the context.
+        `;
+      } else {
+        // For non-RAG, we need to be more careful with the context
+        const limitedContext = await extractRelevantContext(userMessage, contextData);
+        
+        contextPrompt = `
+          You are CQ Intelligence, an advanced analytics AI assistant for Cryptique.
+          
+          User Query: "${userMessage}"
+          
+          Limited Context: ${typeof limitedContext === 'string' ? limitedContext : JSON.stringify(limitedContext, null, 2)}
+          
+          Please provide a helpful response based on the limited context available.
+          Be transparent about any data limitations.
+          
+          If you don't have enough information to answer the question completely:
+          1. Say what you can based on the available data
+          2. Be clear about what information is missing
+          3. Suggest what additional data would be needed for a complete answer
+        `;
+      }
+      
+      // Add token limits and other parameters
+      const generationConfig = {
+        maxOutputTokens: useRAG ? 1024 : 512,
+        temperature: useRAG ? 0.3 : 0.7, // More deterministic for RAG responses
+        topP: 0.9,
+        topK: 40
+      };
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: contextPrompt }] }],
+        generationConfig
+      });
+      
       const response = await result.response;
+      const text = response.text();
       
       return {
         success: true,
-        content: response.text(),
-        source: 'ai_enhanced'
+        content: text,
+        source: useRAG ? 'ai_rag_enhanced' : 'ai_limited_context'
       };
     } catch (error) {
       console.error('AI generation error:', error);
+      
+      // Handle rate limiting specifically
+      if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+        return {
+          success: false,
+          error: 'rate_limit_exceeded',
+          message: 'Rate limit exceeded. Please try again in a moment.'
+        };
+      }
+      
       return {
         success: false,
-        error: error.message || 'Failed to generate AI response'
+        error: 'ai_generation_failed',
+        message: error.message || 'Failed to generate AI response'
       };
     }
   };
@@ -827,9 +960,50 @@ const CQIntelligence = () => {
       
       let finalResponse = null;
       
-      // Try Python services first if available
-      if (pythonServicesAvailable && siteId) {
-        console.log('Attempting to use Python services...');
+      // First, try RAG-based approach
+      if (siteId) {
+        try {
+          console.log('Attempting RAG-based approach...');
+          
+          // Step 1: Get relevant context using RAG
+          const ragContext = await ragService.getRelevantContext(userMessage, siteId, {
+            limit: 3, // Get top 3 most relevant contexts
+            minScore: 0.6 // Minimum relevance score
+          });
+          
+          if (ragContext.success) {
+            console.log('RAG context retrieved successfully');
+            
+            // Step 2: Generate response using the retrieved context
+            const ragResponse = await ragService.generateResponse(userMessage, siteId, {
+              contextLimit: 3,
+              maxTokens: 1000,
+              temperature: 0.7
+            });
+            
+            if (ragResponse.success) {
+              console.log('RAG response generated successfully');
+              
+              // Format the final response
+              finalResponse = {
+                content: ragResponse.content,
+                visualizations: ragResponse.metadata.visualizations || [],
+                tables: ragResponse.metadata.tables || [],
+                metrics: ragResponse.metadata.metrics || [],
+                insights: ragResponse.metadata.insights || [],
+                source: 'rag_enhanced',
+                sources: ragResponse.sources || []
+              };
+            }
+          }
+        } catch (ragError) {
+          console.error('RAG approach failed, falling back to Python services:', ragError);
+        }
+      }
+      
+      // If RAG approach failed or no siteId, try Python services if available
+      if (!finalResponse && pythonServicesAvailable && siteId) {
+        console.log('Falling back to Python services...');
         const pythonResult = await queryPythonServices(userMessage, siteId, teamId);
         
         if (pythonResult.success) {
@@ -844,8 +1018,9 @@ const CQIntelligence = () => {
             vector_context: vectorResult.success ? vectorResult.data : null
           };
           
-          // Generate AI-enhanced response
-          const aiResult = await generateAIResponse(userMessage, combinedData);
+          // Generate AI-enhanced response with limited context
+          const relevantContext = await extractRelevantContext(userMessage, combinedData);
+          const aiResult = await generateAIResponse(userMessage, relevantContext);
           
           if (aiResult.success) {
             finalResponse = {
@@ -878,8 +1053,9 @@ const CQIntelligence = () => {
         if (vectorResult.success) {
           console.log('Vector database successful');
           
-          // Generate AI response with vector context
-          const aiResult = await generateAIResponse(userMessage, vectorResult.data);
+          // Generate AI response with limited vector context
+          const relevantContext = await extractRelevantContext(userMessage, vectorResult.data);
+          const aiResult = await generateAIResponse(userMessage, relevantContext);
           
           if (aiResult.success) {
             finalResponse = {
@@ -894,13 +1070,17 @@ const CQIntelligence = () => {
         }
       }
       
-      // If all else fails, use direct AI or fallback
+      // If all else fails, use direct AI with limited context or fallback
       if (!finalResponse) {
         console.log('Using fallback approach...');
         
         try {
-          // Try direct AI approach
-          const aiResult = await generateAIResponse(userMessage, {});
+          // Try direct AI approach with limited context
+          const aiResult = await generateAIResponse(userMessage, {
+            query: userMessage,
+            timestamp: new Date().toISOString(),
+            limitedContext: true
+          });
           
           if (aiResult.success) {
             finalResponse = {
@@ -909,7 +1089,7 @@ const CQIntelligence = () => {
               tables: [],
               metrics: [],
               insights: [],
-              source: 'ai_direct'
+              source: 'ai_direct_limited'
             };
           }
         } catch (directError) {
@@ -925,14 +1105,24 @@ const CQIntelligence = () => {
       // Add source indicator
       if (finalResponse.source) {
         const sourceLabels = {
-          'python_ai_enhanced': '🚀 Powered by Python ML + AI',
-          'python_services': '🔬 Powered by Python ML Services',
-          'vector_ai_enhanced': '🧠 Powered by Vector Database + AI',
-          'ai_direct': '🤖 Powered by AI',
-          'fallback_demo': '📊 Demo Data'
+          'rag_enhanced': '🔍 RAG-Powered Analysis',
+          'python_ai_enhanced': '🚀 Python ML + AI',
+          'python_services': '🔬 Python ML Services',
+          'vector_ai_enhanced': '🧠 Vector DB + AI',
+          'ai_rag_enhanced': '🤖 AI with RAG',
+          'ai_limited_context': '🤖 AI (Limited Context)',
+          'fallback_demo': '📊 Demo Data',
+          'ai_direct': '🤖 AI Direct',
+          'ai_direct_limited': '🤖 AI (Limited)'
         };
         
-        finalResponse.content = `${finalResponse.content}\n\n---\n*${sourceLabels[finalResponse.source] || 'CQ Intelligence'}*`;
+        const sourceLabel = sourceLabels[finalResponse.source] || 'CQ Intelligence';
+        const sourceIndicator = `\n\n---\n*${sourceLabel}${finalResponse.sources ? ` | Sources: ${finalResponse.sources.join(', ')}` : ''}*`;
+        
+        // Only add the source indicator if it's not already in the content
+        if (!finalResponse.content.includes(sourceLabel)) {
+          finalResponse.content += sourceIndicator;
+        }
       }
       
       setMessages(prev => [...prev, { 
