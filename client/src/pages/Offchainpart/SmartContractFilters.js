@@ -609,6 +609,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       // Set as primary selected contract
       propSetSelectedContract(contractToAdd);
       
+      // Force refresh of contract data from API to ensure UI is updated
+      console.log('Forcing contract data refresh after adding new contract...');
+      await forceLoadContractData();
+      
       setLoadingStatus('Contract added successfully. Preparing to fetch transactions...');
       setLoadingProgress({ current: 90, total: 100 });
       setAddingContract(false);
@@ -1036,6 +1040,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       }
 
       console.log(`Saving contract ${contract.address} to team ${selectedTeam}`);
+      console.log('Contract type being saved:', contract.contractType);
 
       // Create payload for API
       const payload = {
@@ -1054,13 +1059,21 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const response = await axiosInstance.post('/contracts', payload);
       
       console.log("API response:", response.data);
+      console.log("Contract type in response:", response.data.contract?.contractType);
         
       // Check if the contract was saved successfully
       if (response.data && response.data.contract) {
+        // Clear the cached contracts to force refresh
+        sessionStorage.removeItem("preloadedContracts");
+        sessionStorage.removeItem("lastContractRefreshTime");
+        
+        console.log('Contract saved successfully with type:', response.data.contract.contractType);
+        
         return {
           ...contract,
           id: response.data.contract.contractId,
           contractId: response.data.contract.contractId,
+          contractType: response.data.contract.contractType, // Ensure we use the saved contract type
           _id: response.data.contract._id
         };
       }
