@@ -11,8 +11,24 @@ export default function StakingInsights() {
   const [stakingEvents, setStakingEvents] = useState([]);
   const [timeRange, setTimeRange] = useState('7d');
   
-  // Get contract data from context
-  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData: rawStakingContractData } = useContractData();
+  // Get contract data from context with error handling
+  let contextData;
+  try {
+    contextData = useContractData();
+  } catch (error) {
+    console.error('Error accessing ContractDataContext:', error);
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
+        <div className="text-center">
+          <p className="text-lg font-medium text-red-600">
+            Error loading contract data. Please refresh the page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData: rawStakingContractData } = contextData;
 
   // Provide default values for stakingContractData to prevent undefined errors
   const stakingContractData = rawStakingContractData || { 
@@ -423,8 +439,17 @@ export default function StakingInsights() {
     );
   }
 
-  // Show demo data if no staking contract is selected
-  const shouldShowDemoData = !selectedContract || selectedContract.contractType === 'main' || (!stakingData && !isLoading);
+  // Show demo data if no staking contract is selected or if stakingContractData says to show demo
+  const shouldShowDemoData = stakingContractData.showDemoData || (!stakingData && !isLoading);
+  
+  console.log('StakingInsights shouldShowDemoData logic:', {
+    stakingContractDataShowDemo: stakingContractData.showDemoData,
+    hasStakingData: !!stakingData,
+    isLoading: isLoading,
+    selectedContract: selectedContract?.id,
+    selectedContractType: selectedContract?.contractType,
+    shouldShowDemoData
+  });
   
   // Demo data for staking insights
   const demoStakingMetrics = {
@@ -497,8 +522,10 @@ export default function StakingInsights() {
   const displayTimeSeriesData = shouldShowDemoData ? demoTimeSeriesData : (stakingData || demoTimeSeriesData || []);
   const displayStakingEvents = shouldShowDemoData ? demoStakingEvents : (stakingEvents || demoStakingEvents || []);
 
-  return (
-    <div className="bg-gray-50 p-4 text-gray-900">
+  // Wrap the entire render in a try-catch for error handling
+  try {
+    return (
+      <div className="bg-gray-50 p-4 text-gray-900">
       {/* Import fonts */}
       <style>
         {`
@@ -744,5 +771,20 @@ export default function StakingInsights() {
 
 
     </div>
-  );
+    );
+  } catch (renderError) {
+    console.error('Error rendering StakingInsights:', renderError);
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
+        <div className="text-center">
+          <p className="text-lg font-medium text-red-600">
+            Error rendering staking insights. Please try again.
+          </p>
+          <p className="text-sm text-gray-600 mt-2">
+            Check the console for more details.
+          </p>
+        </div>
+      </div>
+    );
+  }
 } 
