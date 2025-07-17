@@ -86,7 +86,7 @@ export default function StakingInsights() {
 
       console.log('StakingInsights: Filtered transactions from staking contracts', {
         totalFiltered: stakingTransactionsFromContracts.length,
-        stakingContractIds: stakingContractIds
+        stakingContractIds: stakingContracts.map(c => c.id)
       });
 
       // Process transactions and add staking analysis if missing
