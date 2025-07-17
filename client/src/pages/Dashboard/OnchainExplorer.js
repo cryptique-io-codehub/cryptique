@@ -3,8 +3,6 @@ import Header from "../../components/Header";
 import Filters from "../Offchainpart/Filters";
 import OnchainDashboard from "../Onchainpart/OnchainDashboard";
 import OnchainTraffic from "../Onchainpart/OnchainTraffic";
-import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
-import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
 import StakingInsights from "../Onchainpart/StakingInsights";
 import { useContractData } from "../../contexts/ContractDataContext";
@@ -97,8 +95,6 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       { section: 'On-chain analytics', type: 'header' },
       { label: 'Dashboard' },
       { label: 'Traffic analytics' },
-      { label: 'User Insights' },
-      { label: 'Market Insights' },
       { label: 'Wallet Insights' },
       { label: 'Staking' }
     ];
@@ -217,54 +213,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                       </>
                     )}
                     
-                    {activeSection === 'User Insights' && (
-                      <>
-                        <Filters 
-                    websitearray={websitearray}
-                    setWebsitearray={setWebsitearray}
-                    contractarray={contractarray}
-                    setcontractarray={setcontractarray}
-                    analytics={analytics}
-                    setanalytics={setanalytics}
-                    selectedDate={selectedDate} 
-                    setSelectedDate={setSelectedDate} 
-                    selectedWebsite={selectedWebsite} 
-                    setSelectedWebsite={setSelectedWebsite}
-                    selectedFilters={selectedFilters} 
-                    setSelectedFilters={setSelectedFilters}
-                    idy={idy}
-                    setidy={setidy}
-                    selectedPage={selectedPage}
-                    onMenuClick={onMenuClick}
-                  />
-                        <Onchainuserinsights/>
-                      </>
-                    )}
-                    
-                    {activeSection === 'Market Insights' && (
-                      <>
-                        <Filters 
-                                           websitearray={websitearray}
-                                           setWebsitearray={setWebsitearray}
-                                           contractarray={contractarray}
-                                           setcontractarray={setcontractarray}
-                                           analytics={analytics}
-                                           setanalytics={setanalytics}
-                                           selectedDate={selectedDate} 
-                                           setSelectedDate={setSelectedDate} 
-                                           selectedWebsite={selectedWebsite} 
-                                           setSelectedWebsite={setSelectedWebsite}
-                                           selectedFilters={selectedFilters} 
-                                           setSelectedFilters={setSelectedFilters}
-                                           idy={idy}
-                                           setidy={setidy}
-                                           selectedPage={selectedPage}
-                                           onMenuClick={onMenuClick}
-                       
-                                         />
-                        <OnchainmarketInsights/>
-                      </>
-                    )}
+
 
                     {activeSection === 'Wallet Insights' && (
                       <>

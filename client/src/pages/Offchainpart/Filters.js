@@ -571,7 +571,6 @@ HTML:
        (selectedPage.selectedPage === 'onchain-explorer' || selectedPage.selectedPage?.includes('onchain'))) || 
       (typeof selectedPage === 'string' && 
        (selectedPage === 'onchain-explorer' || selectedPage === 'Traffic analytics' || 
-        selectedPage === 'User Insights' || selectedPage === 'Market Insights' || 
         selectedPage === 'Wallet Insights' || selectedPage?.includes('onchain')))) && (
       <SmartContractFilters 
         contractarray={contractarray} 

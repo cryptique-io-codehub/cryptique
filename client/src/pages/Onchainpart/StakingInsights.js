@@ -431,20 +431,79 @@ export default function StakingInsights() {
     );
   }
 
-  // Show message if not a staking contract
-  if (!selectedContract || selectedContract.contractType === 'main') {
-    return (
-      <div className="bg-gray-50 p-4 text-gray-900">
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold mb-1 text-gray-700">Staking Contract Required</h3>
-          <p className="text-gray-500 text-sm">
-            Please select a staking or escrow contract to view staking insights.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Show demo data if no staking contract is selected
+  const shouldShowDemoData = !selectedContract || selectedContract.contractType === 'main' || (!stakingData && !isLoading);
+  
+  // Demo data for staking insights
+  const demoStakingMetrics = {
+    totalStaked: 1250000,
+    totalUnstaked: 150000,
+    netStaked: 1100000,
+    totalRewards: 45000,
+    uniqueStakers: 2847,
+    activeStakers: 456,
+    stakingRate: 16.02,
+    averageStake: 386.5,
+    rewardToken: 'REWARD',
+    stakingToken: 'STAKE',
+    apy: 12.5,
+    lockPeriod: 30,
+    minimumStake: '100'
+  };
+
+  const demoTimeSeriesData = [
+    { date: '2024-01-15', stakes: 45000, unstakes: 5000, rewards: 1200, activeUsers: 124 },
+    { date: '2024-01-16', stakes: 52000, unstakes: 6200, rewards: 1350, activeUsers: 138 },
+    { date: '2024-01-17', stakes: 48000, unstakes: 4800, rewards: 1180, activeUsers: 115 },
+    { date: '2024-01-18', stakes: 61000, unstakes: 7100, rewards: 1420, activeUsers: 142 },
+    { date: '2024-01-19', stakes: 58000, unstakes: 6800, rewards: 1380, activeUsers: 135 },
+    { date: '2024-01-20', stakes: 55000, unstakes: 6200, rewards: 1320, activeUsers: 128 },
+    { date: '2024-01-21', stakes: 63000, unstakes: 7500, rewards: 1450, activeUsers: 148 }
+  ];
+
+  const demoStakingEvents = [
+    {
+      tx_hash: '0x1234567890abcdef1234567890abcdef12345678',
+      from_address: '0xabcdef1234567890abcdef1234567890abcdef12',
+      value_eth: '1000',
+      eventType: 'Stake',
+      eventIcon: '📈',
+      eventColor: 'text-green-600',
+      eventDescription: 'Staked 1,000 STAKE tokens',
+      formattedTime: '2024-01-21 14:30:25',
+      shortAddress: '0xabcd...ef12',
+      unlockTimeInfo: { unlockTime: '2024-02-20', lockDuration: 30 }
+    },
+    {
+      tx_hash: '0x2345678901bcdef02345678901bcdef023456789',
+      from_address: '0xbcdef02345678901bcdef02345678901bcdef023',
+      value_eth: '500',
+      eventType: 'Unstake',
+      eventIcon: '📉',
+      eventColor: 'text-red-600',
+      eventDescription: 'Unstaked 500 STAKE tokens',
+      formattedTime: '2024-01-21 13:15:10',
+      shortAddress: '0xbcde...f023',
+      unlockTimeInfo: null
+    },
+    {
+      tx_hash: '0x3456789012cdef123456789012cdef1234567890',
+      from_address: '0xcdef123456789012cdef123456789012cdef1234',
+      value_eth: '25',
+      eventType: 'Reward',
+      eventIcon: '🎁',
+      eventColor: 'text-blue-600',
+      eventDescription: 'Claimed 25 REWARD tokens',
+      formattedTime: '2024-01-21 12:45:33',
+      shortAddress: '0xcdef...1234',
+      unlockTimeInfo: null
+    }
+  ];
+
+  // Use demo data if no staking contract is selected
+  const displayMetrics = shouldShowDemoData ? demoStakingMetrics : stakingMetrics;
+  const displayTimeSeriesData = shouldShowDemoData ? demoTimeSeriesData : stakingData;
+  const displayStakingEvents = shouldShowDemoData ? demoStakingEvents : stakingEvents;
 
   return (
     <div className="bg-gray-50 p-4 text-gray-900">
@@ -466,10 +525,13 @@ export default function StakingInsights() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 font-montserrat" style={{ color: styles.primaryColor }}>
-          Staking Insights {selectedContract ? `for ${selectedContract.name}` : ''}
+          Staking Insights {selectedContract && selectedContract.contractType === 'escrow' ? `for ${selectedContract.name}` : '(Demo Data)'}
         </h1>
         <p className="text-sm text-gray-600 font-poppins mt-1">
-          Monitor staking activity, rewards, and user engagement for your {selectedContract.contractType} contract
+          {shouldShowDemoData 
+            ? 'Monitor staking activity, rewards, and user engagement - showing demo data'
+            : `Monitor staking activity, rewards, and user engagement for your ${selectedContract.contractType} contract`
+          }
         </p>
       </div>
 
@@ -496,14 +558,14 @@ export default function StakingInsights() {
       </div>
 
       {/* Metrics Cards */}
-      {stakingMetrics && (
+      {displayMetrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Staked</p>
                 <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
-                  {formatValue(stakingMetrics.netStaked)} {stakingMetrics.stakingToken}
+                  {formatValue(displayMetrics.netStaked)} {displayMetrics.stakingToken}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-green-100">
@@ -517,7 +579,7 @@ export default function StakingInsights() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Rewards</p>
                 <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
-                  {formatValue(stakingMetrics.totalRewards)} {stakingMetrics.rewardToken}
+                  {formatValue(displayMetrics.totalRewards)} {displayMetrics.rewardToken}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-blue-100">
@@ -531,7 +593,7 @@ export default function StakingInsights() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Unique Stakers</p>
                 <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
-                  {stakingMetrics.uniqueStakers.toLocaleString()}
+                  {displayMetrics.uniqueStakers.toLocaleString()}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-purple-100">
@@ -545,7 +607,7 @@ export default function StakingInsights() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Stakers (24h)</p>
                 <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
-                  {stakingMetrics.activeStakers}
+                  {displayMetrics.activeStakers}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-yellow-100">
@@ -557,7 +619,7 @@ export default function StakingInsights() {
       )}
 
       {/* Contract Details */}
-      {selectedContract.stakingDetails && (
+      {(selectedContract?.stakingDetails || shouldShowDemoData) && (
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h3 className="text-lg font-semibold mb-4" style={{ color: styles.primaryColor }}>
             Contract Details
@@ -565,22 +627,28 @@ export default function StakingInsights() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-600">APY</p>
-              <p className="text-lg font-semibold">{selectedContract.stakingDetails.apy || 0}%</p>
+              <p className="text-lg font-semibold">
+                {shouldShowDemoData ? displayMetrics.apy : (selectedContract.stakingDetails?.apy || 0)}%
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Lock Period</p>
-              <p className="text-lg font-semibold">{selectedContract.stakingDetails.lockPeriod || 0} days</p>
+              <p className="text-lg font-semibold">
+                {shouldShowDemoData ? displayMetrics.lockPeriod : (selectedContract.stakingDetails?.lockPeriod || 0)} days
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Minimum Stake</p>
-              <p className="text-lg font-semibold">{selectedContract.stakingDetails.minimumStake || '0'} {stakingMetrics?.stakingToken}</p>
+              <p className="text-lg font-semibold">
+                {shouldShowDemoData ? displayMetrics.minimumStake : (selectedContract.stakingDetails?.minimumStake || '0')} {displayMetrics?.stakingToken}
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {/* Charts */}
-      {stakingData && stakingData.length > 0 && (
+      {displayTimeSeriesData && displayTimeSeriesData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Staking Activity Chart */}
           <div className="bg-white p-6 rounded-lg shadow">
@@ -588,7 +656,7 @@ export default function StakingInsights() {
               Staking Activity
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={stakingData}>
+              <LineChart data={displayTimeSeriesData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tickFormatter={formatDate} />
                 <YAxis />
@@ -598,21 +666,21 @@ export default function StakingInsights() {
                 />
                 <Line 
                   type="monotone" 
-                  dataKey="stakeAmount" 
+                  dataKey="stakes" 
                   stroke={chartColors.success} 
                   strokeWidth={2}
                   name="Stakes"
                 />
                 <Line 
                   type="monotone" 
-                  dataKey="unstakeAmount" 
+                  dataKey="unstakes" 
                   stroke={chartColors.error} 
                   strokeWidth={2}
                   name="Unstakes"
                 />
                 <Line 
                   type="monotone" 
-                  dataKey="rewardAmount" 
+                  dataKey="rewards" 
                   stroke={chartColors.info} 
                   strokeWidth={2}
                   name="Rewards"
@@ -627,7 +695,7 @@ export default function StakingInsights() {
               Active Users
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stakingData}>
+              <BarChart data={displayTimeSeriesData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tickFormatter={formatDate} />
                 <YAxis />
@@ -643,7 +711,7 @@ export default function StakingInsights() {
       )}
 
       {/* Recent Staking Events */}
-      {stakingEvents.length > 0 && (
+      {displayStakingEvents.length > 0 && (
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b">
             <h3 className="text-lg font-semibold" style={{ color: styles.primaryColor }}>
@@ -652,49 +720,37 @@ export default function StakingInsights() {
           </div>
           <div className="p-6">
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {stakingEvents.map((event, index) => {
-                const IconComponent = event.eventIcon;
-                return (
-                  <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                    <div className={`p-2 rounded-full ${event.eventColor}`}>
-                      <IconComponent size={16} />
+              {displayStakingEvents.map((event, index) => (
+                <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="text-2xl">
+                    {event.eventIcon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">
+                        {event.shortAddress} {event.eventDescription} {formatValue(parseFloat(event.value_eth))} {displayMetrics?.stakingToken}
+                      </p>
+                      <p className="text-xs text-gray-500">{event.formattedTime}</p>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                          {event.shortAddress} {event.eventDescription || event.eventType} {formatValue(parseFloat(event.value_eth))} {stakingMetrics?.stakingToken}
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        Tx: {event.tx_hash.slice(0, 10)}...{event.tx_hash.slice(-6)}
+                      </p>
+                      {event.unlockTimeInfo && (
+                        <p className="text-xs text-blue-600">
+                          Unlock: {event.unlockTimeInfo.lockDuration}d ({new Date(event.unlockTimeInfo.unlockTime).toLocaleDateString()})
                         </p>
-                        <p className="text-xs text-gray-500">{event.formattedTime}</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-500">
-                          Tx: {event.tx_hash.slice(0, 10)}...{event.tx_hash.slice(-6)}
-                        </p>
-                        {event.unlockTimeInfo && (
-                          <p className="text-xs text-blue-600">
-                            Unlock: {event.unlockTimeInfo.lockDuration}d ({new Date(event.unlockTimeInfo.unlockTime).toLocaleDateString()})
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* No data message */}
-      {(!stakingData || stakingData.length === 0) && !isLoading && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <AlertCircle size={48} className="mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold mb-1 text-gray-700">No Staking Data Available</h3>
-          <p className="text-gray-500 text-sm">
-            There are no staking transactions for this contract yet, or the data is still loading.
-          </p>
-        </div>
-      )}
+
     </div>
   );
 } 
