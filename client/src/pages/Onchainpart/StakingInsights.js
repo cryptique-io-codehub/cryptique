@@ -12,7 +12,14 @@ export default function StakingInsights() {
   const [timeRange, setTimeRange] = useState('7d');
   
   // Get contract data from context
-  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData } = useContractData();
+  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData: rawStakingContractData } = useContractData();
+
+  // Provide default values for stakingContractData to prevent undefined errors
+  const stakingContractData = rawStakingContractData || { 
+    showDemoData: true, 
+    transactions: [], 
+    contracts: [] 
+  };
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -485,10 +492,10 @@ export default function StakingInsights() {
     }
   ];
 
-  // Use demo data if no staking contract is selected
-  const displayMetrics = shouldShowDemoData ? demoStakingMetrics : stakingMetrics;
-  const displayTimeSeriesData = shouldShowDemoData ? demoTimeSeriesData : stakingData;
-  const displayStakingEvents = shouldShowDemoData ? demoStakingEvents : stakingEvents;
+  // Use demo data if no staking contract is selected - ensure arrays for chart components
+  const displayMetrics = shouldShowDemoData ? demoStakingMetrics : (stakingMetrics || demoStakingMetrics);
+  const displayTimeSeriesData = shouldShowDemoData ? demoTimeSeriesData : (stakingData || demoTimeSeriesData || []);
+  const displayStakingEvents = shouldShowDemoData ? demoStakingEvents : (stakingEvents || demoStakingEvents || []);
 
   return (
     <div className="bg-gray-50 p-4 text-gray-900">
@@ -633,7 +640,7 @@ export default function StakingInsights() {
       )}
 
       {/* Charts */}
-      {displayTimeSeriesData && displayTimeSeriesData.length > 0 && (
+      {displayTimeSeriesData && Array.isArray(displayTimeSeriesData) && displayTimeSeriesData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Staking Activity Chart */}
           <div className="bg-white p-6 rounded-lg shadow">
@@ -705,7 +712,7 @@ export default function StakingInsights() {
           </div>
           <div className="p-6">
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {displayStakingEvents.map((event, index) => (
+              {displayStakingEvents && Array.isArray(displayStakingEvents) && displayStakingEvents.map((event, index) => (
                 <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-2xl">
                     {event.eventIcon}
