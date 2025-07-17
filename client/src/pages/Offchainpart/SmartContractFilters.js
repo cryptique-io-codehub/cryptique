@@ -495,9 +495,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       setLoadingProgress({ current: 30, total: 100 });
 
       // Create new contract object
-      const contractId = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newContract = {
-        id: contractId,
         address: contractAddress,
         name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
         blockchain: blockchain,
@@ -512,7 +510,20 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
       const savedContract = await saveContractToAPI(newContract);
       
       // Use the saved contract if API call was successful
-      const contractToAdd = savedContract || newContract;
+      if (!savedContract) {
+        console.error('Failed to save contract to API, cannot proceed');
+        setContractError('Failed to save contract to database. Please try again.');
+        setAddingContract(false);
+        setIsFetchingTransactions(false);
+        setLoadingStatus('Error: Failed to save contract');
+        return false;
+      }
+      
+      const contractToAdd = savedContract;
+      
+      console.log('Contract to add:', contractToAdd);
+      console.log('Contract ID:', contractToAdd.id);
+      console.log('Contract contractId:', contractToAdd.contractId);
       
       // Update contract array
       setLoadingStatus('Updating contract list...');
@@ -536,6 +547,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
       // Fetch initial transactions for this new contract
       console.log(`Fetching initial transactions for newly added contract: ${contractToAdd.address}`);
+      console.log(`Using contract ID: ${contractToAdd.id}`);
       await fetchInitialTransactions(contractToAdd);
       
       return true;
@@ -550,6 +562,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   };
 
   const fetchInitialTransactions = async (contract) => {
+    console.log('fetchInitialTransactions called with contract:', contract);
+    console.log('Contract ID:', contract?.id);
+    console.log('Contract contractId:', contract?.contractId);
+    
     if (!contract || !contract.id) {
       console.error("No valid contract provided for fetching initial transactions");
       return;
@@ -755,6 +771,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         setLoadingProgress({ current: 40, total: 100 });
         
         // Ensure transactions have proper format and required fields
+        console.log('Contract object in sanitization:', contract);
+        console.log('Contract ID:', contract.id);
+        console.log('Contract contractId:', contract.contractId);
+        
         const sanitizedTransactions = newTransactions.map(tx => ({
           ...tx,
           tx_hash: tx.tx_hash || '',
@@ -791,6 +811,10 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             setLoadingStatus(`Saving batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(sanitizedTransactions.length/BATCH_SIZE)} (${i+1}-${Math.min(i+BATCH_SIZE, sanitizedTransactions.length)} of ${sanitizedTransactions.length})`);
             
             try {
+              console.log(`Making API call to: /transactions/contract/${contract.id}`);
+              console.log(`Contract object:`, contract);
+              console.log(`Batch size:`, batch.length);
+              console.log(`Batch sample:`, batch.slice(0, 2));
               const response = await axiosInstance.post(`/transactions/contract/${contract.id}`, {
               transactions: batch
             });

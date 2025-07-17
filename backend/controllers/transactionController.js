@@ -119,16 +119,22 @@ exports.saveTransactions = async (req, res) => {
     // Log incoming request data for debugging
     console.log(`Attempting to save transactions for contract ${contractId}`);
     console.log(`Received ${transactions ? transactions.length : 0} transactions`);
+    console.log(`Request body:`, JSON.stringify(req.body).slice(0, 500) + '...');
     
     if (!Array.isArray(transactions) || transactions.length === 0) {
       return res.status(400).json({ message: "No transactions provided" });
     }
     
     // Find the contract
+    console.log(`Looking for contract with contractId: ${contractId}`);
     const contract = await SmartContract.findOne({ contractId });
     
     if (!contract) {
-      console.error(`Contract not found with ID: ${contractId}`);
+      console.error(`Contract not found with contractId: ${contractId}`);
+      
+      // Log all contracts in the database for debugging
+      const allContracts = await SmartContract.find({}).select('contractId address name').limit(10);
+      console.log(`Available contracts in database:`, allContracts.map(c => ({ contractId: c.contractId, address: c.address, name: c.name })));
       
       // Attempt to find by alternative IDs in case frontend is using a different ID
       const alternativeContract = await SmartContract.findOne({

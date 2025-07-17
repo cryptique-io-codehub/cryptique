@@ -148,12 +148,13 @@ exports.addSmartContract = async (req, res) => {
     
     try {
       await newContract.save();
-    console.log(`New contract created with ID: ${contractId}`);
-    
-    res.status(201).json({ 
-      message: "Contract added successfully", 
-      contract: newContract 
-    });
+      console.log(`New contract created with ID: ${contractId}`);
+      console.log(`Full contract object:`, newContract);
+      
+      res.status(201).json({ 
+        message: "Contract added successfully", 
+        contract: newContract 
+      });
     } catch (saveError) {
       console.error("Error saving new contract:", saveError);
       throw saveError;

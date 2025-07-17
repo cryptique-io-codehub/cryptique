@@ -14,10 +14,15 @@ router.use(verifyToken);
 
 // Middleware to validate transaction data
 const validateTransactionData = (req, res, next) => {
+  console.log('validateTransactionData middleware called');
+  console.log('Request params:', req.params);
+  console.log('Request body keys:', Object.keys(req.body || {}));
+  
   const { transactions } = req.body;
   
   // Check if transactions array exists
   if (!transactions || !Array.isArray(transactions)) {
+    console.log('Invalid transaction data format');
     return res.status(400).json({ 
       message: "Invalid transaction data format. Expected an array of transactions." 
     });
@@ -25,6 +30,7 @@ const validateTransactionData = (req, res, next) => {
   
   // Check if array is empty
   if (transactions.length === 0) {
+    console.log('No transactions provided');
     return res.status(400).json({ 
       message: "No transactions provided" 
     });
