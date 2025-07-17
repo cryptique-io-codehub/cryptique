@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2, TrendingUp, Users, DollarSign, Clock, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { useContractData } from '../../contexts/ContractDataContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { identifyStakingTransaction } from '../../utils/chainUtils';
 
 export default function StakingInsights() {
   const [isLoading, setIsLoading] = useState(true);
@@ -11,7 +12,7 @@ export default function StakingInsights() {
   const [timeRange, setTimeRange] = useState('7d');
   
   // Get contract data from context
-  const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
+  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions } = useContractData();
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -35,17 +36,35 @@ export default function StakingInsights() {
 
   // Process staking data from transactions
   useEffect(() => {
-    if (contractTransactions && !isLoadingTransactions && selectedContract) {
-      processStakingData();
+    // Use combined transactions if multiple contracts are selected, otherwise use single contract transactions
+    const transactionsToProcess = selectedContracts && selectedContracts.length > 1 
+      ? combinedTransactions 
+      : contractTransactions;
+      
+    // Get the contracts to check (either selected contracts or single selected contract)
+    const contractsToCheck = selectedContracts && selectedContracts.length > 0 
+      ? selectedContracts 
+      : (selectedContract ? [selectedContract] : []);
+    
+    if (transactionsToProcess && !isLoadingTransactions && contractsToCheck.length > 0) {
+      processStakingData(transactionsToProcess, contractsToCheck);
     }
-  }, [contractTransactions, isLoadingTransactions, selectedContract, timeRange]);
+  }, [contractTransactions, combinedTransactions, selectedContracts, selectedContract, isLoadingTransactions, timeRange]);
 
-  const processStakingData = async () => {
+  const processStakingData = async (transactions, contracts) => {
     setIsLoading(true);
     
     try {
-      // Only process if this is an escrow contract
-      if (!selectedContract.contractType || selectedContract.contractType !== 'escrow') {
+      // Filter for staking contracts only
+      const stakingContracts = contracts.filter(contract => 
+        contract.contractType === 'escrow'
+      );
+      
+      if (stakingContracts.length === 0) {
+        console.log('StakingInsights: No staking contracts selected', {
+          totalContracts: contracts.length,
+          contractTypes: contracts.map(c => ({ id: c.id, type: c.contractType }))
+        });
         setStakingData(null);
         setStakingMetrics(null);
         setStakingEvents([]);
@@ -53,8 +72,58 @@ export default function StakingInsights() {
         return;
       }
 
+      console.log('StakingInsights: Processing staking data', {
+        stakingContracts: stakingContracts.length,
+        totalTransactions: transactions.length,
+        sampleTransactions: transactions.slice(0, 3).map(tx => ({
+          tx_hash: tx.tx_hash,
+          method_name: tx.method_name,
+          tx_type: tx.tx_type,
+          functionName: tx.functionName,
+          input: tx.input?.substring(0, 100),
+          stakingAnalysis: tx.stakingAnalysis,
+          stakingType: tx.stakingType,
+          stakingConfidence: tx.stakingConfidence,
+          sourceContract: tx.sourceContract?.id,
+          contractType: tx.contractType
+        }))
+      });
+
+      // Filter transactions to only include those from staking contracts
+      const stakingContractIds = stakingContracts.map(c => c.id);
+      const stakingTransactionsFromContracts = transactions.filter(tx => {
+        // Check if transaction is from a staking contract
+        const isFromStakingContract = stakingContractIds.includes(tx.contractId) || 
+                                     stakingContractIds.includes(tx.sourceContract?.id) ||
+                                     tx.contractType === 'escrow';
+        return isFromStakingContract;
+      });
+
+      console.log('StakingInsights: Filtered transactions from staking contracts', {
+        totalFiltered: stakingTransactionsFromContracts.length,
+        stakingContractIds: stakingContractIds
+      });
+
+      // Process transactions and add staking analysis if missing
+      const processedTransactions = stakingTransactionsFromContracts.map(tx => {
+        // If transaction already has staking analysis, use it
+        if (tx.stakingAnalysis) {
+          return tx;
+        }
+        
+        // If transaction doesn't have staking analysis, perform it now
+        const stakingAnalysis = identifyStakingTransaction(tx, 'escrow');
+        
+        return {
+          ...tx,
+          stakingAnalysis,
+          stakingType: stakingAnalysis.stakingType,
+          stakingConfidence: stakingAnalysis.confidence
+        };
+      });
+
       // Process transactions to extract staking events
-      const stakingTransactions = contractTransactions.filter(tx => {
+      const stakingTransactions = processedTransactions.filter(tx => {
         // Look for staking method signatures and analysis
         if (tx.stakingAnalysis?.isStaking) {
           return true;
@@ -62,25 +131,45 @@ export default function StakingInsights() {
         
         // Fallback to method name detection
         const stakingMethods = ['create_lock', 'increase_amount', 'withdraw', 'withdraw_early', 'increase_unlock_time', 'stake', 'unstake', 'claim', 'deposit', 'redeem'];
-        return stakingMethods.some(method => 
+        const hasStakingMethod = stakingMethods.some(method => 
           tx.method_name?.toLowerCase().includes(method) || 
           tx.tx_type?.toLowerCase().includes(method) ||
           tx.functionName?.toLowerCase().includes(method) ||
           tx.input?.toLowerCase().includes(method)
         );
+        
+        return hasStakingMethod;
       });
 
-      // Calculate staking metrics
-      const metrics = calculateStakingMetrics(stakingTransactions);
+      console.log('StakingInsights: Filtered staking transactions', {
+        totalStakingTransactions: stakingTransactions.length,
+        sampleStakingTransactions: stakingTransactions.slice(0, 3).map(tx => ({
+          tx_hash: tx.tx_hash,
+          method_name: tx.method_name,
+          stakingAnalysis: tx.stakingAnalysis,
+          stakingType: tx.stakingType,
+          sourceContract: tx.sourceContract?.id
+        }))
+      });
+
+      // Calculate staking metrics (combined from all staking contracts)
+      const metrics = calculateStakingMetrics(stakingTransactions, stakingContracts);
       setStakingMetrics(metrics);
 
-      // Generate time series data
+      // Generate time series data (combined from all staking contracts)
       const timeSeriesData = generateTimeSeriesData(stakingTransactions);
       setStakingData(timeSeriesData);
 
-      // Extract staking events
+      // Extract staking events (combined from all staking contracts)
       const events = extractStakingEvents(stakingTransactions);
       setStakingEvents(events);
+
+      console.log('StakingInsights: Final processed data', {
+        metrics,
+        timeSeriesDataLength: timeSeriesData?.length,
+        eventsLength: events?.length,
+        contractsProcessed: stakingContracts.length
+      });
 
     } catch (error) {
       console.error('Error processing staking data:', error);
@@ -89,8 +178,23 @@ export default function StakingInsights() {
     }
   };
 
-  const calculateStakingMetrics = (transactions) => {
-    if (!transactions.length) return null;
+  const calculateStakingMetrics = (transactions, contracts) => {
+    console.log('calculateStakingMetrics: Starting calculation', {
+      transactionCount: transactions.length,
+      sampleTransactions: transactions.slice(0, 3).map(tx => ({
+        tx_hash: tx.tx_hash,
+        method_name: tx.method_name,
+        stakingType: tx.stakingAnalysis?.stakingType || tx.stakingType,
+        value_eth: tx.value_eth,
+        block_time: tx.block_time,
+        sourceContract: tx.sourceContract?.id
+      }))
+    });
+
+    if (!transactions.length) {
+      console.log('calculateStakingMetrics: No transactions, returning null');
+      return null;
+    }
 
     let totalStaked = 0;
     let totalUnstaked = 0;
@@ -125,26 +229,47 @@ export default function StakingInsights() {
     });
 
     const netStaked = totalStaked - totalUnstaked;
-    const stakingDetails = selectedContract.stakingDetails || {};
     
-    return {
-      totalStaked,
-      totalUnstaked,
-      netStaked,
-      totalRewards,
+    // Aggregate metrics from all staking contracts
+    const aggregatedMetrics = {
+      totalStaked: totalStaked,
+      totalUnstaked: totalUnstaked,
+      netStaked: netStaked,
+      totalRewards: totalRewards,
       uniqueStakers: uniqueStakers.size,
       activeStakers: activeStakers.size,
       stakingRate: uniqueStakers.size > 0 ? (activeStakers.size / uniqueStakers.size) * 100 : 0,
       averageStake: uniqueStakers.size > 0 ? netStaked / uniqueStakers.size : 0,
-      rewardToken: stakingDetails.rewardToken || 'REWARD',
-      stakingToken: stakingDetails.stakingToken || 'STAKE',
-      apy: stakingDetails.apy || 0,
-      lockPeriod: stakingDetails.lockPeriod || 0,
-      minimumStake: stakingDetails.minimumStake || '0'
+      rewardToken: 'REWARD', // Assuming a single reward token for now
+      stakingToken: 'STAKE', // Assuming a single staking token for now
+      apy: 0, // Placeholder, will need to aggregate APYs if multiple contracts
+      lockPeriod: 0, // Placeholder, will need to aggregate lock periods if multiple contracts
+      minimumStake: '0' // Placeholder, will need to aggregate minimum stakes if multiple contracts
     };
+
+    // If multiple contracts, try to find a common token for display
+    if (contracts.length > 1) {
+      const rewardTokens = contracts.map(c => c.stakingDetails?.rewardToken).filter(Boolean);
+      const stakingTokens = contracts.map(c => c.stakingDetails?.stakingToken).filter(Boolean);
+
+      if (rewardTokens.length > 0) {
+        aggregatedMetrics.rewardToken = rewardTokens[0];
+      }
+      if (stakingTokens.length > 0) {
+        aggregatedMetrics.stakingToken = stakingTokens[0];
+      }
+    }
+
+    console.log('calculateStakingMetrics: Final metrics', aggregatedMetrics);
+    return aggregatedMetrics;
   };
 
   const generateTimeSeriesData = (transactions) => {
+    console.log('generateTimeSeriesData: Starting generation', {
+      transactionCount: transactions.length,
+      timeRange: timeRange
+    });
+
     const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
     const data = [];
     
@@ -162,16 +287,15 @@ export default function StakingInsights() {
       let stakeAmount = 0;
       let unstakeAmount = 0;
       let rewardAmount = 0;
-      let uniqueUsers = new Set();
+      const activeUsers = new Set();
       
       dayTransactions.forEach(tx => {
         const value = parseFloat(tx.value_eth) || 0;
         const method = tx.method_name?.toLowerCase() || tx.tx_type?.toLowerCase() || '';
         const stakingType = tx.stakingAnalysis?.stakingType || tx.stakingType || '';
         
-        uniqueUsers.add(tx.from_address);
+        activeUsers.add(tx.from_address);
         
-        // Handle new staking types
         if (stakingType === 'create_lock' || stakingType === 'increase_amount' || 
             method.includes('stake') || method.includes('deposit') || method.includes('create_lock') || method.includes('increase_amount')) {
           stakeAmount += value;
@@ -188,11 +312,16 @@ export default function StakingInsights() {
         stakeAmount,
         unstakeAmount,
         rewardAmount,
-        netStake: stakeAmount - unstakeAmount,
-        activeUsers: uniqueUsers.size,
-        transactions: dayTransactions.length
+        activeUsers: activeUsers.size,
+        transactionCount: dayTransactions.length
       });
     }
+    
+    console.log('generateTimeSeriesData: Generated data', {
+      dataLength: data.length,
+      sampleData: data.slice(0, 3),
+      totalDataPoints: data.length
+    });
     
     return data;
   };

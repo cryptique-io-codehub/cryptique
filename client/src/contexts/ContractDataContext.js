@@ -9,7 +9,9 @@ export const ContractDataProvider = ({ children }) => {
   // State for smart contract selection and data
   const [contractArray, setContractArray] = useState([]);
   const [selectedContract, setSelectedContract] = useState(null);
+  const [selectedContracts, setSelectedContracts] = useState([]); // Multi-contract selection
   const [contractTransactions, setContractTransactions] = useState([]);
+  const [combinedTransactions, setCombinedTransactions] = useState([]); // Combined transactions from multiple contracts
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [showDemoData, setShowDemoData] = useState(true); // By default, show demo data
@@ -30,6 +32,82 @@ export const ContractDataProvider = ({ children }) => {
 
   // Add ref to store wallet categories for each contract
   const walletCategoriesByContractRef = useRef({});
+
+  // Add ref to store transactions for each contract
+  const contractTransactionsRef = useRef({});
+
+  // Function to combine transactions from multiple contracts
+  const combineContractTransactions = (contracts) => {
+    if (!contracts || contracts.length === 0) {
+      setCombinedTransactions([]);
+      return [];
+    }
+
+    console.log('Combining transactions from contracts:', contracts.map(c => c.id));
+    
+    let allTransactions = [];
+    
+    // Group contracts by type
+    const mainContracts = contracts.filter(c => c.contractType === 'main' || !c.contractType);
+    const stakingContracts = contracts.filter(c => c.contractType === 'escrow');
+    
+    // Combine transactions from contracts of the same type
+    mainContracts.forEach(contract => {
+      const contractTxs = contractTransactionsRef.current[contract.id] || [];
+      allTransactions = [...allTransactions, ...contractTxs.map(tx => ({
+        ...tx,
+        sourceContract: contract,
+        contractType: 'main'
+      }))];
+    });
+    
+    stakingContracts.forEach(contract => {
+      const contractTxs = contractTransactionsRef.current[contract.id] || [];
+      allTransactions = [...allTransactions, ...contractTxs.map(tx => ({
+        ...tx,
+        sourceContract: contract,
+        contractType: 'escrow'
+      }))];
+    });
+    
+    // Sort by block number (newest first)
+    allTransactions.sort((a, b) => (b.block_number || 0) - (a.block_number || 0));
+    
+    console.log(`Combined ${allTransactions.length} transactions from ${contracts.length} contracts`);
+    setCombinedTransactions(allTransactions);
+    return allTransactions;
+  };
+
+  // Function to handle multiple contract selection
+  const handleMultipleContractSelection = async (contracts) => {
+    console.log('Handling multiple contract selection:', contracts.map(c => c.id));
+    
+    setSelectedContracts(contracts);
+    setShowDemoData(contracts.length === 0);
+    
+    if (contracts.length === 0) {
+      setCombinedTransactions([]);
+      return;
+    }
+    
+    // Fetch transactions for each contract that doesn't have them yet
+    const fetchPromises = contracts.map(async (contract) => {
+      if (!contractTransactionsRef.current[contract.id]) {
+        console.log(`Fetching transactions for contract ${contract.id}`);
+        const transactions = await fetchContractTransactions(contract.id);
+        contractTransactionsRef.current[contract.id] = transactions;
+        return transactions;
+      }
+      return contractTransactionsRef.current[contract.id];
+    });
+    
+    try {
+      await Promise.all(fetchPromises);
+      combineContractTransactions(contracts);
+    } catch (error) {
+      console.error('Error fetching transactions for multiple contracts:', error);
+    }
+  };
 
   // Fetch smart contracts for the current team
   useEffect(() => {
@@ -1419,7 +1497,10 @@ export const ContractDataProvider = ({ children }) => {
         loadingStatus,
         handleContractChange,
         processContractTransactions,
-        refreshContracts
+        refreshContracts,
+        selectedContracts,
+        handleMultipleContractSelection,
+        combinedTransactions
       }}
     >
       {children}

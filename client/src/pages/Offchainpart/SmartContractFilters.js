@@ -80,7 +80,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const { 
     contractArray: contextContractArray, 
     selectedContract: contextSelectedContract, 
+    selectedContracts: contextSelectedContracts,
     handleContractChange,
+    handleMultipleContractSelection,
     isLoadingContracts: contextIsLoading,
     isLoadingTransactions,
     refreshContracts
@@ -107,7 +109,7 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   });
   const [contractError, setContractError] = useState('');
   const [addingContract, setAddingContract] = useState(false);
-  const [selectedContracts, setSelectedContracts] = useState([]);
+  const [selectedContracts, setSelectedContracts] = useState(contextSelectedContracts || []);
   const [web3, setWeb3] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState('');
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
@@ -128,15 +130,17 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   useEffect(() => {
     if (contextSelectedContract) {
       propSetSelectedContract(contextSelectedContract);
-      
-      // Add to the array of selected contracts if not already there
-      if (!selectedContracts.find(c => c.id === contextSelectedContract.id)) {
-        setSelectedContracts([...selectedContracts, contextSelectedContract]);
-      }
     } else {
       propSetSelectedContract(null);
     }
   }, [contextSelectedContract, propSetSelectedContract]);
+
+  // Sync selected contracts with context
+  useEffect(() => {
+    if (contextSelectedContracts && contextSelectedContracts.length !== selectedContracts.length) {
+      setSelectedContracts(contextSelectedContracts);
+    }
+  }, [contextSelectedContracts]);
 
   // Initialize web3 when component mounts
   useEffect(() => {
@@ -302,17 +306,59 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setShowDropdown(!showDropdown);
   };
 
+  const handleToggleContract = (contract) => {
+    const isSelected = selectedContracts.some(c => c.id === contract.id);
+    let updatedContracts;
+    
+    if (isSelected) {
+      // Remove from selection
+      updatedContracts = selectedContracts.filter(c => c.id !== contract.id);
+    } else {
+      // Add to selection
+      updatedContracts = [...selectedContracts, contract];
+    }
+    
+    setSelectedContracts(updatedContracts);
+    
+    // Update the context with the new multi-contract selection
+    handleMultipleContractSelection(updatedContracts);
+    
+    // For backward compatibility, set the first contract as the active one
+    if (updatedContracts.length > 0) {
+      handleContractChange(updatedContracts[0].id);
+    } else {
+      handleContractChange('');
+    }
+  };
+
+  const handleClearAllContracts = () => {
+    setSelectedContracts([]);
+    // Update the context
+    handleMultipleContractSelection([]);
+    // Reset the context to show demo data
+    handleContractChange('');
+  };
+
   const handleRemoveContract = (contractId, e) => {
     if (e) {
       e.stopPropagation();
     }
     
-    // Reset context to show demo data
-    handleContractChange('');
-    
     // Remove from selected contracts array
     const updatedSelectedContracts = selectedContracts.filter(c => c.id !== contractId);
     setSelectedContracts(updatedSelectedContracts);
+    
+    // Update the context
+    handleMultipleContractSelection(updatedSelectedContracts);
+    
+    // If this was the currently selected contract in context, reset to the first remaining or empty
+    if (contextSelectedContract?.id === contractId) {
+      if (updatedSelectedContracts.length > 0) {
+        handleContractChange(updatedSelectedContracts[0].id);
+      } else {
+        handleContractChange('');
+      }
+    }
   };
 
   const handleOpenAddContractModal = () => {
@@ -1088,9 +1134,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
               aria-expanded={showDropdown}
               aria-haspopup="true"
             >
-              {contextSelectedContract 
-                ? formatContractDisplay(contextSelectedContract).name
-                : "Select Smart Contract"}
+              {selectedContracts.length > 0 
+                ? `${selectedContracts.length} contract${selectedContracts.length > 1 ? 's' : ''} selected`
+                : "Select Smart Contract(s)"}
               <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
               </svg>
@@ -1101,40 +1147,119 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
             <div className="absolute left-0 z-10 mt-1 w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div className="py-1 max-h-96 overflow-y-auto">
                 {contextContractArray && contextContractArray.length > 0 ? (
-                  contextContractArray.map((contract) => {
-                    const display = formatContractDisplay(contract);
-                    const isSelected = selectedContracts.some(c => c.id === contract.id);
-                    
-                    return (
-                      <div 
-                        key={contract.id} 
-                        className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleSelectContract(contract)}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center">
-                            <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
-                            <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
-                            <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteContract(contract);
-                          }}
-                          className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })
+                  <>
+                    {/* Group contracts by type */}
+                    {(() => {
+                      const mainContracts = contextContractArray.filter(c => c.contractType === 'main' || !c.contractType);
+                      const stakingContracts = contextContractArray.filter(c => c.contractType === 'escrow');
+                      
+                      return (
+                        <>
+                          {/* Main Contracts Section */}
+                          {mainContracts.length > 0 && (
+                            <>
+                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">
+                                MAIN CONTRACTS
+                              </div>
+                              {mainContracts.map((contract) => {
+                                const display = formatContractDisplay(contract);
+                                const isSelected = selectedContracts.some(c => c.id === contract.id);
+                                
+                                return (
+                                  <div 
+                                    key={contract.id} 
+                                    className={`flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                                    onClick={() => handleToggleContract(contract)}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => handleToggleContract(contract)}
+                                      className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
+                                        <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
+                                      </div>
+                                      <div className="flex items-center mt-1">
+                                        <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
+                                        <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteContract(contract);
+                                      }}
+                                      className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                          
+                          {/* Staking Contracts Section */}
+                          {stakingContracts.length > 0 && (
+                            <>
+                              {mainContracts.length > 0 && <div className="border-t border-gray-200"></div>}
+                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">
+                                STAKING CONTRACTS
+                              </div>
+                              {stakingContracts.map((contract) => {
+                                const display = formatContractDisplay(contract);
+                                const isSelected = selectedContracts.some(c => c.id === contract.id);
+                                
+                                return (
+                                  <div 
+                                    key={contract.id} 
+                                    className={`flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+                                    onClick={() => handleToggleContract(contract)}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => handleToggleContract(contract)}
+                                      className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-900 truncate mr-2">{display.name}</span>
+                                        <span className="text-xs text-gray-500 truncate">({display.shortAddress})</span>
+                                        <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">Staking</span>
+                                      </div>
+                                      <div className="flex items-center mt-1">
+                                        <span className="text-xs text-gray-500 mr-2">[{display.blockchain}]</span>
+                                        <span className="text-xs text-gray-500">({display.tokenSymbol})</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteContract(contract);
+                                      }}
+                                      className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-50"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
                 ) : (
                   <div className="px-3 py-2 text-sm text-gray-500">No smart contracts found</div>
                 )}
@@ -1156,27 +1281,44 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
 
       {/* Selected contracts display */}
       {selectedContracts.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {selectedContracts.map((contract) => {
-            const display = formatContractDisplay(contract);
-            return (
-              <div 
-                key={contract.id} 
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
-              >
-                <span className="mr-2">{display.name}</span>
-                <span className="text-xs text-gray-500">({display.shortAddress})</span>
-                <button
-                  onClick={(e) => handleRemoveContract(contract.id, e)}
-                  className="ml-2 text-gray-500 hover:text-gray-700"
+        <div className="mt-2">
+          <div className="flex flex-wrap gap-2">
+            {selectedContracts.map((contract) => {
+              const display = formatContractDisplay(contract);
+              const isStaking = contract.contractType === 'escrow';
+              
+              return (
+                <div 
+                  key={contract.id} 
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    isStaking 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            );
-          })}
+                  <span className="mr-2">{display.name}</span>
+                  <span className="text-xs opacity-75">({display.shortAddress})</span>
+                  {isStaking && <span className="ml-2 text-xs">📈</span>}
+                  <button
+                    onClick={(e) => handleRemoveContract(contract.id, e)}
+                    className="ml-2 text-current hover:text-red-600 opacity-75 hover:opacity-100"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Clear all button */}
+          <button
+            onClick={handleClearAllContracts}
+            className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear all selections
+          </button>
         </div>
       )}
 
