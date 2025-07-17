@@ -9,25 +9,20 @@ export default function StakingInsights() {
   const [stakingMetrics, setStakingMetrics] = useState(null);
   const [stakingEvents, setStakingEvents] = useState([]);
   const [timeRange, setTimeRange] = useState('7d');
+  const [contextError, setContextError] = useState(null);
   
-  // Get contract data from context with error handling
-  let contextData;
+  // Move useContractData to the top level - no conditionals
+  const contextData = useContractData();
+  
+  // Extract data from context with error handling after the hook call
+  let selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, rawStakingContractData;
+  
   try {
-    contextData = useContractData();
+    ({ selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData: rawStakingContractData } = contextData || {});
   } catch (error) {
     console.error('Error accessing ContractDataContext:', error);
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
-        <div className="text-center">
-          <p className="text-lg font-medium text-red-600">
-            Error loading contract data. Please refresh the page.
-          </p>
-        </div>
-      </div>
-    );
+    setContextError(error);
   }
-
-  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData: rawStakingContractData } = contextData;
 
   // Provide default values for stakingContractData to prevent undefined errors
   const stakingContractData = rawStakingContractData || { 
@@ -58,9 +53,9 @@ export default function StakingInsights() {
     unlock: "#06b6d4"
   };
 
-  // Process staking data from transactions
+  // Process staking data from transactions - move useEffect to top level
   useEffect(() => {
-    // Use segregated staking data - only process if we have staking contracts
+    // Only process if we have staking contracts
     if (stakingContractData && !stakingContractData.showDemoData && !isLoadingTransactions) {
       processRealStakingData(stakingContractData.transactions, stakingContractData.contracts);
     } else if (stakingContractData && stakingContractData.showDemoData) {
@@ -71,6 +66,19 @@ export default function StakingInsights() {
       setIsLoading(false);
     }
   }, [stakingContractData, isLoadingTransactions, timeRange]);
+
+  // If there was a context error, show error UI
+  if (contextError) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
+        <div className="text-center">
+          <p className="text-lg font-medium text-red-600">
+            Error loading contract data. Please refresh the page.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Function to analyze real Zeebu staking contract data
   const processRealStakingData = async (transactions, contracts) => {
