@@ -254,27 +254,35 @@ export default function StakingInsights() {
         let eventDescription = 'performed an operation';
         let eventDetails = '';
         
+        // Extract token amount and format it properly
+        const tokenAmount = extractTokenAmount(tx);
+        const formattedAmount = tokenAmount ? `${formatValue(tokenAmount)} ZBU` : (tx.value_eth || '0 ZBU');
+        
+        // Extract maturity timestamp
+        const maturityTimestamp = extractMaturityTimestamp(tx);
+        const formattedMaturity = maturityTimestamp ? formatDate(maturityTimestamp) : 'Unknown';
+        
         // Parse method name to get a cleaner title
         if (method.includes('create_lock')) {
           eventType = 'Create Lock';
           eventDescription = 'created a new lock';
-          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}, Unlock time: ${formatTimestamp(tx.input_data)}`;
+          eventDetails = `Amount: ${formattedAmount}, Maturity: ${formattedMaturity}`;
         } else if (method.includes('increase_amount')) {
           eventType = 'Increase Amount';
           eventDescription = 'increased lock amount';
-          eventDetails = `Added: ${tx.value_eth || '0 ZBU'}`;
+          eventDetails = `Added: ${formattedAmount}`;
         } else if (method.includes('increase_unlock_time')) {
           eventType = 'Extend Lock Time';
           eventDescription = 'extended unlock time';
-          eventDetails = `New unlock time: ${formatTimestamp(tx.input_data)}`;
+          eventDetails = `New maturity: ${formattedMaturity}`;
         } else if (method.includes('withdraw_early')) {
           eventType = 'Early Withdrawal';
           eventDescription = 'withdrew tokens early';
-          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}, Penalty applied`;
+          eventDetails = `Amount: ${formattedAmount}, Penalty applied`;
         } else if (method.includes('withdraw')) {
           eventType = 'Withdrawal';
           eventDescription = 'withdrew tokens';
-          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}`;
+          eventDetails = `Amount: ${formattedAmount}`;
         }
 
         return {
@@ -282,6 +290,8 @@ export default function StakingInsights() {
           from_address: tx.from_address,
           to_address: tx.to_address,
           value_eth: tx.value_eth || '0 ZBU',
+          tokenAmount: formattedAmount,
+          maturityDate: formattedMaturity,
           eventType,
           eventDescription,
           eventDetails,
@@ -297,37 +307,85 @@ export default function StakingInsights() {
       });
   };
 
-  // Helper function to try to extract and format timestamp from input data
-  const formatTimestamp = (inputData) => {
+  // Extract token amount from transaction data
+  const extractTokenAmount = (tx) => {
     try {
-      if (!inputData) return 'Unknown';
-      
-      // Try to extract timestamp from input data - this is a simplified approach
-      // In a real scenario, you'd need to decode the specific contract ABI
-      const matches = inputData.match(/0{24}([a-f0-9]{8})/i);
-      if (matches && matches[1]) {
-        const timestamp = parseInt(matches[1], 16);
-        if (timestamp > 1600000000) { // Sanity check for reasonable timestamp (after 2020)
-          return new Date(timestamp * 1000).toLocaleString();
+      // First check if we have a parsed value already
+      if (tx.value_eth && typeof tx.value_eth === 'string') {
+        const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
+        if (match && match[1]) {
+          return parseFloat(match[1]);
         }
       }
-      return 'Custom time set';
+      
+      // Try to extract from input data if available
+      if (tx.input_data) {
+        // For create_lock and increase_amount, the value is typically the first parameter
+        // This is a simplified approach - in production, you'd use a proper ABI decoder
+        const valueHex = tx.input_data.substring(10, 74); // Skip method ID (4 bytes) and get first param (32 bytes)
+        if (valueHex) {
+          const value = parseInt(valueHex, 16);
+          if (!isNaN(value)) {
+            // Convert from wei to token units (assuming 18 decimals)
+            return value / 1e18;
+          }
+        }
+      }
+      
+      return null;
     } catch (error) {
-      return 'Unknown time';
+      console.error('Error extracting token amount:', error);
+      return null;
     }
+  };
+
+  // Extract maturity timestamp from transaction data
+  const extractMaturityTimestamp = (tx) => {
+    try {
+      if (tx.input_data) {
+        let timestampHex;
+        
+        if (tx.functionName && tx.functionName.includes('create_lock')) {
+          // For create_lock, the timestamp is typically the second parameter
+          timestampHex = tx.input_data.substring(74, 138);
+        } else if (tx.functionName && tx.functionName.includes('increase_unlock_time')) {
+          // For increase_unlock_time, the timestamp is typically the first parameter
+          timestampHex = tx.input_data.substring(10, 74);
+        }
+        
+        if (timestampHex) {
+          const timestamp = parseInt(timestampHex, 16);
+          if (timestamp > 1600000000 && timestamp < 2000000000) { // Sanity check for reasonable timestamp
+            return new Date(timestamp * 1000);
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error extracting maturity timestamp:', error);
+      return null;
+    }
+  };
+
+  // Helper function to format date in a readable way
+  const formatDate = (date) => {
+    if (date instanceof Date) {
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    return String(date);
   };
 
   const formatValue = (value) => {
     if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
     if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
     return value.toString();
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
   };
 
   // Show loading state
@@ -392,9 +450,11 @@ export default function StakingInsights() {
       from_address: '0xabcdef1234567890abcdef1234567890abcdef12',
       to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '1000 DEMO',
+      tokenAmount: '1,000 DEMO',
+      maturityDate: 'Jan 21, 2025, 02:30 PM',
       eventType: 'Create Lock',
       eventDescription: 'created a new lock',
-      eventDetails: 'Amount: 1000 DEMO, Unlock time: 2025-01-21 14:30:25',
+      eventDetails: 'Amount: 1,000 DEMO, Maturity: Jan 21, 2025, 02:30 PM',
       method: 'create_lock(uint256 _value, uint256 _unlock_time)',
       formattedTime: '2024-01-21 14:30:25',
       shortAddress: '0xabcd...ef12',
@@ -409,6 +469,8 @@ export default function StakingInsights() {
       from_address: '0xbcdef02345678901bcdef02345678901bcdef023',
       to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '500 DEMO',
+      tokenAmount: '500 DEMO',
+      maturityDate: 'Jan 21, 2025, 02:30 PM',
       eventType: 'Increase Amount',
       eventDescription: 'increased lock amount',
       eventDetails: 'Added: 500 DEMO',
@@ -426,9 +488,11 @@ export default function StakingInsights() {
       from_address: '0xcdef123456789012cdef123456789012cdef1234',
       to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '0 DEMO',
+      tokenAmount: '0 DEMO',
+      maturityDate: 'Jul 21, 2025, 12:45 PM',
       eventType: 'Extend Lock Time',
       eventDescription: 'extended unlock time',
-      eventDetails: 'New unlock time: 2025-07-21 12:45:33',
+      eventDetails: 'New maturity: Jul 21, 2025, 12:45 PM',
       method: 'increase_unlock_time(uint256 _unlock_time)',
       formattedTime: '2024-01-21 12:45:33',
       shortAddress: '0xcdef...1234',
@@ -443,6 +507,8 @@ export default function StakingInsights() {
       from_address: '0xdef0123456789012cdef0123456789012cdef01',
       to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '750 DEMO',
+      tokenAmount: '750 DEMO',
+      maturityDate: 'N/A',
       eventType: 'Withdrawal',
       eventDescription: 'withdrew tokens',
       eventDetails: 'Amount: 750 DEMO',
@@ -460,6 +526,8 @@ export default function StakingInsights() {
       from_address: '0xef012345678901cdef012345678901cdef0123',
       to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '250 DEMO',
+      tokenAmount: '250 DEMO',
+      maturityDate: 'N/A',
       eventType: 'Early Withdrawal',
       eventDescription: 'withdrew tokens early',
       eventDetails: 'Amount: 250 DEMO, Penalty applied',
@@ -739,7 +807,7 @@ export default function StakingInsights() {
                           </p>
                         )}
                         <p className="text-sm">
-                          <span className="font-medium">Value:</span> {event.value_eth}
+                          <span className="font-medium">Value:</span> {event.tokenAmount}
                         </p>
                       </div>
                       <div>
@@ -749,15 +817,18 @@ export default function StakingInsights() {
                         <p className="text-sm">
                           <span className="font-medium">Status:</span> {event.status}
                         </p>
-                        {event.eventDetails && (
+                        {event.maturityDate && event.maturityDate !== 'Unknown' && event.maturityDate !== 'N/A' && (
                           <p className="text-sm">
-                            <span className="font-medium">Details:</span> {event.eventDetails}
+                            <span className="font-medium">Maturity:</span> {event.maturityDate}
                           </p>
                         )}
                       </div>
                     </div>
                     
                     <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Details:</span> {event.eventDetails}
+                      </p>
                       <p className="text-xs text-gray-500 break-all">
                         <span className="font-medium">Method:</span> {event.method}
                       </p>
