@@ -6,6 +6,7 @@ import OnchainTraffic from "../Onchainpart/OnchainTraffic";
 import Onchainuserinsights from "../Onchainpart/Onchainuserinsights"
 import OnchainmarketInsights from "../Onchainpart/OnchainmarketInsights";
 import Onchainwalletinsights from "../Onchainpart/Onchainwalletinsights";
+import StakingInsights from "../Onchainpart/StakingInsights";
 import { useContractData } from "../../contexts/ContractDataContext";
 import preloadData from "../../utils/preloadService";
 
@@ -98,7 +99,8 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       { label: 'Traffic analytics' },
       { label: 'User Insights' },
       { label: 'Market Insights' },
-      { label: 'Wallet Insights' }
+      { label: 'Wallet Insights' },
+      { label: 'Escrow' }
     ];
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
@@ -286,6 +288,31 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                         
                                           />
                         <Onchainwalletinsights/>
+                      </>
+                    )}
+
+                    {activeSection === 'Escrow' && (
+                      <>
+                         <Filters 
+                                            websitearray={websitearray}
+                                            setWebsitearray={setWebsitearray}
+                                            contractarray={contractarray}
+                                            setcontractarray={setcontractarray}
+                                            analytics={analytics}
+                                            setanalytics={setanalytics}
+                                            selectedDate={selectedDate} 
+                                            setSelectedDate={setSelectedDate} 
+                                            selectedWebsite={selectedWebsite} 
+                                            setSelectedWebsite={setSelectedWebsite}
+                                            selectedFilters={selectedFilters} 
+                                            setSelectedFilters={setSelectedFilters}
+                                            idy={idy}
+                                            setidy={setidy}
+                                            selectedPage={selectedPage}
+                                            onMenuClick={onMenuClick}
+                        
+                                          />
+                        <StakingInsights/>
                       </>
                     )}
                   </div>

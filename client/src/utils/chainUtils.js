@@ -270,7 +270,7 @@ export const decodeERC20TransferInput = (inputData) => {
  * @param {Object} tokenData - Optional token data for token transfers
  * @returns {Object} - Standardized transaction object
  */
-export const formatTransaction = (tx, chain, tokenData = null) => {
+export const formatTransaction = (tx, chain, tokenData = null, contractType = 'main') => {
   try {
     // Default values for fields that might be missing
     const defaults = {
@@ -322,6 +322,21 @@ export const formatTransaction = (tx, chain, tokenData = null) => {
       formattedTx.contract_address = tokenData.contractAddress;
       formattedTx.token_name = tokenData.name;
       formattedTx.token_symbol = tokenData.symbol;
+    }
+
+    // Add additional fields for staking analysis
+    formattedTx.input = transaction.input || '';
+    formattedTx.functionName = transaction.functionName || '';
+    formattedTx.methodId = transaction.methodId || '';
+
+    // Add staking analysis for escrow contracts
+    if (contractType === 'escrow') {
+      const stakingAnalysis = identifyStakingTransaction(formattedTx, contractType);
+      formattedTx.stakingAnalysis = stakingAnalysis;
+      if (stakingAnalysis.isStaking) {
+        formattedTx.stakingType = stakingAnalysis.stakingType;
+        formattedTx.stakingConfidence = stakingAnalysis.confidence;
+      }
     }
     
     return formattedTx;
@@ -375,6 +390,123 @@ export const isValidAddress = (address) => {
   }
 };
 
+/**
+ * Identifies if a transaction is related to staking/escrow operations
+ * Based on method signatures and input data patterns
+ * 
+ * @param {Object} transaction - Transaction object
+ * @param {string} contractType - Type of contract ('main', 'escrow')
+ * @returns {Object} - Analysis result with type and details
+ */
+export const identifyStakingTransaction = (transaction, contractType = 'main') => {
+  const result = {
+    isStaking: false,
+    stakingType: null,
+    confidence: 0,
+    details: {}
+  };
+
+  // Only analyze for escrow contracts
+  if (contractType !== 'escrow') {
+    return result;
+  }
+
+  try {
+    const input = transaction.input || '';
+    const functionName = transaction.functionName || '';
+    const methodId = transaction.methodId || '';
+    
+    // Common staking method signatures and patterns
+    const stakingPatterns = {
+      // Staking operations
+      stake: {
+        signatures: ['0xa694fc3a', '0x26476204', '0x3ccfd60b'],
+        keywords: ['stake', 'deposit', 'lock'],
+        type: 'stake'
+      },
+      // Unstaking operations
+      unstake: {
+        signatures: ['0x2e1a7d4d', '0x8e19899e', '0x69328dec'],
+        keywords: ['unstake', 'withdraw', 'unlock', 'redeem'],
+        type: 'unstake'
+      },
+      // Reward claiming
+      claim: {
+        signatures: ['0x4e71d92d', '0x379607f5', '0x2f4f21e2'],
+        keywords: ['claim', 'harvest', 'reward', 'claimreward'],
+        type: 'claim'
+      },
+      // Compound/reinvest
+      compound: {
+        signatures: ['0xf69e2046', '0x5427c938'],
+        keywords: ['compound', 'reinvest', 'restake'],
+        type: 'compound'
+      }
+    };
+
+    // Check method signatures first (most reliable)
+    for (const [operation, pattern] of Object.entries(stakingPatterns)) {
+      if (pattern.signatures.some(sig => input.startsWith(sig))) {
+        result.isStaking = true;
+        result.stakingType = pattern.type;
+        result.confidence = 0.9;
+        result.details.method = 'signature';
+        result.details.operation = operation;
+        break;
+      }
+    }
+
+    // Check function names if available
+    if (!result.isStaking && functionName) {
+      const lowerFunctionName = functionName.toLowerCase();
+      for (const [operation, pattern] of Object.entries(stakingPatterns)) {
+        if (pattern.keywords.some(keyword => lowerFunctionName.includes(keyword))) {
+          result.isStaking = true;
+          result.stakingType = pattern.type;
+          result.confidence = 0.7;
+          result.details.method = 'functionName';
+          result.details.operation = operation;
+          break;
+        }
+      }
+    }
+
+    // Check method ID if available
+    if (!result.isStaking && methodId) {
+      for (const [operation, pattern] of Object.entries(stakingPatterns)) {
+        if (pattern.signatures.includes(methodId)) {
+          result.isStaking = true;
+          result.stakingType = pattern.type;
+          result.confidence = 0.8;
+          result.details.method = 'methodId';
+          result.details.operation = operation;
+          break;
+        }
+      }
+    }
+
+    // Additional heuristics for escrow contracts
+    if (contractType === 'escrow' && !result.isStaking) {
+      // Check transaction value patterns
+      const value = parseFloat(transaction.value_eth || transaction.value || 0);
+      
+      // Large value transactions in escrow contracts are likely stakes
+      if (value > 0) {
+        result.isStaking = true;
+        result.stakingType = 'stake';
+        result.confidence = 0.5;
+        result.details.method = 'heuristic';
+        result.details.reason = 'value_transfer_to_escrow';
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error identifying staking transaction:', error);
+    return result;
+  }
+};
+
 export default {
   safeNumber,
   hexToDecimalString,
@@ -382,5 +514,6 @@ export default {
   decodeERC20TransferInput,
   formatTransaction,
   getCurrentBlockNumber,
-  isValidAddress
+  isValidAddress,
+  identifyStakingTransaction
 }; 

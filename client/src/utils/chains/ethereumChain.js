@@ -9,7 +9,8 @@ import {
   isValidAddress,
   decodeERC20TransferInput,
   formatTokenAmount,
-  hexToDecimalString
+  hexToDecimalString,
+  identifyStakingTransaction
 } from '../chainUtils';
 
 // API key from environment variables only
@@ -28,7 +29,7 @@ const MAX_RESULTS = 10000;
  * @param {Object} tx - Raw transaction data
  * @returns {Object} - Processed transaction
  */
-const processERC20Transaction = (tx) => {
+const processERC20Transaction = (tx, contractType = 'main') => {
   try {
     // Decode the ERC-20 transfer data
     const decodedData = decodeERC20TransferInput(tx.input);
@@ -57,7 +58,7 @@ const processERC20Transaction = (tx) => {
     console.log(`Decoded ERC20 transfer: ${decodedData.rawAmount} -> ${tokenAmount}`);
     
     // Create standardized transaction object
-    return {
+    const formattedTx = {
       tx_hash: tx.hash,
       from_address: tx.from.toLowerCase(),
       to_address: decodedData.recipient.toLowerCase(),  // Use the actual recipient from decoded data
@@ -69,8 +70,23 @@ const processERC20Transaction = (tx) => {
       token_type: "ERC20",
       token_address: tx.to?.toLowerCase() || "",
       token_amount: decodedData.rawAmount,
-      token_symbol: tx.token_symbol || 'ERC20'
+      token_symbol: tx.token_symbol || 'ERC20',
+      input: tx.input || '',
+      functionName: tx.functionName || '',
+      methodId: tx.methodId || ''
     };
+
+    // Add staking analysis for escrow contracts
+    if (contractType === 'escrow') {
+      const stakingAnalysis = identifyStakingTransaction(formattedTx, contractType);
+      formattedTx.stakingAnalysis = stakingAnalysis;
+      if (stakingAnalysis.isStaking) {
+        formattedTx.stakingType = stakingAnalysis.stakingType;
+        formattedTx.stakingConfidence = stakingAnalysis.confidence;
+      }
+    }
+
+    return formattedTx;
   } catch (error) {
     console.error("Error processing ERC-20 transaction:", error);
     
@@ -101,6 +117,7 @@ export const fetchEthereumTransactions = async (contractAddress, options = {}) =
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
+    const contractType = options.contractType || 'main';
     const batchSize = 10000; // Etherscan API has a limit of 10,000 per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
@@ -220,11 +237,11 @@ export const fetchEthereumTransactions = async (contractAddress, options = {}) =
         
         // Check if this might be an ERC-20 token transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return processERC20Transaction(tx);
+          return processERC20Transaction(tx, contractType);
         }
         
         // Format standard transaction
-        return {
+        const formattedTx = {
           tx_hash: tx.hash,
           from_address: tx.from.toLowerCase(),
           to_address: tx.to?.toLowerCase() || "",
@@ -234,8 +251,23 @@ export const fetchEthereumTransactions = async (contractAddress, options = {}) =
           block_number: blockNumber,
           block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
           chain: "Ethereum",
-          contract_address: contractAddress.toLowerCase()
+          contract_address: contractAddress.toLowerCase(),
+          input: tx.input || '',
+          functionName: tx.functionName || '',
+          methodId: tx.methodId || ''
         };
+
+        // Add staking analysis for escrow contracts
+        if (contractType === 'escrow') {
+          const stakingAnalysis = identifyStakingTransaction(formattedTx, contractType);
+          formattedTx.stakingAnalysis = stakingAnalysis;
+          if (stakingAnalysis.isStaking) {
+            formattedTx.stakingType = stakingAnalysis.stakingType;
+            formattedTx.stakingConfidence = stakingAnalysis.confidence;
+          }
+        }
+
+        return formattedTx;
       });
       
       // Add transactions to our collection

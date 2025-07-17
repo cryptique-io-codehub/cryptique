@@ -65,7 +65,9 @@ export const ContractDataProvider = ({ children }) => {
             address: contract.address,
             name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
             blockchain: contract.blockchain,
-            tokenSymbol: contract.tokenSymbol
+            tokenSymbol: contract.tokenSymbol,
+            contractType: contract.contractType || 'main',
+            stakingDetails: contract.stakingDetails || null
           }));
           
           setContractArray(contracts);
@@ -214,7 +216,8 @@ export const ContractDataProvider = ({ children }) => {
       
       const chainResult = await chainConfig.fetchTransactions(contract.address, {
         limit: 100000,
-        startBlock: startBlock
+        startBlock: startBlock,
+        contractType: contract.contractType || 'main'
       });
       
       if (chainResult.transactions?.length > 0) {

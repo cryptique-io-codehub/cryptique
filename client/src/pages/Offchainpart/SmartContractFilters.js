@@ -95,6 +95,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const [contractName, setContractName] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [blockchain, setBlockchain] = useState('Ethereum');
+  const [contractType, setContractType] = useState('main');
+  const [stakingDetails, setStakingDetails] = useState({
+    rewardToken: '',
+    stakingToken: '',
+    lockPeriod: '',
+    apy: '',
+    minimumStake: '',
+    totalStaked: '',
+    totalRewards: ''
+  });
   const [contractError, setContractError] = useState('');
   const [addingContract, setAddingContract] = useState(false);
   const [selectedContracts, setSelectedContracts] = useState([]);
@@ -209,7 +219,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
           address: contract.address,
           name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
           blockchain: contract.blockchain,
-          tokenSymbol: contract.tokenSymbol
+          tokenSymbol: contract.tokenSymbol,
+          contractType: contract.contractType || 'main',
+          stakingDetails: contract.stakingDetails || null
         }));
         
         // Update state and session storage
@@ -310,6 +322,16 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
     setContractName('');
     setTokenSymbol('');
     setBlockchain('Ethereum');
+    setContractType('main');
+    setStakingDetails({
+      rewardToken: '',
+      stakingToken: '',
+      lockPeriod: '',
+      apy: '',
+      minimumStake: '',
+      totalStaked: '',
+      totalRewards: ''
+    });
     setContractError('');
   };
 
@@ -395,13 +417,15 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
   const formatContractDisplay = (contract) => {
     const displayName = contract.name || contract.address;
     const shortAddress = `${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`;
+                        const contractTypeLabel = contract.contractType === 'escrow' ? ' (Escrow)' : '';
     
     return {
-      name: displayName,
+      name: displayName + contractTypeLabel,
       shortAddress: shortAddress,
       fullAddress: contract.address,
       blockchain: contract.blockchain,
-      tokenSymbol: contract.tokenSymbol
+      tokenSymbol: contract.tokenSymbol,
+      contractType: contract.contractType || 'main'
     };
   };
 
@@ -500,6 +524,8 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         name: contractName || `Contract ${contractAddress.substr(0, 6)}...${contractAddress.substr(-4)}`,
         blockchain: blockchain,
         tokenSymbol: finalTokenSymbol,
+        contractType: contractType,
+        stakingDetails: contractType === 'escrow' ? stakingDetails : undefined,
         added_at: new Date().toISOString(),
         verified: true
       };
@@ -971,7 +997,9 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
         address: contract.address,
         name: contract.name,
         blockchain: contract.blockchain,
-        tokenSymbol: contract.tokenSymbol
+        tokenSymbol: contract.tokenSymbol,
+        contractType: contract.contractType,
+        stakingDetails: contract.stakingDetails
       };
 
       console.log("API payload:", payload);
@@ -1181,6 +1209,19 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                       <form onSubmit={handleAddContract}>
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700">
+                            Contract Type
+                          </label>
+                          <select
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            value={contractType}
+                            onChange={(e) => setContractType(e.target.value)}
+                          >
+                            <option value="main">Main Contract</option>
+                                                    <option value="escrow">Escrow Contract</option>
+                          </select>
+                        </div>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">
                             Contract Address
                           </label>
                           <input
@@ -1236,6 +1277,91 @@ const SmartContractFilters = ({ contractarray, setcontractarray, selectedContrac
                             <option value="Optimism">Optimism</option>
                           </select>
                         </div>
+                        
+                        {/* Escrow Details - Only show for escrow contracts */}
+                        {contractType === 'escrow' && (
+                          <div className="mb-4 p-4 bg-gray-50 rounded-md">
+                            <h4 className="text-sm font-medium text-gray-900 mb-3">
+                              Escrow Details
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  Reward Token
+                                </label>
+                                <input
+                                  type="text"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="REWARD"
+                                  value={stakingDetails.rewardToken}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, rewardToken: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  Staking Token
+                                </label>
+                                <input
+                                  type="text"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="STAKE"
+                                  value={stakingDetails.stakingToken}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, stakingToken: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  Lock Period (days)
+                                </label>
+                                <input
+                                  type="number"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="30"
+                                  value={stakingDetails.lockPeriod}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, lockPeriod: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  APY (%)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="12.5"
+                                  value={stakingDetails.apy}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, apy: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  Minimum Stake
+                                </label>
+                                <input
+                                  type="text"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="100"
+                                  value={stakingDetails.minimumStake}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, minimumStake: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700">
+                                  Total Staked
+                                </label>
+                                <input
+                                  type="text"
+                                  className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="1000000"
+                                  value={stakingDetails.totalStaked}
+                                  onChange={(e) => setStakingDetails({...stakingDetails, totalStaked: e.target.value})}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         {contractError && (
                           <div className="mb-4 text-sm text-red-600">{contractError}</div>
                         )}

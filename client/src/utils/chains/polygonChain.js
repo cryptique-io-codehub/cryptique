@@ -7,7 +7,9 @@ import axios from 'axios';
 import { 
   formatTransaction, 
   isValidAddress,
-  decodeERC20TransferInput
+  decodeERC20TransferInput,
+  formatTokenAmount,
+  identifyStakingTransaction
 } from '../chainUtils';
 
 // API key should be in .env file
@@ -26,13 +28,13 @@ const MAX_RESULTS = 10000;
  * @param {Object} tx - Raw transaction data
  * @returns {Object} - Processed transaction
  */
-const processERC20Transaction = (tx) => {
+const processERC20Transaction = (tx, contractType = 'main') => {
   try {
     // Decode the ERC-20 transfer data
     const decodedData = decodeERC20TransferInput(tx.input);
     
     if (!decodedData) {
-      return formatTransaction(tx, 'Polygon');
+      return formatTransaction(tx, 'Polygon', null, contractType);
     }
     
     // Default 18 decimals (most common)
@@ -68,10 +70,10 @@ const processERC20Transaction = (tx) => {
     return formatTransaction({
       ...tx,
       to: decodedData.recipient // Update recipient to actual token receiver
-    }, 'Polygon', tokenData);
+    }, 'Polygon', tokenData, contractType);
   } catch (error) {
     console.error("Error processing ERC-20 transaction on Polygon:", error);
-    return formatTransaction(tx, 'Polygon');
+    return formatTransaction(tx, 'Polygon', null, contractType);
   }
 };
 
@@ -88,6 +90,7 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
     // Default options
     const limit = Math.min(options.limit || 10000, 100000);
     const startBlock = options.startBlock || 0;
+    const contractType = options.contractType || 'main';
     const offset = 10000; // Polygonscan API typically limits to 10,000 results per request
     const maxRetries = 3; // Maximum number of retries for failed requests
     
@@ -206,11 +209,11 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
         
         // Check if this might be an ERC-20 transfer
         if (tx.value === '0' && tx.input && tx.input.startsWith('0xa9059cbb')) {
-          return processERC20Transaction(tx);
+          return processERC20Transaction(tx, contractType);
         }
         
         // Format transaction
-        return {
+        const formattedTx = {
           tx_hash: tx.hash,
           from_address: tx.from.toLowerCase(),
           to_address: tx.to?.toLowerCase() || "",
@@ -220,8 +223,23 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
           block_number: blockNumber,
           block_time: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
           chain: "Polygon",
-          contract_address: contractAddress.toLowerCase()
+          contract_address: contractAddress.toLowerCase(),
+          input: tx.input || '',
+          functionName: tx.functionName || '',
+          methodId: tx.methodId || ''
         };
+
+        // Add staking analysis for escrow contracts
+        if (contractType === 'escrow') {
+          const stakingAnalysis = identifyStakingTransaction(formattedTx, contractType);
+          formattedTx.stakingAnalysis = stakingAnalysis;
+          if (stakingAnalysis.isStaking) {
+            formattedTx.stakingType = stakingAnalysis.stakingType;
+            formattedTx.stakingConfidence = stakingAnalysis.confidence;
+          }
+        }
+
+        return formattedTx;
       });
       
       // No need to find lowest block again since we already did it during mapping
