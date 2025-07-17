@@ -1162,13 +1162,20 @@ export const ContractDataProvider = ({ children }) => {
       
       if (response.data && response.data.contracts) {
         // Format contract data
-        const contracts = response.data.contracts.map(contract => ({
-          id: contract.contractId,
-          address: contract.address,
-          name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
-          blockchain: contract.blockchain,
-          tokenSymbol: contract.tokenSymbol
-        }));
+        const contracts = response.data.contracts.map(contract => {
+          const contractType = contract.contractType || 'main';
+          console.log(`Refresh loading contract: ${contract.name} with type: ${contractType} (raw: ${contract.contractType})`);
+          
+          return {
+            id: contract.contractId,
+            address: contract.address,
+            name: contract.name || `Contract ${contract.address.substring(0, 6)}...${contract.address.substring(contract.address.length - 4)}`,
+            blockchain: contract.blockchain,
+            tokenSymbol: contract.tokenSymbol,
+            contractType: contractType,
+            stakingDetails: contract.stakingDetails || null
+          };
+        });
         
         setContractArray(contracts);
         
