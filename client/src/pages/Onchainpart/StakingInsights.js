@@ -250,45 +250,71 @@ export default function StakingInsights() {
       .slice(0, 20) // Get recent 20 transactions
       .map(tx => {
         const method = tx.functionName || tx.method_name || '';
-        let eventType = 'Unknown';
-        let eventIcon = '📄';
+        let eventType = 'Unknown Operation';
         let eventDescription = 'performed an operation';
+        let eventDetails = '';
         
+        // Parse method name to get a cleaner title
         if (method.includes('create_lock')) {
-          eventType = 'Lock Created';
-          eventIcon = '🔒';
+          eventType = 'Create Lock';
           eventDescription = 'created a new lock';
+          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}, Unlock time: ${formatTimestamp(tx.input_data)}`;
         } else if (method.includes('increase_amount')) {
-          eventType = 'Amount Increased';
-          eventIcon = '📈';
+          eventType = 'Increase Amount';
           eventDescription = 'increased lock amount';
+          eventDetails = `Added: ${tx.value_eth || '0 ZBU'}`;
         } else if (method.includes('increase_unlock_time')) {
-          eventType = 'Time Extended';
-          eventIcon = '⏰';
+          eventType = 'Extend Lock Time';
           eventDescription = 'extended unlock time';
+          eventDetails = `New unlock time: ${formatTimestamp(tx.input_data)}`;
         } else if (method.includes('withdraw_early')) {
           eventType = 'Early Withdrawal';
-          eventIcon = '⚡';
-          eventDescription = 'withdrew early';
+          eventDescription = 'withdrew tokens early';
+          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}, Penalty applied`;
         } else if (method.includes('withdraw')) {
           eventType = 'Withdrawal';
-          eventIcon = '🔓';
           eventDescription = 'withdrew tokens';
+          eventDetails = `Amount: ${tx.value_eth || '0 ZBU'}`;
         }
 
         return {
           tx_hash: tx.tx_hash,
           from_address: tx.from_address,
+          to_address: tx.to_address,
           value_eth: tx.value_eth || '0 ZBU',
           eventType,
-          eventIcon,
           eventDescription,
+          eventDetails,
           method: method,
           formattedTime: new Date(tx.block_time).toLocaleString(),
           shortAddress: tx.from_address ? `${tx.from_address.slice(0, 6)}...${tx.from_address.slice(-4)}` : 'Unknown',
-          blockNumber: tx.block_number
+          blockNumber: tx.block_number,
+          gas_used: tx.gas_used,
+          gas_price: tx.gas_price,
+          status: tx.status || 'success',
+          input_data: tx.input_data
         };
       });
+  };
+
+  // Helper function to try to extract and format timestamp from input data
+  const formatTimestamp = (inputData) => {
+    try {
+      if (!inputData) return 'Unknown';
+      
+      // Try to extract timestamp from input data - this is a simplified approach
+      // In a real scenario, you'd need to decode the specific contract ABI
+      const matches = inputData.match(/0{24}([a-f0-9]{8})/i);
+      if (matches && matches[1]) {
+        const timestamp = parseInt(matches[1], 16);
+        if (timestamp > 1600000000) { // Sanity check for reasonable timestamp (after 2020)
+          return new Date(timestamp * 1000).toLocaleString();
+        }
+      }
+      return 'Custom time set';
+    } catch (error) {
+      return 'Unknown time';
+    }
   };
 
   const formatValue = (value) => {
@@ -364,38 +390,87 @@ export default function StakingInsights() {
     {
       tx_hash: '0x1234567890abcdef1234567890abcdef12345678',
       from_address: '0xabcdef1234567890abcdef1234567890abcdef12',
+      to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '1000 DEMO',
-      eventType: 'Lock Created',
-      eventIcon: '🔒',
+      eventType: 'Create Lock',
       eventDescription: 'created a new lock',
+      eventDetails: 'Amount: 1000 DEMO, Unlock time: 2025-01-21 14:30:25',
       method: 'create_lock(uint256 _value, uint256 _unlock_time)',
       formattedTime: '2024-01-21 14:30:25',
       shortAddress: '0xabcd...ef12',
-      blockNumber: 19234567
+      blockNumber: 19234567,
+      gas_used: '120000',
+      gas_price: '15000000000',
+      status: 'success',
+      input_data: '0x65fc3873000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000065a4d7a1'
     },
     {
       tx_hash: '0x2345678901bcdef02345678901bcdef023456789',
       from_address: '0xbcdef02345678901bcdef02345678901bcdef023',
+      to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '500 DEMO',
-      eventType: 'Amount Increased',
-      eventIcon: '📈',
+      eventType: 'Increase Amount',
       eventDescription: 'increased lock amount',
+      eventDetails: 'Added: 500 DEMO',
       method: 'increase_amount(uint256 _value)',
       formattedTime: '2024-01-21 13:15:10',
       shortAddress: '0xbcde...f023',
-      blockNumber: 19234566
+      blockNumber: 19234566,
+      gas_used: '85000',
+      gas_price: '12000000000',
+      status: 'success',
+      input_data: '0xa385da110000000000000000000000000000000000000000000000000000000000001f40'
     },
     {
       tx_hash: '0x3456789012cdef123456789012cdef1234567890',
       from_address: '0xcdef123456789012cdef123456789012cdef1234',
+      to_address: '0x1234567890abcdef1234567890abcdef12345678',
       value_eth: '0 DEMO',
-      eventType: 'Time Extended',
-      eventIcon: '⏰',
+      eventType: 'Extend Lock Time',
       eventDescription: 'extended unlock time',
+      eventDetails: 'New unlock time: 2025-07-21 12:45:33',
       method: 'increase_unlock_time(uint256 _unlock_time)',
       formattedTime: '2024-01-21 12:45:33',
       shortAddress: '0xcdef...1234',
-      blockNumber: 19234565
+      blockNumber: 19234565,
+      gas_used: '65000',
+      gas_price: '14000000000',
+      status: 'success',
+      input_data: '0xc527ee3c000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000065f4d7a1'
+    },
+    {
+      tx_hash: '0x4567890123def0123456789012cdef01234567890',
+      from_address: '0xdef0123456789012cdef0123456789012cdef01',
+      to_address: '0x1234567890abcdef1234567890abcdef12345678',
+      value_eth: '750 DEMO',
+      eventType: 'Withdrawal',
+      eventDescription: 'withdrew tokens',
+      eventDetails: 'Amount: 750 DEMO',
+      method: 'withdraw()',
+      formattedTime: '2024-01-21 11:30:45',
+      shortAddress: '0xdef0...ef01',
+      blockNumber: 19234564,
+      gas_used: '95000',
+      gas_price: '13000000000',
+      status: 'success',
+      input_data: '0x3ccfd60b'
+    },
+    {
+      tx_hash: '0x5678901234ef012345678901cdef0123456789012',
+      from_address: '0xef012345678901cdef012345678901cdef0123',
+      to_address: '0x1234567890abcdef1234567890abcdef12345678',
+      value_eth: '250 DEMO',
+      eventType: 'Early Withdrawal',
+      eventDescription: 'withdrew tokens early',
+      eventDetails: 'Amount: 250 DEMO, Penalty applied',
+      method: 'withdraw_early()',
+      formattedTime: '2024-01-21 10:15:20',
+      shortAddress: '0xef01...0123',
+      blockNumber: 19234563,
+      gas_used: '105000',
+      gas_price: '16000000000',
+      status: 'success',
+      input_data: '0x5affa0f3'
     }
   ];
 
@@ -645,28 +720,55 @@ export default function StakingInsights() {
             <div className="p-6">
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {displayStakingEvents && Array.isArray(displayStakingEvents) && displayStakingEvents.map((event, index) => (
-                  <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl">
-                      {event.eventIcon}
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-md" style={{ color: styles.primaryColor }}>
+                        {event.eventType}
+                      </span>
+                      <span className="text-xs text-gray-500">{event.formattedTime}</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                          {event.shortAddress} {event.eventDescription}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <p className="text-sm">
+                          <span className="font-medium">From:</span> {event.shortAddress}
                         </p>
-                        <p className="text-xs text-gray-500">{event.formattedTime}</p>
+                        {event.to_address && (
+                          <p className="text-sm">
+                            <span className="font-medium">To:</span> {event.to_address.slice(0, 6)}...{event.to_address.slice(-4)}
+                          </p>
+                        )}
+                        <p className="text-sm">
+                          <span className="font-medium">Value:</span> {event.value_eth}
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-500">
-                          Method: {event.method}
+                      <div>
+                        <p className="text-sm">
+                          <span className="font-medium">Block:</span> {event.blockNumber}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          Block: {event.blockNumber}
+                        <p className="text-sm">
+                          <span className="font-medium">Status:</span> {event.status}
                         </p>
+                        {event.eventDetails && (
+                          <p className="text-sm">
+                            <span className="font-medium">Details:</span> {event.eventDetails}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Tx: {event.tx_hash.slice(0, 10)}...{event.tx_hash.slice(-6)}
+                    </div>
+                    
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 break-all">
+                        <span className="font-medium">Method:</span> {event.method}
                       </p>
+                      <p className="text-xs text-gray-500 break-all">
+                        <span className="font-medium">Tx:</span> {event.tx_hash}
+                      </p>
+                      {event.gas_used && (
+                        <p className="text-xs text-gray-500">
+                          <span className="font-medium">Gas:</span> {event.gas_used} @ {event.gas_price ? `${parseInt(event.gas_price) / 1e9} Gwei` : 'Unknown'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
