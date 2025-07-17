@@ -32,7 +32,7 @@ exports.getTeamContracts = async (req, res) => {
 // Add a new smart contract
 exports.addSmartContract = async (req, res) => {
   try {
-    const { teamId, teamName, address, name, blockchain, tokenSymbol, contractType, stakingDetails } = req.body;
+    const { teamId, teamName, address, name, blockchain, tokenSymbol, contractType } = req.body;
     
     console.log("Add smart contract request:", {
       teamId, 
@@ -139,7 +139,7 @@ exports.addSmartContract = async (req, res) => {
       blockchain,
       tokenSymbol,
       contractType: contractType || 'main',
-      stakingDetails: contractType === 'escrow' ? stakingDetails : undefined,
+      
       team: team._id,
       verified: true,
       createdAt: new Date(),

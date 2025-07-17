@@ -55,11 +55,18 @@ export default function StakingInsights() {
 
       // Process transactions to extract staking events
       const stakingTransactions = contractTransactions.filter(tx => {
-        // Look for common staking method signatures
-        const stakingMethods = ['stake', 'unstake', 'withdraw', 'claim', 'deposit', 'redeem'];
+        // Look for staking method signatures and analysis
+        if (tx.stakingAnalysis?.isStaking) {
+          return true;
+        }
+        
+        // Fallback to method name detection
+        const stakingMethods = ['create_lock', 'increase_amount', 'withdraw', 'withdraw_early', 'increase_unlock_time', 'stake', 'unstake', 'claim', 'deposit', 'redeem'];
         return stakingMethods.some(method => 
           tx.method_name?.toLowerCase().includes(method) || 
-          tx.tx_type?.toLowerCase().includes(method)
+          tx.tx_type?.toLowerCase().includes(method) ||
+          tx.functionName?.toLowerCase().includes(method) ||
+          tx.input?.toLowerCase().includes(method)
         );
       });
 
@@ -97,6 +104,7 @@ export default function StakingInsights() {
     transactions.forEach(tx => {
       const value = parseFloat(tx.value_eth) || 0;
       const method = tx.method_name?.toLowerCase() || tx.tx_type?.toLowerCase() || '';
+      const stakingType = tx.stakingAnalysis?.stakingType || tx.stakingType || '';
       
       uniqueStakers.add(tx.from_address);
       
@@ -104,9 +112,12 @@ export default function StakingInsights() {
         activeStakers.add(tx.from_address);
       }
       
-      if (method.includes('stake') || method.includes('deposit')) {
+      // Handle new staking types
+      if (stakingType === 'create_lock' || stakingType === 'increase_amount' || 
+          method.includes('stake') || method.includes('deposit') || method.includes('create_lock') || method.includes('increase_amount')) {
         totalStaked += value;
-      } else if (method.includes('unstake') || method.includes('withdraw')) {
+      } else if (stakingType === 'withdraw' || stakingType === 'withdraw_early' || 
+                 method.includes('unstake') || method.includes('withdraw')) {
         totalUnstaked += value;
       } else if (method.includes('claim') || method.includes('reward')) {
         totalRewards += value;
@@ -156,12 +167,16 @@ export default function StakingInsights() {
       dayTransactions.forEach(tx => {
         const value = parseFloat(tx.value_eth) || 0;
         const method = tx.method_name?.toLowerCase() || tx.tx_type?.toLowerCase() || '';
+        const stakingType = tx.stakingAnalysis?.stakingType || tx.stakingType || '';
         
         uniqueUsers.add(tx.from_address);
         
-        if (method.includes('stake') || method.includes('deposit')) {
+        // Handle new staking types
+        if (stakingType === 'create_lock' || stakingType === 'increase_amount' || 
+            method.includes('stake') || method.includes('deposit') || method.includes('create_lock') || method.includes('increase_amount')) {
           stakeAmount += value;
-        } else if (method.includes('unstake') || method.includes('withdraw')) {
+        } else if (stakingType === 'withdraw' || stakingType === 'withdraw_early' || 
+                   method.includes('unstake') || method.includes('withdraw')) {
           unstakeAmount += value;
         } else if (method.includes('claim') || method.includes('reward')) {
           rewardAmount += value;
@@ -188,29 +203,69 @@ export default function StakingInsights() {
       .slice(0, 50)
       .map(tx => {
         const method = tx.method_name?.toLowerCase() || tx.tx_type?.toLowerCase() || '';
+        const stakingType = tx.stakingAnalysis?.stakingType || tx.stakingType || '';
         let eventType = 'unknown';
         let eventIcon = AlertCircle;
         let eventColor = 'text-gray-500';
+        let eventDescription = '';
         
-        if (method.includes('stake') || method.includes('deposit')) {
+        // Handle new staking types
+        if (stakingType === 'create_lock' || method.includes('create_lock')) {
+          eventType = 'create_lock';
+          eventIcon = TrendingUp;
+          eventColor = 'text-green-500';
+          eventDescription = 'Created Lock';
+        } else if (stakingType === 'increase_amount' || method.includes('increase_amount')) {
+          eventType = 'increase_amount';
+          eventIcon = TrendingUp;
+          eventColor = 'text-green-600';
+          eventDescription = 'Increased Amount';
+        } else if (stakingType === 'withdraw_early' || method.includes('withdraw_early')) {
+          eventType = 'withdraw_early';
+          eventIcon = ArrowDown;
+          eventColor = 'text-orange-500';
+          eventDescription = 'Early Withdrawal';
+        } else if (stakingType === 'increase_unlock_time' || method.includes('increase_unlock_time')) {
+          eventType = 'increase_unlock_time';
+          eventIcon = Clock;
+          eventColor = 'text-purple-500';
+          eventDescription = 'Extended Lock';
+        } else if (stakingType === 'withdraw' || method.includes('withdraw')) {
+          eventType = 'withdraw';
+          eventIcon = ArrowDown;
+          eventColor = 'text-red-500';
+          eventDescription = 'Withdrawal';
+        } else if (method.includes('stake') || method.includes('deposit')) {
           eventType = 'stake';
           eventIcon = TrendingUp;
           eventColor = 'text-green-500';
-        } else if (method.includes('unstake') || method.includes('withdraw')) {
+          eventDescription = 'Staked';
+        } else if (method.includes('unstake')) {
           eventType = 'unstake';
-          eventIcon = ArrowDown; // Changed from TrendingDown to ArrowDown
+          eventIcon = ArrowDown;
           eventColor = 'text-red-500';
+          eventDescription = 'Unstaked';
         } else if (method.includes('claim') || method.includes('reward')) {
           eventType = 'reward';
           eventIcon = DollarSign;
           eventColor = 'text-blue-500';
+          eventDescription = 'Claimed Reward';
         }
         
+        // Extract unlock time information if available
+        const unlockTimeInfo = tx.stakingAnalysis?.details?.unlockTime ? {
+          unlockTime: tx.stakingAnalysis.details.unlockTime,
+          lockDuration: tx.stakingAnalysis.details.lockDurationDays,
+          unlockTimestamp: tx.stakingAnalysis.details.unlockTimestamp
+        } : null;
+
         return {
           ...tx,
           eventType,
           eventIcon,
           eventColor,
+          eventDescription,
+          unlockTimeInfo,
           formattedTime: new Date(tx.block_time).toLocaleString(),
           shortAddress: `${tx.from_address.slice(0, 6)}...${tx.from_address.slice(-4)}`
         };
@@ -478,13 +533,20 @@ export default function StakingInsights() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium">
-                          {event.shortAddress} {event.eventType}d {formatValue(parseFloat(event.value_eth))} {stakingMetrics?.stakingToken}
+                          {event.shortAddress} {event.eventDescription || event.eventType} {formatValue(parseFloat(event.value_eth))} {stakingMetrics?.stakingToken}
                         </p>
                         <p className="text-xs text-gray-500">{event.formattedTime}</p>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Tx: {event.tx_hash.slice(0, 10)}...{event.tx_hash.slice(-6)}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          Tx: {event.tx_hash.slice(0, 10)}...{event.tx_hash.slice(-6)}
+                        </p>
+                        {event.unlockTimeInfo && (
+                          <p className="text-xs text-blue-600">
+                            Unlock: {event.unlockTimeInfo.lockDuration}d ({new Date(event.unlockTimeInfo.unlockTime).toLocaleDateString()})
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

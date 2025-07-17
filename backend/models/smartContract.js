@@ -25,29 +25,7 @@ const smartContractSchema = new mongoose.Schema({
     enum: ['main', 'escrow'],
     default: 'main'
   },
-  stakingDetails: {
-    rewardToken: {
-      type: String
-    },
-    stakingToken: {
-      type: String
-    },
-    lockPeriod: {
-      type: Number // in seconds
-    },
-    apy: {
-      type: Number // annual percentage yield
-    },
-    minimumStake: {
-      type: String // minimum amount to stake
-    },
-    totalStaked: {
-      type: String // total amount currently staked
-    },
-    totalRewards: {
-      type: String // total rewards distributed
-    }
-  },
+
   team: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Team"

@@ -100,7 +100,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
       { label: 'User Insights' },
       { label: 'Market Insights' },
       { label: 'Wallet Insights' },
-      { label: 'Escrow' }
+      { label: 'Staking' }
     ];
   // Toggle second navigation on mobile
   const toggleSecondNav = () => {
@@ -291,7 +291,7 @@ const OnchainExplorer = ({ onMenuClick, screenSize ,selectedPage}) => {
                       </>
                     )}
 
-                    {activeSection === 'Escrow' && (
+                    {activeSection === 'Staking' && (
                       <>
                          <Filters 
                                             websitearray={websitearray}
