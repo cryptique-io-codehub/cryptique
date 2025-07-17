@@ -219,14 +219,21 @@ exports.saveTransactions = async (req, res) => {
           console.log("Sample transaction:", JSON.stringify(preparedTransactions[0]).slice(0, 200) + "...");
         }
         
-        // Use insertMany instead of bulkWrite to insert all transactions directly
-        const result = await Transaction.insertMany(preparedTransactions, { 
-          ordered: false, // Continue even if some fail
-          rawResult: true // Get detailed result info
+        // Use bulkWrite with upsert to handle duplicates gracefully
+        const bulkOps = preparedTransactions.map(tx => ({
+          updateOne: {
+            filter: { contractId: tx.contractId, tx_hash: tx.tx_hash },
+            update: { $setOnInsert: tx },
+            upsert: true
+          }
+        }));
+        
+        const result = await Transaction.bulkWrite(bulkOps, { 
+          ordered: false // Continue even if some fail
         });
         
-        console.log(`Batch result: inserted=${result.insertedCount} out of ${preparedTransactions.length}`);
-        totalInserted += result.insertedCount;
+        console.log(`Batch result: inserted=${result.upsertedCount}, matched=${result.matchedCount} out of ${preparedTransactions.length}`);
+        totalInserted += result.upsertedCount;
       } catch (batchError) {
         console.error(`Error processing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
         errors.push(batchError.message);
@@ -253,6 +260,7 @@ exports.saveTransactions = async (req, res) => {
       message: "Transaction processing complete",
       inserted: totalInserted,
       total: transactions.length,
+      duplicatesSkipped: transactions.length - totalInserted,
       errorDetails: errors.length > 0 ? errors : undefined
     });
   } catch (error) {

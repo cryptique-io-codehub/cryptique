@@ -327,7 +327,7 @@ export default function OnchainDashboard() {
   const [activeWalletTab, setActiveWalletTab] = useState('whales'); // Track active wallet category tab
 
   // Process real contract data if available - use main contract data only
-  const contractData = !mainContractData.showDemoData ? processContractTransactions() : null;
+  const contractData = !mainContractData.mainContractData.showDemoData ? processContractTransactions() : null;
 
   // Sample transaction data for the chart (used when no contract is selected)
   const demoTransactionData = [
@@ -424,7 +424,7 @@ export default function OnchainDashboard() {
   let demoTransactionCountData;
   
   // For demo data, create a simulated distribution
-  if (showDemoData) {
+  if (mainContractData.mainContractData.showDemoData) {
     // Create dummy transaction data
     const dummyTransactions = Array(1000).fill().map((_, i) => {
       // Create a realistic distribution - many low count wallets, few high count wallets
@@ -440,13 +440,13 @@ export default function OnchainDashboard() {
     demoTransactionCountData = createAdaptiveTransactionBuckets(dummyTransactions);
   } else {
     // Use actual contract transactions if available
-    demoTransactionCountData = contractData?.tokenDistributionData || createAdaptiveTransactionBuckets(contractTransactions);
+    demoTransactionCountData = contractData?.tokenDistributionData || createAdaptiveTransactionBuckets(mainContractData.transactions);
   }
 
   // Generate wallet categorization data with top wallet lists
   let walletCategories;
-  if (!showDemoData && contractTransactions && contractTransactions.length > 0) {
-    walletCategories = categorizeWallets(contractTransactions);
+  if (!mainContractData.mainContractData.showDemoData && mainContractData.transactions && mainContractData.transactions.length > 0) {
+    walletCategories = categorizeWallets(mainContractData.transactions);
   } else {
     // Demo data with empty wallet lists
     walletCategories = {
@@ -461,13 +461,13 @@ export default function OnchainDashboard() {
   }
 
   // Choose which data to use based on whether we should show demo data
-  let transactionData = showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
-  const walletAgeData = showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
-  const walletBalanceData = showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
-  const transactionCountData = showDemoData ? demoTransactionCountData : (contractData?.tokenDistributionData || demoTransactionCountData);
+  let transactionData = mainContractData.mainContractData.showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
+  const walletAgeData = mainContractData.mainContractData.showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
+  const walletBalanceData = mainContractData.mainContractData.showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
+  const transactionCountData = mainContractData.mainContractData.showDemoData ? demoTransactionCountData : (contractData?.tokenDistributionData || demoTransactionCountData);
 
   // Filter transaction data based on selected time range
-  if (!showDemoData && contractData?.transactionData) {
+  if (!mainContractData.mainContractData.showDemoData && contractData?.transactionData) {
     if (contractData.getTransactionDataForRange) {
       // Use the function if available
       transactionData = contractData.getTransactionDataForRange(chartTimeRange);
@@ -507,7 +507,7 @@ export default function OnchainDashboard() {
           transactionData = contractData.transactionData;
       }
     }
-  } else if (showDemoData) {
+  } else if (mainContractData.mainContractData.showDemoData) {
     // For demo data, apply filtering to simulate the different time ranges
     const demoDataLength = demoTransactionData.length;
     
@@ -548,7 +548,7 @@ export default function OnchainDashboard() {
   // Get chain-specific information
   const chainName = selectedContract?.blockchain || 'Ethereum';
   const chainConfig = getChainConfig(chainName);
-  const chainColor = !showDemoData && contractData?.contractInfo?.chainColor 
+  const chainColor = !mainContractData.showDemoData && contractData?.contractInfo?.chainColor 
     ? contractData.contractInfo.chainColor 
     : (chainConfig?.color || '#627EEA'); // Default to Ethereum blue
   
@@ -631,7 +631,7 @@ export default function OnchainDashboard() {
 
       {/* Data Source Banner */}
       <ChainBanner 
-        showDemoData={showDemoData}
+        showDemoData={mainContractData.showDemoData}
         isLoading={isLoadingTransactions}
         isUpdating={updatingTransactions}
         loadingStatus={loadingStatus}
@@ -648,13 +648,13 @@ export default function OnchainDashboard() {
           <div className="flex justify-between">
             <div>
               <h3 className="text-xl font-bold font-montserrat">
-                {showDemoData ? "123" : (contractData?.summary?.uniqueUsers || "0").toLocaleString()}
+                {mainContractData.showDemoData ? "123" : (contractData?.summary?.uniqueUsers || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
               <h3 className="text-xl font-bold text-purple-600 font-montserrat">
-                {showDemoData ? "89" : (contractData?.summary?.activeWallets || "0").toLocaleString()}
+                {mainContractData.showDemoData ? "89" : (contractData?.summary?.activeWallets || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Active Last 30 days</p>
             </div>
@@ -667,19 +667,19 @@ export default function OnchainDashboard() {
           <div className="flex justify-between space-x-1">
             <div>
               <h3 className="text-sm font-bold bg-[#1D0C46] text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "224" : (contractData?.contractInfo?.totalTransactions || "0").toLocaleString()}
+                {mainContractData.showDemoData ? "224" : (contractData?.contractInfo?.totalTransactions || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Total Overall</p>
             </div>
             <div>
               <h3 className="text-sm font-bold" style={{ backgroundColor: chainColor, color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
-                {showDemoData ? "95" : (contractData?.recentTransactions?.last7Days || "0").toLocaleString()}
+                {mainContractData.showDemoData ? "95" : (contractData?.recentTransactions?.last7Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 7 days</p>
             </div>
             <div>
               <h3 className="text-sm font-bold bg-[#2061E4] text-white px-2 py-1 rounded font-montserrat">
-                {showDemoData ? "198" : (contractData?.recentTransactions?.last30Days || "0").toLocaleString()}
+                {mainContractData.showDemoData ? "198" : (contractData?.recentTransactions?.last30Days || "0").toLocaleString()}
               </h3>
               <p className="text-xs text-gray-500 font-poppins">Last 30 days</p>
             </div>
@@ -757,18 +757,18 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 mb-1">Last 7 Days</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData 
+                  {mainContractData.showDemoData 
                     ? "15.5K ETH" 
                     : formatVolume(parseFloat(contractData?.recentVolume?.last7Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
               </h3>
-                {!showDemoData && contractData?.recentVolume?.percentChange7Days && (
+                {!mainContractData.showDemoData && contractData?.recentVolume?.percentChange7Days && (
                   <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChange7Days) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {parseFloat(contractData.recentVolume.percentChange7Days) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
                     <span>{Math.abs(parseFloat(contractData.recentVolume.percentChange7Days)).toFixed(1)}%</span>
                   </div>
                 )}
-                {showDemoData && (
+                {mainContractData.showDemoData && (
                   <div className="flex items-center text-green-500 text-xs">
                     <ArrowUp size={12} />
                     <span>24.3%</span>
@@ -780,18 +780,18 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData 
+                  {mainContractData.showDemoData 
                     ? "75.8K ETH" 
                     : formatVolume(parseFloat(contractData?.recentVolume?.last30Days || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
               </h3>
-                {!showDemoData && contractData?.recentVolume?.percentChange30Days && (
+                {!mainContractData.showDemoData && contractData?.recentVolume?.percentChange30Days && (
                   <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChange30Days) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {parseFloat(contractData.recentVolume.percentChange30Days) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
                     <span>{Math.abs(parseFloat(contractData.recentVolume.percentChange30Days)).toFixed(1)}%</span>
                   </div>
                 )}
-                {showDemoData && (
+                {mainContractData.showDemoData && (
                   <div className="flex items-center text-green-500 text-xs">
                     <ArrowUp size={12} />
                     <span>18.7%</span>
@@ -803,18 +803,18 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 mb-1">Last Year</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData 
+                  {mainContractData.showDemoData 
                     ? "420.5K ETH" 
                     : formatVolume(parseFloat(contractData?.recentVolume?.lastYear || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
                 </h3>
-                {!showDemoData && contractData?.recentVolume?.percentChangeYear && (
+                {!mainContractData.showDemoData && contractData?.recentVolume?.percentChangeYear && (
                   <div className={`flex items-center text-xs ${parseFloat(contractData.recentVolume.percentChangeYear) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {parseFloat(contractData.recentVolume.percentChangeYear) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />}
                     <span>{Math.abs(parseFloat(contractData.recentVolume.percentChangeYear)).toFixed(1)}%</span>
           </div>
                 )}
-                {showDemoData && (
+                {mainContractData.showDemoData && (
                   <div className="flex items-center text-green-500 text-xs">
                     <ArrowUp size={12} />
                     <span>32.1%</span>
@@ -826,7 +826,7 @@ export default function OnchainDashboard() {
               <p className="text-xs text-gray-500 mb-1">Lifetime</p>
               <div className="flex items-end">
                 <h3 className="text-lg font-bold mr-2">
-                  {showDemoData 
+                  {mainContractData.showDemoData 
                     ? "1.25M ETH" 
                     : formatVolume(parseFloat(contractData?.recentVolume?.lifetime || 0), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                   }
@@ -837,7 +837,7 @@ export default function OnchainDashboard() {
           <div className="mt-2 p-1">
             <div className="text-xs text-gray-500 mb-1">Token Symbol</div>
             <div className="font-semibold">
-              {showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")}
+              {mainContractData.showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")}
             </div>
           </div>
         </div>
@@ -903,7 +903,7 @@ export default function OnchainDashboard() {
                 tick={{ fontSize: 12 }} 
                 axisLine={false} 
                 tickLine={false}
-                name={showDemoData ? "Volume (ETH)" : `Volume (${selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN'})`}
+                name={mainContractData.showDemoData ? "Volume (ETH)" : `Volume (${selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN'})`}
                 tickFormatter={(value) => {
                   if (value >= 1000000000) return `${(value/1000000000).toFixed(1)}B`;
                   if (value >= 1000000) return `${(value/1000000).toFixed(1)}M`;
@@ -915,7 +915,7 @@ export default function OnchainDashboard() {
                 formatter={(value, name) => {
                   if (name === "volume") {
                     // Format volume with token symbol
-                    const tokenSymbol = showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
+                    const tokenSymbol = mainContractData.showDemoData ? "ETH" : (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN');
                     if (value >= 1000000000) return [`${(value/1000000000).toFixed(2)}B ${tokenSymbol}`, "Volume"];
                     if (value >= 1000000) return [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"];
                     if (value >= 1000) return [`${(value/1000).toFixed(1)}K ${tokenSymbol}`, "Volume"];
@@ -940,13 +940,13 @@ export default function OnchainDashboard() {
             <div>
               <p className="text-xs text-gray-500 mb-1">Age</p>
               <h3 className="text-lg font-bold">
-                {showDemoData && !contractData ? `${medianWalletAge} Years` : contractData?.medianWalletStats?.age || "0 Years"}
+                {mainContractData.showDemoData && !contractData ? `${medianWalletAge} Years` : contractData?.medianWalletStats?.age || "0 Years"}
               </h3>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Net Worth</p>
               <h3 className="text-lg font-bold">
-                {showDemoData ? "$945" : contractData?.medianWalletStats?.netWorth || "$0"}
+                {mainContractData.showDemoData ? "$945" : contractData?.medianWalletStats?.netWorth || "$0"}
               </h3>
             </div>
           </div>
@@ -1017,7 +1017,7 @@ export default function OnchainDashboard() {
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-gray-700 mb-1">Transaction Volume Growth</h3>
                   <p className="text-3xl font-bold">
-                    {!showDemoData && contractData?.recentVolume ? (
+                    {!mainContractData.showDemoData && contractData?.recentVolume ? (
                       chartTimeRange === '7d' ? `${contractData.recentVolume.percentChange7Days || "0"}%` :
                       chartTimeRange === '30d' ? `${contractData.recentVolume.percentChange30Days || "0"}%` :
                       `${contractData.recentVolume.percentChangeYear || "0"}%`
@@ -1031,7 +1031,7 @@ export default function OnchainDashboard() {
                 <div className="bg-green-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-gray-700 mb-1">Transaction Frequency</h3>
                   <p className="text-3xl font-bold">
-                    {!showDemoData && contractData?.recentTransactions && contractData?.summary?.uniqueUsers > 0 ? (
+                    {!mainContractData.showDemoData && contractData?.recentTransactions && contractData?.summary?.uniqueUsers > 0 ? (
                       `${(contractData.recentTransactions.last30Days / contractData.summary.uniqueUsers).toFixed(1)}`
                     ) : "4.2"}
                   </p>
@@ -1043,7 +1043,7 @@ export default function OnchainDashboard() {
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-gray-700 mb-1">Peak Activity Time</h3>
                   <p className="text-3xl font-bold">
-                    {!showDemoData && contractData?.peakActivityTime ? contractData.peakActivityTime : "14:00-18:00"}
+                    {!mainContractData.showDemoData && contractData?.peakActivityTime ? contractData.peakActivityTime : "14:00-18:00"}
                   </p>
                   <p className="text-sm text-gray-500">
                     highest transaction volume
@@ -1063,7 +1063,7 @@ export default function OnchainDashboard() {
                     <div>
                       <h4 className="font-semibold">Transaction Volume Patterns</h4>
                       <p className="text-gray-700">
-                        {!showDemoData && contractData?.recentVolume ? (
+                        {!mainContractData.showDemoData && contractData?.recentVolume ? (
                           chartTimeRange === '7d' ? 
                           `Transaction volume peaked on ${transactionData.sort((a, b) => b.volume - a.volume)[0]?.date || 'weekends'} with ${formatVolume(Math.max(...transactionData.map(d => d.volume || 0)), selectedContract?.tokenSymbol || 'TOKEN')}. This is ${parseFloat(contractData.recentVolume.percentChange7Days || 0) > 0 ? 'higher' : 'lower'} than the previous period by ${Math.abs(parseFloat(contractData.recentVolume.percentChange7Days || 0)).toFixed(1)}%.` : 
                           
@@ -1085,7 +1085,7 @@ export default function OnchainDashboard() {
                     <div>
                       <h4 className="font-semibold">User Behavior Analysis</h4>
                       <p className="text-gray-700">
-                        {!showDemoData && contractData?.summary ? (
+                        {!mainContractData.showDemoData && contractData?.summary ? (
                           `Out of ${contractData.summary.uniqueUsers} unique users, ${contractData.summary.activeWallets} (${((contractData.summary.activeWallets/contractData.summary.uniqueUsers)*100).toFixed(1)}%) have been active in the last 30 days. User retention shows ${((contractData.summary.activeWallets/contractData.summary.uniqueUsers)*100) > 50 ? 'strong engagement' : 'potential churn issues'} that could be addressed with targeted campaigns.`
                         ) : (
                           "30% of users complete transactions within the same 3-hour window weekly, indicating habitual usage patterns. 45% of wallet addresses that conducted transactions within the previous 30 days have returned for additional interactions, showing moderate user retention."
@@ -1101,7 +1101,7 @@ export default function OnchainDashboard() {
                     <div>
                       <h4 className="font-semibold">Volume Distribution</h4>
                       <p className="text-gray-700">
-                        {!showDemoData && contractData?.recentVolume && contractData?.recentTransactions && contractData?.walletAgeData ? (
+                        {!mainContractData.showDemoData && contractData?.recentVolume && contractData?.recentTransactions && contractData?.walletAgeData ? (
                           `The average transaction value is ${formatVolume(parseFloat(contractData.recentVolume.last30Days || 0) / (contractData.recentTransactions.last30Days || 1), selectedContract?.tokenSymbol || 'TOKEN')}. ${contractData.walletAgeData.find(w => w.name === "2Y+")?.value > 30 ? 'Long-term users (2Y+) contribute significantly to volume stability.' : 'New users (<6M) drive a substantial portion of recent volume growth.'}`
                         ) : (
                           "20% of users account for 73% of the total transaction volume, indicating a small group of power users. The average transaction size has increased by 15% over the selected period, suggesting growing confidence in the platform."
@@ -1125,7 +1125,7 @@ export default function OnchainDashboard() {
                           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                         </div>
                         <p className="text-sm">
-                          {!showDemoData && contractData && contractData.summary.activeWallets < contractData.summary.uniqueUsers * 0.5 ? (
+                          {!mainContractData.showDemoData && contractData && contractData.summary.activeWallets < contractData.summary.uniqueUsers * 0.5 ? (
                             `${(contractData.summary.uniqueUsers - contractData.summary.activeWallets).toLocaleString()} inactive users from your user base could be re-engaged with targeted campaigns.`
                           ) : (
                             "58% of users who haven't transacted in 14+ days historically return with incentives focused on their previous transaction types."
@@ -1137,7 +1137,7 @@ export default function OnchainDashboard() {
                           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                         </div>
                         <p className="text-sm">
-                          {!showDemoData && contractData ? (
+                          {!mainContractData.showDemoData && contractData ? (
                             `Peak activity during ${chartTimeRange === '24h' ? 'afternoon hours' : 'mid-week days'} suggests optimal timing for announcements and promotions.`
                           ) : (
                             "Users are most responsive to platform communications during high activity periods (weekends), with 2.3x higher engagement rates."
@@ -1155,7 +1155,7 @@ export default function OnchainDashboard() {
                           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                         </div>
                         <p className="text-sm">
-                          {!showDemoData && contractData ? (
+                          {!mainContractData.showDemoData && contractData ? (
                             parseFloat(contractData.recentVolume.percentChange30Days) > 0 ? 
                             `${contractData.recentVolume.percentChange30Days}% volume growth indicates market expansion potential, particularly in ${walletAgeData.find(w => w.name === "<6M")?.value > 20 ? 'the new user segment' : 'established user segments'}.` : 
                             `Despite ${Math.abs(parseFloat(contractData.recentVolume.percentChange30Days))}% volume decline, ${contractData.recentTransactions.last7Days > contractData.recentTransactions.last30Days/4 ? 'transaction count remains stable' : 'opportunities exist to boost per-transaction value'}.`
@@ -1169,7 +1169,7 @@ export default function OnchainDashboard() {
                           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                         </div>
                         <p className="text-sm">
-                          {!showDemoData && contractData ? (
+                          {!mainContractData.showDemoData && contractData ? (
                             `${contractData.walletAgeData.find(w => w.name === "<6M")?.value}% of new users (< 6 months) represents ${contractData.walletAgeData.find(w => w.name === "<6M")?.value > 25 ? 'strong new user acquisition' : 'an opportunity for improved onboarding campaigns'}.`
                           ) : (
                             "Users who interact with educational content show 41% higher transaction volumes within the next 30 days compared to those who don't."
@@ -1201,7 +1201,7 @@ export default function OnchainDashboard() {
                       ))}
                     </div>
                     <p className="text-sm text-gray-600 mt-2">
-                      {!showDemoData && contractData ? (
+                      {!mainContractData.showDemoData && contractData ? (
                         "Transaction volume is highest on weekends, presenting an ideal opportunity for promotional campaigns and community engagement activities."
                       ) : (
                         "Weekend activity exceeds weekday volume by 42%, with Saturday being the most active day for transactions. This weekend-focused pattern suggests optimal windows for feature releases and promotions."
@@ -1224,7 +1224,7 @@ export default function OnchainDashboard() {
                       ))}
                     </div>
                     <p className="text-sm text-gray-600 mt-2">
-                      {!showDemoData && contractData ? (
+                      {!mainContractData.showDemoData && contractData ? (
                         "Peak transaction hours occur between 2PM-6PM UTC, coinciding with overlapping active hours across major global markets. This suggests users primarily engage during business hours."
                       ) : (
                         "Activity peaks between 2PM-6PM UTC, with a secondary spike from 8PM-10PM UTC. These time windows represent optimal periods for time-sensitive announcements and customer support availability."
@@ -1274,7 +1274,7 @@ export default function OnchainDashboard() {
                       Wallets that perform minimal interactions, often just enough to qualify for potential airdrops.
                     </p>
                     <div className="mt-2 font-medium text-center text-amber-800 text-lg">
-                      {!showDemoData && contractData?.walletCategories?.airdropFarmers ? 
+                      {!mainContractData.showDemoData && contractData?.walletCategories?.airdropFarmers ? 
                         `${contractData.walletCategories.airdropFarmers}%` : 
                         "38%"
                       }
@@ -1297,14 +1297,14 @@ export default function OnchainDashboard() {
                       High-value wallets that move significant amounts of tokens and can influence markets.
                     </p>
                     <div className="mt-2 font-medium text-center text-blue-800 text-lg">
-                      {!showDemoData && contractData?.walletCategories?.whales ? 
+                      {!mainContractData.showDemoData && contractData?.walletCategories?.whales ? 
                         `${contractData.walletCategories.whales}%` : 
                         "5%"
                       }
                       <span className="block text-xs text-gray-500 font-normal">of total wallets</span>
                     </div>
                     <p className="text-xs text-gray-600 mt-3">
-                      Control {!showDemoData && contractData?.walletCategories?.whalesVolumePercentage ? 
+                      Control {!mainContractData.showDemoData && contractData?.walletCategories?.whalesVolumePercentage ? 
                         `${contractData.walletCategories.whalesVolumePercentage}%` : 
                         "63%"
                       } of total transaction volume
@@ -1323,7 +1323,7 @@ export default function OnchainDashboard() {
                       Wallets primarily using approval transactions for cross-chain bridging.
                     </p>
                     <div className="mt-2 font-medium text-center text-purple-800 text-lg">
-                      {!showDemoData && contractData?.walletCategories?.bridgeUsers ? 
+                      {!mainContractData.showDemoData && contractData?.walletCategories?.bridgeUsers ? 
                         `${contractData.walletCategories.bridgeUsers}%` : 
                         "12%"
                       }
@@ -1354,7 +1354,7 @@ export default function OnchainDashboard() {
                           <td className="py-2 px-4 border border-gray-200">{item.range}</td>
                           <td className="py-2 px-4 border border-gray-200">{item.percentage}%</td>
                           <td className="py-2 px-4 border border-gray-200">
-                            {!showDemoData && contractData?.summary?.uniqueUsers 
+                            {!mainContractData.showDemoData && contractData?.summary?.uniqueUsers 
                               ? Math.round((contractData.summary.uniqueUsers) * (item.percentage / 100))
                               : Math.round(item.percentage * 64.29)
                             }
@@ -1365,7 +1365,7 @@ export default function OnchainDashboard() {
                   </table>
                 </div>
                 <p className="text-xs text-gray-500 mt-4">
-                  Analysis based on {!showDemoData && contractData?.summary?.uniqueUsers 
+                  Analysis based on {!mainContractData.showDemoData && contractData?.summary?.uniqueUsers 
                     ? (contractData.summary.uniqueUsers).toLocaleString() 
                     : "6,429"} unique wallet addresses
                 </p>
@@ -1403,7 +1403,7 @@ export default function OnchainDashboard() {
                 <div>
                   {/* Whales Tab */}
                   <div className={activeWalletTab === 'whales' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Top wallets by transaction volume (whales represent approximately {!showDemoData && walletCategories?.whales ? walletCategories.whales : 7}% of all wallets but control {!showDemoData && walletCategories?.whalesVolumePercentage ? walletCategories.whalesVolumePercentage : 58}% of volume)</p>
+                    <p className="text-sm mb-3">Top wallets by transaction volume (whales represent approximately {!mainContractData.showDemoData && walletCategories?.whales ? walletCategories.whales : 7}% of all wallets but control {!mainContractData.showDemoData && walletCategories?.whalesVolumePercentage ? walletCategories.whalesVolumePercentage : 58}% of volume)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1415,7 +1415,7 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && walletCategories?.topWhales && walletCategories.topWhales.length > 0 ? (
+                          {!mainContractData.showDemoData && walletCategories?.topWhales && walletCategories.topWhales.length > 0 ? (
                             walletCategories.topWhales.map((whale, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
@@ -1448,7 +1448,7 @@ export default function OnchainDashboard() {
                   
                   {/* Airdrop Farmers Tab */}
                   <div className={activeWalletTab === 'airdropFarmers' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Wallets with exactly 1 transaction and token value ≤ 1 (these wallets represent approximately {!showDemoData && walletCategories?.airdropFarmers ? walletCategories.airdropFarmers : 32}% of all wallets)</p>
+                    <p className="text-sm mb-3">Wallets with exactly 1 transaction and token value ≤ 1 (these wallets represent approximately {!mainContractData.showDemoData && walletCategories?.airdropFarmers ? walletCategories.airdropFarmers : 32}% of all wallets)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1460,7 +1460,7 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && walletCategories?.topAirdropFarmers && walletCategories.topAirdropFarmers.length > 0 ? (
+                          {!mainContractData.showDemoData && walletCategories?.topAirdropFarmers && walletCategories.topAirdropFarmers.length > 0 ? (
                             walletCategories.topAirdropFarmers.map((farmer, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-amber-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
@@ -1493,7 +1493,7 @@ export default function OnchainDashboard() {
                   
                   {/* Bridge Users Tab */}
                   <div className={activeWalletTab === 'bridgeUsers' ? 'block' : 'hidden'}>
-                    <p className="text-sm mb-3">Wallets with high percentage of approvals or zero-value transactions (these wallets represent approximately {!showDemoData && walletCategories?.bridgeUsers ? walletCategories.bridgeUsers : 15}% of all wallets)</p>
+                    <p className="text-sm mb-3">Wallets with high percentage of approvals or zero-value transactions (these wallets represent approximately {!mainContractData.showDemoData && walletCategories?.bridgeUsers ? walletCategories.bridgeUsers : 15}% of all wallets)</p>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px] border-collapse">
@@ -1506,7 +1506,7 @@ export default function OnchainDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {!showDemoData && walletCategories?.topBridgeUsers && walletCategories.topBridgeUsers.length > 0 ? (
+                          {!mainContractData.showDemoData && walletCategories?.topBridgeUsers && walletCategories.topBridgeUsers.length > 0 ? (
                             walletCategories.topBridgeUsers.map((bridgeUser, index) => (
                               <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
                                 <td className="py-2 px-4 border border-gray-200 font-mono text-sm">
@@ -1556,7 +1556,7 @@ export default function OnchainDashboard() {
           <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold font-montserrat">
-                Transaction Volume Details - {!showDemoData && selectedContract?.name ? selectedContract.name : "Demo Contract"}
+                Transaction Volume Details - {!mainContractData.showDemoData && selectedContract?.name ? selectedContract.name : "Demo Contract"}
               </h2>
               <button 
                 onClick={() => setShowVolumeModal(false)}
@@ -1574,15 +1574,15 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.last7Days
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.last7Days
                         ? formatVolume(parseFloat(contractData.recentVolume.last7Days), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                         : "15.5K ETH"
                       }
                     </p>
-                    {(!showDemoData && contractData?.recentVolume?.percentChange7Days) || showDemoData ? (
-                      <div className={`flex items-center text-xs mt-1 ${!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
-                        {!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
-                        <span>{!showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChange7Days || 0)).toFixed(1) : "24.3"}%</span>
+                    {(!mainContractData.showDemoData && contractData?.recentVolume?.percentChange7Days) || mainContractData.showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
+                        {!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange7Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
+                        <span>{!mainContractData.showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChange7Days || 0)).toFixed(1) : "24.3"}%</span>
                         <span className="ml-1 text-gray-500">vs previous</span>
                       </div>
                     ) : null}
@@ -1591,15 +1591,15 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last 30 Days</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.last30Days
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.last30Days
                         ? formatVolume(parseFloat(contractData.recentVolume.last30Days), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                         : "75.8K ETH"
                       }
                     </p>
-                    {(!showDemoData && contractData?.recentVolume?.percentChange30Days) || showDemoData ? (
-                      <div className={`flex items-center text-xs mt-1 ${!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
-                        {!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
-                        <span>{!showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChange30Days || 0)).toFixed(1) : "18.7"}%</span>
+                    {(!mainContractData.showDemoData && contractData?.recentVolume?.percentChange30Days) || mainContractData.showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
+                        {!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChange30Days || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
+                        <span>{!mainContractData.showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChange30Days || 0)).toFixed(1) : "18.7"}%</span>
                         <span className="ml-1 text-gray-500">vs previous</span>
                       </div>
                     ) : null}
@@ -1608,15 +1608,15 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last Year</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.lastYear
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.lastYear
                         ? formatVolume(parseFloat(contractData.recentVolume.lastYear), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                         : "420.5K ETH"
                       }
                     </p>
-                    {(!showDemoData && contractData?.recentVolume?.percentChangeYear) || showDemoData ? (
-                      <div className={`flex items-center text-xs mt-1 ${!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
-                        {!showDemoData ? (parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
-                        <span>{!showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChangeYear || 0)).toFixed(1) : "32.1"}%</span>
+                    {(!mainContractData.showDemoData && contractData?.recentVolume?.percentChangeYear) || mainContractData.showDemoData ? (
+                      <div className={`flex items-center text-xs mt-1 ${!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
+                        {!mainContractData.showDemoData ? (parseFloat(contractData?.recentVolume?.percentChangeYear || 0) >= 0 ? <ArrowUp size={12} /> : <ArrowUp size={12} className="rotate-180" />) : <ArrowUp size={12} />}
+                        <span>{!mainContractData.showDemoData ? Math.abs(parseFloat(contractData?.recentVolume?.percentChangeYear || 0)).toFixed(1) : "32.1"}%</span>
                       </div>
                     ) : null}
                   </div>
@@ -1624,13 +1624,13 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Lifetime</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.lifetime
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.lifetime
                         ? formatVolume(parseFloat(contractData.recentVolume.lifetime), selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN")
                         : "1.25M ETH"
                       }
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {!showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN") : "ETH"}
+                      {!mainContractData.showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN") : "ETH"}
                     </p>
                   </div>
                 </div>
@@ -1692,7 +1692,7 @@ export default function OnchainDashboard() {
                       />
                       <Tooltip 
                         formatter={(value) => {
-                          const tokenSymbol = !showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN') : "ETH";
+                          const tokenSymbol = !mainContractData.showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN') : "ETH";
                           if (value >= 1000000000) return [`${(value/1000000000).toFixed(2)}B ${tokenSymbol}`, "Volume"];
                           if (value >= 1000000) return [`${(value/1000000).toFixed(2)}M ${tokenSymbol}`, "Volume"];
                           if (value >= 1000) return [`${(value/1000).toFixed(1)}K ${tokenSymbol}`, "Volume"];
@@ -1705,7 +1705,7 @@ export default function OnchainDashboard() {
                         stroke={chainColor} 
                         fill={`${chainColor}30`} 
                         activeDot={{ r: 6 }}
-                        name={`Volume (${!showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN') : "ETH"})`}
+                        name={`Volume (${!mainContractData.showDemoData ? (selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || 'TOKEN') : "ETH"})`}
                       />
                     </AreaChart>
             </ResponsiveContainer>
@@ -1719,7 +1719,7 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last 7 Days Avg.</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.last7Days
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.last7Days
                         ? formatVolume(
                             parseFloat(contractData.recentVolume.last7Days) / 7,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
@@ -1732,7 +1732,7 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last 30 Days Avg.</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.last30Days
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.last30Days
                         ? formatVolume(
                             parseFloat(contractData.recentVolume.last30Days) / 30,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
@@ -1745,7 +1745,7 @@ export default function OnchainDashboard() {
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <p className="text-sm text-gray-500 mb-1">Last Year Avg.</p>
                     <p className="text-xl font-bold">
-                      {!showDemoData && contractData?.recentVolume?.lastYear
+                      {!mainContractData.showDemoData && contractData?.recentVolume?.lastYear
                         ? formatVolume(
                             parseFloat(contractData.recentVolume.lastYear) / 365,
                             selectedContract?.tokenSymbol || chainConfig?.nativeCurrency?.symbol || "TOKEN"
