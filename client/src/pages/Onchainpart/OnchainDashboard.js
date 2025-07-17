@@ -316,8 +316,15 @@ export default function OnchainDashboard() {
     updatingTransactions,
     loadingStatus,
     processContractTransactions,
-    mainContractData
+    mainContractData: rawMainContractData
   } = useContractData();
+
+  // Provide default values for mainContractData to prevent undefined errors
+  const mainContractData = rawMainContractData || { 
+    showDemoData: true, 
+    transactions: [], 
+    contracts: [] 
+  };
 
   // Add state for modal and chart time range
   const [showVolumeModal, setShowVolumeModal] = useState(false);
@@ -327,7 +334,7 @@ export default function OnchainDashboard() {
   const [activeWalletTab, setActiveWalletTab] = useState('whales'); // Track active wallet category tab
 
   // Process real contract data if available - use main contract data only
-  const contractData = !mainContractData.mainContractData.showDemoData ? processContractTransactions() : null;
+  const contractData = !mainContractData.showDemoData ? processContractTransactions() : null;
 
   // Sample transaction data for the chart (used when no contract is selected)
   const demoTransactionData = [
@@ -424,7 +431,7 @@ export default function OnchainDashboard() {
   let demoTransactionCountData;
   
   // For demo data, create a simulated distribution
-  if (mainContractData.mainContractData.showDemoData) {
+  if (mainContractData.showDemoData) {
     // Create dummy transaction data
     const dummyTransactions = Array(1000).fill().map((_, i) => {
       // Create a realistic distribution - many low count wallets, few high count wallets
@@ -445,7 +452,7 @@ export default function OnchainDashboard() {
 
   // Generate wallet categorization data with top wallet lists
   let walletCategories;
-  if (!mainContractData.mainContractData.showDemoData && mainContractData.transactions && mainContractData.transactions.length > 0) {
+  if (!mainContractData.showDemoData && mainContractData.transactions && mainContractData.transactions.length > 0) {
     walletCategories = categorizeWallets(mainContractData.transactions);
   } else {
     // Demo data with empty wallet lists
@@ -461,13 +468,13 @@ export default function OnchainDashboard() {
   }
 
   // Choose which data to use based on whether we should show demo data
-  let transactionData = mainContractData.mainContractData.showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
-  const walletAgeData = mainContractData.mainContractData.showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
-  const walletBalanceData = mainContractData.mainContractData.showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
-  const transactionCountData = mainContractData.mainContractData.showDemoData ? demoTransactionCountData : (contractData?.tokenDistributionData || demoTransactionCountData);
+  let transactionData = mainContractData.showDemoData ? demoTransactionData : (contractData?.transactionData || demoTransactionData);
+  const walletAgeData = mainContractData.showDemoData ? demoWalletAgeData : (contractData?.walletAgeData || demoWalletAgeData);
+  const walletBalanceData = mainContractData.showDemoData ? demoWalletBalanceData : (contractData?.walletBalanceData || demoWalletBalanceData);
+  const transactionCountData = mainContractData.showDemoData ? demoTransactionCountData : (contractData?.tokenDistributionData || demoTransactionCountData);
 
   // Filter transaction data based on selected time range
-  if (!mainContractData.mainContractData.showDemoData && contractData?.transactionData) {
+  if (!mainContractData.showDemoData && contractData?.transactionData) {
     if (contractData.getTransactionDataForRange) {
       // Use the function if available
       transactionData = contractData.getTransactionDataForRange(chartTimeRange);
@@ -507,7 +514,7 @@ export default function OnchainDashboard() {
           transactionData = contractData.transactionData;
       }
     }
-  } else if (mainContractData.mainContractData.showDemoData) {
+  } else if (mainContractData.showDemoData) {
     // For demo data, apply filtering to simulate the different time ranges
     const demoDataLength = demoTransactionData.length;
     
