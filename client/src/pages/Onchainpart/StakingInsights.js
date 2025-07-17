@@ -12,7 +12,7 @@ export default function StakingInsights() {
   const [timeRange, setTimeRange] = useState('7d');
   
   // Get contract data from context
-  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions } = useContractData();
+  const { selectedContract, selectedContracts, contractTransactions, combinedTransactions, isLoadingTransactions, stakingContractData } = useContractData();
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -36,35 +36,27 @@ export default function StakingInsights() {
 
   // Process staking data from transactions
   useEffect(() => {
-    // Use combined transactions if multiple contracts are selected, otherwise use single contract transactions
-    const transactionsToProcess = selectedContracts && selectedContracts.length > 1 
-      ? combinedTransactions 
-      : contractTransactions;
-      
-    // Get the contracts to check (either selected contracts or single selected contract)
-    const contractsToCheck = selectedContracts && selectedContracts.length > 0 
-      ? selectedContracts 
-      : (selectedContract ? [selectedContract] : []);
-    
-    if (transactionsToProcess && !isLoadingTransactions && contractsToCheck.length > 0) {
-      processStakingData(transactionsToProcess, contractsToCheck);
+    // Use segregated staking data - only process if we have staking contracts
+    if (stakingContractData && !stakingContractData.showDemoData && !isLoadingTransactions) {
+      processStakingData(stakingContractData.transactions, stakingContractData.contracts);
+    } else if (stakingContractData && stakingContractData.showDemoData) {
+      // Show demo data when no staking contracts are selected
+      setStakingData(null);
+      setStakingMetrics(null);
+      setStakingEvents([]);
+      setIsLoading(false);
     }
-  }, [contractTransactions, combinedTransactions, selectedContracts, selectedContract, isLoadingTransactions, timeRange]);
+  }, [stakingContractData, isLoadingTransactions, timeRange]);
 
   const processStakingData = async (transactions, contracts) => {
     setIsLoading(true);
     
     try {
-      // Filter for staking contracts only
-      const stakingContracts = contracts.filter(contract => 
-        contract.contractType === 'escrow'
-      );
+      // Since we're now receiving segregated data, all contracts should be staking contracts
+      const stakingContracts = contracts;
       
       if (stakingContracts.length === 0) {
-        console.log('StakingInsights: No staking contracts selected', {
-          totalContracts: contracts.length,
-          contractTypes: contracts.map(c => ({ id: c.id, type: c.contractType }))
-        });
+        console.log('StakingInsights: No staking contracts selected');
         setStakingData(null);
         setStakingMetrics(null);
         setStakingEvents([]);
@@ -89,15 +81,8 @@ export default function StakingInsights() {
         }))
       });
 
-      // Filter transactions to only include those from staking contracts
-      const stakingContractIds = stakingContracts.map(c => c.id);
-      const stakingTransactionsFromContracts = transactions.filter(tx => {
-        // Check if transaction is from a staking contract
-        const isFromStakingContract = stakingContractIds.includes(tx.contractId) || 
-                                     stakingContractIds.includes(tx.sourceContract?.id) ||
-                                     tx.contractType === 'escrow';
-        return isFromStakingContract;
-      });
+      // All transactions should already be from staking contracts due to segregation
+      const stakingTransactionsFromContracts = transactions;
 
       console.log('StakingInsights: Filtered transactions from staking contracts', {
         totalFiltered: stakingTransactionsFromContracts.length,

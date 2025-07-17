@@ -25,7 +25,7 @@ export default function Onchainwalletinsights() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Get contract data from context
-  const { selectedContract, contractTransactions, isLoadingTransactions } = useContractData();
+  const { selectedContract, contractTransactions, isLoadingTransactions, mainContractData } = useContractData();
   
   // Dashboard styles matching the rest of the application
   const styles = {
@@ -37,14 +37,14 @@ export default function Onchainwalletinsights() {
     textSecondary: "#4b5563"
   };
 
-  // Process the wallets from the transaction data
+  // Process the wallets from the transaction data - use main contract data only
   useEffect(() => {
-    if (contractTransactions && !isLoadingTransactions) {
+    if (mainContractData.transactions && !mainContractData.showDemoData && !isLoadingTransactions) {
       // Process the transaction data to extract wallet information
       const walletMap = new Map();
       
       // Process transactions array directly since it's not an object
-      contractTransactions.forEach(tx => {
+      mainContractData.transactions.forEach(tx => {
         if (!tx || !tx.from_address) return;
         
         // Process sender wallet
@@ -162,8 +162,12 @@ export default function Onchainwalletinsights() {
       setWalletsData(sortedWallets);
       
       setIsLoading(false);
+    } else if (mainContractData.showDemoData) {
+      // Show demo data when no main contracts are selected
+      setWalletsData([]);
+      setIsLoading(false);
     }
-  }, [contractTransactions, isLoadingTransactions, sortConfig]);
+  }, [mainContractData.transactions, mainContractData.showDemoData, isLoadingTransactions, sortConfig]);
 
   const sortWallets = (wallets) => {
     return [...wallets].sort((a, b) => {

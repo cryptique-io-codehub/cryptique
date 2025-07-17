@@ -315,7 +315,8 @@ export default function OnchainDashboard() {
     isLoadingTransactions,
     updatingTransactions,
     loadingStatus,
-    processContractTransactions
+    processContractTransactions,
+    mainContractData
   } = useContractData();
 
   // Add state for modal and chart time range
@@ -325,8 +326,8 @@ export default function OnchainDashboard() {
   const [showTransactionDistributionModal, setShowTransactionDistributionModal] = useState(false); // Add state for transaction distribution modal
   const [activeWalletTab, setActiveWalletTab] = useState('whales'); // Track active wallet category tab
 
-  // Process real contract data if available
-  const contractData = !showDemoData ? processContractTransactions() : null;
+  // Process real contract data if available - use main contract data only
+  const contractData = !mainContractData.showDemoData ? processContractTransactions() : null;
 
   // Sample transaction data for the chart (used when no contract is selected)
   const demoTransactionData = [

@@ -19,7 +19,8 @@ export default function OnchainTraffic() {
     isLoadingTransactions,
     updatingTransactions,
     loadingStatus,
-    processContractTransactions
+    processContractTransactions,
+    mainContractData
   } = useContractData();
 
   // Get analytics data from context
@@ -30,8 +31,8 @@ export default function OnchainTraffic() {
     getAnalytics
   } = useAnalytics();
 
-  // Process real contract data if available
-  const contractData = !showDemoData ? processContractTransactions() : null;
+  // Process real contract data if available - use main contract data only
+  const contractData = !mainContractData.showDemoData ? processContractTransactions() : null;
 
   // Local state for selected country in map
   const [selectedCountry, setSelectedCountry] = useState(null);
@@ -434,8 +435,8 @@ export default function OnchainTraffic() {
             <FunnelDashboard2 
               analytics={analytics} 
               contractData={{
-                showDemoData,
-                contractTransactions,
+                showDemoData: mainContractData.showDemoData,
+                contractTransactions: mainContractData.transactions,
                 contractId: selectedContract?.id,
                 contract: selectedContract,
                 processedData: contractData,
@@ -603,8 +604,8 @@ export default function OnchainTraffic() {
               <GeoOnchainMap 
                 analytics={analytics}
                 contractData={{
-                  showDemoData,
-                  contractTransactions,
+                  showDemoData: mainContractData.showDemoData,
+                  contractTransactions: mainContractData.transactions,
                   contractId: selectedContract?.id,
                   contract: selectedContract,
                   processedData: contractData
@@ -623,8 +624,8 @@ export default function OnchainTraffic() {
                 countryCode={selectedCountry}
                 analytics={analytics}
                 contractData={{
-                  showDemoData,
-                  contractTransactions,
+                  showDemoData: mainContractData.showDemoData,
+                  contractTransactions: mainContractData.transactions,
                   contractId: selectedContract?.id,
                   contract: selectedContract,
                   processedData: contractData

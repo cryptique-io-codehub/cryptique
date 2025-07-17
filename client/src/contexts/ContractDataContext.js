@@ -36,6 +36,18 @@ export const ContractDataProvider = ({ children }) => {
   // Add ref to store transactions for each contract
   const contractTransactionsRef = useRef({});
 
+  // Add segregated data states
+  const [mainContractData, setMainContractData] = useState({
+    contracts: [],
+    transactions: [],
+    showDemoData: true
+  });
+  const [stakingContractData, setStakingContractData] = useState({
+    contracts: [],
+    transactions: [],
+    showDemoData: true
+  });
+
   // Function to combine transactions from multiple contracts
   const combineContractTransactions = (contracts) => {
     if (!contracts || contracts.length === 0) {
@@ -78,6 +90,57 @@ export const ContractDataProvider = ({ children }) => {
     return allTransactions;
   };
 
+  // Function to segregate contract data by type
+  const segregateContractData = (contracts) => {
+    console.log('Segregating contract data by type:', contracts.map(c => ({ id: c.id, type: c.contractType })));
+    
+    // Separate contracts by type
+    const mainContracts = contracts.filter(c => c.contractType === 'main' || !c.contractType);
+    const stakingContracts = contracts.filter(c => c.contractType === 'escrow');
+    
+    // Get transactions for main contracts
+    let mainTransactions = [];
+    mainContracts.forEach(contract => {
+      const contractTxs = contractTransactionsRef.current[contract.id] || [];
+      mainTransactions = [...mainTransactions, ...contractTxs.map(tx => ({
+        ...tx,
+        sourceContract: contract,
+        contractType: 'main'
+      }))];
+    });
+    
+    // Get transactions for staking contracts
+    let stakingTransactions = [];
+    stakingContracts.forEach(contract => {
+      const contractTxs = contractTransactionsRef.current[contract.id] || [];
+      stakingTransactions = [...stakingTransactions, ...contractTxs.map(tx => ({
+        ...tx,
+        sourceContract: contract,
+        contractType: 'escrow'
+      }))];
+    });
+    
+    // Sort transactions by block number (newest first)
+    mainTransactions.sort((a, b) => (b.block_number || 0) - (a.block_number || 0));
+    stakingTransactions.sort((a, b) => (b.block_number || 0) - (a.block_number || 0));
+    
+    // Update segregated data states
+    setMainContractData({
+      contracts: mainContracts,
+      transactions: mainTransactions,
+      showDemoData: mainContracts.length === 0
+    });
+    
+    setStakingContractData({
+      contracts: stakingContracts,
+      transactions: stakingTransactions,
+      showDemoData: stakingContracts.length === 0
+    });
+    
+    console.log(`Segregated data - Main: ${mainContracts.length} contracts, ${mainTransactions.length} transactions`);
+    console.log(`Segregated data - Staking: ${stakingContracts.length} contracts, ${stakingTransactions.length} transactions`);
+  };
+
   // Function to handle multiple contract selection
   const handleMultipleContractSelection = async (contracts) => {
     console.log('Handling multiple contract selection:', contracts.map(c => c.id));
@@ -87,6 +150,9 @@ export const ContractDataProvider = ({ children }) => {
     
     if (contracts.length === 0) {
       setCombinedTransactions([]);
+      // Reset segregated data when no contracts selected
+      setMainContractData({ contracts: [], transactions: [], showDemoData: true });
+      setStakingContractData({ contracts: [], transactions: [], showDemoData: true });
       return;
     }
     
@@ -104,6 +170,8 @@ export const ContractDataProvider = ({ children }) => {
     try {
       await Promise.all(fetchPromises);
       combineContractTransactions(contracts);
+      // Update segregated data after fetching transactions
+      segregateContractData(contracts);
     } catch (error) {
       console.error('Error fetching transactions for multiple contracts:', error);
     }
@@ -449,6 +517,9 @@ export const ContractDataProvider = ({ children }) => {
       setSelectedContract(null);
       setContractTransactions([]);
       setShowDemoData(true);
+      // Reset segregated data when no contracts selected
+      setMainContractData({ contracts: [], transactions: [], showDemoData: true });
+      setStakingContractData({ contracts: [], transactions: [], showDemoData: true });
       return;
     }
     
@@ -457,10 +528,15 @@ export const ContractDataProvider = ({ children }) => {
     if (contract) {
       setSelectedContract(contract);
       await fetchContractTransactions(contractId);
+      // Update segregated data for single contract selection
+      segregateContractData([contract]);
     } else {
       setSelectedContract(null);
       setContractTransactions([]);
       setShowDemoData(true);
+      // Reset segregated data when contract not found
+      setMainContractData({ contracts: [], transactions: [], showDemoData: true });
+      setStakingContractData({ contracts: [], transactions: [], showDemoData: true });
     }
   };
   
@@ -1512,7 +1588,10 @@ export const ContractDataProvider = ({ children }) => {
         refreshContracts,
         selectedContracts,
         handleMultipleContractSelection,
-        combinedTransactions
+        combinedTransactions,
+        mainContractData,
+        stakingContractData,
+        segregateContractData
       }}
     >
       {children}
