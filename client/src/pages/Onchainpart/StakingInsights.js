@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Loader2, TrendingUp, Users, DollarSign, Clock, AlertCircle, Lock, Unlock, Wallet, X, Calendar, ArrowUpDown } from 'lucide-react';
+import { Loader2, TrendingUp, Users, DollarSign, Clock, AlertCircle, Lock, Unlock, Wallet, X, Calendar, ArrowUpDown, PieChart, BarChart3, Activity, Target, Timer, Zap } from 'lucide-react';
 import { useContractData } from '../../contexts/ContractDataContext';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area } from 'recharts';
 
 export default function StakingInsights() {
   const [isLoading, setIsLoading] = useState(true);
@@ -9,10 +9,13 @@ export default function StakingInsights() {
   const [stakingMetrics, setStakingMetrics] = useState(null);
   const [stakingEvents, setStakingEvents] = useState([]);
   const [walletGroups, setWalletGroups] = useState([]);
+  const [maturityAnalysis, setMaturityAnalysis] = useState(null);
+  const [withdrawalAnalysis, setWithdrawalAnalysis] = useState(null);
   const [timeRange, setTimeRange] = useState('7d');
   const [contextError, setContextError] = useState(null);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Move useContractData to the top level - no conditionals
   const contextData = useContractData();
@@ -53,7 +56,9 @@ export default function StakingInsights() {
     error: "#ef4444",
     info: "#3b82f6",
     lock: "#8b5cf6",
-    unlock: "#06b6d4"
+    unlock: "#06b6d4",
+    early: "#ef4444",
+    ontime: "#10b981"
   };
 
   // Process staking data from transactions - move useEffect to top level
@@ -67,6 +72,8 @@ export default function StakingInsights() {
       setStakingMetrics(null);
       setStakingEvents([]);
       setWalletGroups([]);
+      setMaturityAnalysis(null);
+      setWithdrawalAnalysis(null);
       setIsLoading(false);
     }
   }, [stakingContractData, isLoadingTransactions, timeRange]);
@@ -99,6 +106,8 @@ export default function StakingInsights() {
         setStakingMetrics(null);
         setStakingEvents([]);
         setWalletGroups([]);
+        setMaturityAnalysis(null);
+        setWithdrawalAnalysis(null);
         setIsLoading(false);
         return;
       }
@@ -115,16 +124,129 @@ export default function StakingInsights() {
       // Group transactions by wallet
       const walletGroupsData = groupTransactionsByWallet(transactions);
       
+      // Analyze maturity patterns
+      const maturityAnalysisData = analyzeMaturityPatterns(transactions);
+      
+      // Analyze withdrawal patterns
+      const withdrawalAnalysisData = analyzeWithdrawalPatterns(transactions);
+      
       setStakingMetrics(stakingAnalysis);
       setStakingData(timeSeriesData);
       setStakingEvents(recentEvents);
       setWalletGroups(walletGroupsData);
+      setMaturityAnalysis(maturityAnalysisData);
+      setWithdrawalAnalysis(withdrawalAnalysisData);
       setIsLoading(false);
       
     } catch (error) {
       console.error('Error processing real staking data:', error);
       setIsLoading(false);
     }
+  };
+
+  // Analyze maturity patterns from real data
+  const analyzeMaturityPatterns = (transactions) => {
+    const maturityDates = [];
+    const lockDurations = [];
+    const maturityByYear = {};
+    
+    transactions.forEach(tx => {
+      const details = tx.stakingAnalysis?.details;
+      if (details?.unlockTimestamp && details?.lockDurationDays) {
+        const unlockDate = new Date(details.unlockTimestamp * 1000);
+        const year = unlockDate.getFullYear();
+        
+        maturityDates.push(details.unlockTimestamp);
+        lockDurations.push(details.lockDurationDays);
+        
+        maturityByYear[year] = (maturityByYear[year] || 0) + 1;
+      }
+    });
+    
+    // Calculate statistics
+    const avgLockDuration = lockDurations.length > 0 
+      ? lockDurations.reduce((sum, days) => sum + days, 0) / lockDurations.length 
+      : 0;
+    
+    const avgMaturityTimestamp = maturityDates.length > 0
+      ? maturityDates.reduce((sum, ts) => sum + ts, 0) / maturityDates.length
+      : 0;
+    
+    const avgMaturityDate = avgMaturityTimestamp > 0 
+      ? new Date(avgMaturityTimestamp * 1000).toISOString().split('T')[0]
+      : null;
+    
+    // Lock duration distribution
+    const durationRanges = {
+      'Short (< 6 months)': lockDurations.filter(d => d < 180).length,
+      'Medium (6-12 months)': lockDurations.filter(d => d >= 180 && d < 365).length,
+      'Long (1-2 years)': lockDurations.filter(d => d >= 365 && d < 730).length,
+      'Maximum (2+ years)': lockDurations.filter(d => d >= 730).length
+    };
+    
+    return {
+      totalWithMaturity: maturityDates.length,
+      avgLockDuration: Math.round(avgLockDuration),
+      avgMaturityDate,
+      maturityByYear,
+      durationRanges,
+      lockDurations: lockDurations.sort((a, b) => a - b)
+    };
+  };
+
+  // Analyze withdrawal patterns from real data
+  const analyzeWithdrawalPatterns = (transactions) => {
+    const withdrawalTxs = transactions.filter(tx => {
+      const method = tx.functionName || tx.method_name || '';
+      return method.includes('withdraw');
+    });
+    
+    let earlyWithdrawals = 0;
+    let onTimeWithdrawals = 0;
+    let totalPenalties = 0;
+    const withdrawalsByMonth = {};
+    
+    withdrawalTxs.forEach(tx => {
+      const details = tx.stakingAnalysis?.details;
+      const method = tx.functionName || tx.method_name || '';
+      
+      if (details?.withdrawalDate) {
+        const withdrawalDate = new Date(details.withdrawalDate);
+        const monthKey = `${withdrawalDate.getFullYear()}-${String(withdrawalDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!withdrawalsByMonth[monthKey]) {
+          withdrawalsByMonth[monthKey] = { early: 0, onTime: 0, total: 0 };
+        }
+        
+        withdrawalsByMonth[monthKey].total++;
+        
+        if (details.isEarlyWithdrawal || method.includes('withdraw_early')) {
+          earlyWithdrawals++;
+          withdrawalsByMonth[monthKey].early++;
+          
+          // Estimate penalty (typically 10-25% for early withdrawals)
+          const amount = extractTokenAmount(tx);
+          if (amount > 0) {
+            totalPenalties += amount * 0.15; // Assume 15% penalty
+          }
+        } else {
+          onTimeWithdrawals++;
+          withdrawalsByMonth[monthKey].onTime++;
+        }
+      }
+    });
+    
+    const totalWithdrawals = earlyWithdrawals + onTimeWithdrawals;
+    const earlyWithdrawalRate = totalWithdrawals > 0 ? (earlyWithdrawals / totalWithdrawals * 100) : 0;
+    
+    return {
+      totalWithdrawals,
+      earlyWithdrawals,
+      onTimeWithdrawals,
+      earlyWithdrawalRate: Math.round(earlyWithdrawalRate * 100) / 100,
+      estimatedPenalties: totalPenalties,
+      withdrawalsByMonth
+    };
   };
 
   // Analyze Zeebu staking transactions based on actual method names
@@ -339,25 +461,19 @@ export default function StakingInsights() {
         walletData.operationCounts.increase_unlock_time++;
       }
       
-      // Find next withdrawal date (earliest maturity date from create_lock transactions)
-      if (method.includes('create_lock') || method.includes('increase_unlock_time')) {
-        const maturityTimestamp = extractMaturityFromTx(tx);
-        if (maturityTimestamp) {
-          const maturityDate = new Date(maturityTimestamp * 1000);
-          if (!walletData.nextWithdrawalDate || maturityDate < walletData.nextWithdrawalDate) {
-            walletData.nextWithdrawalDate = maturityDate;
-          }
-        }
+      // Track next withdrawal date
+      const maturityTimestamp = extractMaturityFromTx(tx);
+      if (maturityTimestamp && (!walletData.nextWithdrawalDate || maturityTimestamp < walletData.nextWithdrawalDate)) {
+        walletData.nextWithdrawalDate = maturityTimestamp;
       }
     });
     
-    // Convert to array and sort by total staked (descending)
     return Array.from(walletMap.values())
       .sort((a, b) => b.totalStaked - a.totalStaked)
-      .slice(0, 20); // Show top 20 wallets
+      .slice(0, 50); // Top 50 wallets
   };
 
-  // Generate time series data based on real transaction data
+  // Generate time series data for charts
   const generateRealTimeSeriesData = (transactions, timeRange) => {
     const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
     const timeSeriesData = [];
@@ -479,7 +595,7 @@ export default function StakingInsights() {
     try {
       // First check if we have a parsed value already
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
+        const match = tx.value_eth.match(/(\d+(?:\.\d+)?)/);
         if (match && match[1]) {
           return parseFloat(match[1]);
         }
@@ -506,28 +622,12 @@ export default function StakingInsights() {
     }
   };
 
-  // Extract maturity timestamp from transaction data
+  // Extract maturity timestamp from transaction
   const extractMaturityTimestamp = (tx) => {
     try {
-      if (tx.input_data) {
-        let timestampHex;
-        
-        if (tx.functionName && tx.functionName.includes('create_lock')) {
-          // For create_lock, the timestamp is typically the second parameter
-          timestampHex = tx.input_data.substring(74, 138);
-        } else if (tx.functionName && tx.functionName.includes('increase_unlock_time')) {
-          // For increase_unlock_time, the timestamp is typically the first parameter
-          timestampHex = tx.input_data.substring(10, 74);
-        }
-        
-        if (timestampHex) {
-          const timestamp = parseInt(timestampHex, 16);
-          if (timestamp > 1600000000 && timestamp < 2000000000) { // Sanity check for reasonable timestamp
-            return new Date(timestamp * 1000);
-          }
-        }
+      if (tx.stakingAnalysis && tx.stakingAnalysis.details && tx.stakingAnalysis.details.unlockTimestamp) {
+        return tx.stakingAnalysis.details.unlockTimestamp;
       }
-      
       return null;
     } catch (error) {
       console.error('Error extracting maturity timestamp:', error);
@@ -535,24 +635,24 @@ export default function StakingInsights() {
     }
   };
 
-  // Helper function to format date in a readable way
-  const formatDate = (date) => {
-    if (date instanceof Date) {
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+  // Format large numbers
+  const formatValue = (value) => {
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(2) + 'M';
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(2) + 'K';
     }
-    return String(date);
+    return value.toFixed(2);
   };
 
-  const formatValue = (value) => {
-    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
-    if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
-    return value.toString();
+  // Format date
+  const formatDate = (timestamp) => {
+    try {
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString();
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   // Show loading state
@@ -604,333 +704,241 @@ export default function StakingInsights() {
     }
   };
 
-  const demoTimeSeriesData = [
-    { date: '2024-01-15', locks: 45, increases: 32, extensions: 28, withdrawals: 12, activeUsers: 124, totalOps: 117 },
-    { date: '2024-01-16', locks: 52, increases: 38, extensions: 31, withdrawals: 15, activeUsers: 138, totalOps: 136 },
-    { date: '2024-01-17', locks: 48, increases: 35, extensions: 29, withdrawals: 10, activeUsers: 115, totalOps: 122 },
-    { date: '2024-01-18', locks: 61, increases: 42, extensions: 38, withdrawals: 18, activeUsers: 142, totalOps: 159 },
-    { date: '2024-01-19', locks: 58, increases: 40, extensions: 35, withdrawals: 16, activeUsers: 135, totalOps: 149 },
-    { date: '2024-01-20', locks: 55, increases: 38, extensions: 32, withdrawals: 14, activeUsers: 128, totalOps: 139 },
-    { date: '2024-01-21', locks: 63, increases: 45, extensions: 39, withdrawals: 20, activeUsers: 148, totalOps: 167 }
-  ];
-
-  const demoWalletGroups = [
-    {
-      address: '0xabcdef1234567890abcdef1234567890abcdef12',
-      shortAddress: '0xabcd...ef12',
-      totalStaked: 125000,
-      totalWithdrawn: 45000,
-      nextWithdrawalDate: new Date('2025-06-15'),
-      operationCounts: { create_lock: 3, increase_amount: 2, increase_unlock_time: 1, withdraw: 1, withdraw_early: 0 },
-      transactions: []
-    },
-    {
-      address: '0xbcdef02345678901bcdef02345678901bcdef023',
-      shortAddress: '0xbcde...f023',
-      totalStaked: 95000,
-      totalWithdrawn: 25000,
-      nextWithdrawalDate: new Date('2025-08-22'),
-      operationCounts: { create_lock: 2, increase_amount: 3, increase_unlock_time: 2, withdraw: 1, withdraw_early: 0 },
-      transactions: []
-    },
-    {
-      address: '0xcdef123456789012cdef123456789012cdef1234',
-      shortAddress: '0xcdef...1234',
-      totalStaked: 75000,
-      totalWithdrawn: 15000,
-      nextWithdrawalDate: new Date('2025-04-10'),
-      operationCounts: { create_lock: 1, increase_amount: 1, increase_unlock_time: 3, withdraw: 0, withdraw_early: 1 },
-      transactions: []
+  const demoMaturityAnalysis = {
+    totalWithMaturity: 2500,
+    avgLockDuration: 365,
+    avgMaturityDate: '2025-12-31',
+    maturityByYear: { 2024: 500, 2025: 1200, 2026: 800 },
+    durationRanges: {
+      'Short (< 6 months)': 300,
+      'Medium (6-12 months)': 1000,
+      'Long (1-2 years)': 800,
+      'Maximum (2+ years)': 400
     }
-  ];
+  };
 
-  // Use demo data if needed
+  const demoWithdrawalAnalysis = {
+    totalWithdrawals: 234,
+    earlyWithdrawals: 35,
+    onTimeWithdrawals: 199,
+    earlyWithdrawalRate: 15.0,
+    estimatedPenalties: 12500
+  };
+
   const displayMetrics = shouldShowDemoData ? demoStakingMetrics : stakingMetrics;
-  const displayTimeSeriesData = shouldShowDemoData ? demoTimeSeriesData : stakingData;
-  const displayWalletGroups = shouldShowDemoData ? demoWalletGroups : walletGroups;
+  const displayMaturityAnalysis = shouldShowDemoData ? demoMaturityAnalysis : maturityAnalysis;
+  const displayWithdrawalAnalysis = shouldShowDemoData ? demoWithdrawalAnalysis : withdrawalAnalysis;
 
-  // Handle wallet click
-  const handleWalletClick = (wallet) => {
-    setSelectedWallet(wallet);
-    setShowWalletModal(true);
-  };
-
-  // Close wallet modal
-  const closeWalletModal = () => {
-    setShowWalletModal(false);
-    setSelectedWallet(null);
-  };
-
-  try {
+  if (shouldShowDemoData) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold font-montserrat" style={{ color: styles.primaryColor }}>
-            Staking Insights
-          </h1>
-          
-          {/* Time Range Selector */}
-          <div className="flex space-x-2">
-            {['7d', '30d', '90d'].map(range => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeRange === range
-                    ? 'text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-                style={{
-                  backgroundColor: timeRange === range ? styles.primaryColor : undefined
-                }}
-              >
-                {range === '7d' ? 'Last 7 days' : range === '30d' ? 'Last 30 days' : 'Last 90 days'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Updated Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 mr-3" style={{ color: styles.primaryColor }} />
-              <div>
-                <p className="text-sm text-gray-600">Total Tokens Staked</p>
-                <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
-                  {formatValue(displayMetrics?.totalStaked || 0)} ZBU
-                </p>
-                <div className="text-xs text-gray-500">
-                  <div>Create Lock: {formatValue(displayMetrics?.createLockTotal || 0)} ZBU</div>
-                  <div>Increase Amount: {formatValue(displayMetrics?.increaseAmountTotal || 0)} ZBU</div>
-                  <div>Net Staked: {formatValue(displayMetrics?.netStaked || 0)} ZBU</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <Unlock className="h-8 w-8 mr-3" style={{ color: chartColors.warning }} />
-              <div>
-                <p className="text-sm text-gray-600">Total Withdrawals</p>
-                <p className="text-2xl font-bold" style={{ color: chartColors.warning }}>
-                  {formatValue(displayMetrics?.totalWithdrawn || 0)} ZBU
-                </p>
-                <div className="text-xs text-gray-500">
-                  <div>Regular: {formatValue(displayMetrics?.regularWithdrawTotal || 0)} ZBU</div>
-                  <div>Early: {formatValue(displayMetrics?.earlyWithdrawTotal || 0)} ZBU</div>
-                  <div>({displayMetrics?.totalWithdrawals || 0} transactions)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 mr-3" style={{ color: chartColors.info }} />
-              <div>
-                <p className="text-sm text-gray-600">Average Maturity</p>
-                <p className="text-2xl font-bold" style={{ color: chartColors.info }}>
-                  {displayMetrics?.averageMaturity || 0} days
-                </p>
-                <div className="text-xs text-gray-500">
-                  <div>{displayMetrics?.totalStakers || 0} unique stakers</div>
-                  <div>{displayMetrics?.totalOperations || 0} total operations</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Operation Distribution */}
-        {displayMetrics?.operationDistribution && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4" style={{ color: styles.primaryColor }}>
-                Operation Distribution
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Lock Creations</span>
-                  <span className="font-semibold">{displayMetrics.operationDistribution.locks}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Amount Increases</span>
-                  <span className="font-semibold">{displayMetrics.operationDistribution.increases}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Time Extensions</span>
-                  <span className="font-semibold">{displayMetrics.operationDistribution.extensions}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Withdrawals</span>
-                  <span className="font-semibold">{displayMetrics.operationDistribution.withdrawals}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4" style={{ color: styles.primaryColor }}>
-                Additional Metrics
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Stakers</span>
-                  <span className="font-semibold">{displayMetrics?.totalStakers || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Operations</span>
-                  <span className="font-semibold">{displayMetrics?.totalOperations || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Avg Ops per Staker</span>
-                  <span className="font-semibold">{displayMetrics?.averageOpsPerStaker || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Charts */}
-        {displayTimeSeriesData && Array.isArray(displayTimeSeriesData) && displayTimeSeriesData.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Staking Operations Chart */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4" style={{ color: styles.primaryColor }}>
-                Staking Operations Over Time
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={displayTimeSeriesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => formatDate(label)}
-                    formatter={(value, name) => [value, name]}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="locks" 
-                    stroke={chartColors.success} 
-                    strokeWidth={2}
-                    name="New Locks"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="increases" 
-                    stroke={chartColors.info} 
-                    strokeWidth={2}
-                    name="Amount Increases"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="extensions" 
-                    stroke={chartColors.warning} 
-                    strokeWidth={2}
-                    name="Time Extensions"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="withdrawals" 
-                    stroke={chartColors.error} 
-                    strokeWidth={2}
-                    name="Withdrawals"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Active Users Chart */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4" style={{ color: styles.primaryColor }}>
-                Daily Active Stakers
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={displayTimeSeriesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => formatDate(label)}
-                    formatter={(value, name) => [value, name]}
-                  />
-                  <Bar dataKey="activeUsers" fill={styles.primaryColor} name="Active Stakers" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Wallet Analytics */}
-        {displayWalletGroups && Array.isArray(displayWalletGroups) && displayWalletGroups.length > 0 && (
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b">
-              <h3 className="text-lg font-semibold" style={{ color: styles.primaryColor }}>
-                Wallet Analytics
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Click on any wallet to view detailed transaction history
+              <AlertCircle className="h-5 w-5 text-blue-600 mr-2" />
+              <p className="text-blue-800 font-medium">
+                No staking contract selected. Please select a staking contract to view real data.
               </p>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {displayWalletGroups.map((wallet, index) => (
-                  <div
-                    key={wallet.address}
-                    onClick={() => handleWalletClick(wallet)}
-                    className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                      {/* Wallet Info */}
-                      <div className="flex items-center">
-                        <Wallet className="h-5 w-5 mr-2" style={{ color: styles.primaryColor }} />
-                        <span className="font-medium">{wallet.shortAddress}</span>
-                      </div>
+          </div>
+          
+          <div className="text-center py-12">
+            <Lock className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">Select a Staking Contract</h3>
+            <p className="text-gray-500">Choose a staking contract from the dropdown to view detailed analytics</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-                      {/* Staking Info */}
-                      <div className="flex flex-col md:flex-row md:space-x-8 space-y-2 md:space-y-0">
-                        <div>
-                          <span className="text-sm text-gray-600 mr-2">Total Staked:</span>
-                          <span className="font-semibold text-green-600">
-                            {formatValue(wallet.totalStaked)} ZBU
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-600 mr-2">Total Withdrawn:</span>
-                          <span className="font-semibold text-red-600">
-                            {formatValue(wallet.totalWithdrawn)} ZBU
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-600 mr-2">Next Withdrawal:</span>
-                          <span className="text-sm text-gray-500">
-                            {wallet.nextWithdrawalDate 
-                              ? wallet.nextWithdrawalDate.toLocaleDateString()
-                              : 'N/A'
-                            }
-                          </span>
-                        </div>
-                      </div>
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Staking Analytics</h1>
+          <p className="text-gray-600">Comprehensive analysis of {displayMetrics?.contractName || 'Staking Contract'}</p>
+        </div>
 
-                      {/* Operation Counts */}
-                      <div className="flex space-x-4 text-sm text-gray-600">
-                        <div>
-                          <span className="mr-1">Locks:</span>
-                          <span className="font-medium">{wallet.operationCounts.create_lock}</span>
-                        </div>
-                        <div>
-                          <span className="mr-1">Increases:</span>
-                          <span className="font-medium">{wallet.operationCounts.increase_amount}</span>
-                        </div>
-                        <div>
-                          <span className="mr-1">Withdrawals:</span>
-                          <span className="font-medium">{wallet.operationCounts.withdraw + wallet.operationCounts.withdraw_early}</span>
-                        </div>
-                        <ArrowUpDown className="h-4 w-4 text-gray-400 ml-2" />
-                      </div>
-                    </div>
+        {/* Navigation Tabs */}
+        <div className="mb-6">
+          <nav className="flex space-x-8">
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart3 },
+              { id: 'maturity', label: 'Maturity Analysis', icon: Calendar },
+              { id: 'withdrawals', label: 'Withdrawal Analysis', icon: TrendingUp },
+              { id: 'wallets', label: 'Wallet Analysis', icon: Users }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <tab.icon className="h-4 w-4 mr-2" />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Key Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Stakers</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayMetrics?.totalStakers?.toLocaleString() || '0'}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Staked</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatValue(displayMetrics?.totalStaked || 0)} ZBU</p>
+                  </div>
+                  <Lock className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Withdrawn</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatValue(displayMetrics?.totalWithdrawn || 0)} ZBU</p>
+                  </div>
+                  <Unlock className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Net Staked</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatValue(displayMetrics?.netStaked || 0)} ZBU</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-purple-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Operation Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <h3 className="text-lg font-semibold mb-4">Operation Distribution</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Create Lock</span>
+                    <span className="font-medium">{displayMetrics?.totalLocks || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Increase Amount</span>
+                    <span className="font-medium">{displayMetrics?.totalIncreases || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Extend Time</span>
+                    <span className="font-medium">{displayMetrics?.totalExtensions || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Withdrawals</span>
+                    <span className="font-medium">{displayMetrics?.totalWithdrawals || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <h3 className="text-lg font-semibold mb-4">Staking Breakdown</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Create Lock Total</span>
+                    <span className="font-medium">{formatValue(displayMetrics?.createLockTotal || 0)} ZBU</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Increase Amount Total</span>
+                    <span className="font-medium">{formatValue(displayMetrics?.increaseAmountTotal || 0)} ZBU</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Regular Withdrawals</span>
+                    <span className="font-medium">{formatValue(displayMetrics?.regularWithdrawTotal || 0)} ZBU</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Early Withdrawals</span>
+                    <span className="font-medium">{formatValue(displayMetrics?.earlyWithdrawTotal || 0)} ZBU</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Maturity Analysis Tab */}
+        {activeTab === 'maturity' && (
+          <div className="space-y-6">
+            {/* Maturity Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Average Lock Duration</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayMaturityAnalysis?.avgLockDuration || 0} days</p>
+                    <p className="text-xs text-gray-500">~{Math.round((displayMaturityAnalysis?.avgLockDuration || 0) / 30)} months</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Average Maturity Date</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayMaturityAnalysis?.avgMaturityDate || 'N/A'}</p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Transactions with Maturity</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayMaturityAnalysis?.totalWithMaturity || 0}</p>
+                  </div>
+                  <Target className="h-8 w-8 text-purple-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Lock Duration Distribution */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <h3 className="text-lg font-semibold mb-4">Lock Duration Distribution</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {displayMaturityAnalysis?.durationRanges && Object.entries(displayMaturityAnalysis.durationRanges).map(([range, count]) => (
+                  <div key={range} className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                    <p className="text-sm text-gray-600">{range}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Maturity by Year */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <h3 className="text-lg font-semibold mb-4">Maturity Distribution by Year</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {displayMaturityAnalysis?.maturityByYear && Object.entries(displayMaturityAnalysis.maturityByYear).map(([year, count]) => (
+                  <div key={year} className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                    <p className="text-sm text-gray-600">{year}</p>
                   </div>
                 ))}
               </div>
@@ -938,137 +946,147 @@ export default function StakingInsights() {
           </div>
         )}
 
-        {/* Wallet Modal */}
-        {showWalletModal && selectedWallet && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
-              <div className="p-6 border-b flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold" style={{ color: styles.primaryColor }}>
-                    Wallet Transaction History
-                  </h3>
-                  <p className="text-sm text-gray-600">{selectedWallet.address}</p>
+        {/* Withdrawal Analysis Tab */}
+        {activeTab === 'withdrawals' && (
+          <div className="space-y-6">
+            {/* Withdrawal Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Withdrawals</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayWithdrawalAnalysis?.totalWithdrawals || 0}</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-blue-600" />
                 </div>
-                <button
-                  onClick={closeWalletModal}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-5 w-5" />
-                </button>
               </div>
-              
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                {/* Wallet Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <DollarSign className="h-6 w-6 mr-2 text-green-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Total Staked</p>
-                        <p className="text-lg font-semibold text-green-600">
-                          {formatValue(selectedWallet.totalStaked)} ZBU
-                        </p>
-                      </div>
-                    </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">On-Time Withdrawals</p>
+                    <p className="text-2xl font-bold text-green-600">{displayWithdrawalAnalysis?.onTimeWithdrawals || 0}</p>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <Unlock className="h-6 w-6 mr-2 text-red-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Total Withdrawn</p>
-                        <p className="text-lg font-semibold text-red-600">
-                          {formatValue(selectedWallet.totalWithdrawn)} ZBU
-                        </p>
-                      </div>
-                    </div>
+                  <Timer className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Early Withdrawals</p>
+                    <p className="text-2xl font-bold text-red-600">{displayWithdrawalAnalysis?.earlyWithdrawals || 0}</p>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <Calendar className="h-6 w-6 mr-2 text-blue-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Next Withdrawal</p>
-                        <p className="text-lg font-semibold text-blue-600">
-                          {selectedWallet.nextWithdrawalDate 
-                            ? selectedWallet.nextWithdrawalDate.toLocaleDateString()
-                            : 'N/A'
-                          }
-                        </p>
-                      </div>
-                    </div>
+                  <Zap className="h-8 w-8 text-red-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Early Withdrawal Rate</p>
+                    <p className="text-2xl font-bold text-orange-600">{displayWithdrawalAnalysis?.earlyWithdrawalRate || 0}%</p>
+                  </div>
+                  <AlertCircle className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Penalty Analysis */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <h3 className="text-lg font-semibold mb-4">Penalty Analysis</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-red-50 rounded-lg">
+                    <span className="text-sm text-red-700">Estimated Total Penalties</span>
+                    <span className="font-bold text-red-700">{formatValue(displayWithdrawalAnalysis?.estimatedPenalties || 0)} ZBU</span>
+                  </div>
+                  <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
+                    <span className="text-sm text-green-700">On-Time Withdrawal Rate</span>
+                    <span className="font-bold text-green-700">{100 - (displayWithdrawalAnalysis?.earlyWithdrawalRate || 0)}%</span>
                   </div>
                 </div>
-
-                {/* Transaction History */}
                 <div className="space-y-4">
-                  <h4 className="text-md font-semibold" style={{ color: styles.primaryColor }}>
-                    Transaction History ({selectedWallet.transactions.length} transactions)
-                  </h4>
-                  
-                  {selectedWallet.transactions.map((tx, index) => {
-                    const method = tx.functionName || tx.method_name || '';
-                    const tokenAmount = extractTokenAmountFromTx(tx);
-                    const formattedAmount = tokenAmount ? `${formatValue(tokenAmount)} ZBU` : (tx.value_eth || '0 ZBU');
-                    
-                    let operationType = 'Unknown';
-                    let operationColor = 'text-gray-600';
-                    
-                    if (method.includes('create_lock')) {
-                      operationType = 'Create Lock';
-                      operationColor = 'text-green-600';
-                    } else if (method.includes('increase_amount')) {
-                      operationType = 'Increase Amount';
-                      operationColor = 'text-blue-600';
-                    } else if (method.includes('increase_unlock_time')) {
-                      operationType = 'Extend Lock Time';
-                      operationColor = 'text-yellow-600';
-                    } else if (method.includes('withdraw')) {
-                      operationType = method.includes('withdraw_early') ? 'Early Withdrawal' : 'Withdrawal';
-                      operationColor = 'text-red-600';
-                    }
-                    
-                    return (
-                      <div key={index} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className={`font-medium ${operationColor}`}>{operationType}</p>
-                            <p className="text-sm text-gray-600">{new Date(tx.block_time).toLocaleString()}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">{formattedAmount}</p>
-                            <p className="text-xs text-gray-500">Block #{tx.block_number}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="text-xs text-gray-500 space-y-1">
-                          <p>Tx Hash: {tx.tx_hash}</p>
-                          <p>Method: {method}</p>
-                          {tx.stakingAnalysis?.details?.unlockTimestamp && (
-                            <p>Maturity: {new Date(tx.stakingAnalysis.details.unlockTimestamp * 1000).toLocaleDateString()}</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Average Penalty Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">15%</p>
+                    <p className="text-xs text-gray-500">Estimated based on early withdrawals</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
-      </div>
-    );
-  } catch (renderError) {
-    console.error('Error rendering StakingInsights:', renderError);
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] bg-gray-50">
-        <div className="text-center">
-          <p className="text-lg font-medium text-red-600">
-            Error rendering staking insights. Please try again.
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            Check the console for more details.
-          </p>
+
+        {/* Wallet Analysis Tab */}
+        {activeTab === 'wallets' && (
+          <div className="space-y-6">
+            {/* Top Stakers */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <h3 className="text-lg font-semibold mb-4">Top Stakers</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4">Wallet</th>
+                      <th className="text-left py-3 px-4">Total Staked</th>
+                      <th className="text-left py-3 px-4">Total Withdrawn</th>
+                      <th className="text-left py-3 px-4">Current Balance</th>
+                      <th className="text-left py-3 px-4">Operations</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(walletGroups || []).slice(0, 10).map((wallet, index) => (
+                      <tr key={wallet.address} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                              <span className="text-purple-600 font-medium text-sm">{index + 1}</span>
+                            </div>
+                            <span className="font-mono text-sm">{wallet.shortAddress}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-medium">{formatValue(wallet.totalStaked)} ZBU</td>
+                        <td className="py-3 px-4 font-medium">{formatValue(wallet.totalWithdrawn)} ZBU</td>
+                        <td className="py-3 px-4 font-medium text-green-600">{formatValue(wallet.totalStaked - wallet.totalWithdrawn)} ZBU</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">{wallet.transactions?.length || 0} txs</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Events */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4">Recent Staking Events</h3>
+          <div className="space-y-4">
+            {(stakingEvents || []).slice(0, 10).map((event, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                    {event.eventType === 'Create Lock' && <Lock className="h-5 w-5 text-purple-600" />}
+                    {event.eventType === 'Increase Amount' && <TrendingUp className="h-5 w-5 text-green-600" />}
+                    {event.eventType === 'Extend Lock Time' && <Clock className="h-5 w-5 text-blue-600" />}
+                    {event.eventType === 'Withdrawal' && <Unlock className="h-5 w-5 text-orange-600" />}
+                    {event.eventType === 'Early Withdrawal' && <Zap className="h-5 w-5 text-red-600" />}
+                  </div>
+                  <div>
+                    <p className="font-medium">{event.eventType}</p>
+                    <p className="text-sm text-gray-600">{event.shortAddress} {event.eventDescription}</p>
+                    <p className="text-xs text-gray-500">{event.eventDetails}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">{event.formattedTime}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 } 
