@@ -137,13 +137,18 @@ export default function StakingInsights() {
       withdrawals: 0,
       earlyWithdrawals: 0,
       totalVolume: 0,
-      totalStaked: 0,
-      totalWithdrawn: 0,
+      createLockTotal: 0,
+      increaseAmountTotal: 0,
+      regularWithdrawTotal: 0,
+      earlyWithdrawTotal: 0,
       averageMaturity: 0,
       stakingToken: 'ZBU',
       rewardToken: 'ZBU',
       maturityDates: []
     };
+
+    // Track wallet balances
+    const walletBalances = new Map();
 
     transactions.forEach(tx => {
       const method = tx.functionName || tx.method_name || '';
@@ -151,41 +156,59 @@ export default function StakingInsights() {
       
       if (from) {
         analysis.totalStakers.add(from);
+        
+        // Initialize wallet tracking if not exists
+        if (!walletBalances.has(from)) {
+          walletBalances.set(from, {
+            totalStaked: 0,
+            totalWithdrawn: 0,
+            lastMaturityDate: null
+          });
+        }
       }
 
       // Extract token amount
-      const tokenAmount = extractTokenAmountFromTx(tx);
+      const tokenAmount = extractTokenAmount(tx);
       
       // Categorize by actual Zeebu methods
       if (method.includes('create_lock')) {
         analysis.lockCreations++;
         if (tokenAmount > 0) {
-          analysis.totalStaked += tokenAmount;
+          analysis.createLockTotal += tokenAmount;
+          walletBalances.get(from).totalStaked += tokenAmount;
         }
         // Extract maturity date
-        const maturityTimestamp = extractMaturityFromTx(tx);
+        const maturityTimestamp = extractMaturityTimestamp(tx);
         if (maturityTimestamp) {
           analysis.maturityDates.push(maturityTimestamp);
+          walletBalances.get(from).lastMaturityDate = maturityTimestamp;
         }
       } else if (method.includes('increase_amount')) {
         analysis.amountIncreases++;
         if (tokenAmount > 0) {
-          analysis.totalStaked += tokenAmount;
+          analysis.increaseAmountTotal += tokenAmount;
+          walletBalances.get(from).totalStaked += tokenAmount;
         }
       } else if (method.includes('increase_unlock_time')) {
         analysis.timeExtensions++;
-        const maturityTimestamp = extractMaturityFromTx(tx);
+        const maturityTimestamp = extractMaturityTimestamp(tx);
         if (maturityTimestamp) {
           analysis.maturityDates.push(maturityTimestamp);
+          walletBalances.get(from).lastMaturityDate = maturityTimestamp;
         }
       } else if (method.includes('withdraw')) {
         if (method.includes('withdraw_early')) {
           analysis.earlyWithdrawals++;
+          if (tokenAmount > 0) {
+            analysis.earlyWithdrawTotal += tokenAmount;
+            walletBalances.get(from).totalWithdrawn += tokenAmount;
+          }
         } else {
           analysis.withdrawals++;
-        }
-        if (tokenAmount > 0) {
-          analysis.totalWithdrawn += tokenAmount;
+          if (tokenAmount > 0) {
+            analysis.regularWithdrawTotal += tokenAmount;
+            walletBalances.get(from).totalWithdrawn += tokenAmount;
+          }
         }
       }
 
@@ -210,6 +233,11 @@ export default function StakingInsights() {
     const totalOperations = analysis.lockCreations + analysis.amountIncreases + 
                            analysis.timeExtensions + analysis.withdrawals + analysis.earlyWithdrawals;
 
+    // Calculate total staked and withdrawn
+    const totalStaked = analysis.createLockTotal + analysis.increaseAmountTotal;
+    const totalWithdrawn = analysis.regularWithdrawTotal + analysis.earlyWithdrawTotal;
+    const netStaked = totalStaked - totalWithdrawn;
+
     return {
       totalStakers: uniqueStakers,
       totalLocks: analysis.lockCreations,
@@ -217,8 +245,13 @@ export default function StakingInsights() {
       totalExtensions: analysis.timeExtensions,
       totalWithdrawals: analysis.withdrawals + analysis.earlyWithdrawals,
       totalOperations: totalOperations,
-      totalStaked: analysis.totalStaked,
-      totalWithdrawn: analysis.totalWithdrawn,
+      createLockTotal: analysis.createLockTotal,
+      increaseAmountTotal: analysis.increaseAmountTotal,
+      totalStaked: totalStaked,
+      regularWithdrawTotal: analysis.regularWithdrawTotal,
+      earlyWithdrawTotal: analysis.earlyWithdrawTotal,
+      totalWithdrawn: totalWithdrawn,
+      netStaked: netStaked,
       averageMaturity: analysis.averageMaturity,
       averageOpsPerStaker: uniqueStakers > 0 ? (totalOperations / uniqueStakers).toFixed(1) : 0,
       stakingToken: analysis.stakingToken,
@@ -229,16 +262,32 @@ export default function StakingInsights() {
         increases: analysis.amountIncreases,
         extensions: analysis.timeExtensions,
         withdrawals: analysis.withdrawals + analysis.earlyWithdrawals
-      }
+      },
+      walletBalances: Array.from(walletBalances.entries()).map(([address, data]) => ({
+        address,
+        totalStaked: data.totalStaked,
+        totalWithdrawn: data.totalWithdrawn,
+        currentBalance: data.totalStaked - data.totalWithdrawn,
+        lastMaturityDate: data.lastMaturityDate
+      })).sort((a, b) => b.currentBalance - a.currentBalance)
     };
   };
 
   // Helper function to extract token amount from transaction
   const extractTokenAmountFromTx = (tx) => {
     if (tx.value_eth && typeof tx.value_eth === 'string') {
-      const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
-      if (match && match[1]) {
-        return parseFloat(match[1]);
+      // Handle K multiplier
+      if (tx.value_eth.includes('K')) {
+        const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)K/);
+        if (match && match[1]) {
+          return parseFloat(match[1].replace(/,/g, '')) * 1000;
+        }
+      } else {
+        // Regular number
+        const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
+        if (match && match[1]) {
+          return parseFloat(match[1].replace(/,/g, ''));
+        }
       }
     }
     return 0;
@@ -439,9 +488,18 @@ export default function StakingInsights() {
     try {
       // First check if we have a parsed value already
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
-        if (match && match[1]) {
-          return parseFloat(match[1]);
+        // Handle K multiplier
+        if (tx.value_eth.includes('K')) {
+          const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)K/);
+          if (match && match[1]) {
+            return parseFloat(match[1].replace(/,/g, '')) * 1000;
+          }
+        } else {
+          // Regular number
+          const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
+          if (match && match[1]) {
+            return parseFloat(match[1].replace(/,/g, ''));
+          }
         }
       }
       
@@ -661,6 +719,11 @@ export default function StakingInsights() {
                 <p className="text-2xl font-bold" style={{ color: styles.primaryColor }}>
                   {formatValue(displayMetrics?.totalStaked || 0)} ZBU
                 </p>
+                <div className="text-xs text-gray-500">
+                  <div>Create Lock: {formatValue(displayMetrics?.createLockTotal || 0)} ZBU</div>
+                  <div>Increase Amount: {formatValue(displayMetrics?.increaseAmountTotal || 0)} ZBU</div>
+                  <div>Net Staked: {formatValue(displayMetrics?.netStaked || 0)} ZBU</div>
+                </div>
               </div>
             </div>
           </div>
@@ -673,6 +736,11 @@ export default function StakingInsights() {
                 <p className="text-2xl font-bold" style={{ color: chartColors.warning }}>
                   {formatValue(displayMetrics?.totalWithdrawn || 0)} ZBU
                 </p>
+                <div className="text-xs text-gray-500">
+                  <div>Regular: {formatValue(displayMetrics?.regularWithdrawTotal || 0)} ZBU</div>
+                  <div>Early: {formatValue(displayMetrics?.earlyWithdrawTotal || 0)} ZBU</div>
+                  <div>({displayMetrics?.totalWithdrawals || 0} transactions)</div>
+                </div>
               </div>
             </div>
           </div>
@@ -685,6 +753,10 @@ export default function StakingInsights() {
                 <p className="text-2xl font-bold" style={{ color: chartColors.info }}>
                   {displayMetrics?.averageMaturity || 0} days
                 </p>
+                <div className="text-xs text-gray-500">
+                  <div>{displayMetrics?.totalStakers || 0} unique stakers</div>
+                  <div>{displayMetrics?.totalOperations || 0} total operations</div>
+                </div>
               </div>
             </div>
           </div>
