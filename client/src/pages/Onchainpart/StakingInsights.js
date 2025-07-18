@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, TrendingUp, Users, DollarSign, Clock, AlertCircle, Lock, Unlock, Wallet, X, Calendar, ArrowUpDown, PieChart, BarChart3, Activity, Target, Timer, Zap } from 'lucide-react';
+import { Loader2, TrendingUp, Users, DollarSign, Clock, AlertCircle, Lock, Unlock, Wallet, X, Calendar, ArrowUpDown, PieChart, BarChart3, Activity, Target, Timer, Zap, Search, Filter, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { useContractData } from '../../contexts/ContractDataContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area } from 'recharts';
 
@@ -16,6 +16,13 @@ export default function StakingInsights() {
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Wallet analysis filters and state
+  const [walletFilter, setWalletFilter] = useState('');
+  const [walletSortBy, setWalletSortBy] = useState('totalStaked');
+  const [walletSortOrder, setWalletSortOrder] = useState('desc');
+  const [walletTypeFilter, setWalletTypeFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   
   // Move useContractData to the top level - no conditionals
   const contextData = useContractData();
@@ -121,8 +128,8 @@ export default function StakingInsights() {
       // Extract recent staking events
       const recentEvents = extractRealStakingEvents(transactions);
       
-      // Group transactions by wallet
-      const walletGroupsData = groupTransactionsByWallet(transactions);
+      // Group transactions by wallet with detailed analysis
+      const walletGroupsData = groupTransactionsByWalletDetailed(transactions);
       
       // Analyze maturity patterns
       const maturityAnalysisData = analyzeMaturityPatterns(transactions);
@@ -414,8 +421,8 @@ export default function StakingInsights() {
     return null;
   };
 
-  // Group transactions by wallet address
-  const groupTransactionsByWallet = (transactions) => {
+  // Enhanced wallet grouping with detailed analysis
+  const groupTransactionsByWalletDetailed = (transactions) => {
     const walletMap = new Map();
     
     transactions.forEach(tx => {
@@ -429,19 +436,35 @@ export default function StakingInsights() {
           transactions: [],
           totalStaked: 0,
           totalWithdrawn: 0,
+          currentBalance: 0,
           nextWithdrawalDate: null,
+          firstTransactionDate: null,
+          lastTransactionDate: null,
+          avgLockDuration: 0,
+          totalPenalties: 0,
+          walletType: 'regular',
           operationCounts: {
             create_lock: 0,
             increase_amount: 0,
             increase_unlock_time: 0,
             withdraw: 0,
             withdraw_early: 0
-          }
+          },
+          recentEvents: []
         });
       }
       
       const walletData = walletMap.get(walletAddress);
       walletData.transactions.push(tx);
+      
+      // Update transaction dates
+      const txDate = new Date(tx.block_time);
+      if (!walletData.firstTransactionDate || txDate < walletData.firstTransactionDate) {
+        walletData.firstTransactionDate = txDate;
+      }
+      if (!walletData.lastTransactionDate || txDate > walletData.lastTransactionDate) {
+        walletData.lastTransactionDate = txDate;
+      }
       
       // Calculate totals
       const tokenAmount = extractTokenAmountFromTx(tx);
@@ -454,6 +477,7 @@ export default function StakingInsights() {
         walletData.totalWithdrawn += tokenAmount;
         if (method.includes('withdraw_early')) {
           walletData.operationCounts.withdraw_early++;
+          walletData.totalPenalties += tokenAmount * 0.15; // Estimated penalty
         } else {
           walletData.operationCounts.withdraw++;
         }
@@ -466,11 +490,61 @@ export default function StakingInsights() {
       if (maturityTimestamp && (!walletData.nextWithdrawalDate || maturityTimestamp < walletData.nextWithdrawalDate)) {
         walletData.nextWithdrawalDate = maturityTimestamp;
       }
+      
+      // Add to recent events
+      walletData.recentEvents.push({
+        tx_hash: tx.tx_hash,
+        method: method,
+        amount: tokenAmount,
+        date: txDate,
+        eventType: getEventType(method),
+        eventDescription: getEventDescription(method, tokenAmount)
+      });
+    });
+    
+    // Calculate derived metrics for each wallet
+    Array.from(walletMap.values()).forEach(wallet => {
+      wallet.currentBalance = wallet.totalStaked - wallet.totalWithdrawn;
+      wallet.recentEvents.sort((a, b) => b.date - a.date);
+      wallet.recentEvents = wallet.recentEvents.slice(0, 10); // Keep only 10 most recent
+      
+      // Determine wallet type
+      const totalTxs = wallet.transactions.length;
+      const totalStaked = wallet.totalStaked;
+      
+      if (totalStaked > 100000) {
+        wallet.walletType = 'whale';
+      } else if (totalStaked > 10000) {
+        wallet.walletType = 'large';
+      } else if (totalTxs > 10) {
+        wallet.walletType = 'active';
+      } else {
+        wallet.walletType = 'regular';
+      }
     });
     
     return Array.from(walletMap.values())
-      .sort((a, b) => b.totalStaked - a.totalStaked)
-      .slice(0, 50); // Top 50 wallets
+      .sort((a, b) => b.totalStaked - a.totalStaked);
+  };
+
+  // Helper functions for event processing
+  const getEventType = (method) => {
+    if (method.includes('create_lock')) return 'Create Lock';
+    if (method.includes('increase_amount')) return 'Increase Amount';
+    if (method.includes('increase_unlock_time')) return 'Extend Lock Time';
+    if (method.includes('withdraw_early')) return 'Early Withdrawal';
+    if (method.includes('withdraw')) return 'Withdrawal';
+    return 'Unknown';
+  };
+
+  const getEventDescription = (method, amount) => {
+    const formattedAmount = amount > 0 ? formatValue(amount) : '0';
+    if (method.includes('create_lock')) return `Created lock with ${formattedAmount} ZBU`;
+    if (method.includes('increase_amount')) return `Increased by ${formattedAmount} ZBU`;
+    if (method.includes('increase_unlock_time')) return `Extended lock time`;
+    if (method.includes('withdraw_early')) return `Early withdrawal of ${formattedAmount} ZBU`;
+    if (method.includes('withdraw')) return `Withdrew ${formattedAmount} ZBU`;
+    return 'Unknown operation';
   };
 
   // Generate time series data for charts
@@ -653,6 +727,49 @@ export default function StakingInsights() {
     } catch (error) {
       return 'Invalid Date';
     }
+  };
+
+  // Filter and sort wallets
+  const getFilteredWallets = () => {
+    let filtered = [...walletGroups];
+    
+    // Apply search filter
+    if (walletFilter) {
+      filtered = filtered.filter(wallet => 
+        wallet.address.toLowerCase().includes(walletFilter.toLowerCase()) ||
+        wallet.shortAddress.toLowerCase().includes(walletFilter.toLowerCase())
+      );
+    }
+    
+    // Apply type filter
+    if (walletTypeFilter !== 'all') {
+      filtered = filtered.filter(wallet => wallet.walletType === walletTypeFilter);
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue = a[walletSortBy];
+      let bValue = b[walletSortBy];
+      
+      if (walletSortBy === 'firstTransactionDate' || walletSortBy === 'lastTransactionDate') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+      
+      if (walletSortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+    
+    return filtered;
+  };
+
+  // Handle wallet selection
+  const handleWalletClick = (wallet) => {
+    setSelectedWallet(wallet);
+    setShowWalletModal(true);
   };
 
   // Show loading state
@@ -1021,35 +1138,186 @@ export default function StakingInsights() {
         {/* Wallet Analysis Tab */}
         {activeTab === 'wallets' && (
           <div className="space-y-6">
-            {/* Top Stakers */}
+            {/* Wallet Filters */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold mb-4">Top Stakers</h3>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search wallet address..."
+                      value={walletFilter}
+                      onChange={(e) => setWalletFilter(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <select
+                    value={walletTypeFilter}
+                    onChange={(e) => setWalletTypeFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="all">All Wallets</option>
+                                         <option value="whale">Whales (&gt;100K ZBU)</option>
+                     <option value="large">Large (&gt;10K ZBU)</option>
+                     <option value="active">Active (&gt;10 txs)</option>
+                    <option value="regular">Regular</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Advanced Filters
+                    {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                  </button>
+                </div>
+              </div>
+              
+              {showFilters && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                      <select
+                        value={walletSortBy}
+                        onChange={(e) => setWalletSortBy(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="totalStaked">Total Staked</option>
+                        <option value="totalWithdrawn">Total Withdrawn</option>
+                        <option value="currentBalance">Current Balance</option>
+                        <option value="firstTransactionDate">First Transaction</option>
+                        <option value="lastTransactionDate">Last Transaction</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                      <select
+                        value={walletSortOrder}
+                        onChange={(e) => setWalletSortOrder(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="desc">Highest First</option>
+                        <option value="asc">Lowest First</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Wallet Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Wallets</p>
+                    <p className="text-2xl font-bold text-gray-900">{getFilteredWallets().length}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Whale Wallets</p>
+                    <p className="text-2xl font-bold text-gray-900">{walletGroups.filter(w => w.walletType === 'whale').length}</p>
+                  </div>
+                  <Wallet className="h-8 w-8 text-purple-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Active Wallets</p>
+                    <p className="text-2xl font-bold text-gray-900">{walletGroups.filter(w => w.walletType === 'active').length}</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Avg Txs per Wallet</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {walletGroups.length > 0 ? (walletGroups.reduce((sum, w) => sum + w.transactions.length, 0) / walletGroups.length).toFixed(1) : '0'}
+                    </p>
+                  </div>
+                  <ArrowUpDown className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Wallet Table */}
+            <div className="bg-white rounded-lg shadow-sm border">
+              <div className="p-6 border-b">
+                <h3 className="text-lg font-semibold">Wallet Details</h3>
+                <p className="text-sm text-gray-600 mt-1">Click on any wallet to view detailed transaction history</p>
+              </div>
+              
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4">Wallet</th>
-                      <th className="text-left py-3 px-4">Total Staked</th>
-                      <th className="text-left py-3 px-4">Total Withdrawn</th>
-                      <th className="text-left py-3 px-4">Current Balance</th>
-                      <th className="text-left py-3 px-4">Operations</th>
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Wallet</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Total Staked</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Total Withdrawn</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Current Balance</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Transactions</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Last Activity</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(walletGroups || []).slice(0, 10).map((wallet, index) => (
+                    {getFilteredWallets().slice(0, 50).map((wallet, index) => (
                       <tr key={wallet.address} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <div className="flex items-center">
                             <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
                               <span className="text-purple-600 font-medium text-sm">{index + 1}</span>
                             </div>
-                            <span className="font-mono text-sm">{wallet.shortAddress}</span>
+                            <div>
+                              <p className="font-mono text-sm font-medium">{wallet.shortAddress}</p>
+                              <p className="text-xs text-gray-500">{wallet.address.substring(0, 20)}...</p>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-medium">{formatValue(wallet.totalStaked)} ZBU</td>
-                        <td className="py-3 px-4 font-medium">{formatValue(wallet.totalWithdrawn)} ZBU</td>
-                        <td className="py-3 px-4 font-medium text-green-600">{formatValue(wallet.totalStaked - wallet.totalWithdrawn)} ZBU</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{wallet.transactions?.length || 0} txs</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            wallet.walletType === 'whale' ? 'bg-purple-100 text-purple-800' :
+                            wallet.walletType === 'large' ? 'bg-blue-100 text-blue-800' :
+                            wallet.walletType === 'active' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {wallet.walletType}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-medium text-green-600">{formatValue(wallet.totalStaked)} ZBU</td>
+                        <td className="py-3 px-4 font-medium text-red-600">{formatValue(wallet.totalWithdrawn)} ZBU</td>
+                        <td className="py-3 px-4 font-medium text-gray-900">{formatValue(wallet.currentBalance)} ZBU</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">{wallet.transactions.length}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {wallet.lastTransactionDate ? wallet.lastTransactionDate.toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleWalletClick(wallet)}
+                            className="flex items-center px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Details
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1059,33 +1327,146 @@ export default function StakingInsights() {
           </div>
         )}
 
-        {/* Recent Events */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold mb-4">Recent Staking Events</h3>
-          <div className="space-y-4">
-            {(stakingEvents || []).slice(0, 10).map((event, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-                    {event.eventType === 'Create Lock' && <Lock className="h-5 w-5 text-purple-600" />}
-                    {event.eventType === 'Increase Amount' && <TrendingUp className="h-5 w-5 text-green-600" />}
-                    {event.eventType === 'Extend Lock Time' && <Clock className="h-5 w-5 text-blue-600" />}
-                    {event.eventType === 'Withdrawal' && <Unlock className="h-5 w-5 text-orange-600" />}
-                    {event.eventType === 'Early Withdrawal' && <Zap className="h-5 w-5 text-red-600" />}
+        {/* Wallet Details Modal */}
+        {showWalletModal && selectedWallet && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
+              <div className="p-6 border-b flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Wallet Analysis</h3>
+                  <p className="text-sm text-gray-600 font-mono">{selectedWallet.address}</p>
+                </div>
+                <button
+                  onClick={() => setShowWalletModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                {/* Wallet Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <Lock className="h-6 w-6 mr-2 text-green-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Total Staked</p>
+                        <p className="text-lg font-semibold text-green-600">{formatValue(selectedWallet.totalStaked)} ZBU</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{event.eventType}</p>
-                    <p className="text-sm text-gray-600">{event.shortAddress} {event.eventDescription}</p>
-                    <p className="text-xs text-gray-500">{event.eventDetails}</p>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <Unlock className="h-6 w-6 mr-2 text-red-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Total Withdrawn</p>
+                        <p className="text-lg font-semibold text-red-600">{formatValue(selectedWallet.totalWithdrawn)} ZBU</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <Wallet className="h-6 w-6 mr-2 text-blue-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Current Balance</p>
+                        <p className="text-lg font-semibold text-blue-600">{formatValue(selectedWallet.currentBalance)} ZBU</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <Activity className="h-6 w-6 mr-2 text-purple-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Total Transactions</p>
+                        <p className="text-lg font-semibold text-purple-600">{selectedWallet.transactions.length}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">{event.formattedTime}</p>
+
+                {/* Operation Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-3">Operation Breakdown</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Create Lock:</span>
+                        <span className="font-medium">{selectedWallet.operationCounts.create_lock}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Increase Amount:</span>
+                        <span className="font-medium">{selectedWallet.operationCounts.increase_amount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Extend Time:</span>
+                        <span className="font-medium">{selectedWallet.operationCounts.increase_unlock_time}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Withdrawals:</span>
+                        <span className="font-medium">{selectedWallet.operationCounts.withdraw}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Early Withdrawals:</span>
+                        <span className="font-medium text-red-600">{selectedWallet.operationCounts.withdraw_early}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-3">Timeline</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">First Transaction:</span>
+                        <span className="font-medium">{selectedWallet.firstTransactionDate?.toLocaleDateString() || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Last Transaction:</span>
+                        <span className="font-medium">{selectedWallet.lastTransactionDate?.toLocaleDateString() || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Next Withdrawal:</span>
+                        <span className="font-medium">{selectedWallet.nextWithdrawalDate ? new Date(selectedWallet.nextWithdrawalDate * 1000).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Estimated Penalties:</span>
+                        <span className="font-medium text-red-600">{formatValue(selectedWallet.totalPenalties)} ZBU</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Events */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-3">Recent Events</h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {selectedWallet.recentEvents.map((event, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                            {event.eventType === 'Create Lock' && <Lock className="h-4 w-4 text-purple-600" />}
+                            {event.eventType === 'Increase Amount' && <TrendingUp className="h-4 w-4 text-green-600" />}
+                            {event.eventType === 'Extend Lock Time' && <Clock className="h-4 w-4 text-blue-600" />}
+                            {event.eventType === 'Withdrawal' && <Unlock className="h-4 w-4 text-orange-600" />}
+                            {event.eventType === 'Early Withdrawal' && <Zap className="h-4 w-4 text-red-600" />}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{event.eventType}</p>
+                            <p className="text-xs text-gray-600">{event.eventDescription}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{event.date.toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-500">{event.tx_hash.substring(0, 10)}...</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
