@@ -25,6 +25,38 @@ const smartContractSchema = new mongoose.Schema({
     enum: ['main', 'escrow'],
     default: 'main'
   },
+  
+  // Staking details for escrow contracts
+  stakingDetails: {
+    rewardToken: {
+      type: String,
+      default: 'ZBU'
+    },
+    stakingToken: {
+      type: String,
+      default: 'ZBU'
+    },
+    lockPeriod: {
+      type: Number, // in days
+      default: 365
+    },
+    apy: {
+      type: Number, // annual percentage yield
+      default: 0
+    },
+    minimumStake: {
+      type: Number,
+      default: 1
+    },
+    totalStaked: {
+      type: Number,
+      default: 0
+    },
+    totalRewards: {
+      type: Number,
+      default: 0
+    }
+  },
 
   team: {
     type: mongoose.Schema.Types.ObjectId,

@@ -246,6 +246,8 @@ export default function StakingInsights() {
 
   // Extract real staking events from transactions
   const extractRealStakingEvents = (transactions) => {
+    console.log('Extracting data from transactions:', transactions.slice(0, 3));
+    
     return transactions
       .slice(0, 20) // Get recent 20 transactions
       .map(tx => {
@@ -261,6 +263,18 @@ export default function StakingInsights() {
         // Extract maturity timestamp
         const maturityTimestamp = extractMaturityTimestamp(tx);
         const formattedMaturity = maturityTimestamp ? formatDate(maturityTimestamp) : 'Unknown';
+        
+        // Debug logging for extraction
+        console.log('Transaction data extraction:', {
+          hash: tx.tx_hash?.substring(0, 10),
+          method,
+          originalValue: tx.value_eth,
+          extractedAmount: tokenAmount,
+          formattedAmount,
+          maturityTimestamp,
+          formattedMaturity,
+          inputDataSample: tx.input_data?.substring(0, 30)
+        });
         
         // Parse method name to get a cleaner title
         if (method.includes('create_lock')) {
