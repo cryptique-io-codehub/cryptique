@@ -178,13 +178,12 @@ export default function StakingInsights() {
         if (maturityTimestamp) {
           analysis.maturityDates.push(maturityTimestamp);
         }
-      } else if (method.includes('withdraw_early')) {
-        analysis.earlyWithdrawals++;
-        if (tokenAmount > 0) {
-          analysis.totalWithdrawn += tokenAmount;
-        }
       } else if (method.includes('withdraw')) {
-        analysis.withdrawals++;
+        if (method.includes('withdraw_early')) {
+          analysis.earlyWithdrawals++;
+        } else {
+          analysis.withdrawals++;
+        }
         if (tokenAmount > 0) {
           analysis.totalWithdrawn += tokenAmount;
         }
@@ -291,7 +290,11 @@ export default function StakingInsights() {
         walletData.operationCounts[method.includes('create_lock') ? 'create_lock' : 'increase_amount']++;
       } else if (method.includes('withdraw')) {
         walletData.totalWithdrawn += tokenAmount;
-        walletData.operationCounts[method.includes('withdraw_early') ? 'withdraw_early' : 'withdraw']++;
+        if (method.includes('withdraw_early')) {
+          walletData.operationCounts.withdraw_early++;
+        } else {
+          walletData.operationCounts.withdraw++;
+        }
       } else if (method.includes('increase_unlock_time')) {
         walletData.operationCounts.increase_unlock_time++;
       }
@@ -818,50 +821,60 @@ export default function StakingInsights() {
               </p>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 {displayWalletGroups.map((wallet, index) => (
                   <div
                     key={wallet.address}
                     onClick={() => handleWalletClick(wallet)}
                     className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                      {/* Wallet Info */}
                       <div className="flex items-center">
                         <Wallet className="h-5 w-5 mr-2" style={{ color: styles.primaryColor }} />
-                        <span className="font-medium text-sm">{wallet.shortAddress}</span>
+                        <span className="font-medium">{wallet.shortAddress}</span>
                       </div>
-                      <ArrowUpDown className="h-4 w-4 text-gray-400" />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Total Staked</span>
-                        <span className="text-sm font-semibold text-green-600">
-                          {formatValue(wallet.totalStaked)} ZBU
-                        </span>
+
+                      {/* Staking Info */}
+                      <div className="flex flex-col md:flex-row md:space-x-8 space-y-2 md:space-y-0">
+                        <div>
+                          <span className="text-sm text-gray-600 mr-2">Total Staked:</span>
+                          <span className="font-semibold text-green-600">
+                            {formatValue(wallet.totalStaked)} ZBU
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600 mr-2">Total Withdrawn:</span>
+                          <span className="font-semibold text-red-600">
+                            {formatValue(wallet.totalWithdrawn)} ZBU
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600 mr-2">Next Withdrawal:</span>
+                          <span className="text-sm text-gray-500">
+                            {wallet.nextWithdrawalDate 
+                              ? wallet.nextWithdrawalDate.toLocaleDateString()
+                              : 'N/A'
+                            }
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Total Withdrawn</span>
-                        <span className="text-sm font-semibold text-red-600">
-                          {formatValue(wallet.totalWithdrawn)} ZBU
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Next Withdrawal</span>
-                        <span className="text-xs text-gray-500">
-                          {wallet.nextWithdrawalDate 
-                            ? wallet.nextWithdrawalDate.toLocaleDateString()
-                            : 'N/A'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="flex justify-between text-xs">
-                        <span>Locks: {wallet.operationCounts.create_lock}</span>
-                        <span>Increases: {wallet.operationCounts.increase_amount}</span>
-                        <span>Withdrawals: {wallet.operationCounts.withdraw + wallet.operationCounts.withdraw_early}</span>
+
+                      {/* Operation Counts */}
+                      <div className="flex space-x-4 text-sm text-gray-600">
+                        <div>
+                          <span className="mr-1">Locks:</span>
+                          <span className="font-medium">{wallet.operationCounts.create_lock}</span>
+                        </div>
+                        <div>
+                          <span className="mr-1">Increases:</span>
+                          <span className="font-medium">{wallet.operationCounts.increase_amount}</span>
+                        </div>
+                        <div>
+                          <span className="mr-1">Withdrawals:</span>
+                          <span className="font-medium">{wallet.operationCounts.withdraw + wallet.operationCounts.withdraw_early}</span>
+                        </div>
+                        <ArrowUpDown className="h-4 w-4 text-gray-400 ml-2" />
                       </div>
                     </div>
                   </div>
