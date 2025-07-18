@@ -1,155 +1,182 @@
 const mongoose = require('mongoose');
+const SmartContract = require('./models/smartContract');
 const Transaction = require('./models/transaction');
 
 async function fixWithdrawalAmounts() {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://devs:62DVg3eFu10gvUIB@cluster0.vc5dz.mongodb.net/Cryptique-Test-Server');
     
-    console.log('=== FIXING WITHDRAWAL AMOUNTS ===\n');
+    console.log('=== FIXING WITHDRAWAL AMOUNTS FOR STAKING CONTRACT ===\n');
     
-    // Find all withdrawal transactions
-    const withdrawalTxs = await Transaction.find({
+    // Find the staking contract
+    const stakingContract = await SmartContract.findOne({ 
+      address: { $regex: '0xd3e8cD2eDbf252860E02ffb245fD654b1ab30f30', $options: 'i' }
+    });
+    
+    if (!stakingContract) {
+      console.log('Staking contract not found');
+      mongoose.disconnect();
+      return;
+    }
+    
+    console.log(`Found contract: ${stakingContract.name}`);
+    console.log(`Contract ID: ${stakingContract.contractId}`);
+    
+    // Get all transactions for this contract, sorted by time
+    const allTxs = await Transaction.find({ 
+      contractId: stakingContract.contractId,
+      'stakingAnalysis.isStaking': true
+    }).sort({ block_time: 1 });
+    
+    console.log(`Found ${allTxs.length} staking transactions\n`);
+    
+    // Track wallet balances over time
+    const walletBalances = new Map();
+    let totalWithdrawn = 0;
+    let withdrawalCount = 0;
+    
+    // First pass: build up wallet balances from stakes
+    for (const tx of allTxs) {
+      const walletAddress = tx.from_address;
+      const method = tx.functionName || tx.method_name || '';
+      
+      if (!walletBalances.has(walletAddress)) {
+        walletBalances.set(walletAddress, {
+          totalStaked: 0,
+          totalWithdrawn: 0,
+          stakingHistory: []
+        });
+      }
+      
+      const wallet = walletBalances.get(walletAddress);
+      
+      // Extract amount from value_eth if available
+      let amount = 0;
+      if (tx.value_eth && tx.value_eth.includes('ZBU')) {
+        const match = tx.value_eth.match(/(\d+(?:\.\d+)?)/);
+        if (match) {
+          amount = parseFloat(match[1]);
+        }
+      }
+      
+      if (method.includes('create_lock') || method.includes('increase_amount')) {
+        wallet.totalStaked += amount;
+        wallet.stakingHistory.push({
+          type: 'stake',
+          amount: amount,
+          time: tx.block_time,
+          hash: tx.tx_hash
+        });
+      }
+    }
+    
+    // Second pass: process withdrawals
+    for (const tx of allTxs) {
+      const walletAddress = tx.from_address;
+      const method = tx.functionName || tx.method_name || '';
+      
+      if (method.includes('withdraw')) {
+        const wallet = walletBalances.get(walletAddress);
+        if (!wallet) continue;
+        
+        // Calculate available balance at withdrawal time
+        let availableBalance = 0;
+        wallet.stakingHistory.forEach(stake => {
+          if (new Date(stake.time) < new Date(tx.block_time)) {
+            availableBalance += stake.amount;
+          }
+        });
+        
+        // Subtract any previous withdrawals
+        availableBalance -= wallet.totalWithdrawn;
+        
+        if (availableBalance > 0) {
+          // Update the withdrawal transaction with the amount
+          const formattedAmount = `${availableBalance} ZBU`;
+          
+          await Transaction.updateOne(
+            { _id: tx._id },
+            { 
+              $set: { 
+                value_eth: formattedAmount,
+                'stakingAnalysis.details.amount': formattedAmount
+              }
+            }
+          );
+          
+          // Update wallet balance
+          wallet.totalWithdrawn += availableBalance;
+          totalWithdrawn += availableBalance;
+          withdrawalCount++;
+          
+          console.log(`✅ Fixed withdrawal: ${tx.tx_hash?.substring(0, 10)}... - ${availableBalance} ZBU`);
+          console.log(`   Wallet: ${walletAddress?.substring(0, 10)}...`);
+          console.log(`   Method: ${method}`);
+          console.log();
+        }
+      }
+    }
+    
+    console.log('=== WITHDRAWAL FIX COMPLETE ===');
+    console.log(`Total withdrawals processed: ${withdrawalCount}`);
+    console.log(`Total withdrawn amount: ${totalWithdrawn.toFixed(2)} ZBU`);
+    
+    // Final verification
+    const verificationTxs = await Transaction.find({ 
+      contractId: stakingContract.contractId,
+      'stakingAnalysis.isStaking': true,
       $or: [
         { 'functionName': { $regex: 'withdraw', $options: 'i' } },
         { 'method_name': { $regex: 'withdraw', $options: 'i' } }
-      ]
+      ],
+      value_eth: { $regex: 'ZBU', $options: 'i' }
     });
-
-    console.log(`Found ${withdrawalTxs.length} withdrawal transactions\n`);
-
-    // Get all create_lock transactions to map amounts
-    const lockTxs = await Transaction.find({
-      'stakingAnalysis.stakingType': 'create_lock'
-    }).sort({ block_time: 1 });
-
-    // Create a map of wallet addresses to their locked amounts
-    const walletLocks = new Map();
     
-    // Track amounts for each wallet
-    lockTxs.forEach(tx => {
-      const from = tx.from_address;
-      if (!from) return;
-      
-      if (!walletLocks.has(from)) {
-        walletLocks.set(from, {
-          totalLocked: 0,
-          transactions: []
-        });
-      }
-      
-      const amount = extractAmount(tx);
-      if (amount > 0) {
-        walletLocks.get(from).totalLocked += amount;
-        walletLocks.get(from).transactions.push({
-          hash: tx.tx_hash,
-          amount: amount,
-          time: tx.block_time
-        });
-      }
-    });
-
-    // Process increase_amount transactions
-    const increaseTxs = await Transaction.find({
-      'stakingAnalysis.stakingType': 'increase_amount'
-    }).sort({ block_time: 1 });
-
-    increaseTxs.forEach(tx => {
-      const from = tx.from_address;
-      if (!from || !walletLocks.has(from)) return;
-      
-      const amount = extractAmount(tx);
-      if (amount > 0) {
-        walletLocks.get(from).totalLocked += amount;
-        walletLocks.get(from).transactions.push({
-          hash: tx.tx_hash,
-          amount: amount,
-          time: tx.block_time
-        });
-      }
-    });
-
-    // Now process withdrawals and update their amounts
-    let updatedCount = 0;
-    for (const tx of withdrawalTxs) {
-      const from = tx.from_address;
-      if (!from || !walletLocks.has(from)) continue;
-      
-      const walletData = walletLocks.get(from);
-      const withdrawalTime = new Date(tx.block_time);
-      
-      // Calculate available amount at withdrawal time
-      let availableAmount = 0;
-      walletData.transactions.forEach(lockTx => {
-        if (new Date(lockTx.time) < withdrawalTime) {
-          availableAmount += lockTx.amount;
-        }
-      });
-      
-      // Update transaction with withdrawal amount
-      const updates = {
-        value_eth: `${availableAmount} ZBU`,
-        'stakingAnalysis.details.amount': `${availableAmount} ZBU`
-      };
-      
-      await Transaction.updateOne(
-        { _id: tx._id },
-        { $set: updates }
-      );
-      
-      console.log(`Updated withdrawal transaction ${tx.tx_hash}:`);
-      console.log(`  From: ${from}`);
-      console.log(`  Amount: ${availableAmount} ZBU`);
-      console.log(`  Time: ${withdrawalTime}`);
+    console.log(`\n✅ Verified: ${verificationTxs.length} withdrawal transactions now have amounts`);
+    
+    // Show sample withdrawal transactions
+    console.log('\n=== SAMPLE WITHDRAWAL TRANSACTIONS ===');
+    verificationTxs.slice(0, 5).forEach((tx, index) => {
+      console.log(`${index + 1}. Hash: ${tx.tx_hash?.substring(0, 10)}...`);
+      console.log(`   Method: ${tx.functionName || tx.method_name || 'N/A'}`);
+      console.log(`   Amount: ${tx.value_eth}`);
+      console.log(`   From: ${tx.from_address?.substring(0, 10)}...`);
       console.log();
-      
-      updatedCount++;
-      
-      // Subtract withdrawn amount from wallet's total
-      walletLocks.get(from).totalLocked -= availableAmount;
-    }
-
-    console.log(`\nUpdated ${updatedCount} withdrawal transactions`);
+    });
+    
+    // Calculate final totals
+    const finalStakingTxs = await Transaction.find({ 
+      contractId: stakingContract.contractId,
+      'stakingAnalysis.isStaking': true,
+      value_eth: { $regex: 'ZBU', $options: 'i' }
+    });
+    
+    let finalTotalStaked = 0;
+    let finalTotalWithdrawn = 0;
+    
+    finalStakingTxs.forEach(tx => {
+      const method = tx.functionName || tx.method_name || '';
+      const match = tx.value_eth.match(/(\d+(?:\.\d+)?)/);
+      if (match) {
+        const amount = parseFloat(match[1]);
+        if (method.includes('create_lock') || method.includes('increase_amount')) {
+          finalTotalStaked += amount;
+        } else if (method.includes('withdraw')) {
+          finalTotalWithdrawn += amount;
+        }
+      }
+    });
+    
+    console.log('\n=== FINAL STAKING SUMMARY ===');
+    console.log(`Total Staked: ${finalTotalStaked.toFixed(2)} ZBU`);
+    console.log(`Total Withdrawn: ${finalTotalWithdrawn.toFixed(2)} ZBU`);
+    console.log(`Net Staked: ${(finalTotalStaked - finalTotalWithdrawn).toFixed(2)} ZBU`);
+    console.log(`Transactions with amounts: ${finalStakingTxs.length} / 807`);
+    
     mongoose.disconnect();
   } catch (error) {
     console.error('Error:', error);
     mongoose.disconnect();
-  }
-}
-
-// Helper function to extract amount from transaction
-function extractAmount(tx) {
-  try {
-    // Try to get from stakingAnalysis details first
-    if (tx.stakingAnalysis?.details?.amount) {
-      const match = tx.stakingAnalysis.details.amount.match(/(\d+(\.\d+)?)/);
-      if (match && match[1]) {
-        return parseFloat(match[1]);
-      }
-    }
-    
-    // Try value_eth field
-    if (tx.value_eth) {
-      const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
-      if (match && match[1]) {
-        return parseFloat(match[1]);
-      }
-    }
-    
-    // Try to extract from input data
-    if (tx.input_data) {
-      const valueHex = tx.input_data.substring(10, 74);
-      if (valueHex) {
-        const value = parseInt(valueHex, 16);
-        if (!isNaN(value)) {
-          return value / 1e18; // Convert from wei to token units
-        }
-      }
-    }
-    
-    return 0;
-  } catch (error) {
-    console.error('Error extracting amount:', error);
-    return 0;
   }
 }
 
