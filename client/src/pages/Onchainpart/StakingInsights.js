@@ -276,18 +276,9 @@ export default function StakingInsights() {
   // Helper function to extract token amount from transaction
   const extractTokenAmountFromTx = (tx) => {
     if (tx.value_eth && typeof tx.value_eth === 'string') {
-      // Handle K multiplier
-      if (tx.value_eth.includes('K')) {
-        const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)K/);
-        if (match && match[1]) {
-          return parseFloat(match[1].replace(/,/g, '')) * 1000;
-        }
-      } else {
-        // Regular number
-        const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
-        if (match && match[1]) {
-          return parseFloat(match[1].replace(/,/g, ''));
-        }
+      const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
+      if (match && match[1]) {
+        return parseFloat(match[1]);
       }
     }
     return 0;
@@ -488,18 +479,9 @@ export default function StakingInsights() {
     try {
       // First check if we have a parsed value already
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        // Handle K multiplier
-        if (tx.value_eth.includes('K')) {
-          const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)K/);
-          if (match && match[1]) {
-            return parseFloat(match[1].replace(/,/g, '')) * 1000;
-          }
-        } else {
-          // Regular number
-          const match = tx.value_eth.match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
-          if (match && match[1]) {
-            return parseFloat(match[1].replace(/,/g, ''));
-          }
+        const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
+        if (match && match[1]) {
+          return parseFloat(match[1]);
         }
       }
       
