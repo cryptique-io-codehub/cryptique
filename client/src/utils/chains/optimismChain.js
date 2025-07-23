@@ -104,7 +104,10 @@ export const fetchOptimismTransactions = async (contractAddress, options = {}) =
     let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to a placeholder
-    const apiKey = process.env.REACT_APP_OPTIMISM_API_KEY || "EBPK7ZQEWZKQYCJ8RX1F2387WF1Z7U1TZ1";
+    const apiKey = process.env.REACT_APP_OPTIMISM_API_KEY;
+    if (!apiKey) {
+      console.warn('REACT_APP_OPTIMISM_API_KEY is not set in environment variables');
+    }
     const baseUrl = OPTIMISTIC_ETHERSCAN_API_URL;
     
     // Fetch transactions in batches

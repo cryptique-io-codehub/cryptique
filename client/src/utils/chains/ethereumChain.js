@@ -131,7 +131,10 @@ export const fetchEthereumTransactions = async (contractAddress, options = {}) =
     let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to hardcoded for demo
-    const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || "NSZCD6S4TKVWRS13PMQFMVTNP6H7NAGHUY";
+    const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY;
+    if (!apiKey) {
+      console.warn('REACT_APP_ETHERSCAN_API_KEY is not set in environment variables');
+    }
     const baseUrl = "https://api.etherscan.io/api";
     
     // Fetch transactions in batches

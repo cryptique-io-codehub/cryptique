@@ -104,7 +104,10 @@ export const fetchPolygonTransactions = async (contractAddress, options = {}) =>
     let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to a placeholder
-    const apiKey = process.env.REACT_APP_POLYGONSCAN_API_KEY || "AKDTCUGSJTCW5WV4MMBE2NF3EAACUPW6YZ";
+    const apiKey = process.env.REACT_APP_POLYGONSCAN_API_KEY;
+    if (!apiKey) {
+      console.warn('REACT_APP_POLYGONSCAN_API_KEY is not set in environment variables');
+    }
     const baseUrl = POLYGONSCAN_API_URL;
     
     // Fetch transactions in batches

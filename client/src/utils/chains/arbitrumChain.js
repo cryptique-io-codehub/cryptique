@@ -104,7 +104,10 @@ export const fetchArbitrumTransactions = async (contractAddress, options = {}) =
     let lowestBlock = 0; // Track lowest block number for pagination when using desc order
     
     // API key from env variable, fallback to hardcoded for demo
-    const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY || "D2HXGN6QEQ6J1VRCYNZFYAPB3YEUAC5CFF";
+    const apiKey = process.env.REACT_APP_ARBISCAN_API_KEY;
+    if (!apiKey) {
+      console.warn('REACT_APP_ARBISCAN_API_KEY is not set in environment variables');
+    }
     const baseUrl = ARBISCAN_API_URL;
     
     // Fetch transactions in batches
