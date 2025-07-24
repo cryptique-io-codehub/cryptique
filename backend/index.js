@@ -305,6 +305,29 @@ app.use((req, res, next) => {
   next();
 });
 
+// Log incoming request body size for all POST requests (for debugging payload size issues)
+app.use((req, res, next) => {
+  if (req.method === 'POST') {
+    let size = 0;
+    if (req.headers['content-length']) {
+      size = parseInt(req.headers['content-length'], 10);
+    } else if (req.body) {
+      try {
+        size = Buffer.byteLength(JSON.stringify(req.body));
+      } catch (e) {
+        size = 0;
+      }
+    }
+    if (size > 0) {
+      console.log(`[PayloadSize] POST ${req.originalUrl} - ${size} bytes (${(size/1024/1024).toFixed(2)} MB)`);
+      if (size > 4.5 * 1024 * 1024) {
+        console.warn('⚠️ Payload exceeds Vercel serverless function limit (4.5MB). This request will be rejected by the platform.');
+      }
+    }
+  }
+  next();
+});
+
 // Increase JSON body size limit to 50MB
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
