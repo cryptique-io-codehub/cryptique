@@ -17,8 +17,32 @@ const sdkAxiosInstance = axios.create({
     'Accept': 'application/json'
   },
   withCredentials: false, // Don't send credentials for SDK requests
-  timeout: 60000 // 60 seconds timeout
+  timeout: 30000 // 30 seconds timeout (reduced from 60 seconds)
 });
+
+/**
+ * Retry function with exponential backoff
+ * @param {Function} fn - Function to retry
+ * @param {number} retries - Number of retries
+ * @param {number} delay - Initial delay in ms
+ * @returns {Promise} - Result of the function
+ */
+const retryWithBackoff = async (fn, retries = 2, delay = 1000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0 && (
+      error.code === 'ECONNABORTED' || 
+      error.message.includes('timeout') ||
+      (error.response && error.response.status >= 500)
+    )) {
+      console.log(`Retrying request in ${delay}ms... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryWithBackoff(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
 
 /**
  * Get analytics data for a site
@@ -26,11 +50,26 @@ const sdkAxiosInstance = axios.create({
  * @returns {Promise} - API response with analytics data or subscription error
  */
 export const getAnalytics = async (siteId) => {
-  try {
+  const fetchAnalytics = async () => {
     const response = await sdkAxiosInstance.get(`/api/sdk/analytics/${siteId}`);
     return response.data;
+  };
+
+  try {
+    const result = await retryWithBackoff(fetchAnalytics);
+    return result;
   } catch (error) {
     console.error('SDK API Error - getAnalytics:', error);
+    
+    // Handle timeout errors specifically
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      console.warn(`Analytics request timed out for site ${siteId}. This may indicate server performance issues.`);
+      return {
+        error: true,
+        message: 'Analytics data is taking longer than expected to load. Please try again.',
+        type: 'TIMEOUT'
+      };
+    }
     
     // Check if this is a subscription/grace period error
     if (error.response && error.response.status === 403) {
@@ -45,6 +84,25 @@ export const getAnalytics = async (siteId) => {
           gracePeriod: errorData.gracePeriod || null
         };
       }
+    }
+    
+    // Handle 408 Request Timeout from backend
+    if (error.response && error.response.status === 408) {
+      console.warn(`Backend timeout for site ${siteId}`);
+      return {
+        error: true,
+        message: 'The server is experiencing high load. Analytics data may take a moment to appear.',
+        type: 'SERVER_TIMEOUT'
+      };
+    }
+    
+    // Handle server errors (5xx)
+    if (error.response && error.response.status >= 500) {
+      return {
+        error: true,
+        message: 'Server error occurred while fetching analytics. Please try again later.',
+        type: 'SERVER_ERROR'
+      };
     }
     
     throw error;

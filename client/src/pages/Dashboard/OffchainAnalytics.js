@@ -53,6 +53,10 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
             setGracePeriodInfo(response.gracePeriod);
             setanalytics({});  // Clear analytics data
             setError(response.message);
+          } else if (response.error) {
+            // Handle timeout or other errors
+            setError(response.message);
+            setanalytics({});  // Clear analytics data
           } else if (response && response.analytics) {
             setInGracePeriod(false);
             setGracePeriodInfo(null);
