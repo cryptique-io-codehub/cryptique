@@ -31,6 +31,12 @@ export const AnalyticsProvider = ({ children }) => {
         return null;
       }
 
+      if (response.error) {
+        console.warn("Analytics error:", response.message);
+        setAnalyticsError(response.message);
+        return null;
+      }
+
       if (response && response.analytics) {
         // Cache the analytics data
         analyticsCache.current.set(websiteId, {

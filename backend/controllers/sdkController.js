@@ -341,39 +341,73 @@ async function ensureWebsiteConnection(siteId, analyticsId, autoVerify = false) 
 // Controller to handle getting the analytics data
 exports.getAnalytics = async (req, res) => {
   try {
-    
     const { siteId } = req.params;
     if (!siteId) {
       return res.status(400).json({ message: "Required fields are missing" });
     }
-    const analytics = await Analytics.findOne({ siteId: siteId });
-    if (!analytics) {
-      return res.json({ message: "Analytics not found" });
-    }
-    // Populate the sessions field with session data
-    console.log('t');
-    await analytics.populate("sessions");
-    await analytics.populate("hourlyStats");
-    await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId");
-    await analytics.populate("hourlyStats.analyticsSnapshot.analyticsId.sessions");
-    await analytics.populate("dailyStats");
-    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId");
-    await analytics.populate("dailyStats.analyticsSnapshot.analyticsId.sessions");
-    await analytics.populate("weeklyStats");
-    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId");
-    await analytics.populate("weeklyStats.analyticsSnapshot.analyticsId.sessions");
-    await analytics.populate("monthlyStats");
-    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId");
-    await analytics.populate("monthlyStats.analyticsSnapshot.analyticsId.sessions");
-    console.log(analytics);
-    return res
-      .status(200)
-      .json({ message: "Analytics fetched successfully", analytics });
+
+    // Set a timeout for the database operations
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database operation timeout')), 45000); // 45 seconds
+    });
+
+    const analyticsPromise = async () => {
+      const analytics = await Analytics.findOne({ siteId: siteId });
+      if (!analytics) {
+        return res.json({ message: "Analytics not found" });
+      }
+
+      // Optimize populate calls by doing them in parallel and only getting essential data
+      const [
+        populatedAnalytics,
+        hourlyStats,
+        dailyStats,
+        weeklyStats,
+        monthlyStats
+      ] = await Promise.all([
+        // Populate sessions only (most important data)
+        Analytics.findOne({ siteId: siteId }).populate("sessions").lean(),
+        
+        // Get stats separately with limited data
+        HourlyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
+        DailyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
+        WeeklyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
+        MonthlyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean()
+      ]);
+
+      // Combine the data
+      const result = {
+        ...populatedAnalytics,
+        hourlyStats,
+        dailyStats,
+        weeklyStats,
+        monthlyStats
+      };
+
+      return res.status(200).json({ 
+        message: "Analytics fetched successfully", 
+        analytics: result 
+      });
+    };
+
+    // Race between the analytics operation and timeout
+    await Promise.race([analyticsPromise(), timeoutPromise]);
+
   } catch (e) {
     console.error("Error while fetching analytics", e);
-    res
-      .status(500)
-      .json({ message: "Error while fetching analytics", error: e.message });
+    
+    // Handle timeout specifically
+    if (e.message === 'Database operation timeout') {
+      return res.status(408).json({ 
+        message: "Request timeout - analytics data is taking too long to fetch", 
+        error: "TIMEOUT" 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Error while fetching analytics", 
+      error: e.message 
+    });
   }
 };
 

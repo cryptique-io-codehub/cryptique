@@ -114,11 +114,18 @@ const Dashboard = () => {
             try {
               // Fetch analytics data
               const analyticsResponse = await sdkApi.getAnalytics(firstWebsite.siteId);
-              if (analyticsResponse && analyticsResponse.analytics) {
+              
+              // Handle different response types
+              if (analyticsResponse && analyticsResponse.error) {
+                // Handle timeout or server errors gracefully
+                console.warn(`Analytics error for ${firstWebsite.siteId}:`, analyticsResponse.message);
+                visitorCount = 0; // Default to 0 on error
+              } else if (analyticsResponse && analyticsResponse.analytics) {
                 visitorCount = analyticsResponse.analytics.uniqueVisitors || 0;
               }
             } catch (err) {
               console.error("Error fetching analytics:", err);
+              visitorCount = 0; // Default to 0 on error
             }
             
             try {
