@@ -8,6 +8,107 @@ import axiosInstance from '../../axiosInstance.js';
 import preloadData from '../../utils/preloadService.js';
 import { motion } from 'framer-motion';
 
+// Hexagon component for blockchain design
+const Hexagon = ({ size = 60, color = '#CAA968', className = '', children, ...props }) => {
+  const width = size;
+  const height = size * 1.1547; // Hexagon height ratio
+  
+  return (
+    <div 
+      className={`relative ${className}`}
+      style={{ width, height }}
+      {...props}
+    >
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <polygon
+          points={`${width/2},0 ${width},${height*0.25} ${width},${height*0.75} ${width/2},${height} 0,${height*0.75} 0,${height*0.25}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+        />
+      </svg>
+      {children && (
+        <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Hexagon Grid Component for seamless pattern
+const HexagonGrid = ({ side = 'left', color = '#CAA968' }) => {
+  const hexSize = 30;
+  const hexWidth = hexSize;
+  const hexHeight = hexSize * 1.1547;
+  const rows = Math.ceil((typeof window !== 'undefined' ? window.innerHeight : 800) / hexHeight) + 2;
+  const cols = Math.ceil(350 / hexWidth) + 2; // 350px width for extended side panels
+  
+  const hexagons = [];
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * hexWidth * 0.75;
+      const y = row * hexHeight + (col % 2) * (hexHeight / 2);
+      
+      hexagons.push(
+        <motion.div
+          key={`${side}-${row}-${col}`}
+          className="absolute"
+          style={{
+            left: x,
+            top: y,
+            width: hexWidth,
+            height: hexHeight
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          transition={{ 
+            duration: 0.5, 
+            delay: (row + col) * 0.02,
+            repeat: Infinity,
+            repeatType: "reverse"
+          }}
+        >
+          <svg width={hexWidth} height={hexHeight} viewBox={`0 0 ${hexWidth} ${hexHeight}`}>
+            <polygon
+              points={`${hexWidth/2},0 ${hexWidth},${hexHeight*0.25} ${hexWidth},${hexHeight*0.75} ${hexWidth/2},${hexHeight} 0,${hexHeight*0.75} 0,${hexHeight*0.25}`}
+              fill="none"
+              stroke={color}
+              strokeWidth="1"
+            />
+          </svg>
+        </motion.div>
+      );
+    }
+  }
+  
+  return (
+    <div 
+      className={`absolute top-0 h-full w-[350px] overflow-hidden ${side === 'left' ? 'left-0' : 'right-0'} hidden md:block`}
+      style={{ zIndex: 5 }}
+    >
+      {hexagons}
+    </div>
+  );
+};
+
+// Blockchain block component
+const BlockchainBlock = ({ className = '', ...props }) => {
+  return (
+    <motion.div 
+      className={`relative ${className}`}
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.05 }}
+      {...props}
+    >
+      <div className="border-2 border-[#CAA968] bg-transparent p-3 rounded-lg shadow-lg">
+      </div>
+    </motion.div>
+  );
+};
+
 function Interface() {
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
@@ -44,360 +145,27 @@ function Interface() {
 
   return (
     <div className="min-h-screen w-full overflow-hidden bg-[#1d0c46] relative">
-      {/* Animated Background */}
+      {/* Animated Background with Blockchain Design */}
       <div className="absolute inset-0 z-0">
         <div className="relative min-h-screen w-full max-w-full mx-auto cursor-crosshair overflow-visible">
-          {/* Central "BROKEN" Text */}
-          <motion.div 
-            className="absolute left-[50%] top-[45%] transform -translate-x-1/2 -translate-y-1/2 z-30"
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            whileHover={{ scale: 1.05, filter: 'brightness(1.5)' }}
-            whileTap={{ scale: 0.95, rotate: [-2, 2, -2, 0] }}
-          >
-            <div className="relative text-[60px] sm:text-[80px] md:text-[120px] font-black text-red-600 tracking-tight select-none filter drop-shadow-xl leading-none animate-glitch-text">
-              <span className="absolute -top-1 -left-1 text-cyan-600/40 animate-glitch-offset clip-text">BROKEN</span>
-              <span className="absolute -bottom-1 -right-1 text-yellow-600/40 animate-glitch-offset-2 clip-text">BROKEN</span>
-              <span className="bg-clip-text bg-gradient-to-br from-red-700 via-red-600 to-red-500">BROKEN</span>
-              <div className="absolute inset-0 bg-red-500/10 blur-md rounded-lg -z-10"></div>
-            </div>
-          </motion.div>
+          
+          {/* Left Side Hexagon Grid */}
+          <HexagonGrid side="left" color="#CAA968" />
+          
+          {/* Right Side Hexagon Grid */}
+          <HexagonGrid side="right" color="#CAA968" />
+          
 
-          {/* Scattered Words - Distributed across the entire page */}
-          <motion.div 
-            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[-8deg] z-20 cursor-pointer"
-            style={{ top: '5%', left: '5%' }}
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, x: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: 4 }}
-          >
-            UNTRACEABLE
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-6 z-20 cursor-pointer"
-            style={{ bottom: '8%', right: '4%' }}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, x: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -3 }}
-          >
-            NO SEGMENTATION
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[-5deg] z-20 cursor-pointer"
-            style={{ top: '12%', right: '6%' }}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: 2 }}
-          >
-            WASTED RESOURCES
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-xs sm:text-base md:text-2xl font-black text-red-600 transform rotate-[3deg] z-20 cursor-pointer"
-            style={{ bottom: '25%', left: '3%' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -1 }}
-          >
-            DISCONNECTED DATA
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-4deg] z-20 cursor-pointer"
-            style={{ top: '25%', left: '65%' }}
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: 2 }}
-          >
-            BLIND SPENDING
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[2deg] z-20 cursor-pointer"
-            style={{ top: '68%', left: '18%' }}
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -2 }}
-          >
-            ATTRIBUTION VOID
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-7deg] z-20 cursor-pointer"
-            style={{ top: '30%', right: '20%' }}
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: 3 }}
-          >
-            IDENTITY GAPS
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[5deg] z-20 cursor-pointer"
-            style={{ bottom: '20%', right: '45%' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -2 }}
-          >
-            FRAGMENTED ANALYTICS
-          </motion.div>
 
-          {/* Additional scattered words for better coverage */}
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[8deg] z-20 cursor-pointer"
-            style={{ top: '75%', right: '15%' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -2 }}
-          >
-            DATA LEAKS
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[-6deg] z-20 cursor-pointer"
-            style={{ top: '85%', left: '25%' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: 2 }}
-          >
-            SECURITY BREACH
-          </motion.div>
 
-          <motion.div 
-            className="absolute text-base md:text-2xl font-black text-red-600 transform rotate-[4deg] z-20 cursor-pointer"
-            style={{ top: '15%', left: '35%' }}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, y: { duration: 0.2 } }}
-            whileHover={{ scale: 1.2, color: '#ff0000', textShadow: '0 0 10px rgba(255,0,0,0.7)' }}
-            whileTap={{ scale: 0.9, rotate: -2 }}
-          >
-            SYSTEM FAILURE
-          </motion.div>
-
-          {/* Medium-importance terms - Distributed across the page */}
-          <motion.div 
-            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-12 z-10 cursor-pointer"
-            style={{ top: '35%', left: '10%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            incomplete data
-          </motion.div>
-
-          <motion.div 
-            className="hidden sm:block absolute text-sm md:text-lg font-bold text-red-500 transform -rotate-4 z-10 cursor-pointer"
-            style={{ bottom: '32%', left: '34%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            missing wallet data
-          </motion.div>
-
-          <motion.div 
-            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-3 z-10 cursor-pointer"
-            style={{ top: '42%', right: '10%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            broken touchpoints
-          </motion.div>
-
-          <motion.div 
-            className="hidden sm:block absolute text-sm md:text-lg font-bold text-red-500 transform -rotate-6 z-10 cursor-pointer"
-            style={{ bottom: '35%', right: '53%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3, delay: 0.15 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            siloed metrics
-          </motion.div>
-
-          {/* Additional medium-importance terms */}
-          <motion.div 
-            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-[-3deg] z-10 cursor-pointer"
-            style={{ top: '55%', left: '45%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            corrupted files
-          </motion.div>
-
-          <motion.div 
-            className="absolute text-xs sm:text-sm md:text-lg font-bold text-red-500 transform rotate-[5deg] z-10 cursor-pointer"
-            style={{ bottom: '45%', left: '15%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.85 }}
-            transition={{ duration: 0.3, delay: 0.25 }}
-            whileHover={{ scale: 1.15, color: '#ff2d2d', textShadow: '0 0 5px rgba(255,0,0,0.3)' }}
-          >
-            lost connections
-          </motion.div>
-
-          {/* Error Messages - Distributed across the page */}
-          <motion.div 
-            className="absolute top-[5%] left-[40%] transform -translate-x-1/2 bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[-2deg] cursor-pointer border-l-2 border-red-600"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.95 }}
-            transition={{ duration: 0.2 }}
-            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,0,0,0.6)' }}
-            whileTap={{ scale: 0.9, rotate: 2 }}
-          >
-            <span className="text-red-500 mr-0.5">❌</span>
-            <span className="text-red-500 font-bold">ERROR:</span>
-            <span className="ml-0.5 animate-pulse">tracking failed</span>
-          </motion.div>
-
-          <motion.div 
-            className="absolute bottom-[8%] left-[25%] transform bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[1deg] cursor-pointer border-l-2 border-yellow-500"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.95 }}
-            transition={{ duration: 0.2, delay: 0.1 }}
-            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,255,0,0.6)' }}
-            whileTap={{ scale: 0.9, rotate: -1 }}
-          >
-            <span className="text-yellow-500 mr-0.5">⚠️</span>
-            <span className="text-yellow-400 font-bold">WARNING:</span>
-            <span className="ml-0.5">data corrupted</span>
-          </motion.div>
-
-          {/* Additional error messages */}
-          <motion.div 
-            className="absolute top-[25%] right-[15%] transform bg-black/90 text-white p-1 rounded font-mono text-[8px] sm:text-[10px] shadow-md z-25 rotate-[2deg] cursor-pointer border-l-2 border-red-600"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.95 }}
-            transition={{ duration: 0.2, delay: 0.15 }}
-            whileHover={{ scale: 1.2, boxShadow: '0 0 8px rgba(255,0,0,0.6)' }}
-            whileTap={{ scale: 0.9, rotate: -2 }}
-          >
-            <span className="text-red-500 mr-0.5">❌</span>
-            <span className="text-red-500 font-bold">ERROR:</span>
-            <span className="ml-0.5 animate-pulse">system crash</span>
-          </motion.div>
-
-          {/* Technical Fragments - Distributed across the page */}
-          <motion.div 
-            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
-            style={{ top: '25%', left: '48%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            0xF7E9
-          </motion.div>
-
-          <motion.div 
-            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
-            style={{ bottom: '25%', right: '38%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 0.2 }}
-          >
-            0xA1B2
-          </motion.div>
-
-          {/* Additional technical fragments */}
-          <motion.div 
-            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
-            style={{ top: '65%', left: '28%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 0.4 }}
-          >
-            0xC4D5
-          </motion.div>
-
-          <motion.div 
-            className="hidden sm:block absolute text-xs font-mono text-red-500/60 z-5"
-            style={{ bottom: '15%', left: '55%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
-          >
-            0xE6F7
-          </motion.div>
-
-          {/* Glitch Lines - Distributed across the page */}
-          <motion.div 
-            className="hidden sm:block absolute w-32 h-0.5 bg-red-500/40 z-10 left-1/2 transform -translate-x-1/2 rotate-45 cursor-crosshair"
-            style={{ bottom: '30%' }}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5 }}
-            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
-          >
-            <div className="w-full h-full animate-glitch-horizontal"></div>
-          </motion.div>
-
-          <motion.div 
-            className="hidden sm:block absolute w-24 h-0.5 bg-red-500/40 z-10 right-[30%] rotate-[-30deg] cursor-crosshair"
-            style={{ top: '40%' }}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
-          >
-            <div className="w-full h-full animate-glitch-horizontal"></div>
-          </motion.div>
-
-          {/* Additional glitch lines */}
-          <motion.div 
-            className="hidden sm:block absolute w-28 h-0.5 bg-red-500/40 z-10 left-[20%] rotate-[60deg] cursor-crosshair"
-            style={{ top: '75%' }}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            whileHover={{ height: "1.5px", backgroundColor: "rgba(255, 0, 0, 0.7)" }}
-          >
-            <div className="w-full h-full animate-glitch-horizontal"></div>
-          </motion.div>
-
-          {/* System Error Message */}
-          <motion.div 
-            className="absolute text-xs font-mono text-red-400/80 z-20 cursor-pointer"
-            style={{ bottom: '3%', left: '50%', transform: 'translateX(-50%)' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.7 }}
-            whileHover={{ scale: 1.1, color: "#ff2d2d" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-              error: Web3 marketing system failure
-            </motion.span>
-          </motion.div>
 
           {/* Mobile Gradient Overlay */}
           <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1d0c46] to-transparent sm:hidden"></div>
@@ -411,6 +179,7 @@ function Interface() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
+          style={{ zIndex: 20 }}
         >
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
