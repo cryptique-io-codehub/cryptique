@@ -55,6 +55,14 @@ const sessionSchema = new mongoose.Schema({
 // Add index for sessionId and userId
 sessionSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
 
+// Add performance indexes for analytics queries
+sessionSchema.index({ siteId: 1, startTime: -1 }); // Primary analytics query index
+sessionSchema.index({ siteId: 1, isWeb3User: 1, startTime: -1 }); // Web3 analytics
+sessionSchema.index({ siteId: 1, country: 1, startTime: -1 }); // Geographic analytics
+sessionSchema.index({ siteId: 1, 'utmData.source': 1, startTime: -1 }); // Traffic source analytics
+sessionSchema.index({ siteId: 1, referrer: 1, startTime: -1 }); // Referrer analytics
+sessionSchema.index({ userId: 1, siteId: 1, startTime: -1 }); // User journey analytics
+
 // Pre-save middleware to update session data
 sessionSchema.pre('save', function(next) {
     // First check wallet data to determine isWeb3User

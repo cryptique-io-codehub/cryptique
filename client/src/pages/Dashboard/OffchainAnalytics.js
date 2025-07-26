@@ -44,8 +44,16 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
       if(idt){
         setverifyload(true);
         try {
-          // Use the SDK API utility instead of the axios instance
-          const response = await sdkApi.getAnalytics(idt);
+          // Use optimized SDK API with date range filtering
+          const response = await sdkApi.getAnalytics(idt, {
+            dateRange: selectedDate === 'Select Date' ? '30d' : 
+                      selectedDate === 'today' ? '1d' :
+                      selectedDate === 'yesterday' ? '1d' :
+                      selectedDate === 'last7days' ? '7d' :
+                      selectedDate === 'last30days' ? '30d' : '30d',
+            includeDetailedSessions: false, // Don't load detailed sessions for main view
+            useCache: true
+          });
           
           // Check if we received a subscription error
           if (response.subscriptionError) {
@@ -61,8 +69,9 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
             setInGracePeriod(false);
             setGracePeriodInfo(null);
             setanalytics(response.analytics);
-            // Initialize chart data if not already set
-            if (!chartData) {
+            
+            // Initialize optimized chart data structure
+            if (!chartData || !response.analytics.optimized) {
               setChartData({
                 labels: [],
                 datasets: [
@@ -93,7 +102,7 @@ const OffchainAnalytics = ({ onMenuClick, screenSize,selectedPage }) => {
       }
     }
     handleSelectWebsite();
-  },[idy]);
+  },[idy, selectedDate]); // Added selectedDate dependency for optimized filtering
 
   // Add this after the other useEffect hooks
   useEffect(() => {
@@ -189,22 +198,24 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
   );
 
 
-  // Fetch analytics data from server when filters change
+  // Optimized data fetching with parallel requests and caching
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        console.log('Fetching data for siteId:', idy);
+        console.log('Fetching optimized data for siteId:', idy);
         
         // Get date range from selectedDate
         let startDate, endDate;
         if (selectedDate === 'Select Date') {
-          // If no date is selected, use today's date
-          const today = new Date();
-          startDate = today.toISOString().split('T')[0];
-          endDate = startDate;
+          // If no date is selected, use last 7 days
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
         } else if (selectedDate === 'today') {
           const today = new Date();
           startDate = today.toISOString().split('T')[0];
@@ -232,94 +243,116 @@ const avgVisitDuration = formatDuration(rawAvgDuration);
           endDate = selectedDate;
         }
 
-        console.log('Fetching chart data with params:', {
+        console.log('Fetching optimized chart and traffic data with params:', {
           siteId: idy,
           timeframe: 'hourly',
           start: startDate,
           end: endDate
         });
 
-        // Fetch chart data from API - use try-catch for each request
-        let chartResponse;
-        try {
-          chartResponse = await sdkApi.getChart(idy, startDate, endDate);
-        } catch (chartError) {
-          console.error('Chart API Error:', chartError);
-          // Continue execution even if this request fails
-        }
+        // Fetch chart and traffic data in parallel for better performance
+        const [chartResponse, trafficResponse] = await Promise.allSettled([
+          sdkApi.getChart(idy, startDate, endDate, 'hourly'),
+          sdkApi.getTrafficSources(idy, startDate, endDate)
+        ]);
 
-        if (chartResponse?.data) {
-          if (chartResponse.data.error) {
-            console.warn("Chart data error:", chartResponse.data.error);
-          } else {
-            // Transform the data to match the expected format
+        // Handle chart data
+        if (chartResponse.status === 'fulfilled' && chartResponse.value?.data) {
+          const chartData = chartResponse.value.data;
+          if (chartData.error) {
+            console.warn("Chart data error:", chartData.error);
+          } else if (chartData.optimized) {
+            // Use optimized chart data format
             const transformedChartData = {
-              labels: chartResponse.data.labels || [],
+              labels: chartData.labels || [],
               datasets: [
                 {
                   label: 'Visitors',
-                  data: chartResponse.data.visitors || []
+                  data: chartData.visitors || [],
+                  backgroundColor: 'rgba(252, 211, 77, 0.5)',
+                  borderColor: '#fcd34d',
+                  borderWidth: 1
                 },
                 {
                   label: 'Wallets',
-                  data: chartResponse.data.wallets || []
+                  data: chartData.wallets || [],
+                  backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                  borderColor: '#8b5cf6',
+                  borderWidth: 1
                 }
               ]
             };
-            
             setChartData(transformedChartData);
           }
+        } else if (chartResponse.status === 'rejected') {
+          console.error('Chart API Error:', chartResponse.reason);
         }
 
-        // Fetch traffic sources data - use try-catch for each request
-        let trafficResponse;
-        try {
-          trafficResponse = await sdkApi.getTrafficSources(idy, startDate, endDate);
-          
-          if (trafficResponse?.data) {
-            if (trafficResponse.data.error) {
-              console.warn("Traffic sources data error:", trafficResponse.data.error);
-            } else {
-              setTrafficSources(trafficResponse.data.sources || []);
-            }
+        // Handle traffic sources data
+        if (trafficResponse.status === 'fulfilled' && trafficResponse.value?.data) {
+          const trafficData = trafficResponse.value.data;
+          if (trafficData.error) {
+            console.warn("Traffic sources data error:", trafficData.error);
+          } else {
+            setTrafficSources(trafficData.sources || []);
           }
-        } catch (trafficError) {
-          console.error('Traffic Sources API Error:', trafficError);
-          // Continue execution even if this request fails
+        } else if (trafficResponse.status === 'rejected') {
+          console.error('Traffic Sources API Error:', trafficResponse.reason);
         }
 
-        // Update Web3 data using the standardized helper
-        const web3Stats = calculateWeb3Stats(analytics?.sessions, analytics?.uniqueVisitors);
-        
-        // Store the web3Users count in state for use in the card
-        setWeb3UsersCount(web3Stats.web3Users);
-
-        // Update web3Data state with the standardized values
-        const web3Data = {
-          visitorsPercentage: `${web3Stats.web3Percentage}%`,
-          visitorsIncrease: `${web3Stats.web3Percentage}% Increase`,
-          walletsConnected: web3Stats.walletsConnected,
-          walletsIncrease: `${web3Stats.walletsPercentage}% Increase`
-        };
-
-        setWeb3Data(web3Data);
+        // Update Web3 data using optimized analytics data
+        if (analytics && analytics.optimized) {
+          // Use pre-computed values from optimized analytics
+          const web3UsersCount = analytics.web3UsersCount || 0;
+          const totalVisitors = analytics.uniqueVisitors || 1;
+          const walletsConnected = analytics.walletsConnected || 0;
+          
+          setWeb3UsersCount(web3UsersCount);
+          
+          const web3Percentage = totalVisitors > 0 ? ((web3UsersCount / totalVisitors) * 100).toFixed(2) : 0;
+          const walletsPercentage = totalVisitors > 0 ? ((walletsConnected / totalVisitors) * 100).toFixed(2) : 0;
+          
+          const web3Data = {
+            visitorsPercentage: `${web3Percentage}%`,
+            visitorsIncrease: `${web3Percentage}% Increase`,
+            walletsConnected: walletsConnected,
+            walletsIncrease: `${walletsPercentage}% Increase`
+          };
+          
+          setWeb3Data(web3Data);
+        } else if (analytics?.sessions) {
+          // Fallback to legacy calculation if not optimized
+          const web3Stats = calculateWeb3Stats(analytics.sessions, analytics.uniqueVisitors);
+          setWeb3UsersCount(web3Stats.web3Users);
+          
+          const web3Data = {
+            visitorsPercentage: `${web3Stats.web3Percentage}%`,
+            visitorsIncrease: `${web3Stats.web3Percentage}% Increase`,
+            walletsConnected: web3Stats.walletsConnected,
+            walletsIncrease: `${web3Stats.walletsPercentage}% Increase`
+          };
+          
+          setWeb3Data(web3Data);
+        }
 
       } catch (err) {
-        console.error('Error in fetchData:', err);
+        console.error('Error in optimized fetchData:', err);
         setError(err.message || 'Failed to load analytics data. Please try again later.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (idy) {
-      console.log('Starting data fetch with idy:', idy);
+    if (idy && analytics) {
+      console.log('Starting optimized data fetch with idy:', idy);
       fetchData();
+    } else if (idy && !analytics) {
+      console.log('Waiting for analytics data before fetching chart/traffic data');
     } else {
       console.log('No idy available, skipping data fetch');
       setError('No website selected. Please select a website to view analytics.');
     }
-  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.uniqueVisitors, analytics?.sessions]);
+  }, [idy, selectedDate, selectedFilters, activeSection, analytics?.optimized]); // Optimized dependencies
 
   // Handler for clicking on a data point - updated to also set traffic sources data
   const handleDataPointClick = (dataPoint, index) => {

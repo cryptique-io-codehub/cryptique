@@ -1,6 +1,7 @@
 /**
  * sdkApi.js - Utility functions for interacting with Cryptique SDK APIs
  * Uses a non-credentialed axios instance for CORS compatibility
+ * OPTIMIZED VERSION with caching and performance improvements
  */
 
 import axios from 'axios';
@@ -17,8 +18,34 @@ const sdkAxiosInstance = axios.create({
     'Accept': 'application/json'
   },
   withCredentials: false, // Don't send credentials for SDK requests
-  timeout: 30000 // 30 seconds timeout (reduced from 60 seconds)
+  timeout: 20000 // Reduced timeout for faster feedback
 });
+
+// Simple in-memory cache for API responses
+const apiCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Cache helper functions
+ */
+const getCacheKey = (endpoint, params) => {
+  return `${endpoint}_${JSON.stringify(params)}`;
+};
+
+const getCachedData = (key) => {
+  const cached = apiCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedData = (key, data) => {
+  apiCache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
+};
 
 /**
  * Retry function with exponential backoff
@@ -45,18 +72,47 @@ const retryWithBackoff = async (fn, retries = 2, delay = 1000) => {
 };
 
 /**
- * Get analytics data for a site
+ * Get analytics data for a site - OPTIMIZED VERSION
  * @param {string} siteId - The site ID to fetch analytics for
+ * @param {Object} options - Additional options
  * @returns {Promise} - API response with analytics data or subscription error
  */
-export const getAnalytics = async (siteId) => {
+export const getAnalytics = async (siteId, options = {}) => {
+  const {
+    dateRange = '30d',
+    includeDetailedSessions = false,
+    useCache = true
+  } = options;
+
+  // Check cache first
+  const cacheKey = getCacheKey('analytics', { siteId, dateRange, includeDetailedSessions });
+  if (useCache) {
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      console.log('Using cached analytics data');
+      return cachedData;
+    }
+  }
+
   const fetchAnalytics = async () => {
-    const response = await sdkAxiosInstance.get(`/api/sdk/analytics/${siteId}`);
+    const response = await sdkAxiosInstance.get(`/api/sdk/analytics/${siteId}`, {
+      params: {
+        dateRange,
+        includeDetailedSessions,
+        limit: includeDetailedSessions ? 1000 : 0
+      }
+    });
     return response.data;
   };
 
   try {
     const result = await retryWithBackoff(fetchAnalytics);
+    
+    // Cache successful responses
+    if (result && !result.error && !result.subscriptionError && useCache) {
+      setCachedData(cacheKey, result);
+    }
+    
     return result;
   } catch (error) {
     console.error('SDK API Error - getAnalytics:', error);
@@ -110,7 +166,7 @@ export const getAnalytics = async (siteId) => {
 };
 
 /**
- * Get chart data for a site
+ * Get chart data for a site - OPTIMIZED VERSION
  * @param {string} siteId - The site ID
  * @param {string} startDate - Start date in ISO format
  * @param {string} endDate - End date in ISO format
@@ -118,6 +174,14 @@ export const getAnalytics = async (siteId) => {
  * @returns {Promise} - API response with chart data
  */
 export const getChart = async (siteId, startDate, endDate, timeframe = 'hourly') => {
+  // Check cache first
+  const cacheKey = getCacheKey('chart', { siteId, startDate, endDate, timeframe });
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    console.log('Using cached chart data');
+    return cachedData;
+  }
+
   try {
     // Note: This endpoint uses the authenticated axiosInstance (not SDK endpoint)
     const response = await axiosInstance.get('/analytics/chart', {
@@ -128,6 +192,12 @@ export const getChart = async (siteId, startDate, endDate, timeframe = 'hourly')
         end: endDate
       }
     });
+    
+    // Cache successful responses
+    if (response.data && !response.data.error) {
+      setCachedData(cacheKey, response);
+    }
+    
     return response;
   } catch (error) {
     console.error('SDK API Error - getChart:', error);
@@ -136,13 +206,21 @@ export const getChart = async (siteId, startDate, endDate, timeframe = 'hourly')
 };
 
 /**
- * Get traffic sources data for a site
+ * Get traffic sources data for a site - OPTIMIZED VERSION
  * @param {string} siteId - The site ID
  * @param {string} startDate - Start date in ISO format
  * @param {string} endDate - End date in ISO format
  * @returns {Promise} - API response with traffic sources data
  */
 export const getTrafficSources = async (siteId, startDate, endDate) => {
+  // Check cache first
+  const cacheKey = getCacheKey('traffic-sources', { siteId, startDate, endDate });
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    console.log('Using cached traffic sources data');
+    return cachedData;
+  }
+
   try {
     // Note: This endpoint uses the authenticated axiosInstance (not SDK endpoint)
     const response = await axiosInstance.get('/analytics/traffic-sources', {
@@ -152,11 +230,36 @@ export const getTrafficSources = async (siteId, startDate, endDate) => {
         end: endDate
       }
     });
+    
+    // Cache successful responses
+    if (response.data && !response.data.error) {
+      setCachedData(cacheKey, response);
+    }
+    
     return response;
   } catch (error) {
     console.error('SDK API Error - getTrafficSources:', error);
     throw error;
   }
+};
+
+/**
+ * Clear cache for a specific site or all cache
+ * @param {string} siteId - Optional site ID to clear cache for
+ */
+export const clearCache = (siteId = null) => {
+  if (siteId) {
+    // Clear cache entries for specific site
+    for (const key of apiCache.keys()) {
+      if (key.includes(siteId)) {
+        apiCache.delete(key);
+      }
+    }
+  } else {
+    // Clear all cache
+    apiCache.clear();
+  }
+  console.log('API cache cleared');
 };
 
 /**
@@ -183,5 +286,6 @@ export default {
   getAnalytics,
   getChart,
   getTrafficSources,
-  verifySite
+  verifySite,
+  clearCache
 }; 

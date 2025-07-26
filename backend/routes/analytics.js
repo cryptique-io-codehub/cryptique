@@ -34,20 +34,18 @@ router.options('*', (req, res) => {
   res.status(204).end();
 });
 
-// Get chart data
+// Get chart data - OPTIMIZED VERSION
 router.get('/chart', async (req, res) => {
   try {
-    const { siteId, timeframe, start, end } = req.query;
+    const { siteId, timeframe = 'hourly', start, end } = req.query;
     
     if (!siteId) {
       return res.status(400).json({ error: 'Site ID is required' });
     }
 
-    const processor = new AnalyticsProcessor(siteId);
-    
     // Parse dates if provided
-    const startDate = start ? new Date(start) : null;
-    const endDate = end ? new Date(end) : null;
+    const startDate = start ? new Date(start) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const endDate = end ? new Date(end) : new Date();
     
     // Validate dates
     if (startDate && isNaN(startDate.getTime())) {
@@ -56,16 +54,103 @@ router.get('/chart', async (req, res) => {
     if (endDate && isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date' });
     }
+
+    // Use aggregation to generate chart data directly from sessions
+    const Session = require('../models/session'); // Added missing import
+    const chartDataAggregation = await Session.aggregate([
+      {
+        $match: {
+          siteId: siteId,
+          startTime: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: timeframe === 'daily' ? '%Y-%m-%d %H:00' : '%Y-%m-%d %H:%M',
+              date: {
+                $dateTrunc: {
+                  date: '$startTime',
+                  unit: timeframe === 'daily' ? 'hour' : 'minute',
+                  binSize: timeframe === 'daily' ? 1 : 30
+                }
+              }
+            }
+          },
+          visitors: { $sum: 1 },
+          wallets: {
+            $sum: {
+              $cond: [{ $eq: ['$isWeb3User', true] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $sort: { '_id': 1 }
+      },
+      {
+        $project: {
+          timestamp: '$_id',
+          visitors: 1,
+          wallets: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Fill in missing time slots with zero values
+    const filledData = [];
+    const timeSlots = [];
     
-    const chartData = await processor.getChartData(timeframe, startDate, endDate);
+    // Generate all time slots in range
+    const current = new Date(startDate);
+    const increment = timeframe === 'daily' ? 60 * 60 * 1000 : 30 * 60 * 1000; // 1 hour or 30 minutes
+    
+    while (current <= endDate) {
+      const timeKey = timeframe === 'daily' 
+        ? current.toISOString().slice(0, 13) + ':00'
+        : current.toISOString().slice(0, 16);
+      timeSlots.push(timeKey);
+      current.setTime(current.getTime() + increment);
+    }
+
+    // Map aggregated data to time slots
+    const dataMap = new Map();
+    chartDataAggregation.forEach(item => {
+      dataMap.set(item.timestamp, item);
+    });
+
+    timeSlots.forEach(timeSlot => {
+      const data = dataMap.get(timeSlot) || { visitors: 0, wallets: 0 };
+      filledData.push({
+        timestamp: timeSlot,
+        visitors: data.visitors,
+        wallets: data.wallets
+      });
+    });
+
+    const chartData = {
+      labels: filledData.map(d => d.timestamp),
+      visitors: filledData.map(d => d.visitors),
+      wallets: filledData.map(d => d.wallets),
+      metadata: {
+        timeframe,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        dataPoints: filledData.length,
+        optimized: true
+      }
+    };
+
     res.json(chartData);
   } catch (error) {
-    console.error('Error getting chart data:', error);
+    console.error('Error getting optimized chart data:', error);
     res.status(500).json({ error: 'Failed to get chart data' });
   }
 });
 
-// Get traffic sources data
+// Get traffic sources data - OPTIMIZED VERSION
 router.get('/traffic-sources', async (req, res) => {
   try {
     const { siteId, start, end } = req.query;
@@ -74,11 +159,9 @@ router.get('/traffic-sources', async (req, res) => {
       return res.status(400).json({ error: 'Site ID is required' });
     }
 
-    const processor = new AnalyticsProcessor(siteId);
-    
     // Parse dates if provided
-    const startDate = start ? new Date(start) : null;
-    const endDate = end ? new Date(end) : null;
+    const startDate = start ? new Date(start) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const endDate = end ? new Date(end) : new Date();
     
     // Validate dates
     if (startDate && isNaN(startDate.getTime())) {
@@ -87,11 +170,118 @@ router.get('/traffic-sources', async (req, res) => {
     if (endDate && isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date' });
     }
+
+    const Session = require('../models/session');
     
-    const trafficSources = await processor.getTrafficSources(startDate, endDate);
-    res.json({ sources: trafficSources });
+    // Aggregate traffic sources directly from sessions
+    const trafficSourcesAggregation = await Session.aggregate([
+      {
+        $match: {
+          siteId: siteId,
+          startTime: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            source: {
+              $cond: [
+                { $and: [
+                  { $ne: ['$utmData.source', null] },
+                  { $ne: ['$utmData.source', ''] }
+                ]},
+                '$utmData.source',
+                {
+                  $cond: [
+                    { $and: [
+                      { $ne: ['$referrer', null] },
+                      { $ne: ['$referrer', ''] }
+                    ]},
+                    {
+                      $switch: {
+                        branches: [
+                          { case: { $regexMatch: { input: '$referrer', regex: /twitter|t\.co/i } }, then: 'Twitter' },
+                          { case: { $regexMatch: { input: '$referrer', regex: /linkedin/i } }, then: 'LinkedIn' },
+                          { case: { $regexMatch: { input: '$referrer', regex: /instagram/i } }, then: 'Instagram' },
+                          { case: { $regexMatch: { input: '$referrer', regex: /facebook/i } }, then: 'Facebook' },
+                          { case: { $regexMatch: { input: '$referrer', regex: /google/i } }, then: 'Google' },
+                          { case: { $regexMatch: { input: '$referrer', regex: /github/i } }, then: 'GitHub' }
+                        ],
+                        default: 'Other'
+                      }
+                    },
+                    'Direct'
+                  ]
+                }
+              ]
+            }
+          },
+          visitors: { $sum: 1 },
+          wallets: {
+            $sum: {
+              $cond: [{ $eq: ['$isWeb3User', true] }, 1, 0]
+            }
+          },
+          wallets_section: {
+            $sum: {
+              $cond: [
+                { $and: [
+                  { $eq: ['$isWeb3User', true] },
+                  { $ne: ['$wallet.walletAddress', ''] },
+                  { $ne: ['$wallet.walletAddress', 'No Wallet Detected'] }
+                ]},
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          source: '$_id.source',
+          visitors: 1,
+          wallets: 1,
+          wallets_section: 1,
+          _id: 0
+        }
+      },
+      {
+        $sort: { visitors: -1 }
+      }
+    ]);
+
+    // Map to expected format and add icons
+    const iconMap = {
+      'Twitter': 'twitter',
+      'LinkedIn': 'linkedin', 
+      'Instagram': 'instagram',
+      'Facebook': 'facebook',
+      'Google': 'google',
+      'GitHub': 'github',
+      'Direct': 'direct',
+      'Other': 'other'
+    };
+
+    const trafficSources = trafficSourcesAggregation.map(item => ({
+      source: item.source || 'Unknown',
+      icon: iconMap[item.source] || 'other',
+      visitors: item.visitors,
+      wallets: item.wallets,
+      wallets_section: item.wallets_section
+    }));
+
+    res.json({ 
+      sources: trafficSources,
+      metadata: {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        totalSources: trafficSources.length,
+        optimized: true
+      }
+    });
   } catch (error) {
-    console.error('Error getting traffic sources:', error);
+    console.error('Error getting optimized traffic sources:', error);
     res.status(500).json({ error: 'Failed to get traffic sources' });
   }
 });

@@ -338,55 +338,183 @@ async function ensureWebsiteConnection(siteId, analyticsId, autoVerify = false) 
   }
 }
 
-// Controller to handle getting the analytics data
+// Replace the existing analytics fetching logic with optimized version
 exports.getAnalytics = async (req, res) => {
-  try {
-    const { siteId } = req.params;
-    if (!siteId) {
-      return res.status(400).json({ message: "Required fields are missing" });
-    }
+  const { siteId } = req.params;
+  const { 
+    limit = 1000, 
+    offset = 0, 
+    dateRange = '30d',
+    includeDetailedSessions = false 
+  } = req.query;
 
-    // Set a timeout for the database operations
+  try {
+    console.log(`Fetching optimized analytics for siteId: ${siteId}`);
+
+    // Set timeout for database operations
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Database operation timeout')), 45000); // 45 seconds
+      setTimeout(() => reject(new Error('Database operation timeout')), 30000); // Reduced to 30 seconds
     });
 
     const analyticsPromise = async () => {
-      const analytics = await Analytics.findOne({ siteId: siteId });
+      // First, get basic analytics without sessions
+      const analytics = await Analytics.findOne({ siteId: siteId })
+        .select('-sessions') // Exclude sessions array
+        .lean();
+
       if (!analytics) {
         return res.json({ message: "Analytics not found" });
       }
 
-      // Optimize populate calls by doing them in parallel and only getting essential data
-      const [
-        populatedAnalytics,
-        hourlyStats,
-        dailyStats,
-        weeklyStats,
-        monthlyStats
-      ] = await Promise.all([
-        // Populate sessions only (most important data)
-        Analytics.findOne({ siteId: siteId }).populate("sessions").lean(),
-        
-        // Get stats separately with limited data
+      // Calculate date range for session queries
+      const now = new Date();
+      let startDate;
+      switch (dateRange) {
+        case '1d':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+
+      // Get aggregated session data instead of individual sessions
+      const sessionAggregation = await Session.aggregate([
+        {
+          $match: {
+            siteId: siteId,
+            startTime: { $gte: startDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalSessions: { $sum: 1 },
+            uniqueUsers: { $addToSet: "$userId" },
+            totalPageViews: { $sum: "$pagesViewed" },
+            totalDuration: { $sum: "$duration" },
+            bounces: {
+              $sum: {
+                $cond: [{ $eq: ["$isBounce", true] }, 1, 0]
+              }
+            },
+            web3Sessions: {
+              $sum: {
+                $cond: [{ $eq: ["$isWeb3User", true] }, 1, 0]
+              }
+            },
+            countries: { $addToSet: "$country" },
+            // Get sample sessions for detailed analysis if needed
+            sampleSessions: {
+              $push: {
+                $cond: [
+                  includeDetailedSessions,
+                  {
+                    sessionId: "$sessionId",
+                    userId: "$userId",
+                    startTime: "$startTime",
+                    duration: "$duration",
+                    pagesViewed: "$pagesViewed",
+                    isBounce: "$isBounce",
+                    isWeb3User: "$isWeb3User",
+                    country: "$country",
+                    wallet: "$wallet"
+                  },
+                  null
+                ]
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            totalSessions: 1,
+            uniqueVisitors: { $size: "$uniqueUsers" },
+            totalPageViews: 1,
+            avgDuration: {
+              $cond: [
+                { $gt: ["$totalSessions", 0] },
+                { $divide: ["$totalDuration", "$totalSessions"] },
+                0
+              ]
+            },
+            bounceRate: {
+              $cond: [
+                { $gt: ["$totalSessions", 0] },
+                { $multiply: [{ $divide: ["$bounces", "$totalSessions"] }, 100] },
+                0
+              ]
+            },
+            web3UserCount: "$web3Sessions",
+            countries: 1,
+            sampleSessions: {
+              $cond: [
+                includeDetailedSessions,
+                { $slice: ["$sampleSessions", parseInt(limit)] },
+                []
+              ]
+            }
+          }
+        }
+      ]);
+
+      const sessionStats = sessionAggregation[0] || {
+        totalSessions: 0,
+        uniqueVisitors: 0,
+        totalPageViews: 0,
+        avgDuration: 0,
+        bounceRate: 0,
+        web3UserCount: 0,
+        countries: [],
+        sampleSessions: []
+      };
+
+      // Get pre-computed stats in parallel
+      const [hourlyStats, dailyStats, weeklyStats, monthlyStats] = await Promise.all([
         HourlyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
         DailyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
         WeeklyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean(),
         MonthlyStats.findOne({ siteId }).select('analyticsSnapshot lastSnapshotAt').lean()
       ]);
 
-      // Combine the data
-      const result = {
-        ...populatedAnalytics,
+      // Combine optimized data
+      const optimizedAnalytics = {
+        ...analytics,
+        // Override with fresh calculated values
+        totalSessions: sessionStats.totalSessions,
+        uniqueVisitors: sessionStats.uniqueVisitors,
+        totalPageViews: sessionStats.totalPageViews,
+        avgDuration: sessionStats.avgDuration,
+        bounceRate: sessionStats.bounceRate,
+        web3UsersCount: sessionStats.web3UserCount,
+        
+        // Provide minimal session data for compatibility
+        sessions: sessionStats.sampleSessions,
+        sessionSummary: {
+          total: sessionStats.totalSessions,
+          dateRange: dateRange,
+          countries: sessionStats.countries
+        },
+        
+        // Pre-computed stats
         hourlyStats,
         dailyStats,
         weeklyStats,
-        monthlyStats
+        monthlyStats,
+        
+        // Performance metadata
+        optimized: true,
+        queryTime: new Date().toISOString()
       };
 
       return res.status(200).json({ 
-        message: "Analytics fetched successfully", 
-        analytics: result 
+        message: "Optimized analytics fetched successfully", 
+        analytics: optimizedAnalytics
       });
     };
 
@@ -394,7 +522,7 @@ exports.getAnalytics = async (req, res) => {
     await Promise.race([analyticsPromise(), timeoutPromise]);
 
   } catch (e) {
-    console.error("Error while fetching analytics", e);
+    console.error("Error while fetching optimized analytics", e);
     
     // Handle timeout specifically
     if (e.message === 'Database operation timeout') {
