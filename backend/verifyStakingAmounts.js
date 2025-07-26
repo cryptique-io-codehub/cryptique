@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 const Transaction = require('./models/transaction');
 
+// Helper function to properly parse transaction values by removing commas
+const parseTransactionValue = (value) => {
+  if (!value) return 0;
+  const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+  const parsed = parseFloat(cleanValue);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 async function verifyStakingAmounts() {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://devs:62DVg3eFu10gvUIB@cluster0.vc5dz.mongodb.net/Cryptique-Test-Server');
@@ -37,10 +45,7 @@ async function verifyStakingAmounts() {
       }
 
       if (amount === 0 && tx.value_eth) {
-        const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
-        if (match && match[1]) {
-          amount = parseFloat(match[1]);
-        }
+        amount = parseTransactionValue(tx.value_eth);
       }
 
       if (amount === 0 && tx.input) {

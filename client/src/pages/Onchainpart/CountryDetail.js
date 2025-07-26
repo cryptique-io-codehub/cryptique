@@ -35,6 +35,14 @@ const countryCodeToName = {
 };
 
 const CountryDetail = ({ countryCode, analytics, contractData }) => {
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   // Return null if no country selected
   if (!countryCode) {
     return null;
@@ -142,8 +150,8 @@ const CountryDetail = ({ countryCode, analytics, contractData }) => {
         
         walletTxs.forEach(tx => {
           if (tx.value_eth) {
-            const value = parseFloat(tx.value_eth);
-            if (!isNaN(value)) {
+            const value = parseTransactionValue(tx.value_eth);
+            if (value > 0) {
               transactionVolume += value;
             }
           }

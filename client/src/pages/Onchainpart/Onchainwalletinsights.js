@@ -4,6 +4,14 @@ import { useContractData } from '../../contexts/ContractDataContext';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 
 export default function Onchainwalletinsights() {
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [activeWalletDetail, setActiveWalletDetail] = useState(null);
@@ -65,7 +73,7 @@ export default function Onchainwalletinsights() {
         
         const walletData = walletMap.get(fromWallet);
         walletData.transactions += 1;
-        const txValue = parseFloat(tx.value_eth) || 0;
+        const txValue = parseTransactionValue(tx.value_eth);
         walletData.totalSent += txValue;
         walletData.volume += txValue;
         walletData.uniqueInteractions.add(tx.to_address);

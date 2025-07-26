@@ -45,6 +45,14 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
   // Add state for expert knowledge
   const [expertContext, setExpertContext] = useState('');
 
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -1262,8 +1270,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         uniqueUsers: new Set(transactions.map(tx => tx.from_address)).size,
         uniqueReceivers: new Set(transactions.map(tx => tx.to_address)).size,
         totalVolume: transactions.reduce((sum, tx) => {
-          const value = parseFloat(tx.value_eth) || 0;
-          return isNaN(value) ? sum : sum + value;
+          const value = parseTransactionValue(tx.value_eth);
+          return sum + value;
         }, 0),
         averageTransactionValue: 0,
         medianTransactionValue: 0
@@ -1315,7 +1323,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     // Calculate average and median transaction values
-    const values = transactions.map(tx => parseFloat(tx.value_eth) || 0).filter(val => !isNaN(val) && val > 0);
+    const values = transactions.map(tx => parseTransactionValue(tx.value_eth)).filter(val => val > 0);
     
     if (values.length > 0) {
       contractData.summary.averageTransactionValue = values.reduce((a, b) => a + b, 0) / values.length;
@@ -1337,8 +1345,8 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     // Process transaction size distribution
     transactions.forEach(tx => {
-      const value = parseFloat(tx.value_eth) || 0;
-      if (!isNaN(value) && value > 0) {
+      const value = parseTransactionValue(tx.value_eth);
+      if (value > 0) {
         if (value < 0.1) contractData.transactionSizeDistribution.small++;
         else if (value < 1) contractData.transactionSizeDistribution.medium++;
         else if (value < 10) contractData.transactionSizeDistribution.large++;
@@ -1348,7 +1356,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Track sender volumes and counts
       if (tx.from_address) {
         senderCounts[tx.from_address] = (senderCounts[tx.from_address] || 0) + 1;
-        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + (parseFloat(tx.value_eth) || 0);
+        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + parseTransactionValue(tx.value_eth);
         
         if (!walletActivity[tx.from_address]) {
           walletActivity[tx.from_address] = {
@@ -1364,13 +1372,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
         
         walletActivity[tx.from_address].sent.count++;
-        walletActivity[tx.from_address].sent.volume += (parseFloat(tx.value_eth) || 0);
+        walletActivity[tx.from_address].sent.volume += parseTransactionValue(tx.value_eth);
       }
 
       // Track receiver volumes and counts
       if (tx.to_address) {
         receiverCounts[tx.to_address] = (receiverCounts[tx.to_address] || 0) + 1;
-        receiverVolumes[tx.to_address] = (receiverVolumes[tx.to_address] || 0) + (parseFloat(tx.value_eth) || 0);
+        receiverVolumes[tx.to_address] = (receiverVolumes[tx.to_address] || 0) + parseTransactionValue(tx.value_eth);
         
         if (!walletActivity[tx.to_address]) {
           walletActivity[tx.to_address] = {
@@ -1386,7 +1394,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         }
         
         walletActivity[tx.to_address].received.count++;
-        walletActivity[tx.to_address].received.volume += (parseFloat(tx.value_eth) || 0);
+        walletActivity[tx.to_address].received.volume += parseTransactionValue(tx.value_eth);
       }
 
       // Parse date for time-based analytics
@@ -1458,7 +1466,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     transactions.forEach(tx => {
       const date = new Date(tx.block_time);
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseTransactionValue(tx.value_eth);
       
       // Hourly aggregation - format: "YYYY-MM-DD HH:00"
       const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;

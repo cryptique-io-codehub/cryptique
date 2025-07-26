@@ -473,6 +473,16 @@ const extractUnlockTimeFromInput = (input, stakingType = '') => {
 };
 
 /**
+ * Helper function to properly parse transaction values by removing commas
+ */
+const parseTransactionValue = (value) => {
+  if (!value) return 0;
+  const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+  const parsed = parseFloat(cleanValue);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
  * Identifies if a transaction is related to staking/escrow operations
  * Based on method signatures and input data patterns
  * Enhanced with chain-specific patterns and comprehensive method detection
@@ -698,7 +708,7 @@ export const identifyStakingTransaction = (transaction, contractType = 'main') =
 
     // Additional heuristics for escrow contracts (low reliability)
     if (contractType === 'escrow' && !result.isStaking) {
-      const value = parseFloat(transaction.value_eth || transaction.value || 0);
+      const value = parseTransactionValue(transaction.value_eth || transaction.value);
       const gasUsed = parseInt(transaction.gas || 0);
       
       // Large value transactions in escrow contracts are likely stakes

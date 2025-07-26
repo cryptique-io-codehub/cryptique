@@ -4,6 +4,14 @@ import { useContractData } from '../../contexts/ContractDataContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area } from 'recharts';
 
 export default function StakingInsights() {
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [stakingData, setStakingData] = useState(null);
   const [stakingMetrics, setStakingMetrics] = useState(null);
@@ -343,8 +351,8 @@ export default function StakingInsights() {
 
       // Try to extract value (handle "0 ZBU" format)
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const numericValue = parseFloat(tx.value_eth.replace(/[^\d.]/g, ''));
-        if (!isNaN(numericValue)) {
+        const numericValue = parseTransactionValue(tx.value_eth);
+        if (numericValue > 0) {
           analysis.totalVolume += numericValue;
         }
       }
@@ -405,10 +413,7 @@ export default function StakingInsights() {
   // Helper function to extract token amount from transaction
   const extractTokenAmountFromTx = (tx) => {
     if (tx.value_eth && typeof tx.value_eth === 'string') {
-      const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
-      if (match && match[1]) {
-        return parseFloat(match[1]);
-      }
+      return parseTransactionValue(tx.value_eth);
     }
     return 0;
   };
@@ -669,10 +674,7 @@ export default function StakingInsights() {
     try {
       // First check if we have a parsed value already
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const match = tx.value_eth.match(/(\d+(?:\.\d+)?)/);
-        if (match && match[1]) {
-          return parseFloat(match[1]);
-        }
+        return parseTransactionValue(tx.value_eth);
       }
       
       // Try to extract from input data if available

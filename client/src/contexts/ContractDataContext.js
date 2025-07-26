@@ -6,6 +6,14 @@ import { getChainConfig, isChainSupported, getDefaultTokenType } from '../utils/
 const ContractDataContext = createContext();
 
 export const ContractDataProvider = ({ children }) => {
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   // State for smart contract selection and data
   const [contractArray, setContractArray] = useState([]);
   const [selectedContract, setSelectedContract] = useState(null);
@@ -636,8 +644,8 @@ export const ContractDataProvider = ({ children }) => {
       const wallet = tx.from_address;
       if (!wallet) return;
       
-      const value = parseFloat(tx.value_eth) || 0;
-      if (isNaN(value)) return;
+      const value = parseTransactionValue(tx.value_eth);
+      if (value === 0) return;
       
       if (!walletTotalValues[wallet]) {
         walletTotalValues[wallet] = value;
@@ -841,40 +849,40 @@ export const ContractDataProvider = ({ children }) => {
     
     // Calculate transaction volume for recent periods
     const volumeLast7Days = transactionsLast7Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     const volumeLast30Days = transactionsLast30Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     const volumeLastYear = transactionsLastYear.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     // Calculate transaction volume for previous periods
     const volumePrevious7Days = transactionsPrevious7Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     const volumePrevious30Days = transactionsPrevious30Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     const volumePreviousYear = transactionsPreviousYear.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     // Calculate lifetime volume (all transactions)
     const volumeLifetime = contractTransactions.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
-      return isNaN(value) ? sum : sum + value;
+      const value = parseTransactionValue(tx.value_eth);
+      return sum + value;
     }, 0);
     
     // Calculate percentage changes
@@ -990,8 +998,8 @@ export const ContractDataProvider = ({ children }) => {
         activeWallets: activeWallets.size, // Active wallets in last 30 days
         uniqueReceivers: new Set(contractTransactions.map(tx => tx.to_address)).size,
         totalVolume: contractTransactions.reduce((sum, tx) => {
-          const value = parseFloat(tx.value_eth) || 0;
-          return isNaN(value) ? sum : sum + value;
+          const value = parseTransactionValue(tx.value_eth);
+          return sum + value;
         }, 0)
       },
       recentTransactions: {
@@ -1133,10 +1141,8 @@ export const ContractDataProvider = ({ children }) => {
       
       // Add transaction and volume
       timeSeriesData[timeKey].transactions += 1;
-      const value = parseFloat(tx.value_eth) || 0;
-      if (!isNaN(value)) {
-        timeSeriesData[timeKey].volume += value;
-      }
+      const value = parseTransactionValue(tx.value_eth);
+      timeSeriesData[timeKey].volume += value;
     });
     
     // Format volume values properly
@@ -1452,8 +1458,8 @@ export const ContractDataProvider = ({ children }) => {
       
       // Track volume
       if (tx.value_eth) {
-        const txValue = parseFloat(tx.value_eth);
-        if (!isNaN(txValue)) {
+        const txValue = parseTransactionValue(tx.value_eth);
+        if (txValue > 0) {
           walletStats[tx.from_address].volume += txValue;
           totalVolume += txValue;
         }

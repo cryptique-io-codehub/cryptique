@@ -164,6 +164,14 @@ const createAdaptiveTransactionBuckets = (transactions, walletCount) => {
 
 // Wallet categorization logic - returns object with calculated percentages and top wallets
 const categorizeWallets = (transactions) => {
+  // Helper function to properly parse transaction values by removing commas
+  const parseTransactionValue = (value) => {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   // If no data, return default values
   if (!transactions || transactions.length === 0) {
     return {
@@ -198,7 +206,7 @@ const categorizeWallets = (transactions) => {
     
     // Track volume
     if (tx.value_eth) {
-      const txValue = parseFloat(tx.value_eth);
+      const txValue = parseTransactionValue(tx.value_eth);
       if (!isNaN(txValue)) {
         walletStats[tx.from_address].volume += txValue;
         totalVolume += txValue;

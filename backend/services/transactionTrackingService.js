@@ -3,6 +3,14 @@ const Session = require('../models/session');
 const Transaction = require('../models/transaction');
 
 class TransactionTrackingService {
+  // Helper function to properly parse transaction values by removing commas
+  parseTransactionValue(value) {
+    if (!value) return 0;
+    const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value.toString().replace(/,/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
   /**
    * Process a new transaction and attribute it to relevant campaigns
    * @param {Object} transaction - The transaction object
@@ -44,7 +52,7 @@ class TransactionTrackingService {
         if (!campaign) continue;
 
         // Add transaction to campaign stats
-        const txValue = parseFloat(transaction.value_eth) || 0;
+        const txValue = this.parseTransactionValue(transaction.value_eth);
         
         // Add transaction to the list if not already exists
         const txExists = campaign.stats.transactions.some(tx => tx.txHash === transaction.tx_hash);
