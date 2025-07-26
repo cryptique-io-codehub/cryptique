@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-07-26T10:18:31.555Z",
+  "safeRemovals": {
+    "root": {
+      "dependencies": [
+        "@google/genai",
+        "ethers"
+      ],
+      "devDependencies": []
+    },
+    "backend": {
+      "dependencies": [
+        "@duneanalytics/client-sdk",
+        "node-cron",
+        "puppeteer"
+      ],
+      "devDependencies": [
+        "chalk",
+        "mocha"
+      ]
+    },
+    "client": {
+      "dependencies": [
+        "@emotion/react",
+        "@emotion/styled",
+        "@headlessui/react",
+        "chart.js",
+        "jsonwebtoken",
+        "jwt-decode",
+        "react-chartjs-2",
+        "react-grid-layout",
+        "react-icons",
+        "react-simple-maps",
+        "web-vitals"
+      ],
+      "devDependencies": [
+        "tailwindcss"
+      ]
+    },
+    "server": {
+      "dependencies": [
+        "@tensorflow/tfjs-node",
+        "langchain",
+        "natural",
+        "express-http-proxy",
+        "sticky-session",
+        "node-os-utils"
+      ],
+      "devDependencies": [
+        "jest",
+        "nodemon",
+        "supertest"
+      ]
+    }
+  },
+  "versionAlignments": {
+    "@google/generative-ai": {
+      "targetVersion": "^0.20.0",
+      "packages": [
+        "client",
+        "server"
+      ]
+    },
+    "axios": {
+      "targetVersion": "^1.8.4",
+      "packages": [
+        "server"
+      ]
+    },
+    "dotenv": {
+      "targetVersion": "^16.5.0",
+      "packages": [
+        "server"
+      ]
+    },
+    "express": {
+      "targetVersion": "^4.21.2",
+      "packages": [
+        "server"
+      ]
+    },
+    "express-rate-limit": {
+      "targetVersion": "^7.5.0",
+      "packages": [
+        "server"
+      ]
+    },
+    "node-cron": {
+      "targetVersion": "^3.0.3",
+      "packages": [
+        "server"
+      ]
+    },
+    "uuid": {
+      "targetVersion": "^11.1.0",
+      "packages": [
+        "server"
+      ]
+    }
+  },
+  "moveToDevDeps": {
+    "backend": [
+      "nodemon"
+    ],
+    "root": [
+      "concurrently"
+    ]
+  },
+  "summary": {
+    "totalDependenciesRemoved": 28,
+    "totalVersionsAligned": 7,
+    "totalMoved": 2
+  }
+}

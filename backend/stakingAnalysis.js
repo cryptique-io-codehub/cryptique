@@ -275,7 +275,7 @@ function identifyStakingTransaction(transaction, contractType = 'main') {
 
     // Additional heuristics for escrow contracts (low reliability)
     if (contractType === 'escrow' && !result.isStaking) {
-      const value = parseFloat(transaction.value_eth || transaction.value || 0);
+      const value = parseFloat((transaction.value_eth || transaction.value || '0').replace(/,/g, ''));
       const gasUsed = parseInt(transaction.gas_used || transaction.gas || 0);
       
       // Large value transactions in escrow contracts are likely stakes

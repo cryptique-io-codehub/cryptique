@@ -44,7 +44,7 @@ class TransactionTrackingService {
         if (!campaign) continue;
 
         // Add transaction to campaign stats
-        const txValue = parseFloat(transaction.value_eth) || 0;
+        const txValue = parseFloat((transaction.value_eth || '0').replace(/,/g, '')) || 0;
         
         // Add transaction to the list if not already exists
         const txExists = campaign.stats.transactions.some(tx => tx.txHash === transaction.tx_hash);

@@ -142,7 +142,7 @@ const CountryDetail = ({ countryCode, analytics, contractData }) => {
         
         walletTxs.forEach(tx => {
           if (tx.value_eth) {
-            const value = parseFloat(tx.value_eth);
+            const value = parseFloat((tx.value_eth || '0').replace(/,/g, ''));
             if (!isNaN(value)) {
               transactionVolume += value;
             }

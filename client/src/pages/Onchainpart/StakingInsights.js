@@ -343,7 +343,7 @@ export default function StakingInsights() {
 
       // Try to extract value (handle "0 ZBU" format)
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const numericValue = parseFloat(tx.value_eth.replace(/[^\d.]/g, ''));
+        const numericValue = parseFloat((tx.value_eth || '0').replace(/[^\d.]/g, ''));
         if (!isNaN(numericValue)) {
           analysis.totalVolume += numericValue;
         }
@@ -405,7 +405,7 @@ export default function StakingInsights() {
   // Helper function to extract token amount from transaction
   const extractTokenAmountFromTx = (tx) => {
     if (tx.value_eth && typeof tx.value_eth === 'string') {
-      const match = tx.value_eth.match(/(\d+(\.\d+)?)/);
+      const match = (tx.value_eth || '0').replace(/,/g, '').match(/(\d+(\.\d+)?)/);
       if (match && match[1]) {
         return parseFloat(match[1]);
       }
@@ -669,7 +669,7 @@ export default function StakingInsights() {
     try {
       // First check if we have a parsed value already
       if (tx.value_eth && typeof tx.value_eth === 'string') {
-        const match = tx.value_eth.match(/(\d+(?:\.\d+)?)/);
+        const match = (tx.value_eth || '0').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
         if (match && match[1]) {
           return parseFloat(match[1]);
         }

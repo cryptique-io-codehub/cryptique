@@ -874,7 +874,10 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
             if (activeWallets > 0) web3Metrics.walletActivity.activeWallets[label] = activeWallets;
 
             // Transaction volume
-            const transactions = periodSessions.reduce((sum, s) => sum + (s.transactions?.length || 0), 0);
+            const transactions = periodSessions.reduce((sum, s) => {
+              const value = parseFloat((s.transactions?.value_eth || '0').replace(/,/g, '')) || 0;
+              return isNaN(value) ? sum : sum + value;
+            }, 0);
             if (transactions > 0) web3Metrics.walletActivity.transactionVolume[label] = transactions;
 
             // Unique contracts
@@ -1262,7 +1265,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
         uniqueUsers: new Set(transactions.map(tx => tx.from_address)).size,
         uniqueReceivers: new Set(transactions.map(tx => tx.to_address)).size,
         totalVolume: transactions.reduce((sum, tx) => {
-          const value = parseFloat(tx.value_eth) || 0;
+          const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
           return isNaN(value) ? sum : sum + value;
         }, 0),
         averageTransactionValue: 0,
@@ -1315,29 +1318,16 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
     }
 
     // Calculate average and median transaction values
-    const values = transactions.map(tx => parseFloat(tx.value_eth) || 0).filter(val => !isNaN(val) && val > 0);
+    const values = transactions.map(tx => parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0).filter(val => !isNaN(val) && val > 0);
     
     if (values.length > 0) {
-      contractData.summary.averageTransactionValue = values.reduce((a, b) => a + b, 0) / values.length;
-      
-      // Calculate median
-      const sortedValues = [...values].sort((a, b) => a - b);
-      const mid = Math.floor(sortedValues.length / 2);
-      contractData.summary.medianTransactionValue = sortedValues.length % 2 === 0
-        ? (sortedValues[mid - 1] + sortedValues[mid]) / 2
-        : sortedValues[mid];
+      contractData.summary.averageTransactionValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+      contractData.summary.medianTransactionValue = values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
     }
-
-    // Create wallet analysis
-    const senderVolumes = {};
-    const receiverVolumes = {};
-    const senderCounts = {};
-    const receiverCounts = {};
-    const walletActivity = {};
-
+    
     // Process transaction size distribution
     transactions.forEach(tx => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       if (!isNaN(value) && value > 0) {
         if (value < 0.1) contractData.transactionSizeDistribution.small++;
         else if (value < 1) contractData.transactionSizeDistribution.medium++;
@@ -1348,69 +1338,17 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       // Track sender volumes and counts
       if (tx.from_address) {
         senderCounts[tx.from_address] = (senderCounts[tx.from_address] || 0) + 1;
-        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + (parseFloat(tx.value_eth) || 0);
-        
-        if (!walletActivity[tx.from_address]) {
-          walletActivity[tx.from_address] = {
-            sent: { count: 0, volume: 0 },
-            received: { count: 0, volume: 0 },
-            firstSeen: tx.block_time,
-            lastSeen: tx.block_time
-          };
-        } else {
-          walletActivity[tx.from_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.from_address].lastSeen) 
-            ? tx.block_time 
-            : walletActivity[tx.from_address].lastSeen;
-        }
-        
-        walletActivity[tx.from_address].sent.count++;
-        walletActivity[tx.from_address].sent.volume += (parseFloat(tx.value_eth) || 0);
-      }
-
-      // Track receiver volumes and counts
-      if (tx.to_address) {
-        receiverCounts[tx.to_address] = (receiverCounts[tx.to_address] || 0) + 1;
-        receiverVolumes[tx.to_address] = (receiverVolumes[tx.to_address] || 0) + (parseFloat(tx.value_eth) || 0);
-        
-        if (!walletActivity[tx.to_address]) {
-          walletActivity[tx.to_address] = {
-            sent: { count: 0, volume: 0 },
-            received: { count: 0, volume: 0 },
-            firstSeen: tx.block_time,
-            lastSeen: tx.block_time
-          };
-        } else {
-          walletActivity[tx.to_address].lastSeen = new Date(tx.block_time) > new Date(walletActivity[tx.to_address].lastSeen) 
-            ? tx.block_time 
-            : walletActivity[tx.to_address].lastSeen;
-        }
-        
-        walletActivity[tx.to_address].received.count++;
-        walletActivity[tx.to_address].received.volume += (parseFloat(tx.value_eth) || 0);
-      }
-
-      // Parse date for time-based analytics
-      const txDate = new Date(tx.block_time);
-      
-      // Time of day distribution
-      const hour = txDate.getHours();
-      if (hour >= 6 && hour < 12) contractData.timeOfDayDistribution.morning++;
-      else if (hour >= 12 && hour < 18) contractData.timeOfDayDistribution.afternoon++;
-      else if (hour >= 18) contractData.timeOfDayDistribution.evening++;
-      else contractData.timeOfDayDistribution.night++;
-      
-      // Day of week distribution
-      const day = txDate.getDay();
-      switch (day) {
-        case 0: contractData.dayOfWeekDistribution.sunday++; break;
-        case 1: contractData.dayOfWeekDistribution.monday++; break;
-        case 2: contractData.dayOfWeekDistribution.tuesday++; break;
-        case 3: contractData.dayOfWeekDistribution.wednesday++; break;
-        case 4: contractData.dayOfWeekDistribution.thursday++; break;
-        case 5: contractData.dayOfWeekDistribution.friday++; break;
-        case 6: contractData.dayOfWeekDistribution.saturday++; break;
+        const senderValue = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
+        senderVolumes[tx.from_address] = (senderVolumes[tx.from_address] || 0) + senderValue;
       }
     });
+
+    // Create wallet analysis
+    const senderVolumes = {};
+    const receiverVolumes = {};
+    const senderCounts = {};
+    const receiverCounts = {};
+    const walletActivity = {};
 
     // Get top senders and receivers by volume and frequency
     contractData.walletAnalytics.topSenders = Object.entries(senderVolumes)
@@ -1458,7 +1396,13 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
 
     transactions.forEach(tx => {
       const date = new Date(tx.block_time);
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
+      
+      // Skip invalid values
+      if (isNaN(value) || value < 0) {
+        console.warn(`Invalid transaction value: ${tx.value_eth} for tx: ${tx.tx_hash}`);
+        return;
+      }
       
       // Hourly aggregation - format: "YYYY-MM-DD HH:00"
       const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
@@ -1468,6 +1412,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       hourlyData[hourKey].count++;
       hourlyData[hourKey].volume += value;
       hourlyData[hourKey].uniqueAddresses.add(tx.from_address);
+      if (tx.to_address) hourlyData[hourKey].uniqueAddresses.add(tx.to_address);
       
       // Daily aggregation - format: "YYYY-MM-DD"
       const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -1477,6 +1422,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       dailyData[dayKey].count++;
       dailyData[dayKey].volume += value;
       dailyData[dayKey].uniqueAddresses.add(tx.from_address);
+      if (tx.to_address) dailyData[dayKey].uniqueAddresses.add(tx.to_address);
       
       // Weekly aggregation - format: "YYYY-WW" (ISO week)
       const weekStart = new Date(date);
@@ -1489,6 +1435,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       weeklyData[weekKey].count++;
       weeklyData[weekKey].volume += value;
       weeklyData[weekKey].uniqueAddresses.add(tx.from_address);
+      if (tx.to_address) weeklyData[weekKey].uniqueAddresses.add(tx.to_address);
       
       // Monthly aggregation - format: "YYYY-MM"
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -1498,6 +1445,7 @@ const CQIntelligence = ({ onMenuClick, screenSize }) => {
       monthlyData[monthKey].count++;
       monthlyData[monthKey].volume += value;
       monthlyData[monthKey].uniqueAddresses.add(tx.from_address);
+      if (tx.to_address) monthlyData[monthKey].uniqueAddresses.add(tx.to_address);
     });
 
     // Convert time series data to arrays and process Sets for uniqueAddresses

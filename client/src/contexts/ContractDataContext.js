@@ -636,7 +636,7 @@ export const ContractDataProvider = ({ children }) => {
       const wallet = tx.from_address;
       if (!wallet) return;
       
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       if (isNaN(value)) return;
       
       if (!walletTotalValues[wallet]) {
@@ -841,39 +841,39 @@ export const ContractDataProvider = ({ children }) => {
     
     // Calculate transaction volume for recent periods
     const volumeLast7Days = transactionsLast7Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     const volumeLast30Days = transactionsLast30Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     const volumeLastYear = transactionsLastYear.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     // Calculate transaction volume for previous periods
     const volumePrevious7Days = transactionsPrevious7Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     const volumePrevious30Days = transactionsPrevious30Days.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     const volumePreviousYear = transactionsPreviousYear.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
     // Calculate lifetime volume (all transactions)
     const volumeLifetime = contractTransactions.reduce((sum, tx) => {
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       return isNaN(value) ? sum : sum + value;
     }, 0);
     
@@ -990,7 +990,7 @@ export const ContractDataProvider = ({ children }) => {
         activeWallets: activeWallets.size, // Active wallets in last 30 days
         uniqueReceivers: new Set(contractTransactions.map(tx => tx.to_address)).size,
         totalVolume: contractTransactions.reduce((sum, tx) => {
-          const value = parseFloat(tx.value_eth) || 0;
+          const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
           return isNaN(value) ? sum : sum + value;
         }, 0)
       },
@@ -1133,7 +1133,7 @@ export const ContractDataProvider = ({ children }) => {
       
       // Add transaction and volume
       timeSeriesData[timeKey].transactions += 1;
-      const value = parseFloat(tx.value_eth) || 0;
+      const value = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
       if (!isNaN(value)) {
         timeSeriesData[timeKey].volume += value;
       }
@@ -1452,7 +1452,7 @@ export const ContractDataProvider = ({ children }) => {
       
       // Track volume
       if (tx.value_eth) {
-        const txValue = parseFloat(tx.value_eth);
+        const txValue = parseFloat((tx.value_eth || '0').replace(/,/g, ''));
         if (!isNaN(txValue)) {
           walletStats[tx.from_address].volume += txValue;
           totalVolume += txValue;

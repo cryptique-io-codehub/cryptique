@@ -65,7 +65,7 @@ export default function Onchainwalletinsights() {
         
         const walletData = walletMap.get(fromWallet);
         walletData.transactions += 1;
-        const txValue = parseFloat(tx.value_eth) || 0;
+        const txValue = parseFloat((tx.value_eth || '0').replace(/,/g, '')) || 0;
         walletData.totalSent += txValue;
         walletData.volume += txValue;
         walletData.uniqueInteractions.add(tx.to_address);

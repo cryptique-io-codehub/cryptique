@@ -198,7 +198,7 @@ const categorizeWallets = (transactions) => {
     
     // Track volume
     if (tx.value_eth) {
-      const txValue = parseFloat(tx.value_eth);
+      const txValue = parseFloat((tx.value_eth || '0').replace(/,/g, ''));
       if (!isNaN(txValue)) {
         walletStats[tx.from_address].volume += txValue;
         totalVolume += txValue;

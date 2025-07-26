@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "filesRemoved": 1,
+    "referencesFixed": 21,
+    "filesModified": 7,
+    "totalSizeBytes": 310,
+    "totalSizeKB": "0.30",
+    "errors": 0,
+    "dryRun": false
+  },
+  "files": {
+    "removed": [
+      {
+        "path": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\python\\tests\\.pytest_cache\\README.md",
+        "reason": "not_referenced",
+        "size": 310,
+        "status": "removed"
+      }
+    ],
+    "modified": [
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\.kiro\\specs\\phase-1-completion\\design.md",
+        "fixCount": 1,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\.kiro\\specs\\phase-1-completion\\tasks.md",
+        "fixCount": 2,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\docs\\PRODUCTION_DEPLOYMENT.md",
+        "fixCount": 3,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\docs\\stripe-implementation-summary.md",
+        "fixCount": 4,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\analysis\\package-cleanup-recommendations.md",
+        "fixCount": 1,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\analysis\\package-cleanup-summary.md",
+        "fixCount": 6,
+        "status": "fixed"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\README.md",
+        "fixCount": 4,
+        "status": "fixed"
+      }
+    ]
+  },
+  "errors": [],
+  "breakdown": {
+    "byReason": {
+      "not_referenced": [
+        "backend\\python\\tests\\.pytest_cache\\README.md"
+      ]
+    },
+    "byDirectory": {
+      "backend\\python\\tests\\.pytest_cache": [
+        "README.md"
+      ]
+    }
+  }
+}

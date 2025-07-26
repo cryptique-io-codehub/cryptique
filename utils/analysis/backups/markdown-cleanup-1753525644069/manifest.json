@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-07-26T10:27:24.079Z",
+  "filesToRemove": 1,
+  "filesToModify": 7,
+  "brokenLinks": 21,
+  "files": {
+    "removed": [
+      {
+        "path": "backend\\python\\tests\\.pytest_cache\\README.md",
+        "reason": "not_referenced",
+        "size": 310
+      }
+    ],
+    "modified": [
+      {
+        "path": ".kiro\\specs\\phase-1-completion\\design.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": ".kiro\\specs\\phase-1-completion\\tasks.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": "backend\\docs\\PRODUCTION_DEPLOYMENT.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": "docs\\stripe-implementation-summary.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": "utils\\analysis\\package-cleanup-recommendations.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": "utils\\analysis\\package-cleanup-summary.md",
+        "reason": "broken_links_fixed"
+      },
+      {
+        "path": "utils\\README.md",
+        "reason": "broken_links_fixed"
+      }
+    ]
+  }
+}

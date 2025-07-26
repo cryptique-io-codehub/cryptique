@@ -1,0 +1,1197 @@
+{
+  "summary": {
+    "totalPackages": 4,
+    "duplicateCount": 12,
+    "versionConflicts": 9,
+    "consolidationOpportunities": 10
+  },
+  "duplicates": {
+    "@google/generative-ai": [
+      {
+        "package": "backend",
+        "version": "^0.20.0",
+        "type": "dependency"
+      },
+      {
+        "package": "client",
+        "version": "^0.1.3",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^0.1.0",
+        "type": "dependency"
+      }
+    ],
+    "axios": [
+      {
+        "package": "backend",
+        "version": "^1.8.4",
+        "type": "dependency"
+      },
+      {
+        "package": "client",
+        "version": "^1.8.4",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^0.27.2",
+        "type": "dependency"
+      }
+    ],
+    "cors": [
+      {
+        "package": "backend",
+        "version": "^2.8.5",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^2.8.5",
+        "type": "dependency"
+      }
+    ],
+    "dotenv": [
+      {
+        "package": "backend",
+        "version": "^16.5.0",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^16.0.1",
+        "type": "dependency"
+      }
+    ],
+    "express": [
+      {
+        "package": "backend",
+        "version": "^4.21.2",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^4.18.1",
+        "type": "dependency"
+      }
+    ],
+    "express-rate-limit": [
+      {
+        "package": "backend",
+        "version": "^7.5.0",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^6.7.0",
+        "type": "dependency"
+      }
+    ],
+    "jsonwebtoken": [
+      {
+        "package": "backend",
+        "version": "^9.0.2",
+        "type": "dependency"
+      },
+      {
+        "package": "client",
+        "version": "^9.0.2",
+        "type": "dependency"
+      }
+    ],
+    "mongoose": [
+      {
+        "package": "backend",
+        "version": "^8.14.1",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^6.5.2",
+        "type": "dependency"
+      }
+    ],
+    "node-cache": [
+      {
+        "package": "backend",
+        "version": "^5.1.2",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^5.1.2",
+        "type": "dependency"
+      }
+    ],
+    "node-cron": [
+      {
+        "package": "backend",
+        "version": "^3.0.3",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^3.0.2",
+        "type": "dependency"
+      }
+    ],
+    "nodemon": [
+      {
+        "package": "backend",
+        "version": "^3.1.9",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^2.0.19",
+        "type": "devDependency"
+      }
+    ],
+    "uuid": [
+      {
+        "package": "backend",
+        "version": "^11.1.0",
+        "type": "dependency"
+      },
+      {
+        "package": "client",
+        "version": "^11.1.0",
+        "type": "dependency"
+      },
+      {
+        "package": "server",
+        "version": "^9.0.0",
+        "type": "dependency"
+      }
+    ]
+  },
+  "versionConflicts": {
+    "@google/generative-ai": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^0.20.0",
+          "type": "dependency"
+        },
+        {
+          "package": "client",
+          "version": "^0.1.3",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^0.1.0",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^0.20.0",
+        "^0.1.3",
+        "^0.1.0"
+      ]
+    },
+    "axios": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^1.8.4",
+          "type": "dependency"
+        },
+        {
+          "package": "client",
+          "version": "^1.8.4",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^0.27.2",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^1.8.4",
+        "^0.27.2"
+      ]
+    },
+    "dotenv": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^16.5.0",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^16.0.1",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^16.5.0",
+        "^16.0.1"
+      ]
+    },
+    "express": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^4.21.2",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^4.18.1",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^4.21.2",
+        "^4.18.1"
+      ]
+    },
+    "express-rate-limit": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^7.5.0",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^6.7.0",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^7.5.0",
+        "^6.7.0"
+      ]
+    },
+    "mongoose": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^8.14.1",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^6.5.2",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^8.14.1",
+        "^6.5.2"
+      ]
+    },
+    "node-cron": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^3.0.3",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^3.0.2",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^3.0.3",
+        "^3.0.2"
+      ]
+    },
+    "nodemon": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^3.1.9",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^2.0.19",
+          "type": "devDependency"
+        }
+      ],
+      "versions": [
+        "^3.1.9",
+        "^2.0.19"
+      ]
+    },
+    "uuid": {
+      "occurrences": [
+        {
+          "package": "backend",
+          "version": "^11.1.0",
+          "type": "dependency"
+        },
+        {
+          "package": "client",
+          "version": "^11.1.0",
+          "type": "dependency"
+        },
+        {
+          "package": "server",
+          "version": "^9.0.0",
+          "type": "dependency"
+        }
+      ],
+      "versions": [
+        "^11.1.0",
+        "^9.0.0"
+      ]
+    }
+  },
+  "unused": {
+    "root": {
+      "@google/genai": {
+        "version": "^1.0.1",
+        "used": false,
+        "type": "dependency"
+      },
+      "concurrently": {
+        "version": "^8.2.2",
+        "used": false,
+        "type": "dependency"
+      },
+      "crypto": {
+        "version": "^1.0.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "ethers": {
+        "version": "^6.13.5",
+        "used": false,
+        "type": "dependency"
+      }
+    },
+    "backend": {
+      "@duneanalytics/client-sdk": {
+        "version": "^0.2.5",
+        "used": false,
+        "type": "dependency"
+      },
+      "@google/generative-ai": {
+        "version": "^0.20.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "axios": {
+        "version": "^1.8.4",
+        "used": true,
+        "type": "dependency"
+      },
+      "bcrypt": {
+        "version": "^5.1.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "body-parser": {
+        "version": "^1.20.3",
+        "used": true,
+        "type": "dependency"
+      },
+      "cheerio": {
+        "version": "^1.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "cookie-parser": {
+        "version": "^1.4.7",
+        "used": true,
+        "type": "dependency"
+      },
+      "cors": {
+        "version": "^2.8.5",
+        "used": true,
+        "type": "dependency"
+      },
+      "dotenv": {
+        "version": "^16.5.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "express": {
+        "version": "^4.21.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "express-rate-limit": {
+        "version": "^7.5.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "helmet": {
+        "version": "^8.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "jsonwebtoken": {
+        "version": "^9.0.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "mongoose": {
+        "version": "^8.14.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "node-cache": {
+        "version": "^5.1.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "node-cron": {
+        "version": "^3.0.3",
+        "used": false,
+        "type": "dependency"
+      },
+      "node-fetch": {
+        "version": "^3.3.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "nodemailer": {
+        "version": "^6.10.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "nodemon": {
+        "version": "^3.1.9",
+        "used": false,
+        "type": "dependency"
+      },
+      "puppeteer": {
+        "version": "^24.5.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "stripe": {
+        "version": "^18.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "uuid": {
+        "version": "^11.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "winston": {
+        "version": "^3.17.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "winston-daily-rotate-file": {
+        "version": "^5.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "chai": {
+        "version": "^4.3.10",
+        "used": true,
+        "type": "devDependency"
+      },
+      "chalk": {
+        "version": "^4.1.2",
+        "used": false,
+        "type": "devDependency"
+      },
+      "mocha": {
+        "version": "^10.2.0",
+        "used": false,
+        "type": "devDependency"
+      },
+      "sinon": {
+        "version": "^17.0.1",
+        "used": true,
+        "type": "devDependency"
+      }
+    },
+    "client": {
+      "@emotion/react": {
+        "version": "^11.14.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "@emotion/styled": {
+        "version": "^11.14.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "@google/generative-ai": {
+        "version": "^0.1.3",
+        "used": true,
+        "type": "dependency"
+      },
+      "@headlessui/react": {
+        "version": "^2.2.4",
+        "used": false,
+        "type": "dependency"
+      },
+      "@mui/icons-material": {
+        "version": "^7.0.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "@mui/material": {
+        "version": "^7.0.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "@testing-library/dom": {
+        "version": "^10.4.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "@testing-library/jest-dom": {
+        "version": "^6.6.3",
+        "used": false,
+        "type": "dependency"
+      },
+      "@testing-library/react": {
+        "version": "^16.2.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "@testing-library/user-event": {
+        "version": "^13.5.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "axios": {
+        "version": "^1.8.4",
+        "used": true,
+        "type": "dependency"
+      },
+      "chart.js": {
+        "version": "^4.4.8",
+        "used": false,
+        "type": "dependency"
+      },
+      "date-fns": {
+        "version": "^4.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "firebase": {
+        "version": "^11.5.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "framer-motion": {
+        "version": "^12.12.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "http-proxy-middleware": {
+        "version": "^3.0.5",
+        "used": true,
+        "type": "dependency"
+      },
+      "jsonwebtoken": {
+        "version": "^9.0.2",
+        "used": false,
+        "type": "dependency"
+      },
+      "jwt-decode": {
+        "version": "^4.0.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "lucide-react": {
+        "version": "^0.483.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "react": {
+        "version": "^18.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "react-chartjs-2": {
+        "version": "^5.3.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "react-dom": {
+        "version": "^18.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "react-grid-layout": {
+        "version": "^1.5.1",
+        "used": false,
+        "type": "dependency"
+      },
+      "react-icons": {
+        "version": "^5.5.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "react-markdown": {
+        "version": "^10.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "react-router-dom": {
+        "version": "^7.4.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "react-scripts": {
+        "version": "5.0.1",
+        "used": false,
+        "type": "dependency"
+      },
+      "react-simple-maps": {
+        "version": "^3.0.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "react-svg-worldmap": {
+        "version": "^2.0.0-alpha.16",
+        "used": true,
+        "type": "dependency"
+      },
+      "recharts": {
+        "version": "^2.15.3",
+        "used": true,
+        "type": "dependency"
+      },
+      "remark-gfm": {
+        "version": "^4.0.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "uuid": {
+        "version": "^11.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "web-vitals": {
+        "version": "^2.1.4",
+        "used": false,
+        "type": "dependency"
+      },
+      "web3": {
+        "version": "^4.16.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "tailwindcss": {
+        "version": "^3.4.17",
+        "used": false,
+        "type": "devDependency"
+      }
+    },
+    "server": {
+      "@google/generative-ai": {
+        "version": "^0.1.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "@pinecone-database/pinecone": {
+        "version": "^1.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "@tensorflow/tfjs-node": {
+        "version": "^4.10.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "axios": {
+        "version": "^0.27.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "cors": {
+        "version": "^2.8.5",
+        "used": true,
+        "type": "dependency"
+      },
+      "dotenv": {
+        "version": "^16.0.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "express": {
+        "version": "^4.18.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "mongoose": {
+        "version": "^6.5.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "express-rate-limit": {
+        "version": "^6.7.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "ioredis": {
+        "version": "^5.3.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "langchain": {
+        "version": "^0.0.100",
+        "used": false,
+        "type": "dependency"
+      },
+      "natural": {
+        "version": "^6.5.0",
+        "used": false,
+        "type": "dependency"
+      },
+      "node-cache": {
+        "version": "^5.1.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "node-cron": {
+        "version": "^3.0.2",
+        "used": true,
+        "type": "dependency"
+      },
+      "rate-limit-redis": {
+        "version": "^3.0.1",
+        "used": true,
+        "type": "dependency"
+      },
+      "express-http-proxy": {
+        "version": "^1.6.3",
+        "used": false,
+        "type": "dependency"
+      },
+      "sticky-session": {
+        "version": "^1.1.2",
+        "used": false,
+        "type": "dependency"
+      },
+      "cli-table3": {
+        "version": "^0.6.3",
+        "used": true,
+        "type": "dependency"
+      },
+      "colors": {
+        "version": "^1.4.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "node-os-utils": {
+        "version": "^1.3.7",
+        "used": false,
+        "type": "dependency"
+      },
+      "systeminformation": {
+        "version": "^5.17.12",
+        "used": true,
+        "type": "dependency"
+      },
+      "uuid": {
+        "version": "^9.0.0",
+        "used": true,
+        "type": "dependency"
+      },
+      "jest": {
+        "version": "^28.1.3",
+        "used": false,
+        "type": "devDependency"
+      },
+      "nodemon": {
+        "version": "^2.0.19",
+        "used": false,
+        "type": "devDependency"
+      },
+      "supertest": {
+        "version": "^6.2.4",
+        "used": false,
+        "type": "devDependency"
+      }
+    }
+  },
+  "consolidationOpportunities": [
+    {
+      "type": "move-to-root",
+      "description": "Move common dependencies to root package.json",
+      "dependencies": {
+        "@google/generative-ai": [
+          {
+            "package": "backend",
+            "version": "^0.20.0",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^0.1.3",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^0.1.0",
+            "type": "dependency"
+          }
+        ],
+        "axios": [
+          {
+            "package": "backend",
+            "version": "^1.8.4",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^1.8.4",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^0.27.2",
+            "type": "dependency"
+          }
+        ],
+        "cors": [
+          {
+            "package": "backend",
+            "version": "^2.8.5",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^2.8.5",
+            "type": "dependency"
+          }
+        ],
+        "dotenv": [
+          {
+            "package": "backend",
+            "version": "^16.5.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^16.0.1",
+            "type": "dependency"
+          }
+        ],
+        "express": [
+          {
+            "package": "backend",
+            "version": "^4.21.2",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^4.18.1",
+            "type": "dependency"
+          }
+        ],
+        "express-rate-limit": [
+          {
+            "package": "backend",
+            "version": "^7.5.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^6.7.0",
+            "type": "dependency"
+          }
+        ],
+        "jsonwebtoken": [
+          {
+            "package": "backend",
+            "version": "^9.0.2",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^9.0.2",
+            "type": "dependency"
+          }
+        ],
+        "mongoose": [
+          {
+            "package": "backend",
+            "version": "^8.14.1",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^6.5.2",
+            "type": "dependency"
+          }
+        ],
+        "node-cache": [
+          {
+            "package": "backend",
+            "version": "^5.1.2",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^5.1.2",
+            "type": "dependency"
+          }
+        ],
+        "node-cron": [
+          {
+            "package": "backend",
+            "version": "^3.0.3",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^3.0.2",
+            "type": "dependency"
+          }
+        ],
+        "uuid": [
+          {
+            "package": "backend",
+            "version": "^11.1.0",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^11.1.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^9.0.0",
+            "type": "dependency"
+          }
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for @google/generative-ai",
+      "dependency": "@google/generative-ai",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^0.20.0",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^0.1.3",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^0.1.0",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^0.20.0",
+          "^0.1.3",
+          "^0.1.0"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for axios",
+      "dependency": "axios",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^1.8.4",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^1.8.4",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^0.27.2",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^1.8.4",
+          "^0.27.2"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for dotenv",
+      "dependency": "dotenv",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^16.5.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^16.0.1",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^16.5.0",
+          "^16.0.1"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for express",
+      "dependency": "express",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^4.21.2",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^4.18.1",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^4.21.2",
+          "^4.18.1"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for express-rate-limit",
+      "dependency": "express-rate-limit",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^7.5.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^6.7.0",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^7.5.0",
+          "^6.7.0"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for mongoose",
+      "dependency": "mongoose",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^8.14.1",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^6.5.2",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^8.14.1",
+          "^6.5.2"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for node-cron",
+      "dependency": "node-cron",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^3.0.3",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^3.0.2",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^3.0.3",
+          "^3.0.2"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for nodemon",
+      "dependency": "nodemon",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^3.1.9",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^2.0.19",
+            "type": "devDependency"
+          }
+        ],
+        "versions": [
+          "^3.1.9",
+          "^2.0.19"
+        ]
+      }
+    },
+    {
+      "type": "align-versions",
+      "description": "Align versions for uuid",
+      "dependency": "uuid",
+      "conflict": {
+        "occurrences": [
+          {
+            "package": "backend",
+            "version": "^11.1.0",
+            "type": "dependency"
+          },
+          {
+            "package": "client",
+            "version": "^11.1.0",
+            "type": "dependency"
+          },
+          {
+            "package": "server",
+            "version": "^9.0.0",
+            "type": "dependency"
+          }
+        ],
+        "versions": [
+          "^11.1.0",
+          "^9.0.0"
+        ]
+      }
+    }
+  ]
+}

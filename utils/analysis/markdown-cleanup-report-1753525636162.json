@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "filesRemoved": 1,
+    "referencesFixed": 21,
+    "filesModified": 7,
+    "totalSizeBytes": 310,
+    "totalSizeKB": "0.30",
+    "errors": 0,
+    "dryRun": true
+  },
+  "files": {
+    "removed": [
+      {
+        "path": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\python\\tests\\.pytest_cache\\README.md",
+        "reason": "not_referenced",
+        "size": 310,
+        "status": "would-remove"
+      }
+    ],
+    "modified": [
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\.kiro\\specs\\phase-1-completion\\design.md",
+        "fixCount": 1,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\.kiro\\specs\\phase-1-completion\\tasks.md",
+        "fixCount": 2,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\backend\\docs\\PRODUCTION_DEPLOYMENT.md",
+        "fixCount": 3,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\docs\\stripe-implementation-summary.md",
+        "fixCount": 4,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\analysis\\package-cleanup-recommendations.md",
+        "fixCount": 1,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\analysis\\package-cleanup-summary.md",
+        "fixCount": 6,
+        "status": "would-fix"
+      },
+      {
+        "file": "C:\\Users\\akshi\\OneDrive\\Desktop\\app3\\cryptique\\utils\\README.md",
+        "fixCount": 4,
+        "status": "would-fix"
+      }
+    ]
+  },
+  "errors": [],
+  "breakdown": {
+    "byReason": {
+      "not_referenced": [
+        "backend\\python\\tests\\.pytest_cache\\README.md"
+      ]
+    },
+    "byDirectory": {
+      "backend\\python\\tests\\.pytest_cache": [
+        "README.md"
+      ]
+    }
+  }
+}

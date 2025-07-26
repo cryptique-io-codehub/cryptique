@@ -1,0 +1,1102 @@
+{
+  "summary": {
+    "filesRemoved": 78,
+    "directoriesRemoved": 4,
+    "totalSizeBytes": 744984,
+    "totalSizeKB": "727.52",
+    "errors": 0,
+    "dryRun": false
+  },
+  "files": [
+    {
+      "path": "backend\\checkStakingData.js",
+      "size": 3032,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\checkWithdrawalLogs.js",
+      "size": 1310,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\checkWithdrawals.js",
+      "size": 3329,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\config\\cacheConfig.js",
+      "size": 7692,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\fixStakingAnalysis.js",
+      "size": 3662,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\middleware\\cacheMiddleware.js",
+      "size": 5786,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\middleware\\rateLimiter.js",
+      "size": 1783,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\models\\aggregatedStats.js",
+      "size": 4384,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\routes\\cacheRouter.js",
+      "size": 5346,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\routes\\transactionRoutes.js",
+      "size": 542,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\backup-vectors.js",
+      "size": 9927,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\comprehensiveTest.js",
+      "size": 3508,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\createAnalyticsIndexes.js",
+      "size": 6195,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\createSessionIndexes.js",
+      "size": 7280,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\createStatsIndexes.js",
+      "size": 8724,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\fix-transaction-index.js",
+      "size": 3390,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\phase1b-verification.js",
+      "size": 15818,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\startServer.js",
+      "size": 2429,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\testBackup.js",
+      "size": 2440,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\scripts\\testVectorSearch.js",
+      "size": 2962,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\backgroundProcessor.js",
+      "size": 16686,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\cacheService.js",
+      "size": 16318,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\dataMigrationService.js",
+      "size": 43763,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\monitoringDashboardService.js",
+      "size": 24696,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\pipelineOrchestrationService.js",
+      "size": 23100,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\queryOptimizer.js",
+      "size": 20039,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\services\\statsAggregationService.js",
+      "size": 21699,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\stakingAnalysis.js",
+      "size": 12256,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\analyticsCaching.test.js",
+      "size": 5322,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\atlasVectorTest.js",
+      "size": 10868,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\backgroundProcessingIntegration.test.js",
+      "size": 8978,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\backgroundProcessor.test.js",
+      "size": 6146,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\cacheMiddleware.test.js",
+      "size": 7201,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\cacheService.test.js",
+      "size": 4192,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\fullOptimizationSuite.test.js",
+      "size": 15266,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\geminiEmbedding.test.js",
+      "size": 18928,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\localDeploymentTest.js",
+      "size": 13045,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\onChainOptimization.test.js",
+      "size": 9312,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\phase1b-focused.test.js",
+      "size": 19371,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\phase1b-integration.test.js",
+      "size": 18581,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\phase1b-simple.test.js",
+      "size": 9772,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test\\statsAggregation.test.js",
+      "size": 18221,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test-quick.js",
+      "size": 2917,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\test-staking-data.js",
+      "size": 38,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\verifyStakingAmounts.js",
+      "size": 4914,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "backend\\verifyTotalStaking.js",
+      "size": 5501,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\components\\SmartContractSelector.js",
+      "size": 3375,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\lib\\GoogleGenerativeAI.js",
+      "size": 1501,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\CQIntelligence\\CQIntelligence.js",
+      "size": 53310,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\CQIntelligenceChatbot.js",
+      "size": 10578,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Dashboard\\CampaignDetails.js",
+      "size": 709,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Dashboard\\components\\FeatureCards.js",
+      "size": 7127,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Dashboard\\ConversionEvents.js",
+      "size": 652,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Offchainpart\\Trafficanalytics\\TrafficAnalytics.js",
+      "size": 6523,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Offchainpart\\Trafficanalytics\\Web3UsersByMedium.js",
+      "size": 5665,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Offchainpart\\TrafficSourcesChart.js",
+      "size": 1148,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Onchainpart\\OnchainmarketInsights.js",
+      "size": 8432,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Onchainpart\\Onchainuserinsights.js",
+      "size": 13946,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Pricing.js",
+      "size": 36545,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Setting\\Billing\\BillingSection.js",
+      "size": 16000,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Setting\\MembersSection.js",
+      "size": 7977,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\pages\\Setting\\PersonalInfoSection.js",
+      "size": 4190,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\services\\ragService.js",
+      "size": 2291,
+      "reasons": [
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\setupProxy.js",
+      "size": 1145,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\utils\\RateLimitManager.js",
+      "size": 0,
+      "reasons": [
+        "no-imports",
+        "unreachable",
+        "empty"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "scripts\\initRagService.js",
+      "size": 2846,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "scripts\\monitorRagService.js",
+      "size": 6062,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "scripts\\setupRagEnv.js",
+      "size": 6955,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "scripts\\testRagService.js",
+      "size": 4484,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "server\\models\\payment.js",
+      "size": 1627,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "server\\models\\subscription.js",
+      "size": 2030,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "server\\routes\\team.js",
+      "size": 2992,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "server\\services\\analyticsService.js",
+      "size": 2598,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "server\\tasks\\taskScheduler.js",
+      "size": 14817,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "utils\\api\\examples.js",
+      "size": 9670,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "utils\\database\\examples.js",
+      "size": 12123,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "utils\\middleware\\examples.js",
+      "size": 29331,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    },
+    {
+      "path": "utils\\validation\\examples.js",
+      "size": 11666,
+      "reasons": [
+        "no-imports",
+        "unreachable"
+      ],
+      "status": "removed"
+    }
+  ],
+  "directories": [
+    {
+      "path": "client\\src\\pages\\CQIntelligence",
+      "status": "removed"
+    },
+    {
+      "path": "client\\src\\lib",
+      "status": "removed"
+    },
+    {
+      "path": "backend\\middleware",
+      "status": "removed"
+    },
+    {
+      "path": "scripts",
+      "status": "removed"
+    }
+  ],
+  "errors": [],
+  "breakdown": {
+    "byReason": {
+      "no-imports": [
+        "backend\\checkStakingData.js",
+        "backend\\checkWithdrawalLogs.js",
+        "backend\\checkWithdrawals.js",
+        "backend\\fixStakingAnalysis.js",
+        "backend\\middleware\\rateLimiter.js",
+        "backend\\routes\\transactionRoutes.js",
+        "backend\\scripts\\backup-vectors.js",
+        "backend\\scripts\\comprehensiveTest.js",
+        "backend\\scripts\\createAnalyticsIndexes.js",
+        "backend\\scripts\\createSessionIndexes.js",
+        "backend\\scripts\\createStatsIndexes.js",
+        "backend\\scripts\\fix-transaction-index.js",
+        "backend\\scripts\\phase1b-verification.js",
+        "backend\\scripts\\startServer.js",
+        "backend\\scripts\\testBackup.js",
+        "backend\\scripts\\testVectorSearch.js",
+        "backend\\services\\dataMigrationService.js",
+        "backend\\test\\analyticsCaching.test.js",
+        "backend\\test\\atlasVectorTest.js",
+        "backend\\test\\backgroundProcessingIntegration.test.js",
+        "backend\\test\\backgroundProcessor.test.js",
+        "backend\\test\\cacheMiddleware.test.js",
+        "backend\\test\\cacheService.test.js",
+        "backend\\test\\fullOptimizationSuite.test.js",
+        "backend\\test\\geminiEmbedding.test.js",
+        "backend\\test\\localDeploymentTest.js",
+        "backend\\test\\onChainOptimization.test.js",
+        "backend\\test\\phase1b-focused.test.js",
+        "backend\\test\\phase1b-integration.test.js",
+        "backend\\test\\phase1b-simple.test.js",
+        "backend\\test\\statsAggregation.test.js",
+        "backend\\test-quick.js",
+        "backend\\test-staking-data.js",
+        "backend\\verifyStakingAmounts.js",
+        "backend\\verifyTotalStaking.js",
+        "client\\src\\components\\SmartContractSelector.js",
+        "client\\src\\pages\\CQIntelligence\\CQIntelligence.js",
+        "client\\src\\pages\\CQIntelligenceChatbot.js",
+        "client\\src\\pages\\Dashboard\\CampaignDetails.js",
+        "client\\src\\pages\\Dashboard\\components\\FeatureCards.js",
+        "client\\src\\pages\\Dashboard\\ConversionEvents.js",
+        "client\\src\\pages\\Offchainpart\\Trafficanalytics\\TrafficAnalytics.js",
+        "client\\src\\pages\\Offchainpart\\TrafficSourcesChart.js",
+        "client\\src\\pages\\Onchainpart\\OnchainmarketInsights.js",
+        "client\\src\\pages\\Onchainpart\\Onchainuserinsights.js",
+        "client\\src\\pages\\Pricing.js",
+        "client\\src\\pages\\Setting\\Billing\\BillingSection.js",
+        "client\\src\\pages\\Setting\\MembersSection.js",
+        "client\\src\\pages\\Setting\\PersonalInfoSection.js",
+        "client\\src\\setupProxy.js",
+        "client\\src\\utils\\RateLimitManager.js",
+        "scripts\\initRagService.js",
+        "scripts\\monitorRagService.js",
+        "scripts\\setupRagEnv.js",
+        "scripts\\testRagService.js",
+        "server\\models\\payment.js",
+        "server\\models\\subscription.js",
+        "server\\routes\\team.js",
+        "server\\services\\analyticsService.js",
+        "server\\tasks\\taskScheduler.js",
+        "utils\\api\\examples.js",
+        "utils\\database\\examples.js",
+        "utils\\middleware\\examples.js",
+        "utils\\validation\\examples.js"
+      ],
+      "unreachable": [
+        "backend\\checkStakingData.js",
+        "backend\\checkWithdrawalLogs.js",
+        "backend\\checkWithdrawals.js",
+        "backend\\config\\cacheConfig.js",
+        "backend\\fixStakingAnalysis.js",
+        "backend\\middleware\\cacheMiddleware.js",
+        "backend\\middleware\\rateLimiter.js",
+        "backend\\models\\aggregatedStats.js",
+        "backend\\routes\\cacheRouter.js",
+        "backend\\routes\\transactionRoutes.js",
+        "backend\\scripts\\backup-vectors.js",
+        "backend\\scripts\\comprehensiveTest.js",
+        "backend\\scripts\\createAnalyticsIndexes.js",
+        "backend\\scripts\\createSessionIndexes.js",
+        "backend\\scripts\\createStatsIndexes.js",
+        "backend\\scripts\\fix-transaction-index.js",
+        "backend\\scripts\\phase1b-verification.js",
+        "backend\\scripts\\startServer.js",
+        "backend\\scripts\\testBackup.js",
+        "backend\\scripts\\testVectorSearch.js",
+        "backend\\services\\backgroundProcessor.js",
+        "backend\\services\\cacheService.js",
+        "backend\\services\\dataMigrationService.js",
+        "backend\\services\\monitoringDashboardService.js",
+        "backend\\services\\pipelineOrchestrationService.js",
+        "backend\\services\\queryOptimizer.js",
+        "backend\\services\\statsAggregationService.js",
+        "backend\\stakingAnalysis.js",
+        "backend\\test\\analyticsCaching.test.js",
+        "backend\\test\\atlasVectorTest.js",
+        "backend\\test\\backgroundProcessingIntegration.test.js",
+        "backend\\test\\backgroundProcessor.test.js",
+        "backend\\test\\cacheMiddleware.test.js",
+        "backend\\test\\cacheService.test.js",
+        "backend\\test\\fullOptimizationSuite.test.js",
+        "backend\\test\\geminiEmbedding.test.js",
+        "backend\\test\\localDeploymentTest.js",
+        "backend\\test\\onChainOptimization.test.js",
+        "backend\\test\\phase1b-focused.test.js",
+        "backend\\test\\phase1b-integration.test.js",
+        "backend\\test\\phase1b-simple.test.js",
+        "backend\\test\\statsAggregation.test.js",
+        "backend\\test-quick.js",
+        "backend\\test-staking-data.js",
+        "backend\\verifyStakingAmounts.js",
+        "backend\\verifyTotalStaking.js",
+        "client\\src\\components\\SmartContractSelector.js",
+        "client\\src\\lib\\GoogleGenerativeAI.js",
+        "client\\src\\pages\\CQIntelligence\\CQIntelligence.js",
+        "client\\src\\pages\\CQIntelligenceChatbot.js",
+        "client\\src\\pages\\Dashboard\\CampaignDetails.js",
+        "client\\src\\pages\\Dashboard\\components\\FeatureCards.js",
+        "client\\src\\pages\\Dashboard\\ConversionEvents.js",
+        "client\\src\\pages\\Offchainpart\\Trafficanalytics\\TrafficAnalytics.js",
+        "client\\src\\pages\\Offchainpart\\Trafficanalytics\\Web3UsersByMedium.js",
+        "client\\src\\pages\\Offchainpart\\TrafficSourcesChart.js",
+        "client\\src\\pages\\Onchainpart\\OnchainmarketInsights.js",
+        "client\\src\\pages\\Onchainpart\\Onchainuserinsights.js",
+        "client\\src\\pages\\Pricing.js",
+        "client\\src\\pages\\Setting\\Billing\\BillingSection.js",
+        "client\\src\\pages\\Setting\\MembersSection.js",
+        "client\\src\\pages\\Setting\\PersonalInfoSection.js",
+        "client\\src\\services\\ragService.js",
+        "client\\src\\setupProxy.js",
+        "client\\src\\utils\\RateLimitManager.js",
+        "scripts\\initRagService.js",
+        "scripts\\monitorRagService.js",
+        "scripts\\setupRagEnv.js",
+        "scripts\\testRagService.js",
+        "server\\models\\payment.js",
+        "server\\models\\subscription.js",
+        "server\\routes\\team.js",
+        "server\\services\\analyticsService.js",
+        "server\\tasks\\taskScheduler.js",
+        "utils\\api\\examples.js",
+        "utils\\database\\examples.js",
+        "utils\\middleware\\examples.js",
+        "utils\\validation\\examples.js"
+      ],
+      "empty": [
+        "client\\src\\utils\\RateLimitManager.js"
+      ]
+    },
+    "byDirectory": {
+      "backend": [
+        "checkStakingData.js",
+        "checkWithdrawalLogs.js",
+        "checkWithdrawals.js",
+        "fixStakingAnalysis.js",
+        "stakingAnalysis.js",
+        "test-quick.js",
+        "test-staking-data.js",
+        "verifyStakingAmounts.js",
+        "verifyTotalStaking.js"
+      ],
+      "backend\\config": [
+        "cacheConfig.js"
+      ],
+      "backend\\middleware": [
+        "cacheMiddleware.js",
+        "rateLimiter.js"
+      ],
+      "backend\\models": [
+        "aggregatedStats.js"
+      ],
+      "backend\\routes": [
+        "cacheRouter.js",
+        "transactionRoutes.js"
+      ],
+      "backend\\scripts": [
+        "backup-vectors.js",
+        "comprehensiveTest.js",
+        "createAnalyticsIndexes.js",
+        "createSessionIndexes.js",
+        "createStatsIndexes.js",
+        "fix-transaction-index.js",
+        "phase1b-verification.js",
+        "startServer.js",
+        "testBackup.js",
+        "testVectorSearch.js"
+      ],
+      "backend\\services": [
+        "backgroundProcessor.js",
+        "cacheService.js",
+        "dataMigrationService.js",
+        "monitoringDashboardService.js",
+        "pipelineOrchestrationService.js",
+        "queryOptimizer.js",
+        "statsAggregationService.js"
+      ],
+      "backend\\test": [
+        "analyticsCaching.test.js",
+        "atlasVectorTest.js",
+        "backgroundProcessingIntegration.test.js",
+        "backgroundProcessor.test.js",
+        "cacheMiddleware.test.js",
+        "cacheService.test.js",
+        "fullOptimizationSuite.test.js",
+        "geminiEmbedding.test.js",
+        "localDeploymentTest.js",
+        "onChainOptimization.test.js",
+        "phase1b-focused.test.js",
+        "phase1b-integration.test.js",
+        "phase1b-simple.test.js",
+        "statsAggregation.test.js"
+      ],
+      "client\\src\\components": [
+        "SmartContractSelector.js"
+      ],
+      "client\\src\\lib": [
+        "GoogleGenerativeAI.js"
+      ],
+      "client\\src\\pages\\CQIntelligence": [
+        "CQIntelligence.js"
+      ],
+      "client\\src\\pages": [
+        "CQIntelligenceChatbot.js",
+        "Pricing.js"
+      ],
+      "client\\src\\pages\\Dashboard": [
+        "CampaignDetails.js",
+        "ConversionEvents.js"
+      ],
+      "client\\src\\pages\\Dashboard\\components": [
+        "FeatureCards.js"
+      ],
+      "client\\src\\pages\\Offchainpart\\Trafficanalytics": [
+        "TrafficAnalytics.js",
+        "Web3UsersByMedium.js"
+      ],
+      "client\\src\\pages\\Offchainpart": [
+        "TrafficSourcesChart.js"
+      ],
+      "client\\src\\pages\\Onchainpart": [
+        "OnchainmarketInsights.js",
+        "Onchainuserinsights.js"
+      ],
+      "client\\src\\pages\\Setting\\Billing": [
+        "BillingSection.js"
+      ],
+      "client\\src\\pages\\Setting": [
+        "MembersSection.js",
+        "PersonalInfoSection.js"
+      ],
+      "client\\src\\services": [
+        "ragService.js"
+      ],
+      "client\\src": [
+        "setupProxy.js"
+      ],
+      "client\\src\\utils": [
+        "RateLimitManager.js"
+      ],
+      "scripts": [
+        "initRagService.js",
+        "monitorRagService.js",
+        "setupRagEnv.js",
+        "testRagService.js"
+      ],
+      "server\\models": [
+        "payment.js",
+        "subscription.js"
+      ],
+      "server\\routes": [
+        "team.js"
+      ],
+      "server\\services": [
+        "analyticsService.js"
+      ],
+      "server\\tasks": [
+        "taskScheduler.js"
+      ],
+      "utils\\api": [
+        "examples.js"
+      ],
+      "utils\\database": [
+        "examples.js"
+      ],
+      "utils\\middleware": [
+        "examples.js"
+      ],
+      "utils\\validation": [
+        "examples.js"
+      ]
+    },
+    "bySize": {
+      "small (< 1KB)": [
+        "backend\\routes\\transactionRoutes.js",
+        "backend\\test-staking-data.js",
+        "client\\src\\pages\\Dashboard\\CampaignDetails.js",
+        "client\\src\\pages\\Dashboard\\ConversionEvents.js",
+        "client\\src\\utils\\RateLimitManager.js"
+      ],
+      "medium (1-10KB)": [
+        "backend\\checkStakingData.js",
+        "backend\\checkWithdrawalLogs.js",
+        "backend\\checkWithdrawals.js",
+        "backend\\config\\cacheConfig.js",
+        "backend\\fixStakingAnalysis.js",
+        "backend\\middleware\\cacheMiddleware.js",
+        "backend\\middleware\\rateLimiter.js",
+        "backend\\models\\aggregatedStats.js",
+        "backend\\routes\\cacheRouter.js",
+        "backend\\scripts\\backup-vectors.js",
+        "backend\\scripts\\comprehensiveTest.js",
+        "backend\\scripts\\createAnalyticsIndexes.js",
+        "backend\\scripts\\createSessionIndexes.js",
+        "backend\\scripts\\createStatsIndexes.js",
+        "backend\\scripts\\fix-transaction-index.js",
+        "backend\\scripts\\startServer.js",
+        "backend\\scripts\\testBackup.js",
+        "backend\\scripts\\testVectorSearch.js",
+        "backend\\test\\analyticsCaching.test.js",
+        "backend\\test\\backgroundProcessingIntegration.test.js",
+        "backend\\test\\backgroundProcessor.test.js",
+        "backend\\test\\cacheMiddleware.test.js",
+        "backend\\test\\cacheService.test.js",
+        "backend\\test\\onChainOptimization.test.js",
+        "backend\\test\\phase1b-simple.test.js",
+        "backend\\test-quick.js",
+        "backend\\verifyStakingAmounts.js",
+        "backend\\verifyTotalStaking.js",
+        "client\\src\\components\\SmartContractSelector.js",
+        "client\\src\\lib\\GoogleGenerativeAI.js",
+        "client\\src\\pages\\Dashboard\\components\\FeatureCards.js",
+        "client\\src\\pages\\Offchainpart\\Trafficanalytics\\TrafficAnalytics.js",
+        "client\\src\\pages\\Offchainpart\\Trafficanalytics\\Web3UsersByMedium.js",
+        "client\\src\\pages\\Offchainpart\\TrafficSourcesChart.js",
+        "client\\src\\pages\\Onchainpart\\OnchainmarketInsights.js",
+        "client\\src\\pages\\Setting\\MembersSection.js",
+        "client\\src\\pages\\Setting\\PersonalInfoSection.js",
+        "client\\src\\services\\ragService.js",
+        "client\\src\\setupProxy.js",
+        "scripts\\initRagService.js",
+        "scripts\\monitorRagService.js",
+        "scripts\\setupRagEnv.js",
+        "scripts\\testRagService.js",
+        "server\\models\\payment.js",
+        "server\\models\\subscription.js",
+        "server\\routes\\team.js",
+        "server\\services\\analyticsService.js",
+        "utils\\api\\examples.js"
+      ],
+      "large (10-100KB)": [
+        "backend\\scripts\\phase1b-verification.js",
+        "backend\\services\\backgroundProcessor.js",
+        "backend\\services\\cacheService.js",
+        "backend\\services\\dataMigrationService.js",
+        "backend\\services\\monitoringDashboardService.js",
+        "backend\\services\\pipelineOrchestrationService.js",
+        "backend\\services\\queryOptimizer.js",
+        "backend\\services\\statsAggregationService.js",
+        "backend\\stakingAnalysis.js",
+        "backend\\test\\atlasVectorTest.js",
+        "backend\\test\\fullOptimizationSuite.test.js",
+        "backend\\test\\geminiEmbedding.test.js",
+        "backend\\test\\localDeploymentTest.js",
+        "backend\\test\\phase1b-focused.test.js",
+        "backend\\test\\phase1b-integration.test.js",
+        "backend\\test\\statsAggregation.test.js",
+        "client\\src\\pages\\CQIntelligence\\CQIntelligence.js",
+        "client\\src\\pages\\CQIntelligenceChatbot.js",
+        "client\\src\\pages\\Onchainpart\\Onchainuserinsights.js",
+        "client\\src\\pages\\Pricing.js",
+        "client\\src\\pages\\Setting\\Billing\\BillingSection.js",
+        "server\\tasks\\taskScheduler.js",
+        "utils\\database\\examples.js",
+        "utils\\middleware\\examples.js",
+        "utils\\validation\\examples.js"
+      ],
+      "very-large (> 100KB)": []
+    }
+  }
+}
